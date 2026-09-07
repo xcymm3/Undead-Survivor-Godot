@@ -50,7 +50,7 @@ func _process(_dt: float) -> bool:
 				remote_shots = maxi(remote_shots,int(p.shots))
 		if age > (5.0 if host else 4.5):
 			var metrics: Dictionary = session.network_metrics()
-			var good = remote_moved and remote_shots > 0 and (host or (snapshots >= 20 and metrics.samples >= 2 and metrics.rtt >= 0))
+			var good = remote_moved and remote_shots > 0 and (host or (snapshots >= 20 and metrics.samples >= 2 and metrics.rtt >= 0 and metrics.loss >= 0))
 			print("NETWORK METRICS: "+JSON.stringify(metrics))
 			print("NETWORK %s: moved=%s shots=%d snapshots=%d result=%s" % ["HOST" if host else "CLIENT",remote_moved,remote_shots,snapshots,"PASS" if good else "FAIL"])
 			stopping = true

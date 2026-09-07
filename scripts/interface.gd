@@ -486,9 +486,10 @@ func _draw_hud() -> void:
 		var origin = Vector2(canvas.x-224,28)
 		hud.draw_style_box(box(Color(.025,.04,.03,.22),6),Rect2(origin,Vector2(196,58)))
 		text_at("网络状态："+metrics.quality,origin+Vector2(10,21),14,Color("ddcd93") if metrics.quality != "良好" else Color("c7dda9"))
-		var detail = "正在采样…" if metrics.samples == 0 else "%d ms · 丢包 %.0f%%" % [metrics.rtt,metrics.loss]
-		if metrics.samples > 0 and metrics.rtt < 0: detail = "延迟 -- · 丢包 %.0f%%" % metrics.loss
-		text_at(detail,origin+Vector2(10,44),13)
+		var detail = "正在采样…" if metrics.samples == 0 else "%d ms · 同步丢包 %.0f%%" % [metrics.rtt,metrics.loss]
+		if metrics.samples > 0 and metrics.rtt < 0: detail = "延迟 -- · 同步丢包 %.0f%%" % metrics.loss
+		if metrics.loss < 0: detail = "正在等待同步数据…"
+		text_at(detail,origin+Vector2(10,44),12)
 	hud.draw_set_transform(Vector2.ZERO)
 
 func draw_health_card(pawn: Dictionary, rect: Rect2, is_local: bool) -> void:

@@ -34,6 +34,7 @@ var probe_sequence = 0
 var probes: Dictionary = {}
 var last_probe = 0
 var last_probe_reply = 0
+var snapshot_samples: Array = []
 
 
 func is_host() -> bool:
@@ -291,7 +292,7 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 	match packet.get("type"):
 		"net_probe":
 			if is_host() and playing and packet.get("session") == nonce and packet.get("seq") is int:
-				send_to(sender,{"type":"net_reply","seq":packet.seq})
+				send_to(sender,{"type":"net_reply","seq":packet.seq},true)
 		"net_reply":
 			if sender == host_id and playing and packet.get("session") == nonce and packet.get("seq") is int:
 				record_probe_reply(packet.seq,Time.get_ticks_msec())
@@ -314,6 +315,7 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 		"world":
 			if sender == host_id and playing and packet.get("session") == nonce and packet.get("seq") is int and packet.seq > receive_sequence:
 				if valid_world(packet.get("state")):
+					record_snapshot(packet.seq,Time.get_ticks_msec())
 					receive_sequence = packet.seq
 					world_received.emit(packet.state)
 		"effects":
@@ -383,13 +385,14 @@ func leave() -> void:
 	send_sequence = 0
 	receive_sequence = -1
 	probes.clear()
+	snapshot_samples.clear()
 	probe_sequence = 0
 	last_probe = 0
 	last_probe_reply = 0
 	changed.emit()
 
-# Round-trip probes use the same transport as play. Loss is the fraction of
-# unanswered probes after three seconds, over the most recent thirty seconds.
+# Reliable round-trip probes measure latency without being superseded by input.
+# Loss comes from missing authoritative world sequence numbers, not probe timeouts.
 func update_network_probes(now: int) -> void:
 	if not playing or is_host(): return
 	for seq in probes.keys():
@@ -398,7 +401,7 @@ func update_network_probes(now: int) -> void:
 	last_probe = now
 	probe_sequence += 1
 	probes[probe_sequence] = {"sent":now,"rtt":-1}
-	send_to(host_id,{"type":"net_probe","seq":probe_sequence})
+	send_to(host_id,{"type":"net_probe","seq":probe_sequence},true)
 
 func record_probe_reply(seq: int, now: int) -> void:
 	if not probes.has(seq) or probes[seq].rtt >= 0: return
@@ -408,7 +411,7 @@ func record_probe_reply(seq: int, now: int) -> void:
 func network_metrics(now: int = -1) -> Dictionary:
 	if now < 0: now = Time.get_ticks_msec()
 	var total = 0
-	var lost = 0
+	var unanswered = 0
 	var sum_rtt = 0.0
 	var received = 0
 	for probe in probes.values():
@@ -419,11 +422,24 @@ func network_metrics(now: int = -1) -> Dictionary:
 			sum_rtt += probe.rtt
 		elif now-probe.sent >= 3000:
 			total += 1
-			lost += 1
+			unanswered += 1
 	var rtt = sum_rtt / received if received > 0 else -1.0
-	var loss = 100.0 * lost / total if total > 0 else 0.0
+	var expected_updates = 0
+	var missing_updates = 0
+	for sample in snapshot_samples:
+		if now-sample.time <= 30000:
+			expected_updates += sample.expected
+			missing_updates += sample.missing
+	var loss = 100.0 * missing_updates / expected_updates if expected_updates > 0 else -1.0
 	var quality = "测量中"
 	if total > 0:
-		quality = "良好" if rtt >= 0 and rtt < 100 and loss < 3 else "一般" if rtt >= 0 and rtt < 200 and loss < 10 else "较差"
-		if last_probe_reply > 0 and now-last_probe_reply > 3000: quality = "较差"
+		quality = "良好" if rtt >= 0 and rtt < 100 and loss >= 0 and loss < 3 else "一般" if rtt >= 0 and rtt < 200 and loss >= 0 and loss < 10 else "较差"
+		if unanswered > 0 or (last_probe_reply > 0 and now-last_probe_reply > 3000): quality = "较差"
 	return {"rtt":rtt,"loss":loss,"samples":total,"quality":quality}
+
+func record_snapshot(seq: int, now: int) -> void:
+	var expected = seq-receive_sequence if receive_sequence >= 0 else 1
+	if expected <= 0: return
+	snapshot_samples.append({"time":now,"expected":expected,"missing":expected-1})
+	while not snapshot_samples.is_empty() and now-snapshot_samples[0].time > 30000:
+		snapshot_samples.pop_front()

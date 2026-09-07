@@ -294,13 +294,19 @@ func run() -> void:
 	check(data.settings.network_stats,"Network panel defaults enabled")
 	check(session.network_metrics(1000).quality == "测量中","No network sample cannot claim good quality")
 	session.probes = {1:{"sent":1000,"rtt":-1},2:{"sent":2000,"rtt":-1}}
+	session.record_snapshot(10,1000)
+	session.receive_sequence = 10
 	session.record_probe_reply(1,1040)
 	check(session.network_metrics(2500).rtt == 40 and session.network_metrics(2500).loss == 0,"Probe RTT uses local clock; pending probe is not premature loss")
-	check(session.network_metrics(5000).loss == 50 and session.network_metrics(5000).quality == "较差","Timed-out probe contributes loss and poor quality")
+	check(session.network_metrics(5000).quality == "较差","Timed-out round trip marks connection poor")
+	session.record_snapshot(13,5000)
+	check(session.network_metrics(5000).loss == 50,"Missing world sequences measure actual synchronization loss")
 	session.record_probe_reply(999,6000)
 	check(session.probes.size() == 2,"Unsolicited replies cannot fabricate telemetry")
 	check(session.network_metrics(40000).samples == 0,"Old samples expire from network window")
 	session.probes.clear()
+	session.snapshot_samples.clear()
+	session.receive_sequence = -1
 	session.last_probe_reply = 0
 	# Exercise every menu without presenting it or changing persisted settings.
 	for method in ["show_home","show_settings","show_guide","show_scores","show_multiplayer","show_pause"]:
