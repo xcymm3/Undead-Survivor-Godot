@@ -87,6 +87,10 @@ func _ready() -> void:
 	if "--lan-host" in args: Session.host_lan("房主")
 	for arg in args:
 		if arg.begins_with("--lan-join="): Session.join_lan(arg.trim_prefix("--lan-join="),"队友")
+	if Data.automation:
+		var observer = preload("res://scripts/automation_observer.gd").new()
+		observer.game = self
+		add_child(observer)
 
 func start_solo(mode: String) -> void:
 	Session.leave()
@@ -182,10 +186,10 @@ func _process(dt: float) -> void:
 	if not focused: return
 	if not running or (paused and not Session.playing) or (finished and death_timer > 1.2 and ui.current == "result"):
 		# Menu and pause screens render only after input or UI changes.
-		Engine.max_fps = 60
+		Engine.max_fps = 20 if Data.automation and OS.has_feature("web") else 60
 		if redraw_frames > 0:
 			redraw_frames -= 1
-			RenderingServer.force_draw(false)
+			RenderingServer.force_draw(true)
 		return
 	Engine.max_fps = int(Data.settings.frame_limit)
 	if not sim: return
@@ -236,7 +240,12 @@ func _process(dt: float) -> void:
 				if camera.position.distance_to(head) > .05: camera.look_at(head)
 		if death_timer > 1.2 and ui.current != "result": ui.show_result()
 	ui.tick(dt)
-	if "--capture" not in OS.get_cmdline_user_args(): RenderingServer.force_draw(false)
+	draw_timer += dt
+	if "--capture" not in OS.get_cmdline_user_args():
+		# CI keeps physics/input active while limiting expensive software-rasterized frames.
+		if not (Data.automation and OS.has_feature("web")) or draw_timer >= .5:
+			RenderingServer.force_draw(true)
+			draw_timer = 0
 
 func handle_effects(events: Array) -> void:
 	for event in events:
@@ -291,7 +300,7 @@ func pause_game() -> void:
 func resume_game() -> void:
 	paused = false
 	ui.clear_menu()
-	if DisplayServer.get_name() != "headless" and "--silent" not in OS.get_cmdline_user_args(): Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if not Data.automation and DisplayServer.get_name() != "headless" and "--silent" not in OS.get_cmdline_user_args(): Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	sound.set_playing(true)
 
 func return_home() -> void:
@@ -344,7 +353,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			Data.apply_settings()
 			Data.save()
 	if not running or paused or finished: return
-	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	if event is InputEventMouseMotion and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Data.automation):
 		var sensitivity: float = Data.settings.sensitivity*tan(deg_to_rad(camera.fov)/2)/tan(deg_to_rad(61)/2)
 		var delta = event.screen_relative
 		var max_delta = minf(180,deg_to_rad(25)/maxf(.000001,sensitivity))

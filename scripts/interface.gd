@@ -4,7 +4,7 @@ var root: Control
 var menu: Control
 var hud: Control
 var current = ""
-var font = SystemFont.new()
+var font: Font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
 var player_name = "幸存者"
 var address = "127.0.0.1:27777"
 var steam_code = ""
@@ -16,7 +16,6 @@ const PAPER = Color("f0ece2")
 const RUST = Color("ae573b")
 
 func _ready() -> void:
-	font.font_names = PackedStringArray(["Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC","sans-serif"])
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -324,6 +323,10 @@ func show_scores() -> void:
 func show_multiplayer() -> void:
 	var column = panel("一起坚守", "房主模拟整场战斗 · 2—4 人合作 · 逐波复活",850)
 	current = "multiplayer"
+	if OS.has_feature("web"):
+		paragraph(column,"浏览器验收版仅支持单人和练习。Steam 与局域网合作请使用 Windows 版。")
+		button(column,"返回",show_home)
+		return
 	paragraph(column,Session.status,17,RUST)
 	if Session.active:
 		column.add_child(label("房间  "+Session.room_code,22))

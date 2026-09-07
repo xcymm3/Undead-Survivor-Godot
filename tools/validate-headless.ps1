@@ -2,7 +2,8 @@ param(
     [ValidateSet('Import', 'Runtime', 'Profile', 'NetworkHost', 'NetworkClient')]
     [string]$Mode = 'Runtime',
     [string]$Godot = '',
-    [switch]$FourPlayers
+    [switch]$FourPlayers,
+    [ValidateRange(10, 600)][int]$TimeoutSeconds = 180
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -36,10 +37,14 @@ try {
     $started = $true
     $stdoutTask = $process.StandardOutput.ReadToEndAsync()
     $stderrTask = $process.StandardError.ReadToEndAsync()
-    if (-not $process.WaitForExit(60000)) {
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    while (-not $process.WaitForExit(1000) -and [DateTime]::UtcNow -lt $deadline) { }
+    if (-not $process.HasExited) {
         $process.Kill()
         $process.WaitForExit()
-        throw 'Headless validation exceeded 60 seconds; its process was stopped.'
+        $timeoutLog = Join-Path $projectRoot ('headless-timeout-' + $process.Id + '.log')
+        Set-Content -LiteralPath $timeoutLog -Encoding utf8 -Value ($stdoutTask.GetAwaiter().GetResult() + $stderrTask.GetAwaiter().GetResult())
+        throw "Headless validation exceeded $TimeoutSeconds seconds; see $timeoutLog."
     }
     $stdout = $stdoutTask.GetAwaiter().GetResult()
     $stderr = $stderrTask.GetAwaiter().GetResult()

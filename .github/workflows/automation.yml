@@ -1,0 +1,70 @@
+name: Godot 自动验收与 Windows 打包
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: godot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-and-package:
+    name: 测试 → 无界面试玩 → EXE 验收 → 打包
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: 设置 Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: 缓存固定引擎及导出模板
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            .runtime/Godot_v4.5.2-stable_win64.exe
+            .runtime/Godot_v4.5.2-stable_win64_console.exe
+            .runtime/steam
+            .runtime/templates
+          key: windows-godot-4.5.2-steam-4.16-${{ hashFiles('tools/setup-runtime.ps1', 'tools/setup-web-templates.ps1') }}
+      - name: 安装锁定的测试依赖
+        run: npm ci --no-audit --no-fund
+      - name: 安装无界面浏览器
+        run: npx playwright install chromium --only-shell
+      - name: 执行完整验收并导出 Windows 包
+        run: npm run verify:release
+      - name: 写入验收摘要
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path artifacts/acceptance.md) {
+            Get-Content -Encoding utf8 artifacts/acceptance.md >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            '流程未进入验收阶段，请检查安装步骤日志。' >> $env:GITHUB_STEP_SUMMARY
+          }
+      - name: 保存日志、截图和浏览器回放
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: acceptance-${{ github.sha }}
+          path: artifacts/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: 提供已验收的 Windows 下载包
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Undead-Survivor-Godot-Windows-x64-${{ github.sha }}
+          path: |
+            build/Undead-Survivor-Godot-Windows-x64.zip
+            build/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30

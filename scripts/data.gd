@@ -15,6 +15,7 @@ const GRAPHICS_PRESETS = [
 ]
 var scores: Array = []
 var persistent = true
+var automation = "--automation" in OS.get_cmdline_user_args()
 const SAVE_PATH = "user://survivor-godot-v1.json"
 const RIVER = [Vector2(-22,-14), Vector2(-17,-12), Vector2(-12,-14), Vector2(-6,-18), Vector2(0,-17), Vector2(6,-12), Vector2(12,-11), Vector2(17,-13), Vector2(22,-16)]
 const SPAWNS = [Vector2(-13,-45), Vector2(1,-45), Vector2(12,-45), Vector2(19,-36), Vector2(19,-20), Vector2(19,-4)]
@@ -23,7 +24,7 @@ const MODELS = ["Soldier_Male", "Soldier_Female", "Casual_Male", "Casual_Female"
 const PALETTE = [0x355747,0x365d73,0x794638,0x987f4c,0x663a4b,0x4b595b]
 
 func _ready() -> void:
-	if FileAccess.file_exists(SAVE_PATH):
+	if not automation and FileAccess.file_exists(SAVE_PATH):
 		var loaded = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
 		if loaded is Dictionary:
 			if loaded.get("settings") is Dictionary:
@@ -39,6 +40,13 @@ func _ready() -> void:
 	settings.resolution = clampf(settings.resolution,.5,1)
 	for key in ["aa","shadows","effects","distance"]: settings[key] = clampi(settings[key],0,4 if key == "shadows" else 3 if key == "aa" else 2)
 	if settings.frame_limit not in [0,30,60,120]: settings.frame_limit = 60
+	if automation and OS.has_feature("web"):
+		# Software WebGL in CI has no physical GPU; only render quality is reduced.
+		settings.resolution = .5
+		settings.aa = 0
+		settings.shadows = 0
+		settings.frame_limit = 20
+		settings.quality = 5
 	Engine.max_fps = 120
 	apply_settings()
 	var actions = {"forward": KEY_W, "back": KEY_S, "left": KEY_A, "right": KEY_D, "jump": KEY_SPACE, "reload": KEY_R}
@@ -50,10 +58,10 @@ func _ready() -> void:
 
 func apply_settings() -> void:
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(.0001, settings.volume)))
-	AudioServer.set_bus_mute(0, settings.muted or DisplayServer.get_name() == "headless" or "--silent" in OS.get_cmdline_user_args())
+	AudioServer.set_bus_mute(0, automation or settings.muted or DisplayServer.get_name() == "headless" or "--silent" in OS.get_cmdline_user_args())
 	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED,Viewport.MSAA_2X,Viewport.MSAA_4X,Viewport.MSAA_8X][int(settings.aa)]
 	get_viewport().scaling_3d_scale = settings.resolution
-	if DisplayServer.get_name() != "headless" and "--silent" not in OS.get_cmdline_user_args():
+	if not automation and DisplayServer.get_name() != "headless" and "--silent" not in OS.get_cmdline_user_args():
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if settings.fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
 
 	settings_changed.emit()
@@ -66,6 +74,7 @@ func set_preset(index: int) -> void:
 	save()
 
 func save() -> void:
+	if automation: return
 	var file = FileAccess.open(SAVE_PATH + ".tmp", FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify({"settings": settings, "scores": scores}))

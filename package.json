@@ -1,0 +1,15 @@
+{
+  "name": "undead-survivor-godot-qa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "node tools/postinstall.mjs",
+    "test:web": "playwright test",
+    "verify": "node tools/automation.mjs",
+    "verify:release": "node tools/automation.mjs --release"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "pngjs": "7.0.0"
+  }
+}

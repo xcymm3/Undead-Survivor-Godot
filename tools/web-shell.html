@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Undead Survivor · 自动验收</title>
+  <style>html,body{margin:0;background:#1a2520;width:100%;height:100%;overflow:hidden}canvas{display:block;width:100%;height:100%;outline:none}#status{position:absolute;color:white;font:16px sans-serif;top:12px;left:12px;pointer-events:none}</style>
+  $GODOT_HEAD_INCLUDE
+</head>
+<body>
+  <canvas id="canvas" tabindex="0" aria-label="Undead Survivor 游戏画面"></canvas>
+  <div id="status">正在加载游戏…</div>
+  <script src="$GODOT_URL"></script>
+  <script>
+    // This shell belongs only to the QA export, never the Windows game.
+    window.__qaSafety = { pointerLockRequests: 0, fullscreenRequests: 0 };
+    Element.prototype.requestPointerLock = function () {
+      window.__qaSafety.pointerLockRequests++;
+      return Promise.reject(new Error('Pointer lock is forbidden in automation'));
+    };
+    Element.prototype.requestFullscreen = function () {
+      window.__qaSafety.fullscreenRequests++;
+      return Promise.reject(new Error('Fullscreen is forbidden in automation'));
+    };
+    const engine = new Engine($GODOT_CONFIG);
+    engine.startGame({canvas: document.getElementById('canvas'), args: ['--', '--automation', '--silent'],
+      onPrintError: (...args) => console.error(...args)
+    }).then(() => {
+      document.getElementById('status').remove();
+      document.getElementById('canvas').focus({preventScroll: true});
+    }).catch(error => {
+      window.__startupError = String(error);
+      document.getElementById('status').textContent = String(error);
+      console.error(error);
+    });
+  </script>
+</body>
+</html>

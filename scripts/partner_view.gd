@@ -31,6 +31,7 @@ func setup(p: Dictionary) -> void:
 	animation = finder.find_animation(avatar)
 	finder.free()
 	label = Label3D.new()
+	label.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
 	label.text = p.name
 	label.font_size = 36
 	label.pixel_size = .008

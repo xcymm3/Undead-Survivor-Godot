@@ -4,6 +4,8 @@
 
 移植基线：相邻原项目提交 `7775293140052ccf9f86ea86929bfbc8889a4a5b`。原目录没有修改。
 
+仓库：[xcymm3/Undead-Survivor-Godot](https://github.com/xcymm3/Undead-Survivor-Godot)。自动验收与打包入口：`npm run verify` / `npm run verify:release`；完整步骤见 [自动化流程](docs/AUTOMATION.md)。Actions 全绿后可在该次运行的 Artifacts 下载 Windows ZIP，以及日志、截图和浏览器回放。
+
 ![Godot 实际主菜单](docs/screenshots/home.png)
 
 ## 启动
@@ -110,13 +112,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/capture-hidden.ps1 -Al
 
 ## 导出 Windows 成品
 
-工程带有可复用的 Windows Steam 导出预设。本次未生成发行 EXE；需要打包时运行：
+工程带有 Windows Steam 导出预设。推荐运行完整验收后再打包：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/export-windows.ps1
+npm run verify:release
 ```
 
-该脚本使用固定版本的 GodotSteam 导出模板。分发整个 `build/`，包含 EXE、`steam_api64.dll`、开发用 `steam_appid.txt` 和第三方说明。正式 Steam 发布须使用自己的 App ID 和对应发布配置。
+流程使用固定版本的 GodotSteam 导出模板，运行成品 EXE 的无窗口冒烟检查，再生成 `build/Undead-Survivor-Godot-Windows-x64.zip`。包内包含 EXE、`steam_api64.dll`、开发用 `steam_appid.txt`、第三方及字体许可；不要只复制 EXE。正式 Steam 发布须使用自己的 App ID 和对应发布配置。
 
 ## 资源来源
 

@@ -20,7 +20,9 @@ func run() -> void:
 	host = "--host" in OS.get_cmdline_user_args()
 	if "--four" in OS.get_cmdline_user_args(): expected = 4
 	begun = Time.get_ticks_msec()
-	if host: session.host_lan("验证房主")
+	if host:
+		session.host_lan("验证房主")
+		if session.active: print("NETWORK READY")
 	else:
 		session.join_lan("127.0.0.1:27777","验证队友")
 		session.world_received.connect(func(_state): snapshots += 1)

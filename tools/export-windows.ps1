@@ -11,4 +11,5 @@ if ($LASTEXITCODE -ne 0) { throw 'Export failed.' }
 Copy-Item -LiteralPath (Join-Path $projectRoot '.runtime\steam\steam_api64.dll') -Destination $buildRoot -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'steam_appid.txt') -Destination $buildRoot -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'assets\THIRD-PARTY-NOTICES.txt') -Destination $buildRoot -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot 'assets\fonts\LICENSE.txt') -Destination (Join-Path $buildRoot 'FONT-LICENSE.txt') -Force
 Write-Host "Exported to $buildRoot"

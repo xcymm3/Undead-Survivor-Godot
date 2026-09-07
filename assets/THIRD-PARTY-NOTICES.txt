@@ -390,3 +390,9 @@ bundled animations. Models are served locally with the game.
 CC0 allows copying, modifying and distributing these assets, including
 commercial use. Quaternius is credited here even though attribution is not
 required by CC0. This notice does not claim authorship of the character models.
+
+Noto Sans CJK SC Regular
+Source: https://github.com/notofonts/noto-cjk
+Copyright 2014-2021 Adobe (http://www.adobe.com/).
+Licensed under the SIL Open Font License 1.1; full license: assets/fonts/LICENSE.txt.
+Bundled for consistent Chinese text rendering on Windows and Web.

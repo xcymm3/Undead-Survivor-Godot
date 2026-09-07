@@ -46,7 +46,7 @@
 以下不作已通过声明：
 
 - 两个独立 Steam 账号、不同电脑/网络的完整联网验收。GodotSteam 引擎与具体方法/信号已核对，房间及 P2P 实现已接入。
-- Windows 发行成品的最终导出与跨电脑运行；本次提供导出预设和脚本，没有擅自生成发行 EXE。
+- 原生 Windows 图形窗口和跨电脑 Steam 完整运行体验。新增自动化流程会验证导出后的 EXE（无窗口模式），具体运行结果以 `artifacts/acceptance.json` 和 GitHub Actions 为准。
 - 与原版逐像素一致。原几何和姿态保留，渲染器、阴影、字体栅格化、音频引擎和粒子表现有所不同。
 - 原浏览器/Electron 的排行榜自动迁入。Godot 有独立存档，原存档保持原状。
 - 原 Electron 与 Godot 客户端互联；两者协议和传输实现不同，应让全部队友使用同一 Godot 版本。
@@ -55,4 +55,4 @@
 
 修改 `assets/data/rules.json` 可调平衡；修改原项目后重新运行 `tools/convert-assets.mjs` 会覆盖该文件与生成资源。修改玩法请集中在 `simulation.gd`，保证单人与房主使用同一套规则。修改 GPU 僵尸动作时同步调整 `enemy_view.gd` 的 CPU 逐部件变换，保证视觉与命中一致。
 
-工程根目录无远程仓库地址，不能把它推送到原项目的远程仓库。若为它配置新的远程仓库，后续提交应使用简体中文 Conventional Commits 主题，不强制推送。
+工程关联独立远程仓库 `https://github.com/xcymm3/Undead-Survivor-Godot`。提交前执行完整自动验收与源码摘要门禁，使用简体中文 Conventional Commits 主题，不强制推送。流程与验收边界见 [AUTOMATION.md](AUTOMATION.md)。
