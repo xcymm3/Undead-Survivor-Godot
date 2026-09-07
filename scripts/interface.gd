@@ -11,6 +11,7 @@ var steam_code = ""
 var hit_flash = 0.0
 var hurt_flash = 0.0
 var message = ""
+var portraits: Dictionary = {}
 const INK = Color("303a33")
 const PAPER = Color("f0ece2")
 const RUST = Color("ae573b")
@@ -199,6 +200,13 @@ func back() -> void:
 func show_settings() -> void:
 	var column = panel("设置", "声音、操控与画质会保存到本机")
 	current = "settings"
+	var network_toggle = CheckButton.new()
+	network_toggle.text = "显示客机网络状态"
+	network_toggle.button_pressed = Data.settings.network_stats
+	network_toggle.toggled.connect(func(value):
+		Data.settings.network_stats = value
+		Data.save())
+	column.add_child(network_toggle)
 	column.add_child(label("鼠标灵敏度",20))
 	var row = HBoxContainer.new()
 	column.add_child(row)
@@ -388,6 +396,7 @@ static func time_text(value: float) -> String:
 	return "%02d:%02d" % [floori(value/60),floori(value)%60]
 
 func tick(dt: float) -> void:
+	sync_portraits()
 	hit_flash = maxf(0,hit_flash-dt)
 	hurt_flash = maxf(0,hurt_flash-dt)
 	hud.queue_redraw()
@@ -425,58 +434,148 @@ func _draw_hud() -> void:
 		var color = Color("eadfc6")
 		if not p.aim or w.get("kind", "gun") in ["melee","flame"]:
 			for dir in [Vector2.UP,Vector2.DOWN,Vector2.LEFT,Vector2.RIGHT]: hud.draw_line(center+dir*5,center+dir*12,color,2)
-		elif int(p.weapon) in [0,1,8,9]:
-			var tint = Color("c45a3b")
-			var radius = 132.0 if int(p.weapon) == 9 else 115.0
-			if int(p.weapon) in [0,9]:
-				hud.draw_arc(center,radius,0,TAU,96,Color("28362e"),18,true)
-				hud.draw_arc(center,radius+11,0,TAU,96,Color("556153"),3,true)
-			else:
-				hud.draw_style_box(box(Color(.13,.2,.16,.15),0),Rect2(center-Vector2(145,110),Vector2(290,220)))
-				hud.draw_rect(Rect2(center-Vector2(145,110),Vector2(290,220)),Color("28362e"),false,16)
-			text_at({0:"红点 · 1.5×",1:"全息 · 1.35×",8:"反射镜 · 1.25×",9:"刻度镜 · 2×"}[int(p.weapon)],center+Vector2(-60,radius+40),15)
-			if int(p.weapon) == 0: hud.draw_circle(center,2.5,tint)
-			else:
-				hud.draw_arc(center,15 if int(p.weapon) == 1 else 11,0,TAU,48,tint,1.5,true)
-				hud.draw_circle(center,1.5,tint)
-			if int(p.weapon) == 9:
-				for i in range(1,5): hud.draw_line(center+Vector2(-8+i,12+i*9),center+Vector2(8-i,12+i*9),tint,1)
 	if hit_flash > 0:
 		for d in [Vector2(-1,-1),Vector2(1,-1),Vector2(-1,1),Vector2(1,1)]: hud.draw_line(center+d*7,center+d*13,Color.WHITE,2)
 	if hurt_flash > 0:
 		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.55,.08,.04,hurt_flash*.3),false,20)
+	# Scale the HUD independently from the camera and scope for smaller windows.
+	var scale_factor = minf(screen.x / 1440.0, screen.y / 900.0)
+	hud.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE * scale_factor)
+	var canvas = screen / scale_factor
 	var pad = 28.0
-	hud.draw_style_box(box(Color(.09,.14,.115,.9),14),Rect2(pad,pad,286,100))
-	text_at("靶场练习" if sim.mode == "practice" else "第 %02d 波" % sim.wave,Vector2(pad+18,pad+34),25)
-	text_at("击杀 %d  /  场上 %d" % [sim.kills,sim.alive_count()],Vector2(pad+18,pad+65),17)
-	text_at(time_text(sim.elapsed),Vector2(pad+18,pad+87),15,Color("b8c1a5"))
-	hud.draw_style_box(box(Color(.09,.14,.115,.9),14),Rect2(pad,screen.y-126,230,96))
-	text_at("生命",Vector2(pad+18,screen.y-94),15)
-	text_at(str(int(p.hp)),Vector2(pad+18,screen.y-59),32)
-	hud.draw_rect(Rect2(pad+88,screen.y-75,118,8),Color("4a5447"))
-	hud.draw_rect(Rect2(pad+88,screen.y-75,118*p.hp/100.0,8),Color("a4b586") if p.hp > 30 else Color("c26b47"))
-	hud.draw_style_box(box(Color(.09,.14,.115,.9),14),Rect2(screen.x-310,screen.y-126,282,96))
-	text_at("%s  /  %s" % [w.label,w.tier],Vector2(screen.x-292,screen.y-94),18)
-	text_at("∞" if w.get("infiniteAmmo",false) else "%02d / %d" % [p.ammo[int(p.weapon)],w.capacity],Vector2(screen.x-292,screen.y-55),30)
-	if p.reloading:
-		text_at("装填中…",center+Vector2(-50,62),18)
-		hud.draw_rect(Rect2(center+Vector2(-75,75),Vector2(150*(1-p.reload/maxf(.1,w.reloadDuration)),3)),Color("eadfc6"))
-	if sim.rest > 0: text_at("整波清除 · 全员恢复   %.1f 秒后继续" % sim.rest,Vector2(center.x-215,70),24)
-	text_at("ESC 暂停  ·  R 换弹  ·  1—0 切枪",Vector2(center.x-170,screen.y-34),15,Color("c8cfba"))
+	hud.draw_style_box(box(Color(.04,.055,.05,.76),14),Rect2(pad,pad,248,91))
+	text_at("靶场练习" if sim.mode == "practice" else "第 %02d 波" % sim.wave,Vector2(pad+16,pad+31),24)
+	text_at("击杀 %d  ·  场上 %d" % [sim.kills,sim.alive_count()],Vector2(pad+16,pad+57),16)
+	text_at(time_text(sim.elapsed),Vector2(pad+16,pad+79),14,Color("b8c1a5"))
+	var local: Dictionary = game.local_pawn()
+	var owner: Dictionary = local if not local.is_empty() else p
+	var bottom = canvas.y - 52
+	draw_health_card(owner, Rect2(pad,bottom-82,240,82), true)
+	var slot = 0
+	for id in sim.pawns:
+		var teammate: Dictionary = sim.pawns[id]
+		if teammate.id == owner.id: continue
+		if slot >= 3: break
+		draw_health_card(teammate,Rect2(pad+252+slot*232,bottom-82,220,82),false)
+		slot += 1
+	var side = canvas.x - 178
+	var top = maxf(150,canvas.y * .22)
+	hud.draw_style_box(box(Color(.04,.055,.05,.30),12),Rect2(side,top,150,127))
+	hud.draw_rect(Rect2(side,top,3,127),Color("bedc8d"))
+	text_at(w.label,Vector2(side+12,top+27),19)
+	var infinite: bool = w.get("infiniteAmmo",false)
+	text_at("∞" if infinite else "%02d" % p.ammo[int(p.weapon)],Vector2(side+12,top+76),44)
+	text_at("近战" if infinite else "/ ∞",Vector2(side+90,top+74),21,Color("bdc5b7"))
+	var ammo_note = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
+	text_at(ammo_note,Vector2(side+12,top+104),12,Color("bdc5b7"))
 	if not scoped:
 		for i in 10:
-			var left = center.x-325+i*65
+			var row = top+136+i*24
 			var selected = int(p.weapon) == i
-			hud.draw_style_box(box(Color(.28,.35,.27,.92) if selected else Color(.08,.13,.1,.7),4),Rect2(left,screen.y-112,60,61))
-			text_at(str((i+1)%10),Vector2(left+7,screen.y-92),16)
-			text_at(["步枪","P90","手枪","左轮","单喷","狙击","斧头","喷火","连喷","重机"][i],Vector2(left+7,screen.y-74),13)
-			text_at("∞" if i == 6 else str(p.ammo[i]),Vector2(left+7,screen.y-57),13,Color("bbc7ac"))
-	var local: Dictionary = game.local_pawn()
+			hud.draw_style_box(box(Color(.20,.26,.16,.40) if selected else Color(.04,.055,.05,.16),4),Rect2(side+12,row,138,22))
+			if selected: hud.draw_rect(Rect2(side+12,row,2,22),Color("bedc8d"))
+			text_at(str((i+1)%10),Vector2(side+21,row+16),12,Color("a8b09f"))
+			text_at(["步枪","P90","手枪","左轮","单喷","狙击","消防斧","喷火","连喷","重机"][i],Vector2(side+42,row+16),13)
+			text_at("∞" if i == 6 else str(p.ammo[i]),Vector2(side+115,row+16),12,Color("bedc8d") if selected else Color("b0b8a8"))
+	if sim.rest > 0: text_at("整波清除 · 全员恢复   %.1f 秒后继续" % sim.rest,Vector2(canvas.x*.5-215,70),24)
+	text_at("ESC 暂停   ·   R 换弹   ·   1—0 切换武器",Vector2(pad,canvas.y-24),14,Color("c8cfba"))
 	if not local.is_empty() and local.hp <= 0 and Session.playing:
-		text_at("正在观战 %s · 左键切换队友 · 清波后复活" % p.name,Vector2(center.x-265,screen.y-170),22)
-	var y = 55.0
-	if Session.playing:
-		for id in sim.pawns:
-			var teammate: Dictionary = sim.pawns[id]
-			text_at("%s    %d HP" % [teammate.name,teammate.hp],Vector2(screen.x-290,y),18)
-			y += 29
+		text_at("正在观战 %s · 左键切换队友 · 清波后复活" % p.name,Vector2(pad,bottom-138),20)
+	if Session.playing and not Session.is_host() and Data.settings.network_stats:
+		var metrics = Session.network_metrics()
+		var origin = Vector2(canvas.x-224,28)
+		hud.draw_style_box(box(Color(.025,.04,.03,.22),6),Rect2(origin,Vector2(196,58)))
+		text_at("网络状态："+metrics.quality,origin+Vector2(10,21),14,Color("ddcd93") if metrics.quality != "良好" else Color("c7dda9"))
+		var detail = "正在采样…" if metrics.samples == 0 else "%d ms · 丢包 %.0f%%" % [metrics.rtt,metrics.loss]
+		if metrics.samples > 0 and metrics.rtt < 0: detail = "延迟 -- · 丢包 %.0f%%" % metrics.loss
+		text_at(detail,origin+Vector2(10,44),13)
+	hud.draw_set_transform(Vector2.ZERO)
+
+func draw_health_card(pawn: Dictionary, rect: Rect2, is_local: bool) -> void:
+	var hp = clampf(float(pawn.hp),0,100)
+	var accent = Color("afd778") if hp > 50 else Color("e0bc62") if hp > 25 else Color("dd6958")
+	if hp <= 0: accent = Color("838980")
+	hud.draw_style_box(box(Color(.035,.05,.04,.38),8),rect)
+	hud.draw_rect(Rect2(rect.position,Vector2(rect.size.x,2)),accent)
+	var portrait = Rect2(rect.position+Vector2(4,6),Vector2(56,72))
+	var key = str(pawn.appearance)
+	if portraits.has(key): hud.draw_texture_rect(portraits[key].get_texture(),portrait,false)
+	var left = rect.position.x+66
+	var width = rect.size.x-76
+	var name_text = "我" if is_local and not Session.playing else str(pawn.id) if Session.transport == "steam" else str(pawn.get("name","幸存者"))
+	var name_size = 13 if Session.transport == "steam" else 15
+	while font.get_string_size(name_text,HORIZONTAL_ALIGNMENT_LEFT,-1,name_size).x > width and name_size > 10:
+		name_size -= 1
+	if font.get_string_size(name_text,HORIZONTAL_ALIGNMENT_LEFT,-1,name_size).x > width:
+		while font.get_string_size(name_text+"…",HORIZONTAL_ALIGNMENT_LEFT,-1,name_size).x > width and name_text.length() > 1:
+			name_text = name_text.left(name_text.length()-1)
+		name_text += "…"
+	text_at(name_text,Vector2(left,rect.position.y+23),name_size)
+	text_at(str(int(hp)),Vector2(left,rect.position.y+53),26,accent)
+	text_at("生命" if hp > 0 else "阵亡",Vector2(left+52,rect.position.y+50),12,Color("d2d9c9"))
+	var bar = Rect2(left,rect.end.y-17,width,7)
+	hud.draw_rect(bar,Color(.12,.16,.12,.45))
+	hud.draw_rect(Rect2(bar.position,Vector2(width*hp/100,bar.size.y)),accent)
+	for segment in range(1,10):
+		var x = left+width*segment/10.0
+		hud.draw_line(Vector2(x,bar.position.y),Vector2(x,bar.end.y),Color(.04,.06,.04,.35),1)
+
+func sync_portraits() -> void:
+	var needed: Dictionary = {}
+	if game and game.running and game.sim:
+		for pawn in game.sim.pawns.values():
+			var key = str(pawn.appearance)
+			needed[key] = true
+			if not portraits.has(key): portraits[key] = create_portrait(pawn)
+	for key in portraits.keys():
+		if not needed.has(key):
+			portraits[key].queue_free()
+			portraits.erase(key)
+
+func create_portrait(pawn: Dictionary) -> SubViewport:
+	var viewport = SubViewport.new()
+	viewport.size = Vector2i(168,216)
+	viewport.transparent_bg = true
+	viewport.own_world_3d = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(viewport)
+	# Reuse the in-world character construction so model and outfit colors agree.
+	var partner = preload("res://scripts/partner_view.gd").new()
+	viewport.add_child(partner)
+	partner.setup(pawn)
+	var avatar: Node3D = partner.avatar
+	avatar.reparent(viewport)
+	avatar.position = Vector3.ZERO
+	avatar.rotation = Vector3.ZERO
+	if partner.animation:
+		for clip in partner.animation.get_animation_list():
+			if clip.to_lower().ends_with("idle"):
+				partner.animation.play(clip)
+				partner.animation.seek(0,true)
+				partner.animation.pause()
+				break
+	partner.free()
+	var bounds = AABB()
+	var first = true
+	for mesh in avatar.find_children("*","MeshInstance3D",true,false):
+		var mesh_bounds: AABB = mesh.global_transform * mesh.get_aabb()
+		bounds = mesh_bounds if first else bounds.merge(mesh_bounds)
+		first = false
+	var camera = Camera3D.new()
+	viewport.add_child(camera)
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = maxf(.5,bounds.size.y*.53)
+	var target = Vector3(bounds.get_center().x,bounds.end.y-bounds.size.y*.24,bounds.get_center().z)
+	camera.position = target+Vector3(0,0,4)
+	camera.look_at(target)
+	var light = DirectionalLight3D.new()
+	light.rotation_degrees = Vector3(-25,-25,0)
+	light.light_energy = 1.2
+	viewport.add_child(light)
+	var world = WorldEnvironment.new()
+	world.environment = Environment.new()
+	world.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	world.environment.ambient_light_color = Color.WHITE
+	world.environment.ambient_light_energy = .65
+	viewport.add_child(world)
+	return viewport

@@ -30,6 +30,11 @@ var send_sequence = 0
 var receive_sequence = -1
 var packet_counts: Dictionary = {}
 var rate_timer = 0.0
+var probe_sequence = 0
+var probes: Dictionary = {}
+var last_probe = 0
+var last_probe_reply = 0
+
 
 func is_host() -> bool:
 	return active and local_id == host_id
@@ -258,6 +263,7 @@ func _process(dt: float) -> void:
 			var packet: Dictionary = steam.readP2PPacket(size,0)
 			if not packet.is_empty(): receive(str(packet.remote_steam_id),packet.data)
 	if not active: return
+	update_network_probes(Time.get_ticks_msec())
 	heartbeat += dt
 	if heartbeat >= 1:
 		heartbeat = 0
@@ -283,6 +289,12 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 	if sender != host_id and not members.has(sender): return
 	if sender == host_id: last_host = Time.get_ticks_msec()/1000.0
 	match packet.get("type"):
+		"net_probe":
+			if is_host() and playing and packet.get("session") == nonce and packet.get("seq") is int:
+				send_to(sender,{"type":"net_reply","seq":packet.seq})
+		"net_reply":
+			if sender == host_id and playing and packet.get("session") == nonce and packet.get("seq") is int:
+				record_probe_reply(packet.seq,Time.get_ticks_msec())
 		"members":
 			if sender == host_id and packet.get("members") is Dictionary and packet.members.size() <= 4:
 				members = packet.members
@@ -312,7 +324,7 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 
 func valid_world(value) -> bool:
 	if not value is Dictionary or not value.has_all(["pawns","zombies","mode","elapsed","wave","cleared","spawned","kills","rest","failed","cause","culprit"]): return false
-	if not value.pawns is Dictionary or value.pawns.size() > 4 or not value.zombies is Array or value.zombies.size() > 256: return false
+	if not value.pawns is Dictionary or value.pawns.size() > 4 or not value.zombies is Array: return false
 	for key in ["elapsed","wave","cleared","spawned","kills","rest","culprit"]:
 		if not (value[key] is int or value[key] is float) or not is_finite(value[key]): return false
 	for id in value.pawns:
@@ -370,4 +382,48 @@ func leave() -> void:
 	nonce = ""
 	send_sequence = 0
 	receive_sequence = -1
+	probes.clear()
+	probe_sequence = 0
+	last_probe = 0
+	last_probe_reply = 0
 	changed.emit()
+
+# Round-trip probes use the same transport as play. Loss is the fraction of
+# unanswered probes after three seconds, over the most recent thirty seconds.
+func update_network_probes(now: int) -> void:
+	if not playing or is_host(): return
+	for seq in probes.keys():
+		if now - probes[seq].sent > 30000: probes.erase(seq)
+	if now - last_probe < 1000: return
+	last_probe = now
+	probe_sequence += 1
+	probes[probe_sequence] = {"sent":now,"rtt":-1}
+	send_to(host_id,{"type":"net_probe","seq":probe_sequence})
+
+func record_probe_reply(seq: int, now: int) -> void:
+	if not probes.has(seq) or probes[seq].rtt >= 0: return
+	probes[seq].rtt = maxi(0,now-probes[seq].sent)
+	last_probe_reply = now
+
+func network_metrics(now: int = -1) -> Dictionary:
+	if now < 0: now = Time.get_ticks_msec()
+	var total = 0
+	var lost = 0
+	var sum_rtt = 0.0
+	var received = 0
+	for probe in probes.values():
+		if now-probe.sent > 30000: continue
+		if probe.rtt >= 0:
+			total += 1
+			received += 1
+			sum_rtt += probe.rtt
+		elif now-probe.sent >= 3000:
+			total += 1
+			lost += 1
+	var rtt = sum_rtt / received if received > 0 else -1.0
+	var loss = 100.0 * lost / total if total > 0 else 0.0
+	var quality = "测量中"
+	if total > 0:
+		quality = "良好" if rtt >= 0 and rtt < 100 and loss < 3 else "一般" if rtt >= 0 and rtt < 200 and loss < 10 else "较差"
+		if last_probe_reply > 0 and now-last_probe_reply > 3000: quality = "较差"
+	return {"rtt":rtt,"loss":loss,"samples":total,"quality":quality}
