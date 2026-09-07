@@ -68,3 +68,56 @@ jobs:
             build/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
+
+  publish-release:
+    name: 发布 GitHub Release
+    needs: verify-and-package
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - name: 下载本次验收通过的 Windows 包
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: Undead-Survivor-Godot-Windows-x64-${{ github.sha }}
+          path: release-assets
+      - name: 校验并发布 Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_COMMIT: ${{ github.sha }}
+          RELEASE_RUN: ${{ github.run_number }}
+          RELEASE_RUN_ID: ${{ github.run_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = 'release-assets/Undead-Survivor-Godot-Windows-x64.zip'
+          $expected = ((Get-Content release-assets/SHA256SUMS.txt -Raw).Trim() -split '\s+')[0]
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'ZIP checksum mismatch.' }
+          Expand-Archive -LiteralPath $zip -DestinationPath release-assets/unpacked -Force
+          $tag = if ($env:RELEASE_REF.StartsWith('refs/tags/')) { $env:RELEASE_REF.Substring(10) } else { "build-$env:RELEASE_RUN" }
+          $existing = & gh release view $tag --json isDraft 2>$null
+          $exists = $LASTEXITCODE -eq 0
+          if ($exists -and -not ($existing | ConvertFrom-Json).isDraft) {
+            Write-Host "Release $tag is already published; leaving its assets unchanged."
+            exit 0
+          }
+          @"
+          推荐下载 **Undead-Survivor-Godot-Windows-x64.zip**，解压后运行 EXE。
+          如单独下载 EXE，请同时下载 steam_api64.dll 和 steam_appid.txt，放在同一目录。
+
+          源码提交：$env:RELEASE_COMMIT
+          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：规则检查、2/4 人 ENet、无界面浏览器试玩、成品 EXE 无窗口检查全部通过。
+          Steam 跨账号联机与原生 GPU 画面不属于此次自动验收范围。
+          "@ | Set-Content -Encoding utf8 release-notes.md
+          if (-not $exists) {
+            & gh release create $tag --target $env:RELEASE_COMMIT --title "Windows 构建 $tag" --notes-file release-notes.md --draft
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create draft release.' }
+          }
+          $files = @($zip, 'release-assets/SHA256SUMS.txt') + @(Get-ChildItem release-assets/unpacked -File | ForEach-Object { $_.FullName })
+          & gh release upload $tag @files --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Asset upload failed; release remains a draft.' }
+          & gh release edit $tag --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed.' }

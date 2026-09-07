@@ -51,6 +51,10 @@ Web QA 是测试导出，使用同一场景、规则、资源和输入代码。�
 
 ## 下载与失败定位
 
+**玩家下载入口：[GitHub Releases](https://github.com/xcymm3/Undead-Survivor-Godot/releases/latest)。** main 分支推送或手动运行验收成功后，以 `build-<运行序号>` 发布；`v*` 标签构建沿用该标签。PR 仅验证，不发布。发布任务只在前置验收成功后运行，校验下载包哈希，先上传草稿附件再公开，避免出现空 Release。
+
+Release 同时提供完整 ZIP、独立 EXE、Steam DLL、appid 和许可文件。推荐 ZIP；单独下载 EXE 时必须同时下载 DLL 与 appid。构建报告仍位于以下 Actions 入口。
+
 仓库 **Actions → Godot 自动验收与 Windows 打包 → 对应运行 → Artifacts**：
 
 - `acceptance-<commit>`：每阶段日志、验收 JSON/Markdown、浏览器截图、HTML 报告和 trace；失败也上传。

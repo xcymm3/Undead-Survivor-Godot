@@ -4,7 +4,7 @@
 
 移植基线：相邻原项目提交 `7775293140052ccf9f86ea86929bfbc8889a4a5b`。原目录没有修改。
 
-仓库：[xcymm3/Undead-Survivor-Godot](https://github.com/xcymm3/Undead-Survivor-Godot)。自动验收与打包入口：`npm run verify` / `npm run verify:release`；完整步骤见 [自动化流程](docs/AUTOMATION.md)。Actions 全绿后可在该次运行的 Artifacts 下载 Windows ZIP，以及日志、截图和浏览器回放。
+仓库：[xcymm3/Undead-Survivor-Godot](https://github.com/xcymm3/Undead-Survivor-Godot)。[下载最新 Windows 版本](https://github.com/xcymm3/Undead-Survivor-Godot/releases/latest)，推荐 ZIP，解压后运行 EXE。main 分支自动验收与打包成功后会发布 GitHub Release；日志、截图和浏览器回放保存在 Actions Artifacts。自动化入口：`npm run verify` / `npm run verify:release`；完整步骤见 [自动化流程](docs/AUTOMATION.md)。
 
 ![Godot 实际主菜单](docs/screenshots/home.png)
 
