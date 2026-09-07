@@ -87,25 +87,25 @@ node tools/convert-assets.mjs ../Undead-Survivor
 
 ## 验证
 
-以下命令全部无窗口、静音执行，不会操作用户桌面：
+后续编辑默认使用下面的后台入口：强制 `--headless` 和 `Dummy` 音频，并通过 `CreateNoWindow` 禁止子进程创建控制台窗口。日志写入工程根目录，超时只结束本次验证进程，不操作已打开的编辑器或游戏。
 
 ```powershell
-.runtime/Godot_v4.5.2-stable_win64_console.exe --headless --path . --editor --import --quit
-.runtime/Godot_v4.5.2-stable_win64_console.exe --headless --path . --script tools/validate-runtime.gd -- --silent
-.runtime/Godot_v4.5.2-stable_win64_console.exe --headless --path . --script tools/profile-simulation.gd -- --silent
+./tools/validate-headless.ps1 -Mode Import
+./tools/validate-headless.ps1 -Mode Runtime
+./tools/validate-headless.ps1 -Mode Profile
 ```
 
 双客户端连接检查可在两个终端分别运行（先房主、后客户端）：
 
 ```powershell
-.runtime/Godot_v4.5.2-stable_win64_console.exe --headless --path . --script tools/validate-network.gd -- --silent --host
-.runtime/Godot_v4.5.2-stable_win64_console.exe --headless --path . --script tools/validate-network.gd -- --silent
+./tools/validate-headless.ps1 -Mode NetworkHost
+./tools/validate-headless.ps1 -Mode NetworkClient
 ```
 
-实际 GPU 取图使用不可见 Win32 父窗口与 Godot `SubViewport`，不会显示游戏、争抢焦点或播放声音：
+GPU 截图默认禁用，不属于自动编辑验证流程。旧截图脚本使用不可见父窗口与 `SubViewport`，但图形进程初始化仍可能闪现窗口，不能保证完全不干扰桌面。只有明确要求视觉验收时才手动启用：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/capture-hidden.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/capture-hidden.ps1 -AllowGraphics
 ```
 
 ## 导出 Windows 成品

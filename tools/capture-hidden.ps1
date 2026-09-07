@@ -1,5 +1,8 @@
-param([string]$Godot = "")
+param([string]$Godot = "", [switch]$AllowGraphics)
 $ErrorActionPreference = 'Stop'
+if (-not $AllowGraphics) {
+    throw 'GPU capture is disabled by default because graphical startup may flash. Use validate-headless.ps1 for background checks. Pass -AllowGraphics only for an explicitly requested visual inspection.'
+}
 $projectRoot = Split-Path $PSScriptRoot -Parent
 if (-not $Godot) { $Godot = Join-Path $projectRoot '.runtime\Godot_v4.5.2-stable_win64.exe' }
 $Godot = (Resolve-Path -LiteralPath $Godot).Path
