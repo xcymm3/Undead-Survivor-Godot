@@ -1,0 +1,994 @@
+{
+  "weapons": [
+    {
+      "id": "rifle",
+      "label": "步枪",
+      "short": "RIFLE",
+      "model": "Rifle",
+      "capacity": 30,
+      "interval": 0.12,
+      "reloadDuration": 1.6,
+      "automatic": true,
+      "damage": 60,
+      "pellets": 1,
+      "spread": 0,
+      "length": 0.9,
+      "rotationY": 0,
+      "fireDuration": 0.12,
+      "recoil": 0.7,
+      "ads": [
+        0,
+        -0.075,
+        -0.46
+      ],
+      "tier": "A"
+    },
+    {
+      "id": "p90",
+      "label": "P90 冲锋枪",
+      "short": "P90",
+      "model": "P90",
+      "capacity": 45,
+      "interval": 0.09,
+      "reloadDuration": 1.5,
+      "automatic": true,
+      "damage": 30,
+      "pellets": 1,
+      "spread": 0,
+      "length": 0.65,
+      "rotationY": 0,
+      "fireDuration": 0.09,
+      "recoil": 0.45,
+      "ads": [
+        0,
+        -0.08,
+        -0.44
+      ],
+      "tier": "B"
+    },
+    {
+      "id": "pistol",
+      "label": "半自动手枪",
+      "short": "PISTOL",
+      "model": "Pistol",
+      "capacity": 12,
+      "interval": 0.3,
+      "reloadDuration": 1.2,
+      "automatic": false,
+      "damage": 50,
+      "pellets": 1,
+      "spread": 0,
+      "length": 0.48,
+      "rotationY": 1.5707963267948966,
+      "fireDuration": 0.2,
+      "recoil": 0.75,
+      "ads": [
+        0,
+        -0.095,
+        -0.4
+      ],
+      "tier": "C"
+    },
+    {
+      "id": "revolver",
+      "label": "左轮手枪",
+      "short": "REVOLVER",
+      "model": "Revolver",
+      "capacity": 6,
+      "interval": 0.45,
+      "reloadDuration": 1.6,
+      "automatic": false,
+      "damage": 150,
+      "pellets": 1,
+      "spread": 0,
+      "length": 0.55,
+      "rotationY": 0,
+      "fireDuration": 0.36,
+      "recoil": 1,
+      "ads": [
+        0,
+        -0.09,
+        -0.41
+      ],
+      "tier": "B"
+    },
+    {
+      "id": "shotgun",
+      "label": "泵动霰弹枪",
+      "short": "SHOTGUN",
+      "model": "Shotgun",
+      "capacity": 6,
+      "interval": 0.8,
+      "reloadDuration": 0.45,
+      "shellReload": true,
+      "automatic": false,
+      "damage": 18.666666666666668,
+      "pellets": 15,
+      "spread": 0.28,
+      "spreadVertical": 0.075,
+      "length": 0.9,
+      "rotationY": 0,
+      "fireDuration": 0.74,
+      "recoil": 1.2,
+      "ads": [
+        0,
+        -0.07,
+        -0.48
+      ],
+      "tier": "B"
+    },
+    {
+      "id": "sniper",
+      "label": "栓动狙击枪",
+      "short": "SNIPER",
+      "model": "SniperRifle",
+      "capacity": 5,
+      "interval": 0.85,
+      "reloadDuration": 1.8,
+      "automatic": false,
+      "damage": 280,
+      "pellets": 1,
+      "spread": 0,
+      "length": 1.02,
+      "rotationY": 0,
+      "fireDuration": 0.78,
+      "recoil": 1,
+      "ads": [
+        0,
+        -0.06,
+        -0.52
+      ],
+      "tier": "B",
+      "headshotMultiplier": 3
+    },
+    {
+      "id": "axe",
+      "label": "消防斧",
+      "short": "AXE",
+      "model": "Axe",
+      "capacity": 1,
+      "interval": 0.6,
+      "reloadDuration": 0,
+      "automatic": false,
+      "damage": 300,
+      "pellets": 3,
+      "spread": 0.13,
+      "length": 0.78,
+      "rotationY": 0,
+      "fireDuration": 0.56,
+      "recoil": 0.55,
+      "kind": "melee",
+      "range": 2.5,
+      "infiniteAmmo": true,
+      "headshotMultiplier": 1.5,
+      "procedural": true,
+      "ads": [
+        0.12,
+        -0.07,
+        -0.34
+      ],
+      "tier": "A"
+    },
+    {
+      "id": "flamethrower",
+      "label": "喷火枪",
+      "short": "FLAME",
+      "model": "Flamethrower",
+      "capacity": 100,
+      "interval": 0.08,
+      "reloadDuration": 2.4,
+      "automatic": true,
+      "damage": 36,
+      "pellets": 1,
+      "spread": 0,
+      "length": 0.86,
+      "rotationY": 0,
+      "fireDuration": 0.08,
+      "recoil": 0.12,
+      "kind": "flame",
+      "range": 12,
+      "piercing": true,
+      "headshotMultiplier": 1,
+      "procedural": true,
+      "ads": [
+        0,
+        -0.065,
+        -0.48
+      ],
+      "tier": "A"
+    },
+    {
+      "id": "auto-shotgun",
+      "label": "自动霰弹枪",
+      "short": "AUTO SG",
+      "model": "AutoShotgun",
+      "capacity": 12,
+      "interval": 0.36,
+      "reloadDuration": 2.2,
+      "automatic": true,
+      "damage": 11.294117647058824,
+      "pellets": 17,
+      "spread": 0.34,
+      "spreadVertical": 0.095,
+      "length": 0.92,
+      "rotationY": 0,
+      "fireDuration": 0.25,
+      "recoil": 1.05,
+      "procedural": true,
+      "ads": [
+        0,
+        -0.07,
+        -0.49
+      ],
+      "tier": "A"
+    },
+    {
+      "id": "heavy-machine-gun",
+      "label": "重机枪",
+      "short": "HMG",
+      "model": "HeavyMachineGun",
+      "capacity": 100,
+      "interval": 0.09,
+      "reloadDuration": 3.6,
+      "automatic": true,
+      "damage": 45,
+      "pellets": 1,
+      "spread": 0.014,
+      "length": 1.06,
+      "rotationY": 0,
+      "fireDuration": 0.09,
+      "recoil": 0.62,
+      "procedural": true,
+      "ads": [
+        0,
+        -0.055,
+        -0.54
+      ],
+      "tier": "A"
+    }
+  ],
+  "enemies": {
+    "normal": {
+      "label": "普通僵尸",
+      "health": 100,
+      "armor": 0,
+      "tier": 1
+    },
+    "cone": {
+      "label": "路障僵尸",
+      "health": 200,
+      "armor": 100,
+      "tier": 1
+    },
+    "bucket": {
+      "label": "铁桶僵尸",
+      "health": 400,
+      "armor": 300,
+      "tier": 1
+    },
+    "imp": {
+      "label": "小鬼僵尸",
+      "health": 300,
+      "armor": 0,
+      "tier": 2
+    },
+    "shield": {
+      "label": "持盾僵尸",
+      "health": 700,
+      "armor": 500,
+      "tier": 2
+    },
+    "berserker": {
+      "label": "狂暴僵尸",
+      "health": 1200,
+      "armor": 0,
+      "tier": 3
+    },
+    "giant": {
+      "label": "巨人僵尸",
+      "health": 6000,
+      "armor": 0,
+      "tier": 3
+    },
+    "football": {
+      "label": "橄榄球僵尸",
+      "health": 4500,
+      "armor": 2000,
+      "tier": 4
+    }
+  },
+  "enemy_rules": {
+    "imp": {
+      "speed": 1.75,
+      "speedCap": 4,
+      "scale": 0.65,
+      "contactRadius": 1,
+      "separationRadius": 0.85,
+      "windup": 0.18,
+      "duration": 0.7
+    },
+    "shield": {
+      "speed": 1.1,
+      "speedCap": 3.6,
+      "scale": 1.05,
+      "contactRadius": 1.3,
+      "windup": 0.3,
+      "duration": 1,
+      "exposeDuration": 0.45
+    },
+    "berserker": {
+      "health": 1200,
+      "speed": 1.35,
+      "rageAt": 600,
+      "ragePause": 0.3,
+      "rageSpeed": 2.6,
+      "speedCap": 5.8,
+      "windup": 0.25,
+      "duration": 0.85,
+      "rageWindup": 0.15,
+      "rageDuration": 0.55
+    },
+    "giant": {
+      "speed": 0.75,
+      "scale": 1.8,
+      "contactRadius": 1.8,
+      "separationRadius": 2.1,
+      "windup": 0.65,
+      "duration": 1.5,
+      "slamRadius": 2.4
+    },
+    "football": {
+      "speed": 1.25,
+      "brokenSpeed": 1.05,
+      "speedCap": 3.3,
+      "scale": 1.1,
+      "contactRadius": 1.35,
+      "windup": 0.2,
+      "duration": 0.7,
+      "chargeMin": 5,
+      "chargeMax": 16,
+      "chargeWindup": 0.35,
+      "chargeSpeed": 4.2,
+      "chargeSpeedCap": 10,
+      "chargeDuration": 1.9,
+      "chargeCooldown": 3.2,
+      "obstacleStun": 0.9,
+      "missStun": 0.45,
+      "replanCooldown": 0.6
+    }
+  },
+  "parts": [
+    {
+      "size": [
+        0.64,
+        0.7,
+        0.35
+      ],
+      "position": [
+        0,
+        1.18,
+        0
+      ],
+      "color": 5858384,
+      "shirt": true
+    },
+    {
+      "size": [
+        0.18,
+        0.24,
+        0.02
+      ],
+      "position": [
+        -0.16,
+        1.3,
+        0.19
+      ],
+      "color": 8492637
+    },
+    {
+      "size": [
+        0.15,
+        0.19,
+        0.02
+      ],
+      "position": [
+        0.12,
+        0.91,
+        0.19
+      ],
+      "color": 8754533
+    },
+    {
+      "size": [
+        0.49,
+        0.49,
+        0.45
+      ],
+      "position": [
+        0,
+        1.79,
+        0
+      ],
+      "color": 9215848,
+      "head": true
+    },
+    {
+      "size": [
+        0.48,
+        0.1,
+        0.43
+      ],
+      "position": [
+        0,
+        2.02,
+        -0.04
+      ],
+      "color": 4345918,
+      "head": true
+    },
+    {
+      "size": [
+        0.09,
+        0.065,
+        0.02
+      ],
+      "position": [
+        -0.12,
+        1.84,
+        0.236
+      ],
+      "color": 15849371,
+      "head": true
+    },
+    {
+      "size": [
+        0.09,
+        0.065,
+        0.02
+      ],
+      "position": [
+        0.12,
+        1.84,
+        0.236
+      ],
+      "color": 15849371,
+      "head": true
+    },
+    {
+      "size": [
+        0.045,
+        0.05,
+        0.023
+      ],
+      "position": [
+        -0.11,
+        1.84,
+        0.247
+      ],
+      "color": 10309438,
+      "head": true
+    },
+    {
+      "size": [
+        0.045,
+        0.05,
+        0.023
+      ],
+      "position": [
+        0.13,
+        1.84,
+        0.247
+      ],
+      "color": 10309438,
+      "head": true
+    },
+    {
+      "size": [
+        0.22,
+        0.09,
+        0.02
+      ],
+      "position": [
+        0.02,
+        1.65,
+        0.234
+      ],
+      "color": 3490865,
+      "head": true
+    },
+    {
+      "size": [
+        0.055,
+        0.04,
+        0.025
+      ],
+      "position": [
+        -0.045,
+        1.68,
+        0.244
+      ],
+      "color": 13157796,
+      "head": true
+    },
+    {
+      "size": [
+        0.08,
+        0.15,
+        0.02
+      ],
+      "position": [
+        -0.19,
+        1.73,
+        0.239
+      ],
+      "color": 7239755,
+      "head": true
+    },
+    {
+      "size": [
+        0.24,
+        0.71,
+        0.3
+      ],
+      "position": [
+        -0.19,
+        0.47,
+        0
+      ],
+      "color": 4016453,
+      "limb": 1
+    },
+    {
+      "size": [
+        0.24,
+        0.71,
+        0.3
+      ],
+      "position": [
+        0.19,
+        0.47,
+        0.02
+      ],
+      "color": 4016453,
+      "limb": -1
+    },
+    {
+      "size": [
+        0.25,
+        0.15,
+        0.42
+      ],
+      "position": [
+        -0.19,
+        0.11,
+        0.08
+      ],
+      "color": 2700590,
+      "limb": 1
+    },
+    {
+      "size": [
+        0.25,
+        0.15,
+        0.42
+      ],
+      "position": [
+        0.19,
+        0.11,
+        0.1
+      ],
+      "color": 2700590,
+      "limb": -1
+    },
+    {
+      "size": [
+        0.23,
+        0.23,
+        0.47
+      ],
+      "position": [
+        -0.43,
+        1.3,
+        0.19
+      ],
+      "color": 5858384,
+      "shirt": true,
+      "limb": 0.25
+    },
+    {
+      "size": [
+        0.23,
+        0.23,
+        0.47
+      ],
+      "position": [
+        0.43,
+        1.27,
+        0.23
+      ],
+      "color": 5858384,
+      "shirt": true,
+      "limb": -0.25
+    },
+    {
+      "size": [
+        0.2,
+        0.2,
+        0.26
+      ],
+      "position": [
+        -0.44,
+        1.24,
+        0.53
+      ],
+      "color": 9215848,
+      "limb": 0.25
+    },
+    {
+      "size": [
+        0.2,
+        0.2,
+        0.26
+      ],
+      "position": [
+        0.44,
+        1.21,
+        0.57
+      ],
+      "color": 9215848,
+      "limb": -0.25
+    },
+    {
+      "size": [
+        0.79,
+        0.1,
+        0.74
+      ],
+      "position": [
+        0,
+        2.08,
+        0
+      ],
+      "color": 12146208,
+      "head": true,
+      "kind": "cone"
+    },
+    {
+      "size": [
+        0.61,
+        0.22,
+        0.59
+      ],
+      "position": [
+        0,
+        2.24,
+        0
+      ],
+      "color": 15303213,
+      "head": true,
+      "kind": "cone"
+    },
+    {
+      "size": [
+        0.46,
+        0.1,
+        0.45
+      ],
+      "position": [
+        0,
+        2.4,
+        0
+      ],
+      "color": 15262151,
+      "head": true,
+      "kind": "cone"
+    },
+    {
+      "size": [
+        0.36,
+        0.18,
+        0.35
+      ],
+      "position": [
+        0,
+        2.54,
+        0
+      ],
+      "color": 15303213,
+      "head": true,
+      "kind": "cone"
+    },
+    {
+      "size": [
+        0.19,
+        0.18,
+        0.18
+      ],
+      "position": [
+        0,
+        2.72,
+        0
+      ],
+      "color": 16161598,
+      "head": true,
+      "kind": "cone"
+    },
+    {
+      "size": [
+        0.72,
+        0.11,
+        0.67
+      ],
+      "position": [
+        0,
+        1.94,
+        0
+      ],
+      "color": 4806231,
+      "head": true,
+      "kind": "bucket"
+    },
+    {
+      "size": [
+        0.65,
+        0.48,
+        0.6
+      ],
+      "position": [
+        0,
+        2.21,
+        0
+      ],
+      "color": 10135980,
+      "head": true,
+      "kind": "bucket"
+    },
+    {
+      "size": [
+        0.68,
+        0.08,
+        0.63
+      ],
+      "position": [
+        0,
+        2.47,
+        0
+      ],
+      "color": 12635082,
+      "head": true,
+      "kind": "bucket"
+    },
+    {
+      "size": [
+        0.1,
+        0.25,
+        0.02
+      ],
+      "position": [
+        -0.17,
+        2.19,
+        0.31
+      ],
+      "color": 6649720,
+      "head": true,
+      "kind": "bucket"
+    },
+    {
+      "size": [
+        0.18,
+        0.08,
+        0.02
+      ],
+      "position": [
+        0.09,
+        2.35,
+        0.31
+      ],
+      "color": 13686476,
+      "head": true,
+      "kind": "bucket"
+    },
+    {
+      "size": [
+        0.34,
+        0.18,
+        0.22
+      ],
+      "position": [
+        0,
+        2.08,
+        -0.02
+      ],
+      "color": 7158608,
+      "head": true,
+      "kind": "imp",
+      "decor": true
+    },
+    {
+      "size": [
+        0.14,
+        0.32,
+        0.12
+      ],
+      "position": [
+        -0.24,
+        1.35,
+        0.03
+      ],
+      "color": 7356502,
+      "kind": "imp",
+      "decor": true
+    },
+    {
+      "size": [
+        1.08,
+        1.42,
+        0.12
+      ],
+      "position": [
+        0,
+        1.25,
+        0.72
+      ],
+      "color": 5399402,
+      "kind": "shield",
+      "armor": true,
+      "shield": true
+    },
+    {
+      "size": [
+        0.84,
+        0.12,
+        0.04
+      ],
+      "position": [
+        0,
+        1.25,
+        0.79
+      ],
+      "color": 11188408,
+      "kind": "shield",
+      "armor": true,
+      "shield": true
+    },
+    {
+      "size": [
+        0.12,
+        1.18,
+        0.04
+      ],
+      "position": [
+        0,
+        1.25,
+        0.79
+      ],
+      "color": 3490375,
+      "kind": "shield",
+      "armor": true,
+      "shield": true
+    },
+    {
+      "size": [
+        0.72,
+        0.18,
+        0.42
+      ],
+      "position": [
+        0,
+        1.62,
+        -0.03
+      ],
+      "color": 9319467,
+      "kind": "berserker",
+      "decor": true
+    },
+    {
+      "size": [
+        0.13,
+        0.58,
+        0.08
+      ],
+      "position": [
+        -0.2,
+        1.18,
+        0.22
+      ],
+      "color": 11615536,
+      "kind": "berserker",
+      "decor": true
+    },
+    {
+      "size": [
+        0.13,
+        0.58,
+        0.08
+      ],
+      "position": [
+        0.2,
+        1.18,
+        0.22
+      ],
+      "color": 11615536,
+      "kind": "berserker",
+      "decor": true
+    },
+    {
+      "size": [
+        0.92,
+        0.34,
+        0.48
+      ],
+      "position": [
+        0,
+        1.46,
+        -0.03
+      ],
+      "color": 7428419,
+      "kind": "giant",
+      "decor": true
+    },
+    {
+      "size": [
+        0.62,
+        0.16,
+        0.48
+      ],
+      "position": [
+        0,
+        2.02,
+        0
+      ],
+      "color": 4929836,
+      "head": true,
+      "kind": "giant",
+      "decor": true
+    },
+    {
+      "size": [
+        0.76,
+        0.46,
+        0.62
+      ],
+      "position": [
+        0,
+        2.08,
+        0
+      ],
+      "color": 10235956,
+      "head": true,
+      "kind": "football",
+      "armor": true
+    },
+    {
+      "size": [
+        1.02,
+        0.36,
+        0.52
+      ],
+      "position": [
+        0,
+        1.48,
+        0
+      ],
+      "color": 10235956,
+      "kind": "football",
+      "armor": true
+    },
+    {
+      "size": [
+        0.52,
+        0.07,
+        0.05
+      ],
+      "position": [
+        0,
+        1.84,
+        0.34
+      ],
+      "color": 15000780,
+      "head": true,
+      "kind": "football",
+      "armor": true
+    }
+  ]
+}

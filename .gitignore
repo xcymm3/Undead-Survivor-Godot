@@ -1,0 +1,9 @@
+.godot/
+tools/.cache/
+build/
+*.log
+*.tmp
+*.zip
+.DS_Store
+addons/godotsteam/
+.runtime/

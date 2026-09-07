@@ -1,0 +1,58 @@
+# 移植说明
+
+## 基线与范围
+
+- 来源目录：`../Undead-Survivor`。
+- 来源提交：`7775293140052ccf9f86ea86929bfbc8889a4a5b`，版本 0.7.7。
+- 目标：Godot 4.5.2 Compatibility / GDScript；Steam 使用 GodotSteam 4.16 的 Godot 4.5 编译版。
+- 原项目未修改；运行时不加载 WebView、不执行 JavaScript、不启动 Electron。
+
+## 模块对应
+
+| 原模块 | Godot 实现 | 迁移方式 |
+| --- | --- | --- |
+| `world.ts`、`terrainView.ts`、`geometry.ts` | `arena.gd`、`world.json` | 执行原几何构建函数，提取顶点、法线、索引、实例变换和碰撞占地；原生 ArrayMesh / MultiMesh 重建 |
+| `terrain.ts`、`navigation.ts`、`player.ts` | `data.gd`、`arena.gd`、`simulation.gd` | 同一折线河道、桥梁、0.95 米导航膨胀；AStarGrid2D 路径、连续矩形线段检查、空间分区 |
+| `config.ts`、`weapons.ts`、`enemyRoster.ts` | `rules.json`、`data.gd`、`simulation.gd` | 原数值提取、阶位池与刷新公式移植 |
+| `firearm.ts`、`arsenal.ts` | `simulation.gd` | 弹匣、射速、装填、逐发装填、动作完成后切换 |
+| `weapon.ts` | `convert-assets.mjs`、`weapon_view.gd` | 原 FBX 色板、轴向和骨骼修正；十款武器动作按 30 Hz 采样并导出 GLB |
+| `sights.ts`、`SightOverlay.tsx` | `main.gd`、`interface.gd` | 真正的投影倍率、缩放灵敏度、原生瞄准镜绘制 |
+| `zombies.ts` | `enemy_view.gd`、`enemy_animation.gdshader` | 43 个原始部件；8 个共享实例批次，GPU 驱动腿、手臂和盾牌动作；命中使用相同逐部件 CPU 变换 |
+| `encounter.ts`、`movement.ts`、`spawn.ts` | `simulation.gd` | 正式/练习、攻击状态、精英技能、安全刷新、波次恢复 |
+| `ballistics.ts`、`Game.ts` 攻击部分 | `data.gd`、`simulation.gd` | 确定性扇面散布、屏幕中心目标、枪口遮挡、逐部件命中、穿透/近战去重、按开火次数计命中 |
+| `soundSynthesis.ts`、`audio.ts` | WAV、`sound.gd` | 原音乐、护甲和死亡采样保留；WebAudio 枪声/机械声等转为本地近似合成 |
+| `blood.ts`、`armorEffects.ts` | `effects.gd` | 有上限的实例化血粒、护甲碎片和火焰 |
+| `App.tsx`、`home.css`、菜单组件 | `interface.gd` | 原生 Control；主菜单采用当前源码的场景背景、左下标题、右侧模式列表；纸色设置与深色 HUD |
+| `graphics.ts` | `data.gd`、`pixelation.gdshader` | 五档预设、单项设置和持久化；抗锯齿替换为 Godot MSAA |
+| `leaderboard.ts` | `data.gd` | 本机前十，波次/击杀/时长排序，独立原生存档 |
+| `CoopSession.ts`、`PartnerView.ts`、Steam bridge | `session.gd`、`partner_view.gd` | GodotSteam P2P / ENet；同一房主权威模拟、随机角色和配色、死亡观战、清波复活 |
+
+## 运行约束
+
+- 无法使用的刷怪入口不会减少配额，不累计突发补刷。
+- 僵尸移动和冲锋均检查河道；冲锋蓄力时锁定方向。
+- 每名玩家的存活状态、位置、弹匣与击杀只由房主更新；客户端字段经过白名单、类型、数值和序号检查。
+- Steam 的大快照使用可靠 P2P，避免超过不可靠包 1200 字节限制；结束快照可靠发送。
+- 仅从房主接受世界状态；仅从房间成员接受操作；解包不允许对象反序列化，限制包体和处理数量。
+- 菜单与单人暂停按需绘制，失焦停止绘制；多人后台仍按固定物理步长模拟。
+- 尸群没有逐个僵尸 Node 树、物理刚体或独立材质。八类共享批次是原单批次在 Godot 中的适配。
+
+## 验证与未验证项
+
+标准 Godot 4.5.2 与 GodotSteam / Godot 4.5 均完成导入和 148 项无窗口运行检查，零失败。十款枪械、八类敌人和队友模型已完成实际 GPU 取图。双客户端和四客户端真实 ENet 进程之间的建房、加入、开始、输入、移动、射击和世界同步均已通过；最终四人回归的三个客户端各收到 89～90 次快照，全部进程退出无错误或警告。
+
+256 只僵尸的单机脚本分析已用于定位并修正逐个邻居查找与每帧逐部件 CPU 动画的性能瓶颈。实例更新移入 GPU 后，检查机上 256 只的 CPU 实例提交中位耗时约 2.9 ms；这只是脚本测量，不代表完整游戏 FPS，也不代表所有显卡的性能。
+
+以下不作已通过声明：
+
+- 两个独立 Steam 账号、不同电脑/网络的完整联网验收。GodotSteam 引擎与具体方法/信号已核对，房间及 P2P 实现已接入。
+- Windows 发行成品的最终导出与跨电脑运行；本次提供导出预设和脚本，没有擅自生成发行 EXE。
+- 与原版逐像素一致。原几何和姿态保留，渲染器、阴影、字体栅格化、音频引擎和粒子表现有所不同。
+- 原浏览器/Electron 的排行榜自动迁入。Godot 有独立存档，原存档保持原状。
+- 原 Electron 与 Godot 客户端互联；两者协议和传输实现不同，应让全部队友使用同一 Godot 版本。
+
+## 后续开发
+
+修改 `assets/data/rules.json` 可调平衡；修改原项目后重新运行 `tools/convert-assets.mjs` 会覆盖该文件与生成资源。修改玩法请集中在 `simulation.gd`，保证单人与房主使用同一套规则。修改 GPU 僵尸动作时同步调整 `enemy_view.gd` 的 CPU 逐部件变换，保证视觉与命中一致。
+
+工程根目录无远程仓库地址，不能把它推送到原项目的远程仓库。若为它配置新的远程仓库，后续提交应使用简体中文 Conventional Commits 主题，不强制推送。
