@@ -89,7 +89,6 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_REF: ${{ github.ref }}
           RELEASE_COMMIT: ${{ github.sha }}
-          RELEASE_RUN: ${{ github.run_number }}
           RELEASE_RUN_ID: ${{ github.run_id }}
         run: |
           $ErrorActionPreference = 'Stop'
@@ -97,7 +96,10 @@ jobs:
           $expected = ((Get-Content release-assets/SHA256SUMS.txt -Raw).Trim() -split '\s+')[0]
           if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'ZIP checksum mismatch.' }
           Expand-Archive -LiteralPath $zip -DestinationPath release-assets/unpacked -Force
-          $tag = if ($env:RELEASE_REF.StartsWith('refs/tags/')) { $env:RELEASE_REF.Substring(10) } else { "build-$env:RELEASE_RUN" }
+          $version = (Get-Content -Raw -Encoding utf8 release-assets/unpacked/VERSION).Trim()
+          if ($version -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') { throw 'Invalid packaged version.' }
+          $tag = "v$version"
+          if ($env:RELEASE_REF.StartsWith('refs/tags/') -and $env:RELEASE_REF.Substring(10) -ne $tag) { throw 'Git tag and packaged version disagree.' }
           $existing = & gh release view $tag --json isDraft 2>$null
           $exists = $LASTEXITCODE -eq 0
           if ($exists -and -not ($existing | ConvertFrom-Json).isDraft) {
@@ -113,7 +115,7 @@ jobs:
           Steam 跨账号联机与原生 GPU 画面不属于此次自动验收范围。
           "@ | Set-Content -Encoding utf8 release-notes.md
           if (-not $exists) {
-            & gh release create $tag --target $env:RELEASE_COMMIT --title "Windows 构建 $tag" --notes-file release-notes.md --draft
+            & gh release create $tag --target $env:RELEASE_COMMIT --title "Undead Survivor $tag" --notes-file release-notes.md --draft
             if ($LASTEXITCODE -ne 0) { throw 'Could not create draft release.' }
           }
           $files = @($zip, 'release-assets/SHA256SUMS.txt') + @(Get-ChildItem release-assets/unpacked -File | ForEach-Object { $_.FullName })

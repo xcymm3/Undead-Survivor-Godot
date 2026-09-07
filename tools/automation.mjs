@@ -80,6 +80,7 @@ async function network(count) {
 let sourceDigest, failure;
 try {
   if (process.platform !== 'win32') throw new Error('This pipeline targets Windows; use the windows-2022 Actions runner.');
+  await run('version', process.execPath, ['tools/version.mjs', '--check']);
   await powershell('setup-runtime', 'tools/setup-runtime.ps1', [], 600_000);
   await powershell('setup-web-templates', 'tools/setup-web-templates.ps1', [], 1200_000);
   await run('import', engine, [...godotArgs, '--editor', '--import', '--quit']);

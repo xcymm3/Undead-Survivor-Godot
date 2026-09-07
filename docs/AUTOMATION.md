@@ -51,7 +51,9 @@ Web QA 是测试导出，使用同一场景、规则、资源和输入代码。�
 
 ## 下载与失败定位
 
-**玩家下载入口：[GitHub Releases](https://github.com/xcymm3/Undead-Survivor-Godot/releases/latest)。** main 分支推送或手动运行验收成功后，以 `build-<运行序号>` 发布；`v*` 标签构建沿用该标签。PR 仅验证，不发布。发布任务只在前置验收成功后运行，校验下载包哈希，先上传草稿附件再公开，避免出现空 Release。
+**玩家下载入口：[GitHub Releases](https://github.com/xcymm3/Undead-Survivor-Godot/releases/latest)。** main 分支推送或手动运行验收成功后，从已验收 ZIP 的 `VERSION` 读取版本，发布为 `v<版本号>`，例如 `v1.7.7`。`v*` 标签触发时必须与包内版本一致。PR 仅验证，不发布。发布任务只在前置验收成功后运行，校验下载包哈希，先上传草稿附件再公开，避免出现空 Release。
+
+版本以根目录 `VERSION` 为准。后续发布前运行 `node tools/version.mjs 1.7.8`（替换为本次版本），会同步 Godot 项目版本和 EXE 的文件/产品版本 `1.7.8.0`。流水线会检查三处一致，打包时也读取成品 EXE 版本核验。同一版本已公开时不会覆盖附件或移动标签；未升版本的提交继续测试和保存 Artifacts，但不重复发布。旧 `build-2` 保留为历史构建。
 
 Release 同时提供完整 ZIP、独立 EXE、Steam DLL、appid 和许可文件。推荐 ZIP；单独下载 EXE 时必须同时下载 DLL 与 appid。构建报告仍位于以下 Actions 入口。
 

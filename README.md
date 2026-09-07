@@ -1,5 +1,7 @@
 # Undead Survivor · Godot
 
+当前 Godot 版本：`1.7.7`。发布版本由根目录 `VERSION` 管理，Release 使用 `v1.7.7` 这样的版本标签。
+
 `Undead-Survivor` 0.7.7 的独立 Godot 4 原生移植工程。游戏运行时使用 GDScript、Godot 场景、原生网格、着色器和音频，不依赖 React、Three.js、Electron 或浏览器。
 
 移植基线：相邻原项目提交 `7775293140052ccf9f86ea86929bfbc8889a4a5b`。原目录没有修改。
