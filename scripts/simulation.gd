@@ -21,6 +21,11 @@ var culprit = -1
 var random = RandomNumberGenerator.new()
 var paths: Dictionary = {}
 var crowd_buckets: Dictionary = {}
+# Authority-only swing history; clients receive the resulting damage and animation.
+var melee_swings: Dictionary = {}
+const MELEE_START = .22
+const MELEE_END = .66
+const MELEE_HALF_WIDTH = 20.0
 
 func _init(world = null) -> void:
 	arena = world
@@ -80,6 +85,8 @@ func submit(id: String, input: Dictionary) -> void:
 func step(dt: float) -> void:
 	events.clear()
 	if failed: return
+	for id in melee_swings.keys():
+		if not pawns.has(id) or pawns[id].hp <= 0: melee_swings.erase(id)
 	elapsed += dt
 	for p in pawns.values(): update_pawn(p,dt)
 	crowd_buckets.clear()
@@ -131,12 +138,11 @@ func step(dt: float) -> void:
 		return
 	if roster.is_empty(): return
 	credit = minf(1,credit+dt*Data.wave_settings(wave).rate)
-	if credit < 1 or zombies.size() >= 256: return
+	if credit < 1: return
 	var queue_index = -1
 	var footballs = zombies.filter(func(z): return z.kind == "football" and z.hp > 0).size()
-	var cap = 1 if wave <= 8 else (3 if pawns.size() >= 3 else 2) if wave <= 10 else (4 if pawns.size() >= 3 else 3)
 	for i in roster.size():
-		if roster[i] != "football" or footballs < cap:
+		if roster[i] != "football" or footballs < 1:
 			queue_index = i
 			break
 	if queue_index < 0: return
@@ -146,7 +152,7 @@ func step(dt: float) -> void:
 		var safe = true
 		for p in living:
 			var delta: Vector2 = point-p.pos
-			if delta.length() < 8 or delta.dot(Vector2(-sin(p.yaw),-cos(p.yaw))) < 0: safe = false
+			if delta.length() < 8: safe = false
 		if not safe or not arena.clear(point,point): continue
 		if zombies.any(func(z): return z.hp > 0 and point.distance_to(z.pos) < 2.0): continue
 		spawn(point,roster[queue_index])
@@ -218,10 +224,17 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 
 func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	var w: Dictionary = Data.weapons[p.weapon]
+	update_melee_swing(p,w)
 	var requested: int = input.get("weapon",p.weapon)
 	if requested != p.requested:
 		p.requested = requested
 		p.reload_queued = false
+	if p.reloading and p.requested != p.weapon:
+		# Keep already loaded shells; an unfinished magazine grants no ammunition.
+		p.reloading = false
+		p.reload = 0.0
+		p.reload_queued = false
+		p.input.reload = false
 	p.aim = input.get("aim",false) and not p.reloading and p.switch <= 0 and p.requested == p.weapon
 	if p.switch > 0:
 		var before: float = p.switch
@@ -412,7 +425,70 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		events.append({"kind":"death","player":p.id,"position":position})
 	else: events.append({"kind":"blood","player":p.id,"position":position})
 
+func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
+	if not melee_swings.has(p.id): return
+	var swing: Dictionary = melee_swings[p.id]
+	if p.hp <= 0 or p.weapon != swing.weapon or p.reloading:
+		melee_swings.erase(p.id)
+		return
+	var progress = clampf(1.0-p.fire_anim/w.fireDuration,0,1)
+	var previous: float = swing.progress
+	swing.progress = progress
+	# Check the whole interval traversed this tick, including ticks crossing both boundaries.
+	if progress >= MELEE_START and previous < MELEE_END:
+		var first = clampf((previous-MELEE_START)/(MELEE_END-MELEE_START),0,1)
+		var last = clampf((progress-MELEE_START)/(MELEE_END-MELEE_START),0,1)
+		var right_edge = deg_to_rad(lerpf(65,-65,first)+MELEE_HALF_WIDTH)
+		var left_edge = deg_to_rad(lerpf(65,-65,last)-MELEE_HALF_WIDTH)
+		var origin = Vector3(p.pos.x,p.height+1.2,p.pos.y)
+		var facing = Basis(Vector3.UP,p.yaw)
+		var reach: float = w.range
+		# A generous vertical blade volume moves down with the diagonal swing.
+		var upper = p.height+lerpf(1.7,.7,first)+1.1+sin(p.pitch)*1.2
+		var lower = p.height+lerpf(1.7,.7,last)-1.1+sin(p.pitch)*1.2
+		for z in zombies:
+			if z.hp <= 0 or swing.damaged.has(z.id): continue
+			if p.pos.distance_to(z.pos) > reach+Data.enemy_scale(z.kind)*1.5: continue
+			var poses: Array = EnemyView.transforms(z,elapsed,mode == "practice")
+			var contacts: Array[Vector3] = []
+			for i in Data.parts.size():
+				var part: Dictionary = Data.parts[i]
+				if (part.has("kind") and part.kind != z.kind) or (part.get("armor",false) and z.armor <= 0): continue
+				var pose: Transform3D = poses[i]
+				# Closest point on each animated body box keeps nearby and large enemies hittable.
+				var local = pose.affine_inverse()*origin
+				var point = pose*local.clamp(Vector3.ONE*-.5,Vector3.ONE*.5)
+				if point.distance_squared_to(origin) < .000001: point = pose.origin
+				var offset = point-origin
+				if offset.length() > reach or point.y < lower or point.y > upper: continue
+				var relative = facing.inverse()*offset
+				var angle = atan2(relative.x,-relative.z)
+				if angle < left_edge or angle > right_edge: continue
+				contacts.append(point)
+			contacts.sort_custom(func(a,b): return origin.distance_squared_to(a) < origin.distance_squared_to(b))
+			for point in contacts:
+				var offset: Vector3 = point-origin
+				if offset.length_squared() < .000001: continue
+				var direction = offset.normalized()
+				var distance = minf(reach,offset.length()+.02)
+				var wall: Dictionary = arena.surface_hit(origin,origin+direction*distance)
+				if not wall.is_empty(): distance = origin.distance_to(wall.position)
+				var hit = EnemyView.hit(z,origin,direction,distance,elapsed,mode == "practice")
+				if hit.is_empty(): continue
+				swing.damaged[z.id] = true
+				if not swing.landed:
+					p.hits += 1
+					swing.landed = true
+				hit_enemy(z,w.damage*(w.get("headshotMultiplier",1) if hit.head else 1),hit.armor,p,origin+direction*hit.distance)
+				break
+	if progress >= MELEE_END: melee_swings.erase(p.id)
+
 func fire(p: Dictionary, w: Dictionary) -> void:
+	if w.get("kind","gun") == "melee":
+		melee_swings[p.id] = {"weapon":p.weapon,"progress":0.0,"damaged":{},"landed":false}
+		var origin = Vector3(p.pos.x,p.height+1.2,p.pos.y)
+		events.append({"kind":"shot","player":p.id,"weapon":p.weapon,"from":origin,"to":origin})
+		return
 	var camera = Transform3D(Basis.from_euler(Vector3(p.pitch,p.yaw,0)),Vector3(p.pos.x,p.height+1.7,p.pos.y))
 	var forward = -camera.basis.z
 	var reach: float = w.get("range",180.0)
@@ -430,7 +506,9 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	# A camera-to-muzzle trace also prevents firing through an obstacle enclosing the barrel.
 	var obstruction: Dictionary = arena.surface_hit(camera.origin,muzzle)
 	if not obstruction.is_empty():
-		events.append({"kind":"shot","player":p.id,"weapon":p.weapon,"from":camera.origin,"to":obstruction.position})
+		var blocked_shot = {"kind":"shot","player":p.id,"weapon":p.weapon,"from":camera.origin,"to":obstruction.position}
+		if w.id in ["shotgun", "auto-shotgun"]: blocked_shot.pellet_ends = [obstruction.position]
+		events.append(blocked_shot)
 		return
 	var direction = (target-muzzle).normalized()
 	var weapon_kind: String = w.get("kind","gun")
@@ -438,6 +516,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	var landed = false
 	var right = direction.cross(Vector3.UP).normalized()
 	var up = right.cross(direction).normalized()
+	var pellet_ends: Array[Vector3] = []
 	for pellet in int(w.pellets):
 		var offset = Data.pellet(w,pellet,p.gun_shots[p.weapon]+1)
 		var ray = (direction+right*offset.x+up*offset.y).normalized()
@@ -458,8 +537,11 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 			hit_enemy(hit.z,w.damage*(w.get("headshotMultiplier",2) if hit.head else 1),hit.armor,p,muzzle+ray*hit.distance)
 		if not candidates.is_empty() and not w.get("piercing",false): distance = candidates[0].distance
 		if pellet == 0: target = muzzle+ray*distance
+		if w.id in ["shotgun", "auto-shotgun"]: pellet_ends.append(muzzle+ray*distance)
 	if landed: p.hits += 1
-	events.append({"kind":"shot","player":p.id,"weapon":p.weapon,"from":muzzle,"to":target})
+	var shot_event = {"kind":"shot","player":p.id,"weapon":p.weapon,"from":muzzle,"to":target}
+	if not pellet_ends.is_empty(): shot_event.pellet_ends = pellet_ends
+	events.append(shot_event)
 
 func snapshot() -> Dictionary:
 	var players = {}

@@ -6,6 +6,7 @@ var label: Label3D
 var held: Node3D
 var weapon_index = -1
 var weapon_animation: AnimationPlayer
+var axe_pivot: Node3D
 
 func setup(p: Dictionary) -> void:
 	var appearance: Array = p.appearance
@@ -49,12 +50,16 @@ func setup(p: Dictionary) -> void:
 func update_weapon(index: int) -> void:
 	if weapon_index == index: return
 	weapon_index = index
+	axe_pivot = null
 	for node in held.get_children():
 		held.remove_child(node)
 		node.queue_free()
 	var model = load("res://assets/models/%s.glb" % Data.weapons[index].id).instantiate() as Node3D
 	model.scale = Vector3.ONE*.5
 	held.add_child(model)
+	if Data.weapons[index].id == "axe":
+		var head = model.find_child("FireAxeHead",true,false)
+		if head: axe_pivot = head.get_parent() as Node3D
 	var finder = preload("res://scripts/weapon_view.gd").new()
 	weapon_animation = finder.find_animation(model)
 	finder.free()
@@ -77,7 +82,10 @@ func sync(p: Dictionary, dt: float) -> void:
 			if weapon_animation.current_animation != clip: weapon_animation.play(clip)
 			weapon_animation.pause()
 			var progress = clampf(1-p.reload/maxf(.1,w.reloadDuration),0,1) if p.reloading else clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0
+			if w.id == "axe": progress = 0.0
 			weapon_animation.seek(progress*weapon_animation.get_animation(clip).length,true)
+	if axe_pivot:
+		preload("res://scripts/weapon_view.gd").sample_axe(axe_pivot,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0)
 	if animation:
 		var action = "Death" if p.hp <= 0 else "PickUp" if p.reloading else "Shoot_OneHanded" if p.fire_anim > w.fireDuration-.08 else "Jump" if p.height > .06 else "Run_Carry" if moving else "Idle"
 		for clip in animation.get_animation_list():

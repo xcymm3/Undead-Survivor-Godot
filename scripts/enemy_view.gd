@@ -85,9 +85,15 @@ static func transforms(z: Dictionary, elapsed: float, practice: bool) -> Array:
 func sync(zombies: Array, elapsed: float, practice: bool) -> void:
 	var counts: Dictionary = {}
 	for kind in kinds: counts[kind] = 0
+	for z in zombies: counts[z.kind] += 1
+	for kind in kinds:
+		var multi: MultiMesh = batches[kind]
+		if counts[kind] > multi.instance_count:
+			multi.instance_count = maxi(counts[kind],multi.instance_count*2)
+			for i in multi.instance_count: multi.set_instance_color(i,Color.WHITE)
+		counts[kind] = 0
 	for z in zombies:
 		var index: int = counts[z.kind]
-		if index >= 256: continue
 		counts[z.kind] += 1
 		var alive: bool = z.hp > 0
 		var moving: bool = not practice and alive and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0

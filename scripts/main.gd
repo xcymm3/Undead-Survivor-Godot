@@ -21,6 +21,8 @@ var requested_weapon = 0
 var jump_pending = false
 var reload_pending = false
 var fire_pending = false
+var fire_held = false
+var aim_held = false
 var spectating = ""
 var snapshot_timer = 0.0
 var queued_effects: Array = []
@@ -112,6 +114,7 @@ func start_coop() -> void:
 	resume_game()
 
 func reset_game() -> void:
+	reset_mouse_buttons()
 	running = true
 	paused = false
 	finished = false
@@ -155,7 +158,7 @@ func cycle_spectator() -> void:
 
 func input_state() -> Dictionary:
 	var enabled = running and not paused and focused and not finished
-	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)),"aim":enabled and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)}
+	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held}
 	jump_pending = false
 	reload_pending = false
 	fire_pending = false
@@ -201,7 +204,7 @@ func _process(dt: float) -> void:
 	var spectate: bool = p.id != Session.local_id
 	camera.rotation = Vector3(p.pitch,p.yaw,0) if spectate else Vector3(pitch,yaw,0)
 	var w: Dictionary = Data.weapons[int(p.weapon)]
-	var magnification: float = {"rifle":1.5,"p90":1.35,"auto-shotgun":1.25,"heavy-machine-gun":2.0,"sniper":6.0}.get(w.id,1.0 if w.get("kind", "gun") in ["melee","flame"] else 1.25)
+	var magnification: float = 6.0 if w.id == "sniper" else 1.0 if w.get("kind", "gun") in ["melee","flame"] else 1.25
 	var aim_fov = rad_to_deg(2*atan(tan(deg_to_rad(61)/2)/magnification))
 	camera.fov = lerpf(61,aim_fov,weapon.ads)
 	var aim_target = camera.position-camera.global_basis.z*180
@@ -257,7 +260,9 @@ func handle_effects(events: Array) -> void:
 				var kind: String = w.get("kind","gun")
 				sound.play("axe" if kind == "melee" else "flame" if kind == "flame" else "gun",-10 if event.player == Session.local_id else -19)
 				if kind == "flame": effects.flame(event.from,event.to)
-				elif kind == "gun": effects.tracer(event.from,event.to,w.id != "revolver")
+				elif kind == "gun":
+					if event.has("pellet_ends"): effects.shotgun(event.from,event.pellet_ends)
+					else: effects.tracer(event.from,event.to,w.id != "revolver")
 			"blood", "death":
 				effects.burst(event.position)
 				if event.get("player") == Session.local_id: ui.hit_flash = .12
@@ -275,6 +280,7 @@ func handle_effects(events: Array) -> void:
 
 func finish_run() -> void:
 	if finished: return
+	reset_mouse_buttons()
 	finished = true
 	death_timer = 0
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -286,6 +292,7 @@ func finish_run() -> void:
 
 func pause_game() -> void:
 	if not running or finished: return
+	reset_mouse_buttons()
 	paused = true
 	jump_pending = false
 	reload_pending = false
@@ -298,12 +305,14 @@ func pause_game() -> void:
 	ui.show_pause()
 
 func resume_game() -> void:
+	reset_mouse_buttons()
 	paused = false
 	ui.clear_menu()
 	if not Data.automation and DisplayServer.get_name() != "headless" and "--silent" not in OS.get_cmdline_user_args(): Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	sound.set_playing(true)
 
 func return_home() -> void:
+	reset_mouse_buttons()
 	Session.leave()
 	running = false
 	paused = false
@@ -334,8 +343,28 @@ func apply_graphics() -> void:
 	pixelation.visible = Data.settings.pixelated
 	request_draw()
 
-func _input(_event: InputEvent) -> void:
+func reset_mouse_buttons() -> void:
+	fire_pending = false
+	fire_held = false
+	aim_held = false
+
+func _input(event: InputEvent) -> void:
 	request_draw()
+	# Read each button before GUI handling; right-button aim never owns left-button fire.
+	if not event is InputEventMouseButton: return
+	if not event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT: fire_held = false
+		if event.button_index == MOUSE_BUTTON_RIGHT: aim_held = false
+	if not running or paused or finished or not focused: return
+	if event.button_index == MOUSE_BUTTON_LEFT:
+		fire_held = event.pressed
+		if event.pressed:
+			if not local_pawn().is_empty() and local_pawn().hp <= 0: cycle_spectator()
+			else: fire_pending = true
+		get_viewport().set_input_as_handled()
+	elif event.button_index == MOUSE_BUTTON_RIGHT:
+		aim_held = event.pressed
+		get_viewport().set_input_as_handled()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -362,9 +391,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP: requested_weapon = posmod(requested_weapon-1,10)
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN: requested_weapon = (requested_weapon+1)%10
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if not local_pawn().is_empty() and local_pawn().hp <= 0: cycle_spectator()
-			else: fire_pending = true
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.physical_keycode == KEY_SPACE: jump_pending = true
 		if event.physical_keycode == KEY_R: reload_pending = true
@@ -373,6 +399,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _focus_lost() -> void:
 	if "--capture" in OS.get_cmdline_user_args(): return
+	reset_mouse_buttons()
 	focused = false
 	jump_pending = false
 	reload_pending = false

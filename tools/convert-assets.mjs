@@ -28,6 +28,12 @@ for (const name of ['geometry', 'terrain', 'terrainView', 'world', 'config', 'we
 }
 const { createWorld } = await import(pathToFileURL(path.join(cache, 'world.mjs')));
 const { WEAPONS } = await import(pathToFileURL(path.join(cache, 'weapons.mjs')));
+// Godot gameplay adjustments must survive rebuilding assets from the original project.
+for (const weapon of WEAPONS) {
+  if (weapon.id === 'axe') weapon.range = 3.5;
+  if (weapon.id === 'shotgun') Object.assign(weapon, { spread: .045, spreadVertical: .045 });
+  if (weapon.id === 'auto-shotgun') Object.assign(weapon, { spread: .055, spreadVertical: .055 });
+}
 const config = await import(pathToFileURL(path.join(cache, 'config.mjs')));
 const { prepareWeapon, prepareProceduralWeapon } = await import(pathToFileURL(path.join(cache, 'weapon.mjs')));
 const audio = await import(pathToFileURL(path.join(cache, 'soundSynthesis.mjs')));

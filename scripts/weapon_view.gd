@@ -4,6 +4,7 @@ var animations: Array = []
 var ads = 0.0
 var active = 0
 var muzzle: MeshInstance3D
+var axe_pivot: Node3D
 
 func _ready() -> void:
 	scale = Vector3.ONE*.5
@@ -14,6 +15,9 @@ func _ready() -> void:
 		model.visible = false
 		models.append(model)
 		animations.append(find_animation(model))
+		if definition.id == "axe":
+			var head = model.find_child("FireAxeHead",true,false)
+			if head: axe_pivot = head.get_parent() as Node3D
 		for child in model.find_children("*","MeshInstance3D",true,false):
 			child.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			child.layers = 2
@@ -41,7 +45,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	active = int(p.weapon)
 	var w: Dictionary = Data.weapons[active]
 	ads = move_toward(ads,1.0 if p.aim else 0.0,dt*7)
-	var hide_scope: bool = active in [0,1,5,8,9] and ads > .8
+	var hide_scope: bool = w.id == "sniper" and ads > .8
 	for i in models.size(): models[i].visible = i == active and not hide_scope
 	var hip = Vector3(.19,-.16 if w.length < .6 else -.2,-.38)
 	var aim = Data.v3(w.ads)
@@ -71,11 +75,34 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		if player.has_animation(clip):
 			if player.current_animation != clip: player.play(clip)
 			player.pause()
+			# The imported axe clip swings in the screen plane; replace its pose below.
+			if w.id == "axe": progress = 0.0
 			player.seek(progress*player.get_animation(clip).length,true)
-	if p.fire_anim > 0:
+	if w.id == "axe" and axe_pivot:
+		sample_axe(axe_pivot,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0)
+	if p.fire_anim > 0 and w.get("kind","gun") != "melee":
 		var pulse = sin((1-p.fire_anim/w.fireDuration)*PI)
 		position.z += pulse*.035*w.recoil
 		rotation.x += pulse*.025*w.recoil
 	muzzle.position = Vector3(0,0,-w.length*.72)
 	muzzle.visible = not hide_scope and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") != "melee"
 	muzzle.scale = Vector3.ONE*(2.3 if w.get("kind") == "flame" else 1.0)
+
+static func sample_axe(pivot: Node3D, progress: float) -> void:
+	# Sweep the grip and head together from upper right toward lower left and forward.
+	# Modest pitch keeps the handle upright instead of folding the head onto the right.
+	var times = [0.0,.22,.52,.66,.82,1.0]
+	var positions = [
+		Vector3(.08,-.10,-.46), Vector3(.18,.02,-.24),
+		Vector3(-.50,-.20,-.60), Vector3(-.82,-.37,-.75),
+		Vector3(-.24,-.30,-.57), Vector3(.08,-.10,-.46)]
+	var angles = [
+		Vector3(-.12,-.65,-.24), Vector3(.50,-1.05,-.12),
+		Vector3(-.30,-.90,.38), Vector3(-.48,-.80,.50),
+		Vector3(-.25,-.70,.12), Vector3(-.12,-.65,-.24)]
+	for i in range(times.size()-1):
+		if progress > times[i+1]: continue
+		var weight = smoothstep(times[i],times[i+1],progress)
+		pivot.position = positions[i].lerp(positions[i+1],weight)
+		pivot.quaternion = Quaternion.from_euler(angles[i]).slerp(Quaternion.from_euler(angles[i+1]),weight)
+		return

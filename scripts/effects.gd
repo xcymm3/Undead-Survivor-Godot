@@ -39,6 +39,23 @@ func tracer(from: Vector3, to: Vector3, shell := true) -> void:
 		var right = (to-from).normalized().cross(Vector3.UP)
 		particles.append({"pos":from,"velocity":right*1.8+Vector3.UP*1.2,"life":.85,"color":Color("bb9751"),"size":.03,"scale":Vector3(.03,.025,.085)})
 
+func shotgun(from: Vector3, ends: Array) -> void:
+	# Brief moving streaks follow actual pellet hits instead of a single long laser beam.
+	if particles.size() > 360: particles = particles.slice(-350)
+	for end: Vector3 in ends:
+		var distance = from.distance_to(end)
+		if distance <= .001: continue
+		var direction = (end-from).normalized()
+		var streak = minf(.35,distance)
+		particles.append({"pos":from+direction*streak*.5,"velocity":direction*350,
+			"life":minf(.07,(distance-streak*.5)/350),"color":Color("b9b5a0"),"size":.004,
+			"scale":Vector3(.004,.004,streak),"basis":Basis(Quaternion(Vector3.BACK,direction)),"gravity":false})
+	# One cartridge per shot, regardless of pellet count.
+	if not ends.is_empty():
+		var right = (ends[0]-from).normalized().cross(Vector3.UP)
+		particles.append({"pos":from,"velocity":right*1.8+Vector3.UP*1.2,"life":.85,
+			"color":Color("ad4833"),"size":.035,"scale":Vector3(.035,.035,.08)})
+
 func step(dt: float) -> void:
 	for p in particles:
 		p.life -= dt

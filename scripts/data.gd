@@ -141,6 +141,14 @@ static func rgb(hex: int) -> Color:
 	return Color.hex((hex << 8) | 255)
 
 static func pellet(w: Dictionary, index: int, shot: int) -> Vector2:
+	if w.id in ["shotgun", "auto-shotgun"]:
+		# Stratified disk, rotated and jittered per shot; no fixed center pellet or rows.
+		# A local seed keeps spread reproducible without consuming spawn/enemy randomness.
+		var spread_random = RandomNumberGenerator.new()
+		spread_random.seed = shot * 73856093 + index * 19349663 + int(w.pellets) * 83492791
+		var radius = sqrt((index + spread_random.randf()) / float(w.pellets))
+		var angle = index * 2.399963229728653 + shot * 1.61803398875 + spread_random.randf_range(-.35,.35)
+		return Vector2(cos(angle) * w.spread, sin(angle) * w.spreadVertical) * radius
 	if w.pellets == 1 and w.spread > 0:
 		var angle = (shot + 1) * 2.399963229728653
 		var radius: float = w.spread * sqrt(fmod((shot + 1) * .7548776662466927, 1))
