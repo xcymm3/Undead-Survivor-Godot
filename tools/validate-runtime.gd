@@ -120,10 +120,44 @@ func run() -> void:
 	check(not back.is_empty() and not back.armor,"Shield does not protect rear rays")
 	for weapon_index in [4,8]:
 		var shotgun: Dictionary = data.weapons[weapon_index]
-		var max_spread = 0.0
-		for pellet in int(shotgun.pellets): max_spread = maxf(max_spread,absf(data.pellet(shotgun,pellet,1).x))
-		check(is_equal_approx(max_spread,shotgun.spread),"Full-width shotgun fan %d" % weapon_index)
+		var inside_cone = true
+		var quadrants = {}
+		for pellet in int(shotgun.pellets):
+			var offset: Vector2 = data.pellet(shotgun,pellet,1)
+			inside_cone = inside_cone and Vector2(offset.x/shotgun.spread,offset.y/shotgun.spreadVertical).length() <= 1.00001
+			quadrants[Vector2(signf(offset.x),signf(offset.y))] = true
+		check(inside_cone and quadrants.size() == 4,"Shotgun circular cone covers four quadrants %d" % weapon_index)
+		check(data.pellet(shotgun,1,1) != data.pellet(shotgun,1,2),"Shotgun pattern varies per shot %d" % weapon_index)
 		check(roundi(shotgun.damage*shotgun.pellets) == (280 if weapon_index == 4 else 192),"Shotgun aggregate damage %d" % weapon_index)
+	# Exercise delayed melee through normal commands, including wide coverage and deduplication.
+	var melee = simulation.new(game.arena)
+	melee.mode = "practice"
+	melee.add_pawn("solo","斧头验证",0)
+	var attacker: Dictionary = melee.pawns.solo
+	attacker.pos = Vector2(0,9)
+	attacker.weapon = 6
+	attacker.requested = 6
+	for point in [Vector2(2,7.5),Vector2(0,5.8),Vector2(-2,7.5),Vector2(0,10.8),Vector2(0,4.5)]: melee.spawn(point,"normal")
+	melee.submit("solo",{"weapon":6,"fire":true})
+	melee.step(1.0/60)
+	for i in 5: melee.step(1.0/60)
+	check(melee.zombies.all(func(z): return z.hp == 100),"Axe windup cannot cause damage")
+	for i in 25: melee.step(1.0/60)
+	check(melee.zombies[0].hp == 0 and melee.zombies[1].hp == 0 and melee.zombies[2].hp == 0,"Axe sweep covers left center right and reaches beyond three units")
+	check(melee.zombies[3].hp == 100 and melee.zombies[4].hp == 100,"Axe cannot hit behind or beyond reach")
+	check(attacker.hits == 1,"Axe multi-target sweep counts once in accuracy")
+	melee = simulation.new(game.arena)
+	melee.mode = "practice"
+	melee.add_pawn("solo","斧头验证",0)
+	attacker = melee.pawns.solo
+	attacker.pos = Vector2(0,9)
+	attacker.weapon = 6
+	attacker.requested = 6
+	melee.spawn(Vector2(0,7),"giant")
+	var initial_hp: float = melee.zombies[0].hp
+	melee.submit("solo",{"weapon":6,"fire":true})
+	for i in 35: melee.step(1.0/60)
+	check(initial_hp-melee.zombies[0].hp == 300 or initial_hp-melee.zombies[0].hp == 450,"Axe damages each enemy only once per swing")
 	p.pos = Vector2(0,9)
 	# Armor break, shield bypass, permanent rage, giant health and football locking.
 	for kind in data.enemies:
@@ -195,6 +229,79 @@ func run() -> void:
 	check(sim.pawns.solo.hp == 100 and sim.pawns.solo.pos.x < 22 and sim.pawns.solo.kills == 0 and sim.pawns.solo.input.x == 1,"Input authority and movement clamp")
 	sim.submit("solo",{"yaw":NAN})
 	check(sim.pawns.solo.input.x == 1,"Reject nonfinite client command")
+	# Spawning must not depend on one or several players' camera directions.
+	for facing in [0.0,PI/2,PI,-PI/2]:
+		var spawning = simulation.new(game.arena)
+		spawning.add_pawn("solo","刷怪验证",0)
+		spawning.pawns.solo.pos = Vector2(14.2,-9)
+		spawning.pawns.solo.yaw = facing
+		spawning.roster = ["normal"]
+		spawning.credit = 1
+		spawning.step(.001)
+		check(spawning.spawned == 1,"Outward-facing player cannot stop spawning: "+str(facing))
+	var spawning = simulation.new(game.arena)
+	for i in 4:
+		spawning.add_pawn(str(i),"队友",i)
+		spawning.pawns[str(i)].yaw = i*PI/2
+	spawning.roster = ["normal"]
+	spawning.credit = 1
+	spawning.step(.001)
+	check(spawning.spawned == 1,"Opposing coop camera directions cannot block spawning")
+	for wave_number in [7,9,11,30]:
+		spawning = simulation.new(game.arena)
+		spawning.wave = wave_number
+		for i in 4: spawning.add_pawn(str(i),"队友",i)
+		spawning.spawn(Vector2(0,-40),"football")
+		spawning.roster = ["football","giant"]
+		spawning.credit = 1
+		spawning.step(.001)
+		check(spawning.zombies.filter(func(z): return z.kind == "football").size() == 1 and spawning.zombies.any(func(z): return z.kind == "giant"),"Only one football; queued football does not block others at wave "+str(wave_number))
+		spawning.zombies[0].hp = 0
+		spawning.credit = 1
+		spawning.step(.001)
+		check(spawning.roster.is_empty(),"Next football can enter when predecessor dies")
+	spawning = simulation.new(game.arena)
+	spawning.add_pawn("solo","容量验证",0)
+	for i in 256: spawning.spawn(Vector2(0,-40),"normal")
+	spawning.roster = ["normal"]
+	spawning.credit = 1
+	spawning.step(.001)
+	check(spawning.alive_count() == 257,"Ordinary enemies have no 256-unit gameplay cap")
+	game.enemies.sync(spawning.zombies,0,false)
+	check(game.enemies.batches.normal.visible_instance_count == 257,"All enemies beyond previous rendering capacity remain visible")
+	# Cancelling a magazine and a shell reload preserves only completed ammunition.
+	for index in [0,4]:
+		var arsenal = simulation.new(game.arena)
+		arsenal.add_pawn("solo","换弹验证",0)
+		var soldier: Dictionary = arsenal.pawns.solo
+		soldier.weapon = index
+		soldier.requested = index
+		soldier.ammo[index] = 1
+		arsenal.update_arsenal(soldier,{"weapon":index,"reload":true},.01)
+		arsenal.update_arsenal(soldier,{"weapon":index},.1)
+		arsenal.update_arsenal(soldier,{"weapon":1},.01)
+		check(not soldier.reloading and soldier.switch > 0 and soldier.ammo[index] == 1,"Switch cancels partial reload without free ammo: "+str(index))
+		arsenal.update_arsenal(soldier,{"weapon":1},.4)
+		check(soldier.weapon == 1,"Cancelled reload switches to requested weapon")
+		arsenal.update_arsenal(soldier,{"weapon":index},.01)
+		arsenal.update_arsenal(soldier,{"weapon":index},.4)
+		arsenal.update_arsenal(soldier,{"weapon":index,"reload":true},.01)
+		arsenal.update_arsenal(soldier,{"weapon":index},float(data.weapons[index].reloadDuration)+.01)
+		var loaded: int = soldier.ammo[index]
+		arsenal.update_arsenal(soldier,{"weapon":1},.01)
+		check(loaded == (2 if index == 4 else 30) and soldier.ammo[index] == loaded,"Completed shell or magazine remains after switching")
+	var session = root.get_node("Session")
+	check(data.settings.network_stats,"Network panel defaults enabled")
+	check(session.network_metrics(1000).quality == "测量中","No network sample cannot claim good quality")
+	session.probes = {1:{"sent":1000,"rtt":-1},2:{"sent":2000,"rtt":-1}}
+	session.record_probe_reply(1,1040)
+	check(session.network_metrics(2500).rtt == 40 and session.network_metrics(2500).loss == 0,"Probe RTT uses local clock; pending probe is not premature loss")
+	check(session.network_metrics(5000).loss == 50 and session.network_metrics(5000).quality == "较差","Timed-out probe contributes loss and poor quality")
+	session.record_probe_reply(999,6000)
+	check(session.probes.size() == 2,"Unsolicited replies cannot fabricate telemetry")
+	check(session.network_metrics(40000).samples == 0,"Old samples expire from network window")
+	session.probes.clear()
+	session.last_probe_reply = 0
 	# Exercise every menu without presenting it or changing persisted settings.
 	for method in ["show_home","show_settings","show_guide","show_scores","show_multiplayer","show_pause"]:
 		game.ui.call(method)

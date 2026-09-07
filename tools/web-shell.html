@@ -23,7 +23,9 @@
       return Promise.reject(new Error('Fullscreen is forbidden in automation'));
     };
     const engine = new Engine($GODOT_CONFIG);
-    engine.startGame({canvas: document.getElementById('canvas'), args: ['--', '--automation', '--silent'],
+    const qaArgs = ['--', '--automation', '--silent'];
+    if (new URLSearchParams(location.search).get('autoaim') === '1') qaArgs.push('--qa-autoaim');
+    engine.startGame({canvas: document.getElementById('canvas'), args: qaArgs,
       onPrintError: (...args) => console.error(...args)
     }).then(() => {
       document.getElementById('status').remove();

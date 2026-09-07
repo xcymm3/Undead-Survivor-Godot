@@ -78,14 +78,25 @@ test('真实键鼠完成菜单、战斗、换弹、暂停、死亡和重开，�
     const moveY = -(desiredPitch - state.pitch) / .0022;
     await page.mouse.move(cursor.x + moveX, cursor.y + moveY, { steps: 12 });
     await expect.poll(async () => Math.abs((await snapshot(page)).yaw - desiredYaw)).toBeLessThan(.06);
+    await page.mouse.down({ button: 'right' });
+    await until(page, () => window.__survivorSnapshot?.player?.aim);
     await page.mouse.down();
     await until(page, () => window.__survivorSnapshot?.kills > 0);
     await page.mouse.up();
+    await page.mouse.up({ button: 'right' });
     state = await snapshot(page);
     expect(state.player.hits).toBeGreaterThan(0);
     expect(state.player.ammo[0]).toBeLessThan(30);
     await page.keyboard.press('r');
     await until(page, () => window.__survivorSnapshot?.player?.reloading);
+    const partialAmmo = (await snapshot(page)).player.ammo[0];
+    await page.keyboard.press('2');
+    await until(page, () => window.__survivorSnapshot?.player?.weapon === 1);
+    expect((await snapshot(page)).player.reloading).toBe(false);
+    expect((await snapshot(page)).player.ammo[0]).toBe(partialAmmo);
+    await page.keyboard.press('1');
+    await until(page, () => window.__survivorSnapshot?.player?.weapon === 0 && window.__survivorSnapshot?.player?.switch <= 0);
+    await page.keyboard.press('r');
     await until(page, () => window.__survivorSnapshot?.player?.ammo[0] === 30);
     await imageEvidence(page, info, '03-practice-hit-reload');
 

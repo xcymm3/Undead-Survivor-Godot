@@ -3,12 +3,17 @@ extends Node
 var game
 var interval = 0.0
 var frames = 0
+var aim_assist
 
 func _ready() -> void:
 	if not Data.automation:
 		queue_free()
 		return
 	if "--qa-native-smoke" in OS.get_cmdline_user_args(): call_deferred("native_smoke")
+	if "--qa-autoaim" in OS.get_cmdline_user_args():
+		aim_assist = preload("res://scripts/qa_aim_assist.gd").new()
+		aim_assist.game = game
+		add_child(aim_assist)
 
 func _process(dt: float) -> void:
 	frames += 1
@@ -30,6 +35,9 @@ func snapshot() -> Dictionary:
 		result.mode = game.sim.mode
 		result.elapsed = game.sim.elapsed
 		result.wave = game.sim.wave
+		result.cleared = game.sim.cleared
+		result.rest = game.sim.rest
+		result.aim_target = aim_assist.target_id if aim_assist else -1
 		result.kills = game.sim.kills
 		result.enemies = []
 		for z in game.sim.zombies:
@@ -38,7 +46,7 @@ func snapshot() -> Dictionary:
 		if not p.is_empty():
 			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "hp": p.hp,
 				"weapon": p.weapon, "ammo": p.ammo, "shots": p.shots, "hits": p.hits,
-				"reloading": p.reloading, "aim": p.aim}
+				"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
 	return result
 
 func native_smoke() -> void:
