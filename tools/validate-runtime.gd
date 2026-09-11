@@ -187,11 +187,17 @@ func run() -> void:
 	sim.spawn(Vector2(0,0),"football")
 	var football: Dictionary = sim.zombies[0]
 	sim.update_zombie(football,p,.01)
-	var locked: Vector2 = football.charge_direction
 	check(football.state == "windup","Football charges with clear path")
 	p.pos.x = 5
 	sim.update_zombie(football,p,.1)
-	check(football.charge_direction == locked,"Football must not retarget during windup")
+	check(football.charge_direction == Vector2.ZERO and football.charge_target == p.pos,"Windup tracks target without locking direction")
+	var expected_direction: Vector2 = (p.pos-football.pos).normalized()
+	sim.update_zombie(football,p,.25)
+	check(football.state == "charging" and football.charge_direction.is_equal_approx(expected_direction),"Direction locks to current target at windup completion")
+	check(is_equal_approx(football.state_time,4.0),"Charge starts with four second duration")
+	p.pos.x = -5
+	sim.update_zombie(football,p,.01)
+	check(football.charge_direction.is_equal_approx(expected_direction),"Direction remains fixed after charge starts")
 	sim.zombies.clear()
 	sim.roster.clear()
 	p.hp = 20
@@ -221,7 +227,8 @@ func run() -> void:
 	football.state = "charging"
 	football.state_time = 1.0
 	sim.update_zombie(football,sim.pawns.solo,.15)
-	check(football.state == "stunned","Solid obstacle stuns a charging football")
+	check(football.state == "stunned" and is_equal_approx(football.state_time,2.0),"Solid obstacle stuns a charging football for two seconds")
+	validate_charge_combat(simulation)
 	# Reject client-authoritative fields and malformed numerical input.
 	sim = simulation.new(game.arena)
 	sim.add_pawn("solo","验证",0)
@@ -360,3 +367,43 @@ func run() -> void:
 	await process_frame
 	print("RUNTIME VALIDATION: %d checks; %d failures" % [checks,errors.size()])
 	quit(0 if errors.is_empty() else 1)
+
+func validate_charge_combat(simulation) -> void:
+	# Empty terrain isolates timing and impact; map boundary still clips knockback.
+	var world = load("res://scripts/arena.gd").new()
+	var sim = simulation.new(world)
+	sim.add_pawn("solo","冲撞验证",0)
+	var p: Dictionary = sim.pawns.solo
+	p.pos = Vector2(0,9)
+	sim.spawn(Vector2(-20,0),"football")
+	var z: Dictionary = sim.zombies[0]
+	z.state = "charging"
+	z.state_time = 4.0
+	z.charge_direction = Vector2.RIGHT
+	for i in 39: sim.update_zombie(z,p,.1)
+	check(z.state == "charging","Missed charge continues beyond old 1.9 second limit")
+	sim.update_zombie(z,p,.101)
+	check(z.state == "stunned" and is_equal_approx(z.state_time,.45),"Charge ends at four seconds with existing miss recovery")
+	for protected in [false,true]:
+		p.pos = Vector2(1.3,0)
+		p.hp = 100
+		p.protection = .3 if protected else 0.0
+		z.pos = Vector2.ZERO
+		z.state = "charging"
+		z.state_time = 4.0
+		sim.update_zombie(z,p,.01)
+		check(p.hp == (100 if protected else 70),"Charge deals thirty damage and respects protection")
+		check(p.pos.is_equal_approx(Vector2(1.3 if protected else 1.95,0)),"Successful charge knocks player back 0.65 metres only once")
+		check(z.state == "ready" and z.charge_cooldown > 0,"Player impact ends charge")
+	p.pos = Vector2(21,0)
+	sim.charge_knockback(p,Vector2.RIGHT)
+	check(p.pos.x <= 21.05,"Knockback cannot cross map boundary")
+	p.hp = 20
+	p.protection = 0
+	sim.damage_pawn(p,z,30)
+	check(p.hp == 0 and sim.culprit == z.id,"Lethal charge clamps health and records culprit")
+	p.hp = 100
+	p.protection = 0
+	sim.damage_pawn(p,z)
+	check(p.hp == 90,"Ordinary zombie attacks retain ten damage")
+	world.free()

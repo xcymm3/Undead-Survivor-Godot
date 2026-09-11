@@ -26,6 +26,10 @@ var melee_swings: Dictionary = {}
 const MELEE_START = .22
 const MELEE_END = .66
 const MELEE_HALF_WIDTH = 20.0
+const CHARGE_DURATION = 4.0
+const CHARGE_DAMAGE = 30
+const CHARGE_KNOCKBACK = .65
+const CHARGE_WALL_STUN = 2.0
 
 func _init(world = null) -> void:
 	arena = world
@@ -281,14 +285,22 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 			p.gun_shots[p.weapon] += 1
 	p.trigger = trigger
 
-func damage_pawn(p: Dictionary, z: Dictionary) -> void:
-	if p.protection > 0 or p.hp <= 0 or p.height >= 1.1: return
-	p.hp = maxi(0,p.hp-10)
+func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
+	if p.protection > 0 or p.hp <= 0 or p.height >= 1.1: return false
+	p.hp = maxi(0,p.hp-amount)
 	p.protection = .3
 	events.append({"kind":"hurt","player":p.id})
 	if p.hp == 0:
 		cause = "zombie"
 		culprit = int(z.id)
+	return true
+
+func charge_knockback(p: Dictionary, direction: Vector2) -> void:
+	# Short authority-side displacement, clipped against terrain and other enemies.
+	for i in 13:
+		var next: Vector2 = p.pos+direction*(CHARGE_KNOCKBACK/13.0)
+		if not arena.clear(p.pos,next) or not can_move(p,next): break
+		p.pos = next
 
 func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	var delta: Vector2 = target.pos-z.pos
@@ -304,20 +316,27 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	if z.kind == "berserker": speed = minf(5.8,base_speed*(2.6 if z.rage else 1.35))
 	if z.kind == "football": speed = minf(3.3,base_speed*(1.25 if z.armor > 0 else 1.05))
 	if z.rage_pause > 0: return
+	if z.state == "windup":
+		z.charge_target = target.pos
+		z.heading = atan2(delta.x,delta.y)
+		if not arena.clear(z.pos,z.charge_target):
+			cancel_charge(z)
+			return
 	if z.state in ["windup","stunned","charging"]:
 		z.state_time -= dt
 		if z.state_time <= 0:
 			if z.state == "windup":
 				z.state = "charging"
-				z.state_time = 1.9
+				z.state_time = CHARGE_DURATION
+				z.charge_direction = delta.normalized()
 			elif z.state == "charging": stun(z,.45)
 			else: z.state = "ready"
 		if z.state == "windup" and not arena.clear(z.pos,z.charge_target): cancel_charge(z)
 		if z.state in ["windup","stunned"]: return
-	if z.kind == "football" and z.state == "ready" and z.armor > 0 and z.charge_cooldown <= 0 and distance >= 5 and distance <= minf(16,minf(10,base_speed*4.2)*1.9+contact) and arena.clear(z.pos,target.pos):
+	if z.kind == "football" and z.state == "ready" and z.armor > 0 and z.charge_cooldown <= 0 and distance >= 5 and distance <= minf(16,minf(10,base_speed*4.2)*CHARGE_DURATION+contact) and arena.clear(z.pos,target.pos):
 		z.state = "windup"
 		z.state_time = .35
-		z.charge_direction = delta.normalized()
+		z.charge_direction = Vector2.ZERO
 		z.charge_target = target.pos
 		z.heading = atan2(delta.x,delta.y)
 		z.attack_time = 0.0
@@ -326,14 +345,15 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		var next: Vector2 = z.pos+z.charge_direction*minf(10,base_speed*4.2)*dt
 		if not arena.clear(z.pos,next):
 			if arena.clear(z.pos,next,true): cancel_charge(z)
-			else: stun(z,.9)
+			else: stun(z,CHARGE_WALL_STUN)
 			return
 		z.pos = next
 		for p in pawns.values():
 			if p.hp > 0 and z.pos.distance_to(p.pos) <= contact and p.height < 1.1:
-				damage_pawn(p,z)
+				if damage_pawn(p,z,CHARGE_DAMAGE): charge_knockback(p,z.charge_direction)
 				z.state = "ready"
 				z.charge_cooldown = 3.2
+				break
 		return
 	if distance <= contact and target.height < 1.1:
 		if z.target != target.id: z.attack_time = 0.0

@@ -350,9 +350,11 @@
       "chargeWindup": 0.35,
       "chargeSpeed": 4.2,
       "chargeSpeedCap": 10,
-      "chargeDuration": 1.9,
+      "chargeDuration": 4,
+      "chargeDamage": 30,
+      "chargeKnockback": 0.65,
       "chargeCooldown": 3.2,
-      "obstacleStun": 0.9,
+      "obstacleStun": 2,
       "missStun": 0.45,
       "replanCooldown": 0.6
     }
