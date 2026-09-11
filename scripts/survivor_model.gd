@@ -4,7 +4,7 @@ extends Node3D
 const PROFILES = [
 	{"name":"蓝衣青年","sex":"male","skin":"d6a077","shirt":"527c97","pants":"303e4a","hair":"35291f"},
 	{"name":"棕衣大叔","sex":"male","skin":"bc8563","shirt":"97704e","pants":"394342","hair":"49362c"},
-	{"name":"绿衣队员","sex":"male","skin":"80553f","shirt":"617255","pants":"333a32","hair":"241f1c"},
+	{"name":"绿衣队员","sex":"male","skin":"d9aa86","shirt":"617255","pants":"333a32","hair":"241f1c"},
 	{"name":"红衣女性","sex":"female","skin":"e0ac87","shirt":"a7544e","pants":"394557","hair":"553828"}
 ]
 var skeleton: Skeleton3D
@@ -48,9 +48,12 @@ func build(index: int) -> void:
 		for x in [-.10,.10]: box("Chest",Vector3(x,-.06,-.20),Vector3(.13,.105,.065),"78806a")
 	else:
 		box("Head",Vector3(.095,.165,-.105),Vector3(.065,.14,.055),profile.hair)
-		box("Head",Vector3(0,.13,.17),Vector3(.13,.13,.11),profile.hair)
-		box("Head",Vector3(0,-.015,.21),Vector3(.105,.23,.105),profile.hair)
-		box("Head",Vector3(0,.10,.18),Vector3(.137,.035,.115),"be9a59")
+		# Loose hair reaches the upper back; side locks remain visible from the front.
+		box("Head",Vector3(0,-.035,.145),Vector3(.285,.49,.085),profile.hair)
+		box("Head",Vector3(0,-.30,.165),Vector3(.255,.17,.075),profile.hair)
+		for side in [-1,1]:
+			box("Head",Vector3(side*.14,-.045,-.005),Vector3(.065,.43,.22),profile.hair)
+			box("Head",Vector3(side*.14,-.255,-.065),Vector3(.06,.13,.10),profile.hair)
 	for side in ["R","L"]:
 		var sign_x = 1 if side == "R" else -1
 		bone("UpperArm."+side,"Chest",Vector3(sign_x*(width/2+.045),1.40,0))
