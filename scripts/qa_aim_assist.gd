@@ -23,7 +23,7 @@ func _process(dt: float) -> void:
 	var best = Vector3.ZERO
 	for z in game.sim.zombies:
 		if z.hp <= 0: continue
-		var poses: Array = EnemyView.transforms(z,game.sim.elapsed,game.sim.mode == "practice")
+		var poses: Array = EnemyView.transforms(z,game.sim.elapsed,false)
 		var target_part = 0
 		if p.weapon != 7:
 			for i in Data.parts.size():
@@ -36,7 +36,7 @@ func _process(dt: float) -> void:
 		if distance < .01: continue
 		var wall: Dictionary = game.arena.surface_hit(origin,point)
 		if not wall.is_empty() and origin.distance_to(wall.position) < distance-.1: continue
-		var hit = EnemyView.hit(z,origin,offset/distance,distance+.5,game.sim.elapsed,game.sim.mode == "practice")
+		var hit = EnemyView.hit(z,origin,offset/distance,distance+.5,game.sim.elapsed,false)
 		if hit.is_empty(): continue
 		# Clear fast close attackers before spending a magazine on a slow tank.
 		var priority: float = {"imp":.55,"berserker":.4 if z.rage else .7,"giant":2.5,"football":1.3}.get(z.kind,1.0)

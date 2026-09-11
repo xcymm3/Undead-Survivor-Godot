@@ -28,12 +28,13 @@ var snapshot_timer = 0.0
 var queued_effects: Array = []
 var death_timer = 0.0
 var draw_timer = 0.0
-var redraw_frames = 4
+var display_buffer = preload("res://scripts/snapshot_buffer.gd").new()
 var pixelation: ColorRect
 
 func _ready() -> void:
-	RenderingServer.render_loop_enabled = "--capture" in OS.get_cmdline_user_args()
+	RenderingServer.render_loop_enabled = focused and not software_qa()
 	arena = Arena.new()
+	arena.map_id = Data.settings.map_id
 	add_child(arena)
 	enemies = EnemyView.new()
 	add_child(enemies)
@@ -67,10 +68,13 @@ func _ready() -> void:
 	ui.game = self
 	add_child(ui)
 	Session.match_started.connect(start_coop)
+	Session.map_preparing.connect(prepare_coop)
 	Session.input_received.connect(func(id,command):
 		if running and sim and Session.is_host(): sim.submit(id,command))
 	Session.world_received.connect(func(state):
-		if running and sim: sim.apply_snapshot(state))
+		if running and sim:
+			sim.apply_snapshot(state)
+			display_buffer.push(state))
 	Session.effects_received.connect(handle_effects)
 	Session.member_left.connect(func(id):
 		if running and sim and Session.is_host(): sim.pawns.erase(id))
@@ -84,7 +88,6 @@ func _ready() -> void:
 	return_home()
 	# Explicit command-line launch modes also support silent local integration validation.
 	var args = OS.get_cmdline_user_args()
-	if "--practice" in args: start_solo("practice")
 	if "--survival" in args: start_solo("survival")
 	if "--lan-host" in args: Session.host_lan("房主")
 	for arg in args:
@@ -97,14 +100,19 @@ func _ready() -> void:
 func start_solo(mode: String) -> void:
 	Session.leave()
 	reset_game()
+	load_map(Data.settings.map_id)
 	sim = Simulation.new(arena)
 	sim.add_pawn("solo","幸存者",0)
-	sim.pawns.solo.pos = Vector2(0,9)
+	sim.pawns.solo.pos = arena.definition.spawn
+	yaw = arena.definition.yaw
+	sim.pawns.solo.yaw = yaw
 	sim.start(mode)
 	resume_game()
 
 func start_coop() -> void:
 	reset_game()
+	load_map(Session.map_id)
+	yaw = arena.definition.yaw
 	sim = Simulation.new(arena)
 	var i = 0
 	for id in Session.members:
@@ -113,7 +121,16 @@ func start_coop() -> void:
 	if Session.is_host(): sim.start("survival")
 	resume_game()
 
+func prepare_coop() -> void:
+	load_map(Session.map_id)
+	# Wait for physics to register the loaded terrain before acknowledging readiness.
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	if Session.active and Session.loading: Session.confirm_map_ready()
+
 func reset_game() -> void:
+	display_buffer.clear()
+	if sound: sound.clear_effects()
 	if sim: sim.dispose()
 	reset_mouse_buttons()
 	running = true
@@ -189,16 +206,19 @@ func _physics_process(dt: float) -> void:
 func _process(dt: float) -> void:
 	if not focused: return
 	if not running or (paused and not Session.playing) or (finished and death_timer > 1.2 and ui.current == "result"):
-		# Menu and pause screens render only after input or UI changes.
+		# Normal menus use the engine render loop, including animations and async UI.
 		Engine.max_fps = 20 if Data.automation and OS.has_feature("web") else 60
-		if redraw_frames > 0:
-			redraw_frames -= 1
-			RenderingServer.force_draw(true)
+		qa_draw(dt)
 		return
 	Engine.max_fps = int(Data.settings.frame_limit)
 	if not sim: return
+	var displayed: Dictionary = display_buffer.sample(dt) if Session.playing and not Session.is_host() else {}
+	var visible_zombies: Array = displayed.get("zombies",sim.zombies)
+	var visible_pawns: Dictionary = displayed.get("pawns",sim.pawns)
+	var visual_time: float = displayed.get("elapsed",sim.elapsed)
 	var p = view_pawn()
 	if p.is_empty(): return
+	if p.id != Session.local_id: p = visible_pawns.get(p.id,p)
 	var desired = Vector3(p.pos.x,p.height+1.7,p.pos.y)
 	if Session.playing and not Session.is_host(): camera.position = camera.position.lerp(desired,1-exp(-dt*22))
 	else: camera.position = desired
@@ -212,14 +232,14 @@ func _process(dt: float) -> void:
 	var aim_surface: Dictionary = arena.surface_hit(camera.position,aim_target)
 	if not aim_surface.is_empty(): aim_target = aim_surface.position
 	var aim_distance = camera.position.distance_to(aim_target)
-	for zombie in sim.zombies:
+	for zombie in visible_zombies:
 		if zombie.hp <= 0: continue
-		var impact = EnemyView.hit(zombie,camera.position,-camera.global_basis.z,aim_distance,sim.elapsed,sim.mode == "practice")
+		var impact = EnemyView.hit(zombie,camera.position,-camera.global_basis.z,aim_distance,visual_time,false)
 		if not impact.is_empty():
 			aim_distance = impact.distance
 			aim_target = camera.position-camera.global_basis.z*aim_distance
-	weapon.sync(p,dt,sim.elapsed,camera.to_local(aim_target))
-	enemies.sync(sim.zombies,sim.elapsed,sim.mode == "practice")
+	weapon.sync(p,dt,visual_time,camera.to_local(aim_target))
+	enemies.sync(visible_zombies,visual_time,false)
 	effects.step(dt)
 	for id in sim.pawns:
 		if id == Session.local_id: continue
@@ -228,7 +248,7 @@ func _process(dt: float) -> void:
 			add_child(partner)
 			partner.setup(sim.pawns[id])
 			partners[id] = partner
-		partners[id].sync(sim.pawns[id],dt)
+		partners[id].sync(visible_pawns.get(id,sim.pawns[id]),dt,not displayed.is_empty())
 		if spectate and id == p.id: partners[id].visible = false
 	for id in partners.keys():
 		if not sim.pawns.has(id):
@@ -244,12 +264,7 @@ func _process(dt: float) -> void:
 				if camera.position.distance_to(head) > .05: camera.look_at(head)
 		if death_timer > 1.2 and ui.current != "result": ui.show_result()
 	ui.tick(dt)
-	draw_timer += dt
-	if "--capture" not in OS.get_cmdline_user_args():
-		# CI keeps physics/input active while limiting expensive software-rasterized frames.
-		if not (Data.automation and OS.has_feature("web")) or draw_timer >= .5:
-			RenderingServer.force_draw(true)
-			draw_timer = 0
+	qa_draw(dt)
 
 func handle_effects(events: Array) -> void:
 	for event in events:
@@ -259,7 +274,9 @@ func handle_effects(events: Array) -> void:
 				var index = clampi(int(event.get("weapon",0)),0,9)
 				var w: Dictionary = Data.weapons[index]
 				var kind: String = w.get("kind","gun")
-				sound.play("axe" if kind == "melee" else "flame" if kind == "flame" else "gun",-10 if event.player == Session.local_id else -19)
+				var cue = "axe" if kind == "melee" else "flame" if kind == "flame" else "gun"
+				if event.player == Session.local_id: sound.play(cue,-10)
+				else: sound.play_at(cue,event.from,-10)
 				var visual_origin: Vector3 = event.from
 				var viewed: Dictionary = view_pawn()
 				if not viewed.is_empty() and event.player == viewed.id:
@@ -273,11 +290,11 @@ func handle_effects(events: Array) -> void:
 			"blood", "death":
 				effects.burst(event.position)
 				if event.get("player") == Session.local_id: ui.hit_flash = .12
-				if event.kind == "death": sound.play("death-%d" % (randi()%3),-16)
+				if event.kind == "death": sound.play_at("death-%d" % (randi()%3),event.position,-16)
 			"armor":
 				effects.burst(event.position,true,event.broken)
 				if event.get("player") == Session.local_id: ui.hit_flash = .12
-				sound.play("%s-%s" % [event.armor,"true" if event.broken else "false"],-13)
+				sound.play_at("%s-%s" % [event.armor,"true" if event.broken else "false"],event.position,-13)
 			"hurt":
 				if event.player == Session.local_id:
 					ui.hurt_flash = .45
@@ -319,6 +336,8 @@ func resume_game() -> void:
 	sound.set_playing(true)
 
 func return_home() -> void:
+	display_buffer.clear()
+	if sound: sound.clear_effects()
 	reset_mouse_buttons()
 	Session.leave()
 	running = false
@@ -332,14 +351,26 @@ func return_home() -> void:
 	for partner in partners.values(): partner.queue_free()
 	partners.clear()
 	if sound: sound.set_playing(false)
+	load_map(Data.settings.map_id)
 	if camera:
-		camera.position = Vector3(14,10,11)
-		camera.look_at(Vector3(-3,1,-21))
+		camera.position = arena.definition.camera
+		camera.look_at(arena.definition.look_at)
 		camera.fov = 61
 	if ui: ui.show_home()
 
+func software_qa() -> bool:
+	return Data.automation and OS.has_feature("web") and "--capture" not in OS.get_cmdline_user_args()
+
+func qa_draw(dt: float) -> void:
+	if not software_qa(): return
+	draw_timer += dt
+	if draw_timer >= .5:
+		RenderingServer.force_draw(true)
+		draw_timer = 0.0
+
 func request_draw() -> void:
-	redraw_frames = 4
+	# Retained for UI callers; normal rendering no longer requires invalidation.
+	if software_qa(): draw_timer = .5
 
 func apply_graphics() -> void:
 	arena.sun.shadow_enabled = Data.settings.shadows > 0
@@ -349,6 +380,12 @@ func apply_graphics() -> void:
 	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED,Viewport.MSAA_2X,Viewport.MSAA_4X,Viewport.MSAA_8X][int(Data.settings.aa)]
 	get_viewport().scaling_3d_scale = Data.settings.resolution
 	pixelation.visible = Data.settings.pixelated
+	var region = arena.bounds.grow(6)
+	var visible_bounds = AABB(Vector3(region.position.x,-6,region.position.y),Vector3(region.size.x,28,region.size.y))
+	for group in [enemies,effects]:
+		if group:
+			for child in group.get_children():
+				if child is MultiMeshInstance3D: child.custom_aabb = visible_bounds
 	request_draw()
 
 func reset_mouse_buttons() -> void:
@@ -358,34 +395,31 @@ func reset_mouse_buttons() -> void:
 
 func _input(event: InputEvent) -> void:
 	request_draw()
-	# Read each button before GUI handling; right-button aim never owns left-button fire.
-	if not event is InputEventMouseButton: return
-	if not event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT: fire_held = false
-		if event.button_index == MOUSE_BUTTON_RIGHT: aim_held = false
+	if event.is_action_released("fire"): fire_held = false
+	if event.is_action_released("aim"): aim_held = false
 	if not running or paused or finished or not focused: return
-	if event.button_index == MOUSE_BUTTON_LEFT:
-		fire_held = event.pressed
-		if event.pressed:
+	if event.is_action("fire") and not event.is_echo():
+		fire_held = event.is_action_pressed("fire")
+		if fire_held:
 			if not local_pawn().is_empty() and local_pawn().hp <= 0: cycle_spectator()
 			else: fire_pending = true
 		get_viewport().set_input_as_handled()
-	elif event.button_index == MOUSE_BUTTON_RIGHT:
-		aim_held = event.pressed
+	elif event.is_action("aim") and not event.is_echo():
+		aim_held = event.is_action_pressed("aim")
 		get_viewport().set_input_as_handled()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE:
+	if event.is_pressed() and not event.is_echo():
+		if event.is_action_pressed("pause"):
 			if running and not finished:
 				if paused: resume_game()
 				else: pause_game()
 			elif ui.current != "home": ui.back()
-		if event.keycode == KEY_M:
+		if event.is_action_pressed("mute"):
 			Data.settings.muted = not Data.settings.muted
 			Data.apply_settings()
 			Data.save()
-		if event.keycode == KEY_F11:
+		if event.is_action_pressed("fullscreen"):
 			Data.settings.fullscreen = not Data.settings.fullscreen
 			Data.apply_settings()
 			Data.save()
@@ -396,14 +430,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		var max_delta = minf(180,deg_to_rad(25)/maxf(.000001,sensitivity))
 		if absf(delta.x) <= max_delta: yaw = wrapf(yaw-delta.x*sensitivity,-PI,PI)
 		if absf(delta.y) <= max_delta: pitch = clampf(pitch-delta.y*sensitivity,-deg_to_rad(85),deg_to_rad(85))
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP: requested_weapon = posmod(requested_weapon-1,10)
-		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN: requested_weapon = (requested_weapon+1)%10
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.physical_keycode == KEY_SPACE: jump_pending = true
-		if event.physical_keycode == KEY_R: reload_pending = true
-		if event.keycode >= KEY_1 and event.keycode <= KEY_9: requested_weapon = event.keycode-KEY_1
-		if event.keycode == KEY_0: requested_weapon = 9
+	if event.is_action_pressed("weapon_previous"): requested_weapon = posmod(requested_weapon-1,10)
+	if event.is_action_pressed("weapon_next"): requested_weapon = (requested_weapon+1)%10
+	if event.is_action_pressed("jump"): jump_pending = true
+	if event.is_action_pressed("reload"): reload_pending = true
+	for i in 10:
+		if event.is_action_pressed("weapon_%d" % i): requested_weapon = i
 
 func _focus_lost() -> void:
 	if "--capture" in OS.get_cmdline_user_args(): return
@@ -418,9 +450,26 @@ func _focus_lost() -> void:
 func _focus_gained() -> void:
 	focused = true
 	request_draw()
-	RenderingServer.render_loop_enabled = "--capture" in OS.get_cmdline_user_args()
+	RenderingServer.render_loop_enabled = focused and not software_qa()
 
 func quit_game() -> void:
 	Data.save()
 	Session.leave()
 	get_tree().quit()
+
+func load_map(id: String) -> void:
+	if arena and arena.map_id == id: return
+	if arena: arena.free()
+	arena = Arena.new()
+	arena.map_id = id
+	add_child(arena)
+	if camera: apply_graphics()
+
+func select_map(id: String) -> void:
+	if running or not Data.Maps.valid(id): return
+	Data.settings.map_id = id
+	Data.save()
+	load_map(id)
+	camera.position = arena.definition.camera
+	camera.look_at(arena.definition.look_at)
+	ui.show_home()

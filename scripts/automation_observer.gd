@@ -23,7 +23,7 @@ func _process(dt: float) -> void:
 	JavaScriptBridge.eval("window.__survivorSnapshot = " + JSON.stringify(snapshot()) + ";", true)
 
 func snapshot() -> Dictionary:
-	var result = {"menu": game.ui.current, "running": game.running, "paused": game.paused,
+	var result = {"menu": game.ui.current, "map_id":game.arena.map_id, "running": game.running, "paused": game.paused,
 		"finished": game.finished, "frames": frames, "mouse_mode": Input.mouse_mode,
 		"yaw": game.yaw, "pitch": game.pitch, "fov": game.camera.fov, "buttons": []}
 	for node in game.ui.root.find_children("*", "Button", true, false):
@@ -44,14 +44,14 @@ func snapshot() -> Dictionary:
 			result.enemies.append({"x": z.pos.x, "z": z.pos.y, "hp": z.hp, "kind": z.kind})
 		var p: Dictionary = game.local_pawn()
 		if not p.is_empty():
-			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "hp": p.hp,
+			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "wading":p.get("wading",false), "hp": p.hp,
 				"weapon": p.weapon, "ammo": p.ammo, "shots": p.shots, "hits": p.hits,
 				"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
 	return result
 
 func native_smoke() -> void:
 	# Packaged-EXE validation: same scene, real input path, no renderer or Steam login.
-	game.start_solo("practice")
+	game.start_solo("survival")
 	await get_tree().create_timer(.25).timeout
 	var event = InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT

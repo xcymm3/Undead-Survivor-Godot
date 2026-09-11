@@ -63,11 +63,11 @@ func update_weapon(index: int) -> void:
 	weapon_animation = finder.find_animation(model)
 	finder.free()
 
-func sync(p: Dictionary, dt: float) -> void:
+func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	var destination = Vector3(p.pos.x,p.height,p.pos.y)
 	var moving = destination.distance_squared_to(previous_position) > .00005
 	previous_position = destination
-	position = position.lerp(destination,1-exp(-dt*18))
+	position = destination if buffered or position.distance_squared_to(destination) > 16 else position.lerp(destination,1-exp(-dt*18))
 	rotation.y = p.yaw
 	visible = true
 	update_weapon(int(p.weapon))

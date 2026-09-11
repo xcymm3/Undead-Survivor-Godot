@@ -4,6 +4,8 @@ const EnemyView = preload("res://scripts/enemy_view.gd")
 const PlayerBody = preload("res://scripts/player_body.gd")
 var player_bodies: Dictionary = {}
 var arena
+var map_id = "outpost"
+var map_definition: Dictionary
 var pawns: Dictionary = {}
 var zombies: Array = []
 var events: Array = []
@@ -35,6 +37,8 @@ const CHARGE_WALL_STUN = 2.0
 
 func _init(world = null) -> void:
 	arena = world
+	if world and world.get("map_id") is String: map_id = world.map_id
+	map_definition = Data.Maps.definition(map_id)
 	random.randomize()
 
 func dispose() -> void:
@@ -64,13 +68,13 @@ func add_pawn(id: String, player_name: String, index: int) -> void:
 	for pawn in pawns.values(): available.erase(int(pawn.appearance[0]))
 	if available.is_empty(): available = range(Data.MODELS.size())
 	var model: int = available[random.randi_range(0,available.size()-1)]
-	pawns[id] = {"id":id,"name":player_name,"pos":Vector2((index%2)*2.8-1.4,9+floori(index/2.0)*2.6),"yaw":0.0,"pitch":0.0,"height":0.0,"velocity":0.0,"air":Vector2.ZERO,"hp":100,"protection":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0]}
+	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"air":Vector2.ZERO,"hp":100,"protection":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0]}
 
-func start(game_mode: String) -> void:
-	mode = game_mode
-	if mode == "practice":
-		for pos in Data.PRACTICE: spawn(pos,"normal")
-	else: prepare_wave()
+	pawns[id].height = Data.enemy_ground_height(pawns[id].pos,map_id) if map_id == "dust" else 0.0
+
+func start(_game_mode: String) -> void:
+	mode = "survival"
+	prepare_wave()
 
 func prepare_wave() -> void:
 	roster.clear()
@@ -91,7 +95,7 @@ func weighted(weights: Array) -> int:
 
 func spawn(pos: Vector2, kind: String) -> void:
 	var def: Dictionary = Data.enemies[kind]
-	zombies.append({"id":next_id,"pos":pos,"kind":kind,"original":kind,"hp":float(def.health),"body":float(def.health-def.armor),"armor":float(def.armor),"down":0.0,"born":elapsed,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
+	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":float(def.health),"body":float(def.health-def.armor),"armor":float(def.armor),"down":0.0,"born":elapsed,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
 	next_id += 1
 
 func submit(id: String, input: Dictionary) -> void:
@@ -138,17 +142,11 @@ func step(dt: float) -> void:
 	for z in zombies:
 		if z.hp <= 0:
 			z.down -= dt
-			if mode == "practice" and z.down <= 0:
-				z.hp = Data.enemies[z.original].health
-				z.body = z.hp
-				z.kind = z.original
 			continue
-		if mode == "practice": continue
 		var target: Dictionary = living[0]
 		for p in living:
 			if z.pos.distance_squared_to(p.pos) < z.pos.distance_squared_to(target.pos): target = p
 		update_zombie(z,target,dt)
-	if mode == "practice": return
 	zombies = zombies.filter(func(z): return z.hp > 0 or z.down > 0)
 	if pawns.values().all(func(p): return p.hp <= 0):
 		failed = true
@@ -167,7 +165,7 @@ func step(dt: float) -> void:
 		for p in pawns.values():
 			if p.hp <= 0:
 				p.pos = safe_spawn()
-				p.height = 0.0
+				p.height = Data.enemy_ground_height(p.pos,map_id) if map_id == "dust" else 0.0
 				p.velocity = 0.0
 			p.hp = 100
 			p.protection = 0.0
@@ -175,7 +173,7 @@ func step(dt: float) -> void:
 	if roster.is_empty(): return
 	credit = minf(1,credit+dt*Data.wave_settings(wave).rate)
 	if credit < 1: return
-	var entries: Array = Array(Data.SPAWNS).duplicate()
+	var entries: Array = map_definition.spawns.duplicate()
 	entries.shuffle()
 	for point in entries:
 		var safe = true
@@ -191,18 +189,18 @@ func step(dt: float) -> void:
 		break
 
 func safe_spawn() -> Vector2:
-	for p in [Vector2(0,9),Vector2(-3,9),Vector2(3,9),Vector2(0,5)]:
-		if arena.clear(p,p,true) and not Data.water(p) and zombies.all(func(z): return z.hp <= 0 or p.distance_to(z.pos) > 2): return p
-	return Vector2(0,9)
+	for p in map_definition.safe:
+		if arena.clear(p,p,true) and not is_water(p) and zombies.all(func(z): return z.hp <= 0 or p.distance_to(z.pos) > 2): return p
+	return map_definition.spawn
 
 func alive_count() -> int:
 	return zombies.filter(func(z): return z.hp > 0).size()
 
 func can_move(p: Dictionary, point: Vector2) -> bool:
-	if point.x < -21.05 or point.x > 21.05 or point.y < -47.05 or point.y > 13.05: return false
-	if p.height >= 1.1: return true
+	if not map_definition.bounds.grow(-.95).has_point(point): return false
 	for z in zombies:
 		if z.hp <= 0: continue
+		if p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: continue
 		if point.distance_to(z.pos) < Data.contact(z.kind) and point.distance_to(z.pos) < p.pos.distance_to(z.pos)-.00001: return false
 	return true
 
@@ -228,24 +226,16 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	while remaining > .00001:
 		var step_time = minf(.01,remaining)
 		remaining -= step_time
-		var next: Vector2 = p.pos+dir*4.2*step_time
-		next = next.clamp(Vector2(-21.05,-47.05),Vector2(21.05,13.05))
+		var wading: bool = body.grounded and is_wading(p.pos,p.height)
+		var next: Vector2 = p.pos+dir*4.2*(Data.WADE_SPEED if wading else 1.0)*step_time
+		next = next.clamp(map_definition.bounds.position+Vector2.ONE*.95,map_definition.bounds.end-Vector2.ONE*.95)
 		if not can_move(p,next):
 			var horizontal = Vector2(next.x,p.pos.y)
 			var vertical = Vector2(p.pos.x,next.y)
 			next = horizontal if can_move(p,horizontal) else vertical if can_move(p,vertical) else p.pos
 		body.advance((next-p.pos)/step_time,step_time)
 		body.sync_to(p)
-		if p.height <= .06 and Data.water(p.pos,.22):
-			p.hp = maxi(0,p.hp-10)
-			p.pos = safe_spawn()
-			p.height = 0.0
-			p.velocity = 0.0
-			p.protection = .3
-			body.sync_from(p)
-			events.append({"kind":"hurt","player":p.id})
-			if p.hp == 0: cause = "water"
-			break
+	p.wading = body.grounded and is_wading(p.pos,p.height)
 	p.input.jump = false
 	update_arsenal(p,input,dt)
 
@@ -305,7 +295,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	p.trigger = trigger
 
 func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
-	if p.protection > 0 or p.hp <= 0 or p.height >= 1.1: return false
+	if p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
 	p.hp = maxi(0,p.hp-amount)
 	p.protection = .3
 	events.append({"kind":"hurt","player":p.id})
@@ -336,6 +326,10 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	if z.kind == "giant": speed *= .75
 	if z.kind == "berserker": speed = minf(5.8,base_speed*(2.6 if z.rage else 1.35))
 	if z.kind == "football": speed = minf(3.3,base_speed*(1.25 if z.armor > 0 else 1.05))
+	var wading: bool = is_water(z.pos)
+	if wading:
+		speed *= Data.WADE_SPEED
+		if z.state in ["charging","windup"]: cancel_charge(z)
 	if z.rage_pause > 0: return
 	if z.state == "windup":
 		z.charge_target = target.pos
@@ -354,7 +348,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			else: z.state = "ready"
 		if z.state == "windup" and not arena.clear(z.pos,z.charge_target): cancel_charge(z)
 		if z.state in ["windup","stunned"]: return
-	if z.kind == "football" and z.state == "ready" and z.armor > 0 and z.charge_cooldown <= 0 and distance >= 5 and distance <= minf(16,minf(10,base_speed*4.2)*CHARGE_DURATION+contact) and arena.clear(z.pos,target.pos):
+	if z.kind == "football" and not wading and z.state == "ready" and z.armor > 0 and z.charge_cooldown <= 0 and distance >= 5 and distance <= minf(16,minf(10,base_speed*4.2)*CHARGE_DURATION+contact) and arena.clear(z.pos,target.pos):
 		z.state = "windup"
 		z.state_time = .35
 		z.charge_direction = Vector2.ZERO
@@ -369,14 +363,17 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			else: stun(z,CHARGE_WALL_STUN)
 			return
 		z.pos = next
+		if is_water(next):
+			cancel_charge(z)
+			return
 		for p in pawns.values():
-			if p.hp > 0 and z.pos.distance_to(p.pos) <= contact and p.height < 1.1:
+			if p.hp > 0 and z.pos.distance_to(p.pos) <= contact and p.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
 				if damage_pawn(p,z,CHARGE_DAMAGE): charge_knockback(p,z.charge_direction)
 				z.state = "ready"
 				z.charge_cooldown = 3.2
 				break
 		return
-	if distance <= contact and target.height < 1.1:
+	if distance <= contact and target.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
 		if z.target != target.id: z.attack_time = 0.0
 		z.target = target.id
 		z.heading = atan2(delta.x,delta.y)
@@ -462,7 +459,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 	if z.body <= 0:
 		z.hp = 0.0
 		z.armor = 0.0
-		z.down = 3.0 if mode == "practice" else .85
+		z.down = .85
 		z.attack_time = 0.0
 		kills += 1
 		p.kills += 1
@@ -494,7 +491,7 @@ func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 		for z in zombies:
 			if z.hp <= 0 or swing.damaged.has(z.id): continue
 			if p.pos.distance_to(z.pos) > reach+Data.enemy_scale(z.kind)*1.5: continue
-			var poses: Array = EnemyView.transforms(z,elapsed,mode == "practice")
+			var poses: Array = EnemyView.transforms(z,elapsed,false)
 			var contacts: Array[Vector3] = []
 			for i in Data.parts.size():
 				var part: Dictionary = Data.parts[i]
@@ -518,7 +515,7 @@ func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 				var distance = minf(reach,offset.length()+.02)
 				var wall: Dictionary = arena.surface_hit(origin,origin+direction*distance)
 				if not wall.is_empty(): distance = origin.distance_to(wall.position)
-				var hit = EnemyView.hit(z,origin,direction,distance,elapsed,mode == "practice")
+				var hit = EnemyView.hit(z,origin,direction,distance,elapsed,false)
 				if hit.is_empty(): continue
 				swing.damaged[z.id] = true
 				if not swing.landed:
@@ -543,7 +540,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	var closest = camera.origin.distance_to(target)
 	for z in zombies:
 		if z.hp <= 0: continue
-		var impact = EnemyView.hit(z,camera.origin,forward,closest,elapsed,mode == "practice")
+		var impact = EnemyView.hit(z,camera.origin,forward,closest,elapsed,false)
 		if not impact.is_empty():
 			closest = impact.distance
 			target = camera.origin+forward*closest
@@ -571,7 +568,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 		var candidates: Array = []
 		for z in zombies:
 			if z.hp <= 0: continue
-			var candidate = EnemyView.hit(z,muzzle,ray,distance,elapsed,mode == "practice")
+			var candidate = EnemyView.hit(z,muzzle,ray,distance,elapsed,false)
 			if not candidate.is_empty(): candidates.append(candidate)
 		candidates.sort_custom(func(a,b): return a.distance < b.distance)
 		if not w.get("piercing",false) and candidates.size() > 1: candidates.resize(1)
@@ -593,7 +590,7 @@ func snapshot() -> Dictionary:
 	for id in pawns:
 		players[id] = pawns[id].duplicate(true)
 		players[id].erase("input")
-	return {"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":Data.wave_settings(wave).count,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
+	return {"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":Data.wave_settings(wave).count,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
 
 func apply_snapshot(state: Dictionary) -> void:
 	pawns = state.pawns
@@ -608,3 +605,9 @@ func apply_snapshot(state: Dictionary) -> void:
 	failed = state.failed
 	cause = state.cause
 	culprit = state.culprit
+
+func is_water(p: Vector2) -> bool:
+	return map_id == "outpost" and Data.water(p)
+
+func is_wading(p: Vector2, height: float) -> bool:
+	return map_id == "outpost" and Data.wading(p,height)

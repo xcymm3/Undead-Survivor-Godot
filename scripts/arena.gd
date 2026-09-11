@@ -1,104 +1,39 @@
 extends Node3D
-## Render original meshes with native ArrayMesh/MultiMesh, using the source collision footprints.
+## Load authored native scenery; procedural river and navigation share Data's terrain.
+const Maps = preload("res://scripts/map_catalog.gd")
+var map_id = "outpost"
+var definition: Dictionary
+var bounds: Rect2
+var walk_regions: Array[PackedVector2Array] = []
 var obstacles: Array = []
-var water_obstacles: Array[Rect2] = []
 var collision_buckets: Dictionary = {}
 var grid = AStarGrid2D.new()
 var sun: DirectionalLight3D
 const CELL = .65
 
 func _ready() -> void:
-	var world: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/data/world.json"))
-	obstacles = world.obstacles.filter(func(o): return o.minX < 22 and o.maxX > -22 and o.minZ < 14 and o.maxZ > -48)
-	var meshes = {}
-	var materials = {}
-	for id in world.materials:
-		var source: Dictionary = world.materials[id]
-		var material = StandardMaterial3D.new()
-		material.albedo_color = Color(source.color[0],source.color[1],source.color[2]).linear_to_srgb()
-		material.roughness = source.roughness
-		material.vertex_color_use_as_albedo = true
-		material.cull_mode = BaseMaterial3D.CULL_DISABLED
-		if source.unshaded: material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		materials[id] = material
-	for id in world.geometries:
-		var source: Dictionary = world.geometries[id]
-		var vertices = PackedVector3Array()
-		var normals = PackedVector3Array()
-		for i in range(0, source.position.size(), 3):
-			vertices.append(Vector3(source.position[i],source.position[i+1],source.position[i+2]))
-			normals.append(Vector3(source.normal[i],source.normal[i+1],source.normal[i+2]))
-		var indices = PackedInt32Array(source.index)
-		if indices.is_empty():
-			for i in vertices.size(): indices.append(i)
-		# glTF/Three counterclockwise faces become Godot clockwise faces.
-		for i in range(0, indices.size(), 3):
-			var swap = indices[i+1]
-			indices[i+1] = indices[i+2]
-			indices[i+2] = swap
-		var arrays = []
-		arrays.resize(Mesh.ARRAY_MAX)
-		arrays[Mesh.ARRAY_VERTEX] = vertices
-		arrays[Mesh.ARRAY_NORMAL] = normals
-		arrays[Mesh.ARRAY_INDEX] = indices
-		var mesh = ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		meshes[id] = mesh
-	var faces = PackedVector3Array()
-	for source in world.meshes:
-		var instance = MultiMeshInstance3D.new()
-		var multi = MultiMesh.new()
-		multi.transform_format = MultiMesh.TRANSFORM_3D
-		multi.use_colors = true
-		multi.mesh = meshes[source.geometry]
-		multi.instance_count = source.transforms.size()
-		for i in source.transforms.size():
-			var transform = Data.from_matrix(source.transforms[i])
-			multi.set_instance_transform(i, transform)
-			if source.colors.size() > i:
-				var c: Array = source.colors[i]
-				multi.set_instance_color(i, Color(c[0],c[1],c[2]).linear_to_srgb())
-			else: multi.set_instance_color(i, Color.WHITE)
-			# Do not make sky, grass or distant forest collision geometry.
-			if source.transforms.size() < 500 and absf(transform.origin.x) < 24 and transform.origin.z > -60 and transform.origin.y < 12:
-				for vertex in multi.mesh.get_faces(): faces.append(transform * vertex)
-		instance.multimesh = multi
-		instance.material_override = materials[source.material]
-		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if source.shadow else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(instance)
-	var body = StaticBody3D.new()
-	var collider = CollisionShape3D.new()
-	var shape = ConcavePolygonShape3D.new()
-	shape.backface_collision = true
-	shape.set_faces(faces)
-	collider.shape = shape
-	body.add_child(collider)
-	add_child(body)
-	for sign in world.signs:
-		var label = Label3D.new()
-		label.text = sign.text + "\n" + sign.subtitle
-		label.font_size = 42
-		label.pixel_size = sign.width / 640.0
-		label.modulate = Color("e4dfbd")
-		label.outline_size = 5
-		label.outline_modulate = Color("303e38")
-		label.transform = Data.from_matrix(sign.matrix)
-		add_child(label)
+	definition = Maps.definition(map_id)
+	bounds = definition.bounds
+	if map_id == "dust": walk_regions = Maps.Dust.polygons()
+	var scenery: Node3D = load(definition.scene).instantiate()
+	add_child(scenery)
+	obstacles = scenery.get_meta("navigation_obstacles")
+	if map_id == "outpost": add_child(preload("res://scripts/river.gd").new())
 	var environment = WorldEnvironment.new()
 	environment.environment = Environment.new()
 	environment.environment.background_mode = Environment.BG_COLOR
-	environment.environment.background_color = Color("b1c7bd")
+	environment.environment.background_color = definition.sky
 	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.environment.ambient_light_color = Color("e0ecde")
 	environment.environment.ambient_light_energy = .35
 	environment.environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	environment.environment.fog_enabled = true
-	environment.environment.fog_light_color = Color("b1c7bd")
-	environment.environment.fog_density = .003
+	environment.environment.fog_light_color = definition.fog
+	environment.environment.fog_density = .0015 if map_id == "dust" else .003
 	add_child(environment)
 	sun = DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-52, -35, 0)
-	sun.light_color = Color("ffe0b3")
+	sun.rotation_degrees = Vector3(-48,-32,0) if map_id == "dust" else Vector3(-52,-35,0)
+	sun.light_color = definition.sun
 	sun.light_energy = .8
 	sun.shadow_enabled = Data.settings.quality > 0
 	sun.directional_shadow_max_distance = 65
@@ -106,31 +41,19 @@ func _ready() -> void:
 	build_grid()
 
 func build_grid() -> void:
-	# Same conservative quarter-metre river strips and .95 m navigation radius as the source.
-	var xs: Array[float] = []
-	for i in range(177): xs.append(-22 + i * .25)
-	for x in [-12.6, -7.4, 7.4, 12.6]: xs.append(x)
-	xs.sort()
-	for i in range(1, xs.size()):
-		var a = xs[i-1]
-		var b = xs[i]
-		if is_equal_approx(a, b): continue
-		if (a >= -12.6 and b <= -7.4) or (a >= 7.4 and b <= 12.6): continue
-		var low = minf(Data.river_center(a), Data.river_center(b)) - 1.25
-		var high = maxf(Data.river_center(a), Data.river_center(b)) + 1.25
-		water_obstacles.append(Rect2(a-.95, low-.95, b-a+1.9, high-low+1.9))
+	# Shallow water is walkable; only solid scenery blocks enemy navigation.
 	for o in obstacles:
 		index_obstacle(Rect2(o.minX-.95,o.minZ-.95,o.maxX-o.minX+1.9,o.maxZ-o.minZ+1.9),false)
-	for rect in water_obstacles: index_obstacle(rect,true)
-	grid.region = Rect2i(0,0,69,97)
+	grid.region = Rect2i(Vector2i.ZERO,Vector2i(ceil(bounds.size.x/CELL)+1,ceil(bounds.size.y/CELL)+1))
 	grid.cell_size = Vector2(CELL,CELL)
-	grid.offset = Vector2(-22,-48)
+	grid.offset = bounds.position
 	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
 	grid.update()
-	for y in range(97):
-		for x in range(69):
-			var p = Vector2(-22+x*CELL, -48+y*CELL)
-			grid.set_point_solid(Vector2i(x,y), not clear(p,p))
+	for y in grid.region.size.y:
+		for x in grid.region.size.x:
+			var p = bounds.position+Vector2(x,y)*CELL
+			grid.set_point_solid(Vector2i(x,y), not clear(p,p) or (map_id == "dust" and steep_edge(p)))
+			grid.set_point_weight_scale(Vector2i(x,y),1.0/Data.WADE_SPEED if map_id == "outpost" and Data.water(p) else 1.0)
 
 func segment_rect(a: Vector2, b: Vector2, rect: Rect2) -> bool:
 	var near = 0.0
@@ -156,7 +79,15 @@ func index_obstacle(rect: Rect2, is_water: bool) -> void:
 			collision_buckets[key].append(obstacle)
 
 func clear(a: Vector2, b: Vector2, allow_water := false) -> bool:
-	if minf(a.x,b.x) < -21.05 or maxf(a.x,b.x) > 21.05 or minf(a.y,b.y) < -47.05 or maxf(a.y,b.y) > 13.05: return false
+	if not bounds.grow(-.95).has_point(a) or not bounds.grow(-.95).has_point(b): return false
+	if map_id == "dust" and (not walkable(a) or not walkable(b)): return false
+	if map_id == "dust" and a.distance_squared_to(b) > .0001:
+		var steps = maxi(1,ceili(a.distance_to(b)/.3))
+		var previous = a
+		for i in range(1,steps+1):
+			var point = a.lerp(b,float(i)/steps)
+			if absf(Maps.Dust.height(point)-Maps.Dust.height(previous)) > point.distance_to(previous)*1.05+.01: return false
+			previous = point
 	for y in range(floori(minf(a.y,b.y)/4),floori(maxf(a.y,b.y)/4)+1):
 		for x in range(floori(minf(a.x,b.x)/4),floori(maxf(a.x,b.x)/4)+1):
 			for obstacle in collision_buckets.get(Vector2i(x,y),[]):
@@ -165,7 +96,7 @@ func clear(a: Vector2, b: Vector2, allow_water := false) -> bool:
 	return true
 
 func nearest_cell(p: Vector2) -> Vector2i:
-	var base = Vector2i(roundi((p.x+22)/CELL), roundi((p.y+48)/CELL))
+	var base = Vector2i(((p-bounds.position)/CELL).round())
 	if grid.is_in_boundsv(base) and not grid.is_point_solid(base) and clear(p,grid.get_point_position(base),Data.water(p)): return base
 	var best = Vector2i(-1,-1)
 	var distance = INF
@@ -189,3 +120,13 @@ func path_to(a: Vector2, b: Vector2) -> PackedVector2Array:
 
 func surface_hit(origin: Vector3, end: Vector3) -> Dictionary:
 	return get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(origin,end,1))
+
+func walkable(p: Vector2) -> bool:
+	for polygon in walk_regions:
+		if Geometry2D.is_point_in_polygon(p,polygon): return true
+	return false
+
+func steep_edge(p: Vector2) -> bool:
+	for dir in [Vector2.LEFT,Vector2.RIGHT,Vector2.UP,Vector2.DOWN]:
+		if absf(Maps.Dust.height(p+dir*.5)-Maps.Dust.height(p)) > .54: return true
+	return false

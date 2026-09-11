@@ -2,13 +2,15 @@ extends Node
 ## Steam lobby/P2P and ENet LAN transports feed the exact same authoritative simulation.
 signal changed
 signal match_started
+signal map_preparing
 signal input_received(id: String, command: Dictionary)
 signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-1"
+const PROTOCOL = "undead-survivor-godot-2"
 const PORT = 27777
+var map_id = "outpost"
 var transport = ""
 var local_id = "solo"
 var host_id = ""
@@ -16,6 +18,9 @@ var members: Dictionary = {}
 var rooms: Array = []
 var active = false
 var playing = false
+var loading = false
+var loading_started = 0
+var ready_members: Dictionary = {}
 var status = "可使用局域网，或通过 Steam 创建房间"
 var room_code = ""
 var nonce = ""
@@ -26,6 +31,8 @@ var steam_ready = false
 var last_host = 0.0
 var heartbeat = 0.0
 var input_sequences: Dictionary = {}
+var sent_edges = {"jump":0,"reload":0}
+var received_edges: Dictionary = {}
 var send_sequence = 0
 var receive_sequence = -1
 var packet_counts: Dictionary = {}
@@ -151,6 +158,7 @@ func _steam_created(result: int, id: int) -> void:
 	steam.setLobbyData(id,"game",PROTOCOL)
 	steam.setLobbyData(id,"name",str(steam.getPersonaName())+" 的哨站")
 	steam.setLobbyData(id,"playing","0")
+	steam.setLobbyData(id,"map_id",map_id)
 	steam.setLobbyJoinable(id,true)
 
 func _steam_joined(id: int, _permissions: int, _locked: bool, response: int) -> void:
@@ -168,6 +176,8 @@ func _steam_joined(id: int, _permissions: int, _locked: bool, response: int) -> 
 	local_id = str(steam.getSteamID())
 	host_id = str(steam.getLobbyOwner(id))
 	room_code = str(id)
+	var selected_map = str(steam.getLobbyData(id,"map_id"))
+	if Data.Maps.valid(selected_map): map_id = selected_map
 	last_host = Time.get_ticks_msec()/1000.0
 	refresh_steam_members()
 	status = "Steam 房间已连接"
@@ -181,7 +191,11 @@ func refresh_steam_members() -> void:
 		var id: int = steam.getLobbyMemberByIndex(lobby,i)
 		members[str(id)] = str(steam.getFriendPersonaName(id)).left(128)
 	for id in previous:
-		if not members.has(id): member_left.emit(id)
+		if not members.has(id):
+			if loading:
+				_connection_lost("队员在加载期间离开，请重新创建房间")
+				return
+			member_left.emit(id)
 	if active and not members.has(host_id):
 		_connection_lost("房主已离开，合作对局结束")
 		return
@@ -201,21 +215,47 @@ func _steam_rooms(ids: Array) -> void:
 	changed.emit()
 
 func begin_match() -> void:
-	if not is_host() or members.size() < 2 or members.size() > 4 or playing: return
-	playing = true
+	if not is_host() or members.size() < 2 or members.size() > 4 or playing or loading: return
+	loading = true
+	loading_started = Time.get_ticks_msec()
+	ready_members.clear()
 	nonce = str(Time.get_unix_time_from_system())+"-"+str(randi())
+	status = "正在加载战场，等待所有队员准备完成…"
+	broadcast({"type":"prepare","members":members,"nonce":nonce,"map_id":map_id},true)
+	map_preparing.emit()
+	changed.emit()
+
+func confirm_map_ready() -> void:
+	if not active or not loading: return
+	if is_host():
+		ready_members[local_id] = true
+		finish_preparing()
+	else: send_to(host_id,{"type":"map_ready","map_id":map_id},true)
+
+func finish_preparing() -> void:
+	if not is_host() or not loading or members.size() < 2: return
+	for id in members:
+		if not ready_members.has(id): return
+	loading = false
+	playing = true
 	if transport == "steam":
 		steam.setLobbyData(lobby,"playing","1")
 		steam.setLobbyJoinable(lobby,false)
-	broadcast({"type":"start","members":members,"nonce":nonce},true)
+	broadcast({"type":"start","members":members,"nonce":nonce,"map_id":map_id},true)
 	match_started.emit()
 	changed.emit()
 
 func send_to(id: String, packet: Dictionary, reliable := false) -> void:
 	if id == local_id: return
-	packet.protocol = PROTOCOL
-	packet.session = nonce
-	var bytes = var_to_bytes(packet).compress(FileAccess.COMPRESSION_DEFLATE)
+	send_bytes(id,encode_packet(packet),reliable)
+
+func encode_packet(packet: Dictionary) -> PackedByteArray:
+	var envelope = packet.duplicate()
+	envelope.protocol = PROTOCOL
+	envelope.session = nonce
+	return var_to_bytes(envelope).compress(FileAccess.COMPRESSION_DEFLATE)
+
+func send_bytes(id: String, bytes: PackedByteArray, reliable: bool) -> void:
 	if transport == "lan" and peer and peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 		var remote = peer.get_peer(int(id))
 		if not remote or remote.get_state() != ENetPacketPeer.STATE_CONNECTED: return
@@ -228,13 +268,31 @@ func send_to(id: String, packet: Dictionary, reliable := false) -> void:
 		steam.sendP2PPacket(int(id),bytes,2 if reliable or bytes.size() > 1100 else 0,0)
 
 func broadcast(packet: Dictionary, reliable := false) -> void:
+	var bytes = encode_packet(packet)
 	for id in members:
-		if id != local_id: send_to(id,packet.duplicate(),reliable)
+		if id != local_id: send_bytes(id,bytes,reliable)
 
 func send_input(command: Dictionary) -> void:
 	if not active or not playing or is_host(): return
 	send_sequence += 1
-	send_to(host_id,{"type":"input","command":command,"seq":send_sequence})
+	var payload = command.duplicate()
+	# Every later input carries these counters, so ordered-unreliable coalescing
+	# cannot erase a one-frame jump/reload when several physics ticks share a frame.
+	for action in sent_edges:
+		if command.get(action,false): sent_edges[action] += 1
+		payload[action+"_seq"] = sent_edges[action]
+	send_to(host_id,{"type":"input","command":payload,"seq":send_sequence})
+
+func recover_input_edges(id: String, command: Dictionary) -> Dictionary:
+	var clean = command.duplicate()
+	var previous: Dictionary = received_edges.get(id,{"jump":0,"reload":0})
+	for action in previous:
+		var sequence = command.get(action+"_seq",0)
+		if not sequence is int or sequence < 0: return {}
+		clean[action] = sequence > previous[action] if command.has(action+"_seq") else command.get(action,false)
+		previous[action] = maxi(previous[action],sequence)
+	received_edges[id] = previous
+	return clean
 
 func send_world(state: Dictionary, effects: Array) -> void:
 	if not is_host(): return
@@ -249,6 +307,9 @@ func _process(dt: float) -> void:
 		packet_counts.clear()
 	if steam_ready: steam.run_callbacks()
 	if not active: return
+	if loading and Time.get_ticks_msec()-loading_started > 30000:
+		_connection_lost("战场加载超时，请重新创建房间")
+		return
 	if transport == "lan" and peer:
 		peer.poll()
 		var budget = 128
@@ -284,12 +345,26 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 	if packet.get("type") == "hello" and is_host() and transport == "lan" and not playing and members.size() < 4:
 		if not packet.get("name") is String: return
 		members[sender] = packet.name.left(32)
-		broadcast({"type":"members","members":members},true)
+		broadcast({"type":"members","members":members,"map_id":map_id},true)
 		changed.emit()
 		return
 	if sender != host_id and not members.has(sender): return
 	if sender == host_id: last_host = Time.get_ticks_msec()/1000.0
 	match packet.get("type"):
+		"prepare":
+			if sender == host_id and not playing and packet.get("members") is Dictionary and packet.members.size() in [2,3,4] and packet.get("nonce") is String and Data.Maps.valid(packet.get("map_id")):
+				map_id = packet.map_id
+				nonce = packet.nonce
+				members = packet.members
+				loading = true
+				loading_started = Time.get_ticks_msec()
+				status = "正在加载房主选择的战场…"
+				map_preparing.emit()
+				changed.emit()
+		"map_ready":
+			if is_host() and loading and members.has(sender) and packet.get("session") == nonce and packet.get("map_id") == map_id:
+				ready_members[sender] = true
+				finish_preparing()
 		"net_probe":
 			if is_host() and playing and packet.get("session") == nonce and packet.get("seq") is int:
 				send_to(sender,{"type":"net_reply","seq":packet.seq},true)
@@ -297,21 +372,24 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 			if sender == host_id and playing and packet.get("session") == nonce and packet.get("seq") is int:
 				record_probe_reply(packet.seq,Time.get_ticks_msec())
 		"members":
-			if sender == host_id and packet.get("members") is Dictionary and packet.members.size() <= 4:
+			if sender == host_id and packet.get("members") is Dictionary and packet.members.size() <= 4 and Data.Maps.valid(packet.get("map_id")):
+				map_id = packet.map_id
 				members = packet.members
 				status = "房间已连接，等待房主开始"
 				changed.emit()
 		"start":
-			if sender == host_id and not playing and packet.get("members") is Dictionary and packet.members.size() in [2,3,4] and packet.get("nonce") is String:
+			if sender == host_id and loading and not playing and packet.get("nonce") == nonce and packet.get("map_id") == map_id and packet.get("members") is Dictionary and packet.members.size() in [2,3,4]:
+				map_id = packet.map_id
 				nonce = packet.nonce
 				members = packet.members
 				playing = true
+				loading = false
 				match_started.emit()
 		"input":
 			if is_host() and playing and packet.get("session") == nonce and packet.get("command") is Dictionary and packet.get("seq") is int:
 				if packet.seq > input_sequences.get(sender,-1):
 					input_sequences[sender] = packet.seq
-					input_received.emit(sender,packet.command)
+					input_received.emit(sender,recover_input_edges(sender,packet.command))
 		"world":
 			if sender == host_id and playing and packet.get("session") == nonce and packet.get("seq") is int and packet.seq > receive_sequence:
 				if valid_world(packet.get("state")):
@@ -325,6 +403,7 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 			elif is_host(): _peer_left(int(sender))
 
 func valid_world(value) -> bool:
+	if not value is Dictionary or value.get("map_id") != map_id: return false
 	if not value is Dictionary or not value.has_all(["pawns","zombies","mode","elapsed","wave","cleared","spawned","kills","rest","failed","cause","culprit"]): return false
 	if not value.pawns is Dictionary or value.pawns.size() > 4 or not value.zombies is Array: return false
 	for key in ["elapsed","wave","cleared","spawned","kills","rest","culprit"]:
@@ -339,6 +418,7 @@ func valid_world(value) -> bool:
 		if p.hp < 0 or p.hp > 100 or p.weapon < 0 or p.weapon > 9 or p.height < -2 or p.height > 32: return false
 	for z in value.zombies:
 		if not z is Dictionary or not z.has_all(["id","pos","kind","hp","armor","down","born","heading","attack_time","rage","rage_pause","state"]): return false
+		if z.get("map_id") != map_id: return false
 		if not z.pos is Vector2 or not z.pos.is_finite() or not Data.enemies.has(z.kind): return false
 		for key in ["id","hp","armor","down","born","heading","attack_time","rage_pause"]:
 			if not (z[key] is int or z[key] is float) or not is_finite(z[key]): return false
@@ -347,12 +427,17 @@ func valid_world(value) -> bool:
 func _peer_left(id: int) -> void:
 	if not active: return
 	var key = str(id)
+	if loading and members.has(key):
+		_connection_lost("队员在加载期间离开，请重新创建房间")
+		return
 	if key == host_id and not is_host():
 		_connection_lost("房主已断开连接")
 		return
 	members.erase(key)
+	received_edges.erase(key)
+	input_sequences.erase(key)
 	member_left.emit(key)
-	if is_host(): broadcast({"type":"members","members":members},true)
+	if is_host(): broadcast({"type":"members","members":members,"map_id":map_id},true)
 	changed.emit()
 
 func _connection_lost(message: String) -> void:
@@ -362,6 +447,9 @@ func _connection_lost(message: String) -> void:
 	changed.emit()
 
 func leave() -> void:
+	map_id = Data.settings.map_id
+	loading = false
+	ready_members.clear()
 	if active:
 		if is_host(): broadcast({"type":"leave"},true)
 		else: send_to(host_id,{"type":"leave"},true)
@@ -381,6 +469,8 @@ func leave() -> void:
 	host_id = ""
 	members.clear()
 	input_sequences.clear()
+	sent_edges = {"jump":0,"reload":0}
+	received_edges.clear()
 	room_code = ""
 	nonce = ""
 	send_sequence = 0
@@ -444,3 +534,10 @@ func record_snapshot(seq: int, now: int) -> void:
 	snapshot_samples.append({"time":now,"expected":expected,"missing":expected-1})
 	while not snapshot_samples.is_empty() and now-snapshot_samples[0].time > 30000:
 		snapshot_samples.pop_front()
+
+func choose_map(id: String) -> void:
+	if not is_host() or playing or loading or not Data.Maps.valid(id): return
+	map_id = id
+	if transport == "steam": steam.setLobbyData(lobby,"map_id",id)
+	broadcast({"type":"members","members":members,"map_id":map_id},true)
+	changed.emit()
