@@ -333,6 +333,7 @@ func valid_world(value) -> bool:
 		var p = value.pawns[id]
 		if not members.has(id) or not p is Dictionary or not p.has_all(["pos","hp","height","yaw","pitch","weapon","ammo","appearance","fire_anim","switch","reload","reloading","aim","hits","shots","kills","protection","requested","id","name"]): return false
 		if not p.pos is Vector2 or not p.pos.is_finite() or not p.ammo is Array or p.ammo.size() != 10 or not p.appearance is Array or p.appearance.size() != 3: return false
+		if not p.appearance[0] is int or int(p.appearance[0]) < 0 or int(p.appearance[0]) >= Data.MODELS.size(): return false
 		for key in ["hp","height","yaw","pitch","weapon","fire_anim","switch","reload","hits","shots","kills","protection","requested"]:
 			if not (p[key] is int or p[key] is float) or not is_finite(p[key]): return false
 		if p.hp < 0 or p.hp > 100 or p.weapon < 0 or p.weapon > 9 or p.height < 0 or p.height > 4: return false

@@ -20,7 +20,7 @@ const SAVE_PATH = "user://survivor-godot-v1.json"
 const RIVER = [Vector2(-22,-14), Vector2(-17,-12), Vector2(-12,-14), Vector2(-6,-18), Vector2(0,-17), Vector2(6,-12), Vector2(12,-11), Vector2(17,-13), Vector2(22,-16)]
 const SPAWNS = [Vector2(-13,-45), Vector2(1,-45), Vector2(12,-45), Vector2(19,-36), Vector2(19,-20), Vector2(19,-4)]
 const PRACTICE = [Vector2(-5.8,-9.5), Vector2(.15,-22), Vector2(5.4,-21), Vector2(-1,-31)]
-const MODELS = ["Soldier_Male", "Soldier_Female", "Casual_Male", "Casual_Female", "Worker_Male", "Worker_Female"]
+const MODELS = ["蓝衣青年", "棕衣大叔", "绿衣队员", "红衣女性"]
 const PALETTE = [0x355747,0x365d73,0x794638,0x987f4c,0x663a4b,0x4b595b]
 
 func _ready() -> void:

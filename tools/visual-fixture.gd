@@ -10,6 +10,26 @@ func _process(_dt: float) -> void:
  settle += 1
  game.set_process(false)
  var spec: Dictionary = JSON.parse_string(raw)
+ if spec.view == "lineup":
+  game.weapon.visible = false
+  game.ui.root.visible = false
+  for actor in game.partners.values(): actor.visible = false
+  if not has_node("Lineup"):
+   var lineup = Node3D.new()
+   lineup.name = "Lineup"
+   add_child(lineup)
+   for index in 4:
+    var model = load("res://scripts/survivor_model.gd").new()
+    lineup.add_child(model)
+    model.build(index)
+    model.position = Vector3((index-1.5)*1.05,0,5)
+  game.camera.position = Vector3(0,1.5,.3)
+  game.camera.look_at(Vector3(0,.95,5))
+  game.camera.fov = 54
+  RenderingServer.force_draw(true)
+  if settle >= 4: JavaScriptBridge.eval("window.__visualReady = "+JSON.stringify(raw))
+  return
+ if has_node("Lineup"): get_node("Lineup").visible = false
  var p: Dictionary = game.sim.pawns.visual
  p.weapon = int(spec.weapon)
  p.requested = p.weapon
@@ -42,6 +62,7 @@ func _process(_dt: float) -> void:
  game.ui.root.visible = spec.view == "first"
  game.ui.tick(0)
  game.effects.particles.clear()
+ game.effects.step(0)
  if spec.action == "fire" and p.weapon != 6:
   var event = {"kind":"shot","player":local.id if spec.view == "first" else "visual","weapon":p.weapon,"from":Vector3(.24,1.52,4.5 if spec.view != "first" else 8.5),"to":Vector3(0,1.5,-25)}
   game.handle_effects([event])

@@ -317,23 +317,40 @@ func run() -> void:
 		game.effects.step(0)
 		var transform: Transform3D = game.effects.particle_transform(game.effects.particles[0])
 		check((transform*Vector3(0,0,-.5)).distance_to(start) < .001 and (transform*Vector3(0,0,.5)).distance_to(end) < .001,"Tracer starts at muzzle and ends at impact for arbitrary headings")
-	var actor = load("res://scripts/partner_view.gd").new()
-	game.add_child(actor)
-	p.hp = 100
-	p.height = 0
-	p.pitch = 0
-	actor.setup(p)
-	for index in 10:
-		p.weapon = index
-		p.requested = index
-		p.reloading = false
-		p.fire_anim = 0
-		actor.sync(p,.016)
-		var hand = actor.skeleton.find_bone("Fist.R")
-		var grip: Vector3 = actor.skeleton.global_transform*actor.skeleton.get_bone_global_pose(hand).origin
-		check(actor.grip_position().distance_to(grip) < .08,"Third-person grip follows fist for weapon "+str(index))
-		check(actor.muzzle_position().is_finite(),"Finite model muzzle for weapon "+str(index))
-	actor.queue_free()
+	var survivors = load("res://scripts/survivor_model.gd").PROFILES
+	check(survivors.size() == 4 and survivors.filter(func(v): return v.sex == "male").size() == 3 and survivors[3].sex == "female","Exactly three male survivors and one female")
+	var assignment = simulation.new(game.arena)
+	var seen: Dictionary = {}
+	for i in 4:
+		assignment.add_pawn(str(i),"Survivor",i)
+		seen[assignment.pawns[str(i)].appearance[0]] = true
+	check(seen.size() == 4,"Four-player roster randomly assigns distinct models")
+	var before: Array = assignment.pawns["0"].appearance.duplicate()
+	assignment.pawns.erase("1")
+	assignment.add_pawn("replacement","Replacement",1)
+	check(assignment.pawns["0"].appearance == before,"Joining player does not reroll existing avatars")
+	seen.clear()
+	for pawn in assignment.pawns.values(): seen[pawn.appearance[0]] = true
+	check(seen.size() == 4,"Replacement player takes the free survivor")
+	for model in 4:
+		var actor = load("res://scripts/partner_view.gd").new()
+		game.add_child(actor)
+		p.hp = 100
+		p.height = 0
+		p.pitch = 0
+		p.appearance = [model,0,0]
+		actor.setup(p)
+		for index in 10:
+			p.weapon = index
+			p.requested = index
+			p.reloading = false
+			p.fire_anim = 0
+			actor.sync(p,.016)
+			var hand = actor.skeleton.find_bone("Fist.R")
+			var grip: Vector3 = actor.skeleton.global_transform*actor.skeleton.get_bone_global_pose(hand).origin
+			check(actor.grip_position().distance_to(grip) < .08,"Third-person grip follows fist for weapon "+str(index))
+			check(actor.muzzle_position().is_finite(),"Finite model muzzle for weapon "+str(index))
+		actor.queue_free()
 	# Exercise every menu without presenting it or changing persisted settings.
 	for method in ["show_home","show_settings","show_guide","show_scores","show_multiplayer","show_pause"]:
 		game.ui.call(method)

@@ -547,7 +547,7 @@ func create_portrait(pawn: Dictionary) -> SubViewport:
 	var avatar: Node3D = partner.avatar
 	avatar.reparent(viewport)
 	avatar.position = Vector3.ZERO
-	avatar.rotation = Vector3.ZERO
+	avatar.rotation = Vector3(0,PI,0)
 	if partner.animation:
 		for clip in partner.animation.get_animation_list():
 			if clip.to_lower().ends_with("idle"):

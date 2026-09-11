@@ -13,27 +13,9 @@ var flash: MeshInstance3D
 
 func setup(p: Dictionary) -> void:
 	var appearance: Array = p.appearance
-	var model_name: String = Data.MODELS[clampi(int(appearance[0]),0,5)]
-	avatar = load("res://assets/models/characters/%s.gltf" % model_name).instantiate()
+	avatar = preload("res://scripts/survivor_model.gd").new()
 	add_child(avatar)
-	# Preserve the original character scale and material assignments.
-	avatar.scale = Vector3.ONE*.61
-	for mesh in avatar.find_children("*","MeshInstance3D",true,false):
-		for surface in mesh.mesh.get_surface_count():
-			var material: Material = mesh.get_active_material(surface)
-			if not material is StandardMaterial3D: continue
-			var copy: StandardMaterial3D = material.duplicate()
-			copy.roughness = .82
-			copy.metallic = .02
-			var mat_name = material.resource_name.to_lower()
-			var primary: Array = [["main","helmet"],["main"],["shirt"],["shirt"],["vest","hat"],["vest","hat"]][clampi(int(appearance[0]),0,5)]
-			var accent: Array = [["darkgreen"],["darkgreen","hair"],["pants","belt"],["pants","belt"],["shirt","pants"],["shirt","pants"]][clampi(int(appearance[0]),0,5)]
-			if mat_name in primary: copy.albedo_color = Data.rgb(Data.PALETTE[clampi(int(appearance[1]),0,5)])
-			elif mat_name in accent: copy.albedo_color = Data.rgb(Data.PALETTE[clampi(int(appearance[2]),0,5)])
-			mesh.set_surface_override_material(surface,copy)
-	var finder = preload("res://scripts/weapon_view.gd").new()
-	animation = finder.find_animation(avatar)
-	finder.free()
+	avatar.build(int(appearance[0]))
 	label = Label3D.new()
 	label.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
 	label.text = p.name
@@ -43,7 +25,7 @@ func setup(p: Dictionary) -> void:
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.modulate = Color("eadfc6")
 	add_child(label)
-	avatar.rotation.y = PI
+	avatar.rotation.y = 0
 	for node in avatar.find_children("*","Skeleton3D",true,false): skeleton = node
 	flash = MeshInstance3D.new()
 	var flash_mesh = SphereMesh.new()
@@ -104,25 +86,13 @@ func sync(p: Dictionary, dt: float) -> void:
 			weapon_animation.seek(progress*weapon_animation.get_animation(clip).length,true)
 	if axe_pivot:
 		preload("res://scripts/weapon_view.gd").sample_axe(axe_pivot,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0)
-	if animation:
-		var action = "Death" if p.hp <= 0 else "Shoot_OneHanded" if p.reloading else "Shoot_OneHanded" if p.fire_anim > w.fireDuration-.08 else "Jump" if p.height > .06 else "Run_Carry" if moving else "Shoot_OneHanded"
-		for clip in animation.get_animation_list():
-			if clip.to_lower() == action.to_lower() or clip.to_lower().ends_with("/"+action.to_lower()):
-				if animation.current_animation != clip:
-					animation.get_animation(clip).loop_mode = Animation.LOOP_NONE if action in ["Death","Jump","Shoot_OneHanded","PickUp"] else Animation.LOOP_LINEAR
-					animation.play(clip)
-				if p.reloading:
-					animation.pause()
-					animation.seek(clampf(1-p.reload/maxf(.1,w.reloadDuration),0,1)*animation.get_animation(clip).length,true)
-				if action == "Shoot_OneHanded":
-					animation.pause()
-					animation.seek(.1,true)
-				break
+	avatar.animate(p,moving,dt)
 
-	if skeleton and p.hp > 0 and int(p.weapon) not in [2,3,6]:
+	if skeleton and p.hp > 0 and int(p.weapon) != 6:
 		var lift = .06 if p.aim else 0.0
-		pose_hand("R",Vector3(.20,1.03+lift,-.25))
-		pose_hand("L",Vector3(.14,.92,-.25) if p.reloading else Vector3(.20,1.06+lift,-.47))
+		pose_hand("R",Vector3(.20,1.23+lift,-.28))
+		if int(p.weapon) not in [2,3]:
+			pose_hand("L",Vector3(.14,1.12,-.25) if p.reloading else Vector3(.20,1.25+lift,-.47))
 	# The grip follows the actual animated fist, never a fixed point near the face.
 	if skeleton:
 		var hand = skeleton.find_bone("Fist.R")

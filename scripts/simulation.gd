@@ -34,8 +34,12 @@ func _init(world = null) -> void:
 func add_pawn(id: String, player_name: String, index: int) -> void:
 	var ammo: Array = []
 	for w in Data.weapons: ammo.append(int(w.capacity))
-	var primary = random.randi_range(0,5)
-	pawns[id] = {"id":id,"name":player_name,"pos":Vector2((index%2)*2.8-1.4,9+floori(index/2.0)*2.6),"yaw":0.0,"pitch":0.0,"height":0.0,"velocity":0.0,"air":Vector2.ZERO,"hp":100,"protection":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[random.randi_range(0,5),primary,(primary+1+random.randi_range(0,4))%6]}
+	# The authority draws without replacement; snapshots carry the stable result.
+	var available = range(Data.MODELS.size())
+	for pawn in pawns.values(): available.erase(int(pawn.appearance[0]))
+	if available.is_empty(): available = range(Data.MODELS.size())
+	var model: int = available[random.randi_range(0,available.size()-1)]
+	pawns[id] = {"id":id,"name":player_name,"pos":Vector2((index%2)*2.8-1.4,9+floori(index/2.0)*2.6),"yaw":0.0,"pitch":0.0,"height":0.0,"velocity":0.0,"air":Vector2.ZERO,"hp":100,"protection":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0]}
 
 func start(game_mode: String) -> void:
 	mode = game_mode
