@@ -63,17 +63,17 @@ const run = (name, command, args, timeout) => launch(name, command, args, timeou
 const powershell = (name, script, args = [], timeout = 180_000) => run(name, 'pwsh.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, ...args], timeout);
 const engine = path.join(root, '.runtime/Godot_v4.5.2-stable_win64_console.exe');
 const godotArgs = ['--headless', '--audio-driver', 'Dummy', '--path', root];
-async function network(count) {
+async function network(count, map = 'outpost') {
   const peers = [];
   const args = [...godotArgs, '--script', 'res://tools/validate-network.gd', '--', '--silent', '--automation', ...(count === 4 ? ['--four'] : [])];
-  const host = launch(`network-${count}-host`, engine, [...args, '--host'], 30_000);
+  const host = launch(`network-${map}-${count}-host`, engine, [...args, '--host', `--map=${map}`, `--expect-map=${map}`], 30_000);
   peers.push(host.promise);
   const deadline = Date.now() + 15_000;
   while (!host.output().includes('NETWORK READY')) {
     if (Date.now() > deadline || host.child.exitCode !== null) throw new Error('Network host did not become ready.');
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  for (let i = 1; i < count; i++) peers.push(launch(`network-${count}-client-${i}`, engine, args, 30_000).promise);
+  for (let i = 1; i < count; i++) peers.push(launch(`network-${map}-${count}-client-${i}`, engine, [...args, '--map=outpost', `--expect-map=${map}`], 30_000).promise);
   const outputs = await Promise.all(peers);
   if (!outputs.every(output => /result=PASS/.test(output))) throw new Error('Missing network pass marker.');
 }
@@ -87,8 +87,14 @@ try {
   sourceDigest = await fingerprint();
   const output = await run('runtime', engine, [...godotArgs, '--script', 'res://tools/validate-runtime.gd', '--', '--silent', '--automation']);
   if (!/RUNTIME VALIDATION: \d+ checks; 0 failures/.test(output)) throw new Error('Missing runtime validation pass marker.');
+  for (const [name, marker] of [['native-components', 'NATIVE COMPONENTS'], ['maps', 'MAP VALIDATION']]) {
+    const result = await run(name, engine, [...godotArgs, '--script', `res://tools/validate-${name}.gd`, '--', '--silent', '--automation']);
+    if (!new RegExp(`${marker}: \\d+ checks; 0 failures`).test(result)) throw new Error(`Missing ${name} pass marker.`);
+  }
   await network(2);
   await network(4);
+  await network(2, 'dust');
+  await network(4, 'dust');
   await mkdir('build/web', { recursive: true });
   await run('export-web', engine, [...godotArgs, '--export-release', 'Web QA']);
   await run('browser-playthrough', process.execPath, ['node_modules/@playwright/test/cli.js', 'test'], 360_000);
@@ -108,7 +114,7 @@ try {
   for (const child of children) stop(child);
   const report = { status: failure ? 'failed' : 'passed', startedAt, finishedAt: new Date().toISOString(),
     commit: git(['rev-parse', 'HEAD']), sourceDigest, release, stages, failure,
-    boundaries: ['Web gameplay runs with actual browser input and read-only telemetry.', 'Screenshots validate rendered output; they do not establish subjective feel parity.', 'Windows EXE smoke uses the headless driver, not a graphical desktop.', 'Cross-account Steam matchmaking is not verified by ENet or the EXE smoke check.'] };
+    boundaries: ['覆盖单人模式、多人模式入口、原生组件和两张地图；练习模式已移除。', '两张地图分别运行本机 ENet 双人和四人检查；不代表 Steam 双账号验证。', '网页使用独立无界面 Chromium、实际键鼠输入及只读遥测；截图不能证明主观手感或原版地图视觉一致性。', release ? '本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。' : '本次为 npm run verify 全量验收，不包含 verify:release 的 Windows EXE 导出与打包。'] };
   await writeFile('artifacts/acceptance.json', JSON.stringify(report, null, 2));
   await writeFile('artifacts/acceptance.md', `# 自动验收：${report.status}\n\n提交：${report.commit}\n\n源码 SHA-256：${sourceDigest ?? '未完成导入'}\n\n| 阶段 | 结果 | 耗时 |\n| --- | --- | --- |\n${stages.map(s => `| ${s.name} | ${s.passed ? '通过' : '失败'} | ${s.seconds.toFixed(1)}s |`).join('\n')}\n\n${report.boundaries.map(b => '- ' + b).join('\n')}\n${failure ? '\n```text\n' + failure + '\n```\n' : ''}`);
   process.exitCode = failure ? 1 : 0;

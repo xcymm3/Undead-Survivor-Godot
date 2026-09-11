@@ -10,7 +10,7 @@ try {await access(path.join(dest,'.runtime'));}catch{await symlink(path.join(roo
 let source=await readFile('scripts/main.gd','utf8');
 source=source.replace('func _ready() -> void:', 'func _ready() -> void:\n\tcall_deferred("_start_visual")');
 source+=`\nfunc _start_visual() -> void:
-\tstart_solo("practice")
+\tstart_solo("survival")
 \tset_physics_process(false)
 \tsim.zombies.clear()
 \tsim.add_pawn("visual","模型验收",1)

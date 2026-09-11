@@ -14,6 +14,9 @@ var remote_shots := 0
 var sent_stop := false
 var expected := 2
 var stopping := false
+var starting_positions: Dictionary = {}
+var expected_map = "outpost"
+var correct_map = false
 func _initialize() -> void:
 	call_deferred("run")
 
@@ -21,6 +24,9 @@ func run() -> void:
 	game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
 	session = root.get_node("Session")
+	expected_map = root.get_node("Data").settings.map_id
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--expect-map="): expected_map = arg.trim_prefix("--expect-map=")
 	host = "--host" in OS.get_cmdline_user_args()
 	if "--four" in OS.get_cmdline_user_args(): expected = 4
 	begun = Time.get_ticks_msec()
@@ -32,9 +38,11 @@ func run() -> void:
 		session.world_received.connect(func(_state): snapshots += 1)
 	session.match_started.connect(func():
 		started = Time.get_ticks_msec()
+		correct_map = game.arena.map_id == expected_map and game.sim.map_id == expected_map
+		for id in game.sim.pawns: starting_positions[id] = game.sim.pawns[id].pos
 		if host:
 			game.sim.roster.clear()
-			game.sim.spawn(Vector2(1.4,0),"giant")
+			game.sim.spawn(Vector2(1.4,0) if expected_map == "outpost" else load("res://scripts/dust_layout.gd").point(667,264),"giant")
 		else: Input.action_press("forward"))
 
 func _process(_dt: float) -> bool:
@@ -54,14 +62,15 @@ func _process(_dt: float) -> bool:
 		for id in game.sim.pawns:
 			if id != session.host_id:
 				var p: Dictionary = game.sim.pawns[id]
-				remote_moved = remote_moved or p.pos.y < 7
+				remote_moved = remote_moved or p.pos.distance_to(starting_positions.get(id,p.pos)) > .5
 				remote_jumped = remote_jumped or p.height > .3
 				remote_landed = remote_landed or (remote_jumped and p.get("grounded",false))
 				remote_shots = maxi(remote_shots,int(p.shots))
 		if age > (5.0 if host else 4.5):
 			var metrics: Dictionary = session.network_metrics()
 			var body_authority: bool = full_party_bodies and game.sim.player_bodies.size() == game.sim.pawns.size() if host else game.sim.player_bodies.is_empty()
-			var good = remote_moved and remote_jumped and remote_landed and body_authority and remote_shots > 0 and (host or (snapshots >= 20 and metrics.samples >= 2 and metrics.rtt >= 0 and metrics.loss >= 0))
+			var good = correct_map and remote_moved and remote_jumped and remote_landed and body_authority and remote_shots > 0 and (host or (snapshots >= 20 and metrics.samples >= 2 and metrics.rtt >= 0 and metrics.loss >= 0))
+			print("NETWORK MAP: expected=%s actual=%s match=%s" % [expected_map,game.arena.map_id,correct_map])
 			print("NETWORK PHYSICS: jumped=%s landed=%s authority=%s" % [remote_jumped,remote_landed,body_authority])
 			print("NETWORK METRICS: "+JSON.stringify(metrics))
 			print("NETWORK %s: moved=%s shots=%d snapshots=%d result=%s" % ["HOST" if host else "CLIENT",remote_moved,remote_shots,snapshots,"PASS" if good else "FAIL"])

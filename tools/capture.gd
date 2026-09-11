@@ -29,16 +29,23 @@ func capture() -> void:
 	game.set_physics_process(false)
 	DirAccess.make_dir_recursive_absolute("res://docs/screenshots")
 	await shot("home")
+	if "--home-only" in OS.get_cmdline_user_args():
+		game.queue_free()
+		await process_frame
+		viewport.queue_free()
+		await process_frame
+		quit()
+		return
 	game.ui.show_settings()
 	await shot("settings")
-	game.start_solo("practice")
+	game.start_solo("survival")
 	game.focused = true
 	game.set_physics_process(false)
 	game.sim.pawns.solo.pos = Vector2(0,0)
 	game.camera.position = Vector3(0,1.7,0)
 	game.yaw = 0
 	game.pitch = 0
-	await shot("practice")
+	await shot("single-player")
 	for i in range(10):
 		game.sim.pawns.solo.weapon = i
 		game.sim.pawns.solo.requested = i

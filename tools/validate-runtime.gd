@@ -27,22 +27,27 @@ func run() -> void:
 	var sim = simulation.new(game.arena)
 	sim.add_pawn("solo","验证",0)
 	sim.pawns.solo.pos = Vector2(0,9)
-	sim.start("practice")
+	sim.start("survival")
 	await physics_frame
-	check(sim.zombies.size() == 4,"Practice must have all four source targets")
+	check(sim.roster.size() == data.wave_settings(1).count,"Single player prepares the first wave")
+	# Weapon checks control their own enemies; wave spawning is checked separately.
+	sim.rest = 1000
 	for pair in [[1,9],[6,39],[7,44],[8,49],[9,53],[11,61],[12,64],[20,88]]:
 		check(data.wave_settings(pair[0]).count == pair[1],"Wave count %s" % pair[0])
 	check(data.wave_settings(20).speed == 2.8 and data.wave_settings(20).rate == 2.8,"Wave speed/spawn caps")
 	check(data.water(Vector2(0,-17)),"River water data")
 	check(not data.water(Vector2(-10,data.river_center(-10))),"Bridge support")
 	var route = game.arena.path_to(Vector2(1,-30),Vector2(0,9))
-	check(route.size() > 3,"Cross-river path must exist")
-	for i in range(1,route.size()): check(game.arena.clear(route[i-1],route[i]),"Path segment must not cross a water/solid corner")
+	check(not route.is_empty(),"Cross-river path must exist")
+	check(game.arena.clear(Vector2(0,-20),Vector2(0,-14)),"Shallow river no longer blocks direct navigation")
+	for i in range(1,route.size()): check(game.arena.clear(route[i-1],route[i]),"Path segment must not cross solid scenery")
 	var p: Dictionary = sim.pawns.solo
 	p.pos = Vector2(0,-17)
-	sim.step(1.0/60)
-	check(p.hp == 90 and p.pos.y > 0,"Water damage and respawn")
+	for i in 60: sim.update_pawn(p,1.0/60)
+	check(p.hp == 100 and p.pos.distance_to(Vector2(0,-17)) < .01 and p.wading,"Player settles in water without damage or teleport")
 	p.pos = Vector2(0,9)
+	p.height = 0
+	p.velocity = 0
 	sim.submit("solo",{"jump":true,"y":-1.0})
 	sim.step(1.0/60)
 	var velocity: float = p.velocity
@@ -53,6 +58,7 @@ func run() -> void:
 	check(p.get("grounded",false) and absf(p.height) < .08,"Capsule lands on actual ground surface")
 	check(absf(p.pos.y-5.08) < .25,"Source jump travel distance")
 	await validate_character_physics(simulation)
+	await validate_wading(simulation)
 	p.pos = Vector2(0,9)
 	p.height = 0.0
 	p.velocity = 0.0
@@ -93,7 +99,7 @@ func run() -> void:
 	check(sim.zombies[0].hp == 0,"Rifle center ray headshot kills normal enemy")
 	var dead = sim.zombies[0]
 	for i in 181: sim.step(1.0/60)
-	check(dead.hp == 100,"Practice target respawns after three seconds")
+	check(dead.hp == 0 and not sim.zombies.has(dead),"Killed enemies are removed without practice respawning")
 	# Native ray traversal: piercing stops at scenery and counts a shot only once.
 	sim.zombies.clear()
 	p.weapon = 7
@@ -135,7 +141,7 @@ func run() -> void:
 		check(roundi(shotgun.damage*shotgun.pellets) == (280 if weapon_index == 4 else 192),"Shotgun aggregate damage %d" % weapon_index)
 	# Exercise delayed melee through normal commands, including wide coverage and deduplication.
 	var melee = simulation.new(game.arena)
-	melee.mode = "practice"
+	melee.rest = 100
 	melee.add_pawn("solo","斧头验证",0)
 	var attacker: Dictionary = melee.pawns.solo
 	attacker.pos = Vector2(0,9)
@@ -143,15 +149,15 @@ func run() -> void:
 	attacker.requested = 6
 	for point in [Vector2(2,7.5),Vector2(0,5.8),Vector2(-2,7.5),Vector2(0,10.8),Vector2(0,4.5)]: melee.spawn(point,"normal")
 	melee.submit("solo",{"weapon":6,"fire":true})
-	melee.step(1.0/60)
-	for i in 5: melee.step(1.0/60)
+	melee.update_pawn(attacker,1.0/60)
+	for i in 5: melee.update_pawn(attacker,1.0/60)
 	check(melee.zombies.all(func(z): return z.hp == 100),"Axe windup cannot cause damage")
-	for i in 25: melee.step(1.0/60)
+	for i in 25: melee.update_pawn(attacker,1.0/60)
 	check(melee.zombies[0].hp == 0 and melee.zombies[1].hp == 0 and melee.zombies[2].hp == 0,"Axe sweep covers left center right and reaches beyond three units")
 	check(melee.zombies[3].hp == 100 and melee.zombies[4].hp == 100,"Axe cannot hit behind or beyond reach")
 	check(attacker.hits == 1,"Axe multi-target sweep counts once in accuracy")
 	melee = simulation.new(game.arena)
-	melee.mode = "practice"
+	melee.rest = 100
 	melee.add_pawn("solo","斧头验证",0)
 	attacker = melee.pawns.solo
 	attacker.pos = Vector2(0,9)
@@ -160,7 +166,7 @@ func run() -> void:
 	melee.spawn(Vector2(0,7),"giant")
 	var initial_hp: float = melee.zombies[0].hp
 	melee.submit("solo",{"weapon":6,"fire":true})
-	for i in 35: melee.step(1.0/60)
+	for i in 35: melee.update_pawn(attacker,1.0/60)
 	check(initial_hp-melee.zombies[0].hp == 300 or initial_hp-melee.zombies[0].hp == 450,"Axe damages each enemy only once per swing")
 	p.pos = Vector2(0,9)
 	# Armor break, shield bypass, permanent rage, giant health and football locking.
@@ -216,7 +222,7 @@ func run() -> void:
 	sim.pawns.peer.hp = 0
 	sim.step(.016)
 	check(sim.failed,"Entire party death ends coop")
-	# Charge cancellation at water differs from obstacle stun.
+	# Water interrupts sprint into wading pursuit, while walls still stun.
 	sim = simulation.new(game.arena)
 	sim.add_pawn("solo","验证",0)
 	sim.wave = 7
@@ -226,7 +232,7 @@ func run() -> void:
 	football.state_time = 1.0
 	football.charge_direction = Vector2(0,-1)
 	sim.update_zombie(football,sim.pawns.solo,.1)
-	check(football.state == "ready" and football.charge_cooldown > 0,"Water cancels a charge without stun")
+	check(football.state == "ready" and football.charge_cooldown > 0 and data.water(football.pos),"Charge enters water and changes to pursuit without stun")
 	football.pos = Vector2(0,-37.8)
 	football.state = "charging"
 	football.state_time = 1.0
@@ -521,3 +527,86 @@ func validate_character_physics(simulation) -> void:
 	var remaining_body = bridge_sim.player_bodies.solo
 	bridge_sim.dispose()
 	check(not is_instance_valid(remaining_body),"Reset disposes remaining native bodies")
+
+func validate_wading(simulation) -> void:
+	var data = root.get_node("Data")
+	await physics_frame
+	for x in [-4.0,0.0,4.0]:
+		for offset in [-2.5,-1.8,0.0,1.8,2.5]:
+			var point = Vector2(x,data.river_center(x)+offset)
+			var hit: Dictionary = game.arena.surface_hit(Vector3(x,2,point.y),Vector3(x,-2,point.y))
+			check(not hit.is_empty() and absf(hit.position.y-data.riverbed_height(point)) < .015,"Native bed and bank collision matches shared profile: "+str(point))
+			check(not hit.is_empty() and hit.normal.dot(Vector3.UP) > .7,"River bank is a walkable slope")
+	var crossing = simulation.new(game.arena)
+	crossing.add_pawn("solo","涉水验证",0)
+	var p: Dictionary = crossing.pawns.solo
+	for direction in [-1,1]:
+		p.pos = Vector2(0,data.river_center(0)-direction*3.2)
+		p.height = .02
+		p.velocity = 0
+		p.air = Vector2.ZERO
+		var entered = false
+		for i in 210:
+			crossing.submit("solo",{"y":float(direction)})
+			crossing.update_pawn(p,1.0/60)
+			entered = entered or p.get("wading",false)
+		check(entered and (p.pos.y-data.river_center(0))*direction > 2.6 and p.hp == 100,"Player walks into and out of river on both banks without teleport")
+	crossing.dispose()
+	var trials = []
+	var tangent = Vector2(1,5.0/6).normalized()
+	var start = Vector2(2,data.river_center(2))
+	for jumping in [false,true]:
+		var sim = simulation.new(game.arena)
+		sim.wave = 9
+		sim.add_pawn("solo","渡河对照",0)
+		var pawn: Dictionary = sim.pawns.solo
+		pawn.pos = start
+		pawn.height = data.RIVER_BED_Y+.001
+		for i in 3: sim.update_pawn(pawn,1.0/60)
+		sim.spawn(start-tangent*2,"normal")
+		for i in 24:
+			sim.submit("solo",{"x":tangent.x,"y":tangent.y,"jump":jumping and i == 0})
+			sim.update_pawn(pawn,1.0/60)
+			sim.update_zombie(sim.zombies[0],pawn,1.0/60)
+		trials.append(sim)
+	var walker: Dictionary = trials[0].pawns.solo
+	var jumper: Dictionary = trials[1].pawns.solo
+	check(walker.wading and not jumper.wading and not jumper.grounded,"Wading penalty lifts when the player jumps")
+	check(absf(walker.pos.distance_to(start)-4.2*.7*.4) < .04,"Player wading speed is seventy percent")
+	check(absf(jumper.pos.distance_to(start)-4.2*.4) < .04,"Airborne player keeps full horizontal speed")
+	check(absf(trials[0].zombies[0].pos.distance_to(start-tangent*2)-2.8*.7*.4) < .04,"Zombies also move at seventy percent in water")
+	var walk_gap: float = walker.pos.distance_to(trials[0].zombies[0].pos)
+	var jump_gap: float = jumper.pos.distance_to(trials[1].zombies[0].pos)
+	check(jump_gap > walk_gap+.45,"Jumping creates extra distance from a wading pursuer")
+	for i in 45:
+		trials[1].submit("solo",{})
+		trials[1].update_pawn(jumper,1.0/60)
+	check(jumper.grounded and jumper.wading and jumper.hp == 100,"Landing on riverbed restores wading without damage")
+	var enemy_view = load("res://scripts/enemy_view.gd")
+	var z: Dictionary = trials[0].zombies[0]
+	z.pos = Vector2(0,-17)
+	game.enemies.sync([z],0,false)
+	var visual: Transform3D = enemy_view.root_transform(z,0,false,0)
+	check(absf(visual.origin.y-data.RIVER_BED_Y) < .001,"Shared CPU/GPU root places zombie feet on the submerged riverbed")
+	var poses: Array = enemy_view.transforms(z,0,false)
+	var dry: Dictionary = z.duplicate(true)
+	dry.pos = Vector2(0,9)
+	var dry_poses: Array = enemy_view.transforms(dry,0,false)
+	check(absf((poses[0].origin.y-dry_poses[0].origin.y)-(data.RIVER_BED_Y-data.RIVER_GROUND_Y)) < .001,"CPU enemy hit poses use the same riverbed offset as rendering")
+	check(not enemy_view.hit(z,Vector3(0,.5,-14),Vector3.FORWARD,6,0,false).is_empty(),"Ray hits can reach a zombie submerged in the river")
+	jumper.pos = Vector2(0,-17)
+	jumper.height = data.RIVER_BED_Y+1.2
+	jumper.protection = 0
+	check(not trials[1].damage_pawn(jumper,z),"Jump evasion uses enemy-relative height in water")
+	for sim in trials: sim.dispose()
+	var pursuit = simulation.new(game.arena)
+	pursuit.add_pawn("solo","岸边目标",0)
+	pursuit.pawns.solo.pos = Vector2(0,-13)
+	pursuit.wave = 9
+	pursuit.spawn(Vector2(0,-21),"normal")
+	var crossed_water = false
+	for i in 300:
+		pursuit.update_zombie(pursuit.zombies[0],pursuit.pawns.solo,1.0/60)
+		crossed_water = crossed_water or data.water(pursuit.zombies[0].pos)
+	check(crossed_water and pursuit.zombies[0].pos.y > -15,"Zombie can pursue directly across the river without using a bridge")
+	pursuit.dispose()

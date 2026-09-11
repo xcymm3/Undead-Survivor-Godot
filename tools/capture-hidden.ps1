@@ -1,4 +1,4 @@
-param([string]$Godot = "", [switch]$AllowGraphics)
+param([string]$Godot = "", [switch]$AllowGraphics, [switch]$HomeOnly)
 $ErrorActionPreference = 'Stop'
 if (-not $AllowGraphics) {
     throw 'GPU capture is disabled by default because graphical startup may flash. Use validate-headless.ps1 for background checks. Pass -AllowGraphics only for an explicitly requested visual inspection.'
@@ -16,6 +16,7 @@ $windowId = $hiddenParent.Handle.ToInt64()
 $stdout = Join-Path $projectRoot 'capture.log'
 $stderr = Join-Path $projectRoot 'capture-errors.log'
 $arguments = @('--path', ('"' + $projectRoot + '"'), '--wid', $windowId, '--rendering-method', 'gl_compatibility', '--audio-driver', 'Dummy', '--script', 'res://tools/capture.gd', '--', '--silent', '--capture')
+if ($HomeOnly) { $arguments += "--home-only" }
 $process = Start-Process -FilePath $Godot -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 try {
     $deadline = [DateTime]::UtcNow.AddSeconds(55)

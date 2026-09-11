@@ -1,8 +1,11 @@
 param(
-    [ValidateSet('Import', 'Runtime', 'Profile', 'NetworkHost', 'NetworkClient')]
+    [ValidateSet('Import', 'Runtime', 'Profile', 'NetworkHost', 'NetworkClient', 'BakeWorld', 'NativeComponents', 'BakeDust', 'Maps')]
     [string]$Mode = 'Runtime',
     [string]$Godot = '',
     [switch]$FourPlayers,
+    [switch]$VerboseEngine,
+    [ValidateSet('', 'outpost', 'dust')][string]$Map = '',
+    [ValidateSet('', 'outpost', 'dust')][string]$ExpectMap = '',
     [ValidateRange(10, 600)][int]$TimeoutSeconds = 180
 )
 $ErrorActionPreference = 'Stop'
@@ -10,16 +13,23 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 if (-not $Godot) { $Godot = Join-Path $projectRoot '.runtime\Godot_v4.5.2-stable_win64_console.exe' }
 $Godot = (Resolve-Path -LiteralPath $Godot).Path
 $arguments = @('--headless', '--audio-driver', 'Dummy', '--path', ('"' + $projectRoot + '"'))
+if ($VerboseEngine) { $arguments += '--verbose' }
 switch ($Mode) {
     'Import' { $arguments += @('--editor', '--import', '--quit') }
     'Runtime' { $arguments += @('--script', 'res://tools/validate-runtime.gd', '--', '--silent') }
     'Profile' { $arguments += @('--script', 'res://tools/profile-simulation.gd', '--', '--silent') }
+    'BakeWorld' { $arguments += @('--script', 'res://tools/bake-world.gd', '--', '--silent', '--automation') }
+    'BakeDust' { $arguments += @('--script', 'res://tools/bake-dust.gd', '--', '--silent', '--automation') }
+    'Maps' { $arguments += @('--script', 'res://tools/validate-maps.gd', '--', '--silent', '--automation') }
+    'NativeComponents' { $arguments += @('--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation') }
     default {
         $arguments += @('--script', 'res://tools/validate-network.gd', '--', '--silent')
         if ($Mode -eq 'NetworkHost') { $arguments += '--host' }
         if ($FourPlayers) { $arguments += '--four' }
     }
 }
+if ($Map) { $arguments += ('--map=' + $Map) }
+if ($ExpectMap) { $arguments += ('--expect-map=' + $ExpectMap) }
 # Headless prevents graphics windows; CreateNoWindow prevents console flashes.
 $startInfo = New-Object System.Diagnostics.ProcessStartInfo
 $startInfo.FileName = $Godot
