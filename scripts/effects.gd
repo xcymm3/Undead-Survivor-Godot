@@ -65,5 +65,8 @@ func step(dt: float) -> void:
 	multi.visible_instance_count = particles.size()
 	for i in particles.size():
 		var p: Dictionary = particles[i]
-		multi.set_instance_transform(i,Transform3D(p.get("basis",Basis.IDENTITY).scaled(p.get("scale",Vector3.ONE*p.size)),p.pos))
+		multi.set_instance_transform(i,particle_transform(p))
 		multi.set_instance_color(i,p.color)
+
+static func particle_transform(p: Dictionary) -> Transform3D:
+	return Transform3D(p.get("basis",Basis.IDENTITY) * Basis.from_scale(p.get("scale",Vector3.ONE*p.size)),p.pos)

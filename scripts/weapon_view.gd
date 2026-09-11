@@ -84,7 +84,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		var pulse = sin((1-p.fire_anim/w.fireDuration)*PI)
 		position.z += pulse*.035*w.recoil
 		rotation.x += pulse*.025*w.recoil
-	muzzle.position = Vector3(0,0,-w.length*.72)
+	muzzle.global_position = muzzle_position()
 	muzzle.visible = not hide_scope and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") != "melee"
 	muzzle.scale = Vector3.ONE*(2.3 if w.get("kind") == "flame" else 1.0)
 
@@ -106,3 +106,13 @@ static func sample_axe(pivot: Node3D, progress: float) -> void:
 		pivot.position = positions[i].lerp(positions[i+1],weight)
 		pivot.quaternion = Quaternion.from_euler(angles[i]).slerp(Quaternion.from_euler(angles[i+1]),weight)
 		return
+
+static func muzzle_offset(w: Dictionary) -> Vector3:
+	match w.id:
+		"flamethrower": return Vector3(.04,.03,-1.01)
+		"auto-shotgun": return Vector3(.05,.04,-1.09)*.72
+		"heavy-machine-gun": return Vector3(.04,.04,-1.17)
+	return Vector3(0,0,-w.length*.72)
+
+func muzzle_position() -> Vector3:
+	return models[active].to_global(muzzle_offset(Data.weapons[active]))

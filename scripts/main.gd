@@ -259,10 +259,16 @@ func handle_effects(events: Array) -> void:
 				var w: Dictionary = Data.weapons[index]
 				var kind: String = w.get("kind","gun")
 				sound.play("axe" if kind == "melee" else "flame" if kind == "flame" else "gun",-10 if event.player == Session.local_id else -19)
-				if kind == "flame": effects.flame(event.from,event.to)
+				var visual_origin: Vector3 = event.from
+				var viewed: Dictionary = view_pawn()
+				if not viewed.is_empty() and event.player == viewed.id:
+					visual_origin = weapon.muzzle_position()
+				elif partners.has(event.player):
+					visual_origin = partners[event.player].muzzle_position()
+				if kind == "flame": effects.flame(visual_origin,event.to)
 				elif kind == "gun":
-					if event.has("pellet_ends"): effects.shotgun(event.from,event.pellet_ends)
-					else: effects.tracer(event.from,event.to,w.id != "revolver")
+					if event.has("pellet_ends"): effects.shotgun(visual_origin,event.pellet_ends)
+					else: effects.tracer(visual_origin,event.to,w.id != "revolver")
 			"blood", "death":
 				effects.burst(event.position)
 				if event.get("player") == Session.local_id: ui.hit_flash = .12

@@ -308,6 +308,32 @@ func run() -> void:
 	session.snapshot_samples.clear()
 	session.receive_sequence = -1
 	session.last_probe_reply = 0
+	# Nonuniform tracer scale must be applied in local space after orientation.
+	for direction in [Vector3(1,.2,-2).normalized(),Vector3(-1,-.3,2).normalized(),Vector3(0,0,-1)]:
+		var start = Vector3(3,1.2,8)
+		var end = start+direction*20
+		game.effects.particles.clear()
+		game.effects.tracer(start,end,false)
+		game.effects.step(0)
+		var transform: Transform3D = game.effects.particle_transform(game.effects.particles[0])
+		check((transform*Vector3(0,0,-.5)).distance_to(start) < .001 and (transform*Vector3(0,0,.5)).distance_to(end) < .001,"Tracer starts at muzzle and ends at impact for arbitrary headings")
+	var actor = load("res://scripts/partner_view.gd").new()
+	game.add_child(actor)
+	p.hp = 100
+	p.height = 0
+	p.pitch = 0
+	actor.setup(p)
+	for index in 10:
+		p.weapon = index
+		p.requested = index
+		p.reloading = false
+		p.fire_anim = 0
+		actor.sync(p,.016)
+		var hand = actor.skeleton.find_bone("Fist.R")
+		var grip: Vector3 = actor.skeleton.global_transform*actor.skeleton.get_bone_global_pose(hand).origin
+		check(actor.grip_position().distance_to(grip) < .08,"Third-person grip follows fist for weapon "+str(index))
+		check(actor.muzzle_position().is_finite(),"Finite model muzzle for weapon "+str(index))
+	actor.queue_free()
 	# Exercise every menu without presenting it or changing persisted settings.
 	for method in ["show_home","show_settings","show_guide","show_scores","show_multiplayer","show_pause"]:
 		game.ui.call(method)
