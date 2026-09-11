@@ -259,14 +259,16 @@ func run() -> void:
 		spawning.wave = wave_number
 		for i in 4: spawning.add_pawn(str(i),"队友",i)
 		spawning.spawn(Vector2(0,-40),"football")
-		spawning.roster = ["football","giant"]
+		spawning.roster = ["football","football","giant"]
 		spawning.credit = 1
 		spawning.step(.001)
-		check(spawning.zombies.filter(func(z): return z.kind == "football").size() == 1 and spawning.zombies.any(func(z): return z.kind == "giant"),"Only one football; queued football does not block others at wave "+str(wave_number))
-		spawning.zombies[0].hp = 0
+		check(spawning.zombies.filter(func(z): return z.kind == "football" and z.hp > 0).size() == 2 and spawning.roster == ["football","giant"],"Second football spawns while first is alive at wave "+str(wave_number))
 		spawning.credit = 1
 		spawning.step(.001)
-		check(spawning.roster.is_empty(),"Next football can enter when predecessor dies")
+		check(spawning.zombies.filter(func(z): return z.kind == "football" and z.hp > 0).size() == 3,"Consecutive footballs spawn without a single-enemy cap")
+		spawning.credit = 1
+		spawning.step(.001)
+		check(spawning.roster.is_empty() and spawning.zombies.any(func(z): return z.kind == "giant"),"Mixed roster preserves spawn order after multiple footballs")
 	spawning = simulation.new(game.arena)
 	spawning.add_pawn("solo","容量验证",0)
 	for i in 256: spawning.spawn(Vector2(0,-40),"normal")

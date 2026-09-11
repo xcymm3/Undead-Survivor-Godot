@@ -147,13 +147,6 @@ func step(dt: float) -> void:
 	if roster.is_empty(): return
 	credit = minf(1,credit+dt*Data.wave_settings(wave).rate)
 	if credit < 1: return
-	var queue_index = -1
-	var footballs = zombies.filter(func(z): return z.kind == "football" and z.hp > 0).size()
-	for i in roster.size():
-		if roster[i] != "football" or footballs < 1:
-			queue_index = i
-			break
-	if queue_index < 0: return
 	var entries: Array = Array(Data.SPAWNS).duplicate()
 	entries.shuffle()
 	for point in entries:
@@ -163,8 +156,8 @@ func step(dt: float) -> void:
 			if delta.length() < 8: safe = false
 		if not safe or not arena.clear(point,point): continue
 		if zombies.any(func(z): return z.hp > 0 and point.distance_to(z.pos) < 2.0): continue
-		spawn(point,roster[queue_index])
-		roster.remove_at(queue_index)
+		spawn(point,roster[0])
+		roster.remove_at(0)
 		spawned += 1
 		credit = 0
 		break
