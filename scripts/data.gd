@@ -18,6 +18,13 @@ var persistent = true
 var automation = "--automation" in OS.get_cmdline_user_args()
 const SAVE_PATH = "user://survivor-godot-v1.json"
 const RIVER = [Vector2(-22,-14), Vector2(-17,-12), Vector2(-12,-14), Vector2(-6,-18), Vector2(0,-17), Vector2(6,-12), Vector2(12,-11), Vector2(17,-13), Vector2(22,-16)]
+const RIVER_BANK_HALF = 2.6
+const RIVER_BED_HALF = .7
+const RIVER_GROUND_Y = -.05
+const RIVER_BED_Y = -.9
+const RIVER_WATER_Y = -.28
+const WADE_SPEED = .7
+const RIVER_WET_HALF = RIVER_BANK_HALF-(RIVER_GROUND_Y-RIVER_WATER_Y)/(RIVER_GROUND_Y-RIVER_BED_Y)*(RIVER_BANK_HALF-RIVER_BED_HALF)
 const SPAWNS = [Vector2(-13,-45), Vector2(1,-45), Vector2(12,-45), Vector2(19,-36), Vector2(19,-20), Vector2(19,-4)]
 const PRACTICE = [Vector2(-5.8,-9.5), Vector2(.15,-22), Vector2(5.4,-21), Vector2(-1,-31)]
 const MODELS = ["蓝衣青年", "棕衣大叔", "绿衣队员", "红衣女性"]
@@ -107,20 +114,23 @@ static func river_center(x: float) -> float:
 			return lerpf(RIVER[i-1].y, RIVER[i].y, clampf((x - RIVER[i-1].x) / (RIVER[i].x - RIVER[i-1].x), 0, 1))
 	return -16
 
-static func water(p: Vector2, support := 0.0) -> bool:
-	if p.x < -22 or p.x > 22 or absf(p.y - river_center(p.x)) >= 1.25: return false
+static func bridge(p: Vector2) -> bool:
 	for x in [-10.0,10.0]:
-		if absf(p.x-x) <= 2.6 and absf(p.y-river_center(x)) <= 3.6: return false
-	if support > 0:
-		for i in range(1,RIVER.size()):
-			for side in [-1,1]:
-				var a: Vector2 = RIVER[i-1]+Vector2(0,side*1.25)
-				var b: Vector2 = RIVER[i]+Vector2(0,side*1.25)
-				var t = clampf((p-a).dot(b-a)/(b-a).length_squared(),0,1)
-				if p.distance_to(a+(b-a)*t) <= support: return false
-		for x in [-10.0,10.0]:
-			if Vector2(maxf(0,absf(p.x-x)-2.6),maxf(0,absf(p.y-river_center(x))-3.6)).length() <= support: return false
-	return true
+		if absf(p.x-x) <= 2.6 and absf(p.y-river_center(x)) <= 3.6: return true
+	return false
+
+static func water(p: Vector2, support := 0.0) -> bool:
+	return p.x >= -22 and p.x <= 22 and not bridge(p) and absf(p.y-river_center(p.x)) < RIVER_WET_HALF-support
+
+static func riverbed_height(p: Vector2) -> float:
+	var offset = absf(p.y-river_center(p.x))
+	return lerpf(RIVER_BED_Y,RIVER_GROUND_Y,clampf((offset-RIVER_BED_HALF)/(RIVER_BANK_HALF-RIVER_BED_HALF),0,1))
+
+static func enemy_ground_height(p: Vector2) -> float:
+	return .04 if bridge(p) else riverbed_height(p)
+
+static func wading(p: Vector2, feet: float) -> bool:
+	return water(p) and feet < RIVER_WATER_Y+.08
 
 static func enemy_scale(kind: String) -> float:
 	return {"imp": .65, "shield": 1.05, "giant": 1.8, "football": 1.1}.get(kind, 1.0)

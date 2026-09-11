@@ -44,7 +44,7 @@ func snapshot() -> Dictionary:
 			result.enemies.append({"x": z.pos.x, "z": z.pos.y, "hp": z.hp, "kind": z.kind})
 		var p: Dictionary = game.local_pawn()
 		if not p.is_empty():
-			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "hp": p.hp,
+			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "wading":p.get("wading",false), "hp": p.hp,
 				"weapon": p.weapon, "ammo": p.ammo, "shots": p.shots, "hits": p.hits,
 				"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
 	return result

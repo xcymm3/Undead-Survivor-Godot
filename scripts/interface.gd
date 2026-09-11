@@ -304,7 +304,7 @@ func show_settings() -> void:
 func show_guide() -> void:
 	var column = panel("武器与操作", "十款武器全部可用 · 弹匣独立保留 · 备弹无限",1000)
 	current = "guide"
-	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键举枪\n空格跳跃  /  R 换弹  /  1—0 或滚轮切枪  /  Esc 暂停\n起跳锁定当前移动按键；空中转向仍有效。落水扣 10 血并回出生点。",17)
+	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键举枪\n空格跳跃  /  R 换弹  /  1—0 或滚轮切枪  /  Esc 暂停\n起跳锁定当前移动按键；空中转向仍有效。涉水移速为 70%，跳跃可恢复速度、拉开距离。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation",24)
@@ -315,7 +315,7 @@ func show_guide() -> void:
 		var w: Dictionary = Data.weapons[i]
 		for text in ["%d  %s" % [(i+1)%10,w.label],w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
 	paragraph(column,"持盾者正面防御；攻击时放低盾牌。狂暴者半血加速。橄榄球蓄力后沿锁定方向冲锋，可侧移躲避。巨人拥有 6000 HP，并能范围砸击。",17)
-	paragraph(column,"首波 9 只；每两波提升敌人阶位。清完整波全员恢复 100 HP，阵亡队友复活，休整 3 秒。僵尸只能通过两座桥渡河。",17)
+	paragraph(column,"首波 9 只；每两波提升敌人阶位。清完整波全员恢复 100 HP，阵亡队友复活，休整 3 秒。玩家和僵尸均可涉水过河，桥面保持正常移速；橄榄球冲入水中后转为涉水追击。",17)
 	button(column,"返回",back,true)
 
 func show_scores() -> void:

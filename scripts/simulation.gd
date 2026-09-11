@@ -200,9 +200,9 @@ func alive_count() -> int:
 
 func can_move(p: Dictionary, point: Vector2) -> bool:
 	if point.x < -21.05 or point.x > 21.05 or point.y < -47.05 or point.y > 13.05: return false
-	if p.height >= 1.1: return true
 	for z in zombies:
 		if z.hp <= 0: continue
+		if p.height-Data.enemy_ground_height(z.pos) >= 1.1: continue
 		if point.distance_to(z.pos) < Data.contact(z.kind) and point.distance_to(z.pos) < p.pos.distance_to(z.pos)-.00001: return false
 	return true
 
@@ -228,7 +228,8 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	while remaining > .00001:
 		var step_time = minf(.01,remaining)
 		remaining -= step_time
-		var next: Vector2 = p.pos+dir*4.2*step_time
+		var wading: bool = body.grounded and Data.wading(p.pos,p.height)
+		var next: Vector2 = p.pos+dir*4.2*(Data.WADE_SPEED if wading else 1.0)*step_time
 		next = next.clamp(Vector2(-21.05,-47.05),Vector2(21.05,13.05))
 		if not can_move(p,next):
 			var horizontal = Vector2(next.x,p.pos.y)
@@ -236,16 +237,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 			next = horizontal if can_move(p,horizontal) else vertical if can_move(p,vertical) else p.pos
 		body.advance((next-p.pos)/step_time,step_time)
 		body.sync_to(p)
-		if p.height <= .06 and Data.water(p.pos,.22):
-			p.hp = maxi(0,p.hp-10)
-			p.pos = safe_spawn()
-			p.height = 0.0
-			p.velocity = 0.0
-			p.protection = .3
-			body.sync_from(p)
-			events.append({"kind":"hurt","player":p.id})
-			if p.hp == 0: cause = "water"
-			break
+	p.wading = body.grounded and Data.wading(p.pos,p.height)
 	p.input.jump = false
 	update_arsenal(p,input,dt)
 
@@ -305,7 +297,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	p.trigger = trigger
 
 func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
-	if p.protection > 0 or p.hp <= 0 or p.height >= 1.1: return false
+	if p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos) >= 1.1: return false
 	p.hp = maxi(0,p.hp-amount)
 	p.protection = .3
 	events.append({"kind":"hurt","player":p.id})
@@ -336,6 +328,10 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	if z.kind == "giant": speed *= .75
 	if z.kind == "berserker": speed = minf(5.8,base_speed*(2.6 if z.rage else 1.35))
 	if z.kind == "football": speed = minf(3.3,base_speed*(1.25 if z.armor > 0 else 1.05))
+	var wading: bool = Data.water(z.pos)
+	if wading:
+		speed *= Data.WADE_SPEED
+		if z.state in ["charging","windup"]: cancel_charge(z)
 	if z.rage_pause > 0: return
 	if z.state == "windup":
 		z.charge_target = target.pos
@@ -354,7 +350,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			else: z.state = "ready"
 		if z.state == "windup" and not arena.clear(z.pos,z.charge_target): cancel_charge(z)
 		if z.state in ["windup","stunned"]: return
-	if z.kind == "football" and z.state == "ready" and z.armor > 0 and z.charge_cooldown <= 0 and distance >= 5 and distance <= minf(16,minf(10,base_speed*4.2)*CHARGE_DURATION+contact) and arena.clear(z.pos,target.pos):
+	if z.kind == "football" and not wading and z.state == "ready" and z.armor > 0 and z.charge_cooldown <= 0 and distance >= 5 and distance <= minf(16,minf(10,base_speed*4.2)*CHARGE_DURATION+contact) and arena.clear(z.pos,target.pos):
 		z.state = "windup"
 		z.state_time = .35
 		z.charge_direction = Vector2.ZERO
@@ -369,14 +365,17 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			else: stun(z,CHARGE_WALL_STUN)
 			return
 		z.pos = next
+		if Data.water(next):
+			cancel_charge(z)
+			return
 		for p in pawns.values():
-			if p.hp > 0 and z.pos.distance_to(p.pos) <= contact and p.height < 1.1:
+			if p.hp > 0 and z.pos.distance_to(p.pos) <= contact and p.height-Data.enemy_ground_height(z.pos) < 1.1:
 				if damage_pawn(p,z,CHARGE_DAMAGE): charge_knockback(p,z.charge_direction)
 				z.state = "ready"
 				z.charge_cooldown = 3.2
 				break
 		return
-	if distance <= contact and target.height < 1.1:
+	if distance <= contact and target.height-Data.enemy_ground_height(z.pos) < 1.1:
 		if z.target != target.id: z.attack_time = 0.0
 		z.target = target.id
 		z.heading = atan2(delta.x,delta.y)

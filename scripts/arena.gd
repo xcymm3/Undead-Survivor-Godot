@@ -1,11 +1,14 @@
 extends Node3D
 ## Render original meshes with native ArrayMesh/MultiMesh, using the source collision footprints.
 var obstacles: Array = []
-var water_obstacles: Array[Rect2] = []
 var collision_buckets: Dictionary = {}
 var grid = AStarGrid2D.new()
 var sun: DirectionalLight3D
 const CELL = .65
+# Geometry IDs from the current imported world asset.
+const LAND_SURFACES = ["834d0ed6-de0b-4d94-bd39-b8fd8280b428","7f1a43fd-1349-47fd-b6e3-b3bb2a2cf153","25d16ccd-cae7-4edb-aba3-4fe3360a1323","8af03cfc-534c-49f9-ad83-6d9365fa6058","14eaefc6-2f2b-4eb7-b80c-cf2ddc64a2f4"]
+const OLD_RIVER_SURFACES = ["77afc216-78d5-4040-a0cc-5b6627d15bb2","41a5a20e-a140-4e7b-b69a-744ee1006445"]
+const OLD_FOAM_MATERIAL = "d92f72d7-d42c-4db5-859a-e040528c63dc"
 
 func _ready() -> void:
 	var world: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/data/world.json"))
@@ -26,7 +29,12 @@ func _ready() -> void:
 		var vertices = PackedVector3Array()
 		var normals = PackedVector3Array()
 		for i in range(0, source.position.size(), 3):
-			vertices.append(Vector3(source.position[i],source.position[i+1],source.position[i+2]))
+			var vertex = Vector3(source.position[i],source.position[i+1],source.position[i+2])
+			if id in LAND_SURFACES:
+				var offset = vertex.z-Data.river_center(vertex.x)
+				if absf(absf(offset)-1.25) < .01:
+					vertex.z += signf(offset)*(Data.RIVER_BANK_HALF-1.25)
+			vertices.append(vertex)
 			normals.append(Vector3(source.normal[i],source.normal[i+1],source.normal[i+2]))
 		var indices = PackedInt32Array(source.index)
 		if indices.is_empty():
@@ -46,6 +54,7 @@ func _ready() -> void:
 		meshes[id] = mesh
 	var faces = PackedVector3Array()
 	for source in world.meshes:
+		if source.geometry in OLD_RIVER_SURFACES or source.material == OLD_FOAM_MATERIAL: continue
 		var instance = MultiMeshInstance3D.new()
 		var multi = MultiMesh.new()
 		multi.transform_format = MultiMesh.TRANSFORM_3D
@@ -74,6 +83,7 @@ func _ready() -> void:
 	collider.shape = shape
 	body.add_child(collider)
 	add_child(body)
+	add_child(preload("res://scripts/river.gd").new())
 	for sign in world.signs:
 		var label = Label3D.new()
 		label.text = sign.text + "\n" + sign.subtitle
@@ -106,22 +116,9 @@ func _ready() -> void:
 	build_grid()
 
 func build_grid() -> void:
-	# Same conservative quarter-metre river strips and .95 m navigation radius as the source.
-	var xs: Array[float] = []
-	for i in range(177): xs.append(-22 + i * .25)
-	for x in [-12.6, -7.4, 7.4, 12.6]: xs.append(x)
-	xs.sort()
-	for i in range(1, xs.size()):
-		var a = xs[i-1]
-		var b = xs[i]
-		if is_equal_approx(a, b): continue
-		if (a >= -12.6 and b <= -7.4) or (a >= 7.4 and b <= 12.6): continue
-		var low = minf(Data.river_center(a), Data.river_center(b)) - 1.25
-		var high = maxf(Data.river_center(a), Data.river_center(b)) + 1.25
-		water_obstacles.append(Rect2(a-.95, low-.95, b-a+1.9, high-low+1.9))
+	# Shallow water is walkable; only solid scenery blocks enemy navigation.
 	for o in obstacles:
 		index_obstacle(Rect2(o.minX-.95,o.minZ-.95,o.maxX-o.minX+1.9,o.maxZ-o.minZ+1.9),false)
-	for rect in water_obstacles: index_obstacle(rect,true)
 	grid.region = Rect2i(0,0,69,97)
 	grid.cell_size = Vector2(CELL,CELL)
 	grid.offset = Vector2(-22,-48)
@@ -131,6 +128,7 @@ func build_grid() -> void:
 		for x in range(69):
 			var p = Vector2(-22+x*CELL, -48+y*CELL)
 			grid.set_point_solid(Vector2i(x,y), not clear(p,p))
+			grid.set_point_weight_scale(Vector2i(x,y),1.0/Data.WADE_SPEED if Data.water(p) else 1.0)
 
 func segment_rect(a: Vector2, b: Vector2, rect: Rect2) -> bool:
 	var near = 0.0

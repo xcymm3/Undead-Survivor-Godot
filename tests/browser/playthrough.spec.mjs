@@ -110,6 +110,23 @@ test('真实键鼠完成菜单、战斗、换弹、暂停、死亡和重开，�
     await until(page, () => window.__survivorSnapshot?.fov < 20);
     await imageEvidence(page, info, '04-sniper-scope');
     await page.mouse.up({ button: 'right' });
+    // Walk into the actual river, jump there, and leave by the opposite bank.
+    await page.mouse.move(cursor.x, cursor.y, { steps: 12 });
+    await expect.poll(async () => Math.abs((await snapshot(page)).yaw)).toBeLessThan(.06);
+    await page.keyboard.down('w');
+    await until(page, () => window.__survivorSnapshot?.player?.wading === true, 30_000);
+    await page.keyboard.up('w');
+    const riverState = await snapshot(page);
+    expect(riverState.player.hp).toBe(100);
+    expect(riverState.player.z).toBeLessThan(-14);
+    await page.keyboard.press('Space');
+    await until(page, () => window.__survivorSnapshot?.player?.grounded === false && window.__survivorSnapshot?.player?.wading === false);
+    await until(page, () => window.__survivorSnapshot?.player?.grounded === true);
+    expect((await snapshot(page)).player.hp).toBe(100);
+    await page.keyboard.down('w');
+    await until(page, () => window.__survivorSnapshot?.player?.z < -20.2, 15_000);
+    await page.keyboard.up('w');
+    expect((await snapshot(page)).player.wading).toBe(false);
     await page.keyboard.press('Escape');
     await until(page, () => window.__survivorSnapshot?.paused);
     const pausedTime = (await snapshot(page)).elapsed;

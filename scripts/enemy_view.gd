@@ -42,6 +42,18 @@ func _ready() -> void:
 func clear() -> void:
 	for multi in batches.values(): multi.visible_instance_count = 0
 
+static func root_transform(z: Dictionary, elapsed: float, practice: bool, stride: float) -> Transform3D:
+	var basis = Basis(Vector3.UP,z.heading).scaled(Vector3.ONE*Data.enemy_scale(z.kind))
+	var ground = Data.enemy_ground_height(z.pos)
+	var transform = Transform3D(basis,Vector3(z.pos.x,ground+absf(stride)*.04,z.pos.y))
+	if z.hp <= 0:
+		transform.basis *= Basis(Vector3.RIGHT,-clampf(((3.0 if practice else .85)-z.down)/.65,0,1)*PI/2)
+		transform.origin.y = ground-.15
+	if z.state == "windup": transform.basis *= Basis(Vector3.RIGHT,-.22)
+	if z.state == "charging": transform.basis *= Basis(Vector3.RIGHT,.28)
+	if z.state == "stunned": transform.basis *= Basis(Vector3.BACK,sin(elapsed*16)*.08)
+	return transform
+
 static func transforms(z: Dictionary, elapsed: float, practice: bool) -> Array:
 	var result: Array = []
 	var alive: bool = z.hp > 0
@@ -52,15 +64,7 @@ static func transforms(z: Dictionary, elapsed: float, practice: bool) -> Array:
 	var lunge = 0.0
 	if z.attack_time > 0:
 		lunge = z.attack_time / profile.x if z.attack_time <= profile.x else maxf(0,1-(z.attack_time-profile.x)/.35)
-	var angle: float = z.heading
-	var basis = Basis(Vector3.UP, angle).scaled(Vector3.ONE*Data.enemy_scale(z.kind))
-	var root = Transform3D(basis,Vector3(z.pos.x,absf(stride)*.04,z.pos.y))
-	if not alive:
-		root.basis = root.basis * Basis(Vector3.RIGHT, -clampf(((3.0 if practice else .85)-z.down)/.65,0,1)*PI/2)
-		root.origin.y = -.15
-	if z.state == "windup": root.basis *= Basis(Vector3.RIGHT,-.22)
-	if z.state == "charging": root.basis *= Basis(Vector3.RIGHT,.28)
-	if z.state == "stunned": root.basis *= Basis(Vector3.BACK,sin(elapsed*16)*.08)
+	var root = root_transform(z,elapsed,practice,stride)
 	for part in Data.parts:
 		if (part.has("kind") and part.kind != z.kind) or (part.get("armor",false) and z.armor <= 0):
 			result.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*.00001), Vector3(0,-100,0)))
@@ -102,14 +106,7 @@ func sync(zombies: Array, elapsed: float, practice: bool) -> void:
 		var profile = Data.attack(z.kind,z.rage)
 		var lunge = 0.0
 		if z.attack_time > 0: lunge = z.attack_time/profile.x if z.attack_time <= profile.x else maxf(0,1-(z.attack_time-profile.x)/.35)
-		var basis = Basis(Vector3.UP,z.heading).scaled(Vector3.ONE*Data.enemy_scale(z.kind))
-		var transform = Transform3D(basis,Vector3(z.pos.x,absf(stride)*.04,z.pos.y))
-		if not alive:
-			transform.basis *= Basis(Vector3.RIGHT,-clampf(((3.0 if practice else .85)-z.down)/.65,0,1)*PI/2)
-			transform.origin.y = -.15
-		if z.state == "windup": transform.basis *= Basis(Vector3.RIGHT,-.22)
-		if z.state == "charging": transform.basis *= Basis(Vector3.RIGHT,.28)
-		if z.state == "stunned": transform.basis *= Basis(Vector3.BACK,sin(elapsed*16)*.08)
+		var transform = root_transform(z,elapsed,practice,stride)
 		var flags = int(z.id)%4+(4 if z.rage else 0)+(8 if z.attack_time > 0 and z.attack_time < .45 else 0)
 		batches[z.kind].set_instance_transform(index,transform)
 		batches[z.kind].set_instance_custom_data(index,Color(stride,lunge,1 if z.armor > 0 else 0,flags))
@@ -134,7 +131,7 @@ static func ray_box(origin: Vector3, direction: Vector3, transform: Transform3D,
 
 static func hit(z: Dictionary, origin: Vector3, direction: Vector3, distance: float, elapsed: float, practice: bool) -> Dictionary:
 	var scale = Data.enemy_scale(z.kind)
-	var broad = Transform3D(Basis.IDENTITY.scaled(Vector3(3*scale,3.2*scale,3*scale)),Vector3(z.pos.x,1.4*scale,z.pos.y))
+	var broad = Transform3D(Basis.IDENTITY.scaled(Vector3(3*scale,3.2*scale,3*scale)),Vector3(z.pos.x,Data.enemy_ground_height(z.pos)+1.4*scale,z.pos.y))
 	if ray_box(origin,direction,broad,distance) == INF: return {}
 	var poses = transforms(z,elapsed,practice)
 	var nearest = distance
