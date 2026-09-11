@@ -336,7 +336,7 @@ func valid_world(value) -> bool:
 		if not p.appearance[0] is int or int(p.appearance[0]) < 0 or int(p.appearance[0]) >= Data.MODELS.size(): return false
 		for key in ["hp","height","yaw","pitch","weapon","fire_anim","switch","reload","hits","shots","kills","protection","requested"]:
 			if not (p[key] is int or p[key] is float) or not is_finite(p[key]): return false
-		if p.hp < 0 or p.hp > 100 or p.weapon < 0 or p.weapon > 9 or p.height < 0 or p.height > 4: return false
+		if p.hp < 0 or p.hp > 100 or p.weapon < 0 or p.weapon > 9 or p.height < -2 or p.height > 32: return false
 	for z in value.zombies:
 		if not z is Dictionary or not z.has_all(["id","pos","kind","hp","armor","down","born","heading","attack_time","rage","rage_pause","state"]): return false
 		if not z.pos is Vector2 or not z.pos.is_finite() or not Data.enemies.has(z.kind): return false

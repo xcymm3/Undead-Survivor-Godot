@@ -104,8 +104,9 @@ func animate(p: Dictionary, moving: bool, dt: float) -> void:
 	rotation.x = -PI/2 if p.hp <= 0 else 0.0
 	position.y = .14 if p.hp <= 0 else 0.0
 	var stride = sin(clock*9)*.55 if moving else 0.0
+	var grounded: bool = p.get("grounded",p.height <= .06)
 	for side in ["R","L"]:
 		var swing = stride*(1 if side == "R" else -1)
-		skeleton.set_bone_pose_rotation(skeleton.find_bone("Thigh."+side),Quaternion(Vector3.RIGHT,swing if p.height <= .06 else -.35))
-		skeleton.set_bone_pose_rotation(skeleton.find_bone("Shin."+side),Quaternion(Vector3.RIGHT,maxf(0,-swing)*.8 if p.height <= .06 else .7))
+		skeleton.set_bone_pose_rotation(skeleton.find_bone("Thigh."+side),Quaternion(Vector3.RIGHT,swing if grounded else -.35))
+		skeleton.set_bone_pose_rotation(skeleton.find_bone("Shin."+side),Quaternion(Vector3.RIGHT,maxf(0,-swing)*.8 if grounded else .7))
 	skeleton.force_update_all_bone_transforms()

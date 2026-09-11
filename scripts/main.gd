@@ -114,6 +114,7 @@ func start_coop() -> void:
 	resume_game()
 
 func reset_game() -> void:
+	if sim: sim.dispose()
 	reset_mouse_buttons()
 	running = true
 	paused = false
@@ -323,6 +324,7 @@ func return_home() -> void:
 	running = false
 	paused = false
 	finished = false
+	if sim: sim.dispose()
 	sim = null
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if weapon: weapon.visible = false

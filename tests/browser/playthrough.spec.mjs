@@ -65,7 +65,7 @@ test('真实键鼠完成菜单、战斗、换弹、暂停、死亡和重开，�
     expect((await snapshot(page)).player.z).toBeLessThan(start.player.z - 1);
     await page.keyboard.press('Space');
     await until(page, () => window.__survivorSnapshot?.player?.height > .1);
-    await until(page, () => window.__survivorSnapshot?.player?.height === 0);
+    await until(page, () => window.__survivorSnapshot?.player?.grounded === true);
 
     // Aim at an actual practice target using relative browser mouse motion.
     // Telemetry is read-only; bullets must pass through the normal ballistics path.

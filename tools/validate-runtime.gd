@@ -3,6 +3,9 @@ extends SceneTree
 var errors: Array[String] = []
 var checks := 0
 var game
+class EmptyArena extends Node3D:
+	func clear(a: Vector2, b: Vector2, _allow_water := false) -> bool:
+		return minf(a.x,b.x) >= -21.05 and maxf(a.x,b.x) <= 21.05 and minf(a.y,b.y) >= -47.05 and maxf(a.y,b.y) <= 13.05
 
 func check(condition: bool, message: String) -> void:
 	checks += 1
@@ -47,8 +50,9 @@ func run() -> void:
 	sim.step(1.0/60)
 	check(p.velocity < velocity,"No airborne double jump")
 	for i in 60: sim.step(1.0/60)
-	check(p.height == 0,"Jump lands")
+	check(p.get("grounded",false) and absf(p.height) < .08,"Capsule lands on actual ground surface")
 	check(absf(p.pos.y-5.08) < .25,"Source jump travel distance")
+	await validate_character_physics(simulation)
 	p.pos = Vector2(0,9)
 	p.height = 0.0
 	p.velocity = 0.0
@@ -372,7 +376,11 @@ func run() -> void:
 
 func validate_charge_combat(simulation) -> void:
 	# Empty terrain isolates timing and impact; map boundary still clips knockback.
-	var world = load("res://scripts/arena.gd").new()
+	var viewport = SubViewport.new()
+	viewport.own_world_3d = true
+	root.add_child(viewport)
+	var world = EmptyArena.new()
+	viewport.add_child(world)
 	var sim = simulation.new(world)
 	sim.add_pawn("solo","冲撞验证",0)
 	var p: Dictionary = sim.pawns.solo
@@ -408,4 +416,108 @@ func validate_charge_combat(simulation) -> void:
 	p.protection = 0
 	sim.damage_pawn(p,z)
 	check(p.hp == 90,"Ordinary zombie attacks retain ten damage")
-	world.free()
+	sim.dispose()
+	viewport.free()
+
+func physics_box(parent: Node3D, center: Vector3, size: Vector3) -> StaticBody3D:
+	var body = StaticBody3D.new()
+	var collider = CollisionShape3D.new()
+	var box = BoxShape3D.new()
+	box.size = size
+	collider.shape = box
+	body.add_child(collider)
+	body.position = center
+	parent.add_child(body)
+	return body
+
+func validate_character_physics(simulation) -> void:
+	var viewport = SubViewport.new()
+	viewport.own_world_3d = true
+	root.add_child(viewport)
+	var world = EmptyArena.new()
+	viewport.add_child(world)
+	physics_box(world,Vector3(0,-.5,0),Vector3(42,1,60))
+	physics_box(world,Vector3(3,.4,0),Vector3(2,.8,2))
+	physics_box(world,Vector3(-3,2,0),Vector3(.3,4,4))
+	physics_box(world,Vector3(0,2.3,0),Vector3(2,.2,2))
+	var ramp = physics_box(world,Vector3(7,.5,5),Vector3(4,.2,4))
+	ramp.rotation.z = .2
+	await physics_frame
+	var sim = simulation.new(world)
+	sim.add_pawn("solo","物理验证",0)
+	var p: Dictionary = sim.pawns.solo
+	p.pos = Vector2(0,6)
+	sim.submit("solo",{"jump":true})
+	sim.submit("solo",{"jump":false})
+	sim.update_pawn(p,1.0/60)
+	check(p.velocity > 8,"Queued jump survives a newer input packet before the physics tick")
+	check(sim.player_bodies.solo is CharacterBody3D,"Player movement owns a native CharacterBody3D")
+	check(sim.player_bodies.solo.get_child(0).shape is CapsuleShape3D,"Native capsule provides player collision volume")
+	var peak: float = p.height
+	for i in 65:
+		sim.update_pawn(p,1.0/60)
+		peak = maxf(peak,p.height)
+	check(peak > 1.9 and peak < 2.02 and p.grounded,"Native jump preserves height and lands without a y=0 clamp")
+	p.pos = Vector2(0,0)
+	p.height = 0
+	p.velocity = 0
+	sim.submit("solo",{"jump":true})
+	peak = 0
+	for i in 60:
+		sim.update_pawn(p,1.0/60)
+		peak = maxf(peak,p.height)
+	check(peak > .1 and peak < .45 and p.grounded,"Low ceiling stops upward motion and player falls back down")
+	p.pos = Vector2(3,0)
+	p.height = 2
+	p.velocity = -1
+	for i in 60: sim.update_pawn(p,1.0/60)
+	check(p.grounded and absf(p.height-.8) < .01,"Capsule lands on elevated platform at its actual height")
+	sim.submit("solo",{"jump":true})
+	sim.update_pawn(p,1.0/60)
+	check(p.velocity > 8 and p.height > .9,"Player can jump again from an elevated platform")
+	p.pos = Vector2(-2,0)
+	p.height = 0
+	p.velocity = 0
+	for i in 30:
+		sim.submit("solo",{"x":-1.0,"y":1.0})
+		sim.update_pawn(p,1.0/60)
+	check(p.pos.x > -2.56 and p.pos.y > 1,"Native capsule stops at wall and slides tangentially")
+	p.pos = Vector2(-2,0)
+	p.height = 0
+	p.velocity = 0
+	sim.charge_knockback(p,Vector2.LEFT)
+	check(p.pos.x > -2.56 and p.pos.x < -2.1,"Charge knockback sweeps capsule and cannot push through wall")
+	p.pos = Vector2(7,5)
+	p.height = 2
+	p.velocity = -1
+	p.air = Vector2.ZERO
+	sim.submit("solo",{})
+	for i in 60: sim.update_pawn(p,1.0/60)
+	check(p.grounded and p.height > .5 and p.height < .7,"Capsule detects support on a walkable slope")
+	var slope_start: float = p.height
+	for i in 10:
+		sim.submit("solo",{"x":1.0})
+		sim.update_pawn(p,1.0/60)
+	check(p.grounded and p.height > slope_start+.08,"Native movement climbs a slope without losing support")
+	var snapshot: Dictionary = sim.snapshot()
+	check(snapshot.pawns.solo.grounded and not snapshot.pawns.solo.has("body"),"Snapshots carry results without physical node references")
+	var client = simulation.new(world)
+	client.apply_snapshot(snapshot)
+	check(client.player_bodies.is_empty() and client.pawns.solo.pos == p.pos,"Receiving client does not run authoritative character bodies")
+	var capsule = sim.player_bodies.solo
+	sim.pawns.erase("solo")
+	sim.step(.01)
+	check(not is_instance_valid(capsule) and sim.player_bodies.is_empty(),"Leaving player removes native body")
+	sim.dispose()
+	viewport.free()
+	var bridge_sim = simulation.new(game.arena)
+	bridge_sim.add_pawn("solo","桥面验证",0)
+	var walker: Dictionary = bridge_sim.pawns.solo
+	walker.pos = Vector2(-10,-19.5)
+	for i in 120:
+		bridge_sim.submit("solo",{"y":1.0})
+		bridge_sim.update_pawn(walker,1.0/60)
+	check(walker.pos.y > -12 and walker.hp == 100,"Native capsule crosses actual bridge without water damage")
+	var remaining_body = bridge_sim.player_bodies.solo
+	bridge_sim.dispose()
+	check(not is_instance_valid(remaining_body),"Reset disposes remaining native bodies")

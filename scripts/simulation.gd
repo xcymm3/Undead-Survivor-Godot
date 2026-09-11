@@ -1,6 +1,8 @@
 extends RefCounted
 ## The sole authority for movement, ammunition, enemies, damage and score, shared by solo/coop.
 const EnemyView = preload("res://scripts/enemy_view.gd")
+const PlayerBody = preload("res://scripts/player_body.gd")
+var player_bodies: Dictionary = {}
 var arena
 var pawns: Dictionary = {}
 var zombies: Array = []
@@ -34,6 +36,25 @@ const CHARGE_WALL_STUN = 2.0
 func _init(world = null) -> void:
 	arena = world
 	random.randomize()
+
+func dispose() -> void:
+	for body in player_bodies.values():
+		if is_instance_valid(body): body.free()
+	player_bodies.clear()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for body in player_bodies.values():
+			if is_instance_valid(body): body.free()
+
+func player_body(p: Dictionary):
+	if not player_bodies.has(p.id):
+		var body = PlayerBody.new()
+		arena.add_child(body)
+		player_bodies[p.id] = body
+	var body = player_bodies[p.id]
+	body.sync_from(p)
+	return body
 
 func add_pawn(id: String, player_name: String, index: int) -> void:
 	var ammo: Array = []
@@ -87,12 +108,19 @@ func submit(id: String, input: Dictionary) -> void:
 	clean.pitch = clampf(clean.pitch,-deg_to_rad(85),deg_to_rad(85))
 	clean.weapon = clampi(int(clean.weapon),0,9)
 	for key in ["jump","fire","reload","aim"]: clean[key] = input.get(key,false) == true
+	# Network polling can deliver several commands before the next physics tick.
+	# Keep a jump edge until update_pawn consumes it, even if a newer packet releases it.
+	clean.jump = clean.jump or pawns[id].input.get("jump",false)
 	pawns[id].input = clean
 	pawns[id].input_age = 0.0
 
 func step(dt: float) -> void:
 	events.clear()
 	if failed: return
+	for id in player_bodies.keys():
+		if not pawns.has(id):
+			player_bodies[id].free()
+			player_bodies.erase(id)
 	for id in melee_swings.keys():
 		if not pawns.has(id) or pawns[id].hp <= 0: melee_swings.erase(id)
 	elapsed += dt
@@ -171,7 +199,7 @@ func alive_count() -> int:
 	return zombies.filter(func(z): return z.hp > 0).size()
 
 func can_move(p: Dictionary, point: Vector2) -> bool:
-	if not arena.clear(p.pos,point,true): return false
+	if point.x < -21.05 or point.x > 21.05 or point.y < -47.05 or point.y > 13.05: return false
 	if p.height >= 1.1: return true
 	for z in zombies:
 		if z.hp <= 0: continue
@@ -187,11 +215,14 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	if p.hp <= 0: return
 	p.yaw = input.get("yaw",p.yaw)
 	p.pitch = input.get("pitch",p.pitch)
+	var body = player_body(p)
 	var movement = Vector2(input.get("x",0),input.get("y",0)).limit_length()
-	if input.get("jump",false) and p.height <= 0 and p.velocity == 0:
-		p.velocity = 8.4
+	if body.grounded: p.air = movement
+	if input.get("jump",false) and body.grounded:
+		body.velocity.y = PlayerBody.JUMP_SPEED
+		body.grounded = false
 		p.air = movement
-	if p.height > 0 or p.velocity > 0: movement = p.air
+	if not body.grounded: movement = p.air
 	var dir = Vector2(movement.x*cos(p.yaw)+movement.y*sin(p.yaw), -movement.x*sin(p.yaw)+movement.y*cos(p.yaw))
 	var remaining = dt
 	while remaining > .00001:
@@ -199,24 +230,19 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 		remaining -= step_time
 		var next: Vector2 = p.pos+dir*4.2*step_time
 		next = next.clamp(Vector2(-21.05,-47.05),Vector2(21.05,13.05))
-		if can_move(p,next): p.pos = next
-		else:
+		if not can_move(p,next):
 			var horizontal = Vector2(next.x,p.pos.y)
-			if can_move(p,horizontal): p.pos = horizontal
 			var vertical = Vector2(p.pos.x,next.y)
-			if can_move(p,vertical): p.pos = vertical
-		if p.height > 0 or p.velocity > 0:
-			p.height += p.velocity*step_time-9*step_time*step_time
-			p.velocity -= 18*step_time
-			if p.height <= 0 and p.velocity < 0:
-				p.height = 0.0
-				p.velocity = 0.0
-		if p.height <= 0 and Data.water(p.pos,.22):
+			next = horizontal if can_move(p,horizontal) else vertical if can_move(p,vertical) else p.pos
+		body.advance((next-p.pos)/step_time,step_time)
+		body.sync_to(p)
+		if p.height <= .06 and Data.water(p.pos,.22):
 			p.hp = maxi(0,p.hp-10)
 			p.pos = safe_spawn()
 			p.height = 0.0
 			p.velocity = 0.0
 			p.protection = .3
+			body.sync_from(p)
 			events.append({"kind":"hurt","player":p.id})
 			if p.hp == 0: cause = "water"
 			break
@@ -293,7 +319,9 @@ func charge_knockback(p: Dictionary, direction: Vector2) -> void:
 	for i in 13:
 		var next: Vector2 = p.pos+direction*(CHARGE_KNOCKBACK/13.0)
 		if not arena.clear(p.pos,next) or not can_move(p,next): break
-		p.pos = next
+		var body = player_body(p)
+		body.move_and_collide(Vector3(direction.x,0,direction.y)*(CHARGE_KNOCKBACK/13.0))
+		body.sync_to(p)
 
 func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	var delta: Vector2 = target.pos-z.pos
