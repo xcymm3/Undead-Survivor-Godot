@@ -1,11 +1,11 @@
 param(
-    [ValidateSet('Import', 'Runtime', 'Profile', 'NetworkHost', 'NetworkClient', 'BakeWorld', 'NativeComponents', 'BakeDust', 'Maps')]
+    [ValidateSet('Import', 'Runtime', 'Profile', 'NetworkHost', 'NetworkClient', 'BakeWorld', 'NativeComponents', 'BakeDust', 'Maps', 'Campaign')]
     [string]$Mode = 'Runtime',
     [string]$Godot = '',
     [switch]$FourPlayers,
     [switch]$VerboseEngine,
-    [ValidateSet('', 'outpost', 'dust')][string]$Map = '',
-    [ValidateSet('', 'outpost', 'dust')][string]$ExpectMap = '',
+    [ValidateSet('', 'outpost', 'dust', 'graypine_ferry')][string]$Map = '',
+    [ValidateSet('', 'outpost', 'dust', 'graypine_ferry')][string]$ExpectMap = '',
     [ValidateRange(10, 600)][int]$TimeoutSeconds = 180
 )
 $ErrorActionPreference = 'Stop'
@@ -20,6 +20,7 @@ switch ($Mode) {
     'Profile' { $arguments += @('--script', 'res://tools/profile-simulation.gd', '--', '--silent') }
     'BakeWorld' { $arguments += @('--script', 'res://tools/bake-world.gd', '--', '--silent', '--automation') }
     'BakeDust' { $arguments += @('--script', 'res://tools/bake-dust.gd', '--', '--silent', '--automation') }
+    'Campaign' { $arguments += @('--script', 'res://tools/validate-campaign.gd', '--', '--silent', '--automation') }
     'Maps' { $arguments += @('--script', 'res://tools/validate-maps.gd', '--', '--silent', '--automation') }
     'NativeComponents' { $arguments += @('--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation') }
     default {

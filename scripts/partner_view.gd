@@ -74,6 +74,7 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	held.visible = p.hp > 0
 	held.rotation.x = p.pitch
 	label.text = "%s  %d HP" % [p.name,p.hp]
+	if p.get("downed",false): label.text = "%s 需要救援 %d 秒" % [p.name,ceili(p.bleed)]
 	if skeleton: skeleton.clear_bones_global_pose_override()
 	var w: Dictionary = Data.weapons[int(p.weapon)]
 	if weapon_animation:

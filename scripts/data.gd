@@ -125,6 +125,7 @@ static func riverbed_height(p: Vector2) -> float:
 	return lerpf(RIVER_BED_Y,RIVER_GROUND_Y,clampf((offset-RIVER_BED_HALF)/(RIVER_BANK_HALF-RIVER_BED_HALF),0,1))
 
 static func enemy_ground_height(p: Vector2, map_id := "outpost") -> float:
+	if map_id == "graypine_ferry": return Maps.Ferry.height(p)
 	if map_id == "dust": return Maps.Dust.height(p)
 	return .04 if bridge(p) else riverbed_height(p)
 

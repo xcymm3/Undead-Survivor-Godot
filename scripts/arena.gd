@@ -8,6 +8,8 @@ var walk_regions: Array[PackedVector2Array] = []
 var obstacles: Array = []
 var collision_buckets: Dictionary = {}
 var grid = AStarGrid2D.new()
+var campaign_state: Dictionary = {}
+var scenery: Node3D
 var sun: DirectionalLight3D
 const CELL = .65
 
@@ -15,7 +17,7 @@ func _ready() -> void:
 	definition = Maps.definition(map_id)
 	bounds = definition.bounds
 	if map_id == "dust": walk_regions = Maps.Dust.polygons()
-	var scenery: Node3D = load(definition.scene).instantiate()
+	scenery = load(definition.scene).instantiate()
 	add_child(scenery)
 	obstacles = scenery.get_meta("navigation_obstacles")
 	if map_id == "outpost": add_child(preload("res://scripts/river.gd").new())
@@ -41,6 +43,7 @@ func _ready() -> void:
 	build_grid()
 
 func build_grid() -> void:
+	collision_buckets.clear()
 	# Shallow water is walkable; only solid scenery blocks enemy navigation.
 	for o in obstacles:
 		index_obstacle(Rect2(o.minX-.95,o.minZ-.95,o.maxX-o.minX+1.9,o.maxZ-o.minZ+1.9),false)
@@ -53,7 +56,7 @@ func build_grid() -> void:
 		for x in grid.region.size.x:
 			var p = bounds.position+Vector2(x,y)*CELL
 			grid.set_point_solid(Vector2i(x,y), not clear(p,p) or (map_id == "dust" and steep_edge(p)))
-			grid.set_point_weight_scale(Vector2i(x,y),1.0/Data.WADE_SPEED if map_id == "outpost" and Data.water(p) else 1.0)
+			grid.set_point_weight_scale(Vector2i(x,y),1.0/Data.WADE_SPEED if (map_id == "outpost" and Data.water(p)) or (map_id == "graypine_ferry" and Maps.Ferry.water(p)) else 1.0)
 
 func segment_rect(a: Vector2, b: Vector2, rect: Rect2) -> bool:
 	var near = 0.0
@@ -79,6 +82,9 @@ func index_obstacle(rect: Rect2, is_water: bool) -> void:
 			collision_buckets[key].append(obstacle)
 
 func clear(a: Vector2, b: Vector2, allow_water := false) -> bool:
+	if map_id == "graypine_ferry":
+		if not campaign_state.get("gate_open",false) and segment_rect(a,b,Maps.Ferry.GATE.grow(.95)): return false
+		if not campaign_state.get("departed",false) and segment_rect(a,b,Maps.Ferry.START_DOOR.grow(.95)): return false
 	if not bounds.grow(-.95).has_point(a) or not bounds.grow(-.95).has_point(b): return false
 	if map_id == "dust" and (not walkable(a) or not walkable(b)): return false
 	if map_id == "dust" and a.distance_squared_to(b) > .0001:
@@ -130,3 +136,19 @@ func steep_edge(p: Vector2) -> bool:
 	for dir in [Vector2.LEFT,Vector2.RIGHT,Vector2.UP,Vector2.DOWN]:
 		if absf(Maps.Dust.height(p+dir*.5)-Maps.Dust.height(p)) > .54: return true
 	return false
+
+func sync_campaign(state: Dictionary) -> void:
+	if map_id != "graypine_ferry": return
+	var changed: bool = campaign_state.get("gate_open",false) != state.get("gate_open",false) or campaign_state.get("departed",false) != state.get("departed",false)
+	campaign_state = state.duplicate(true)
+	scenery.sync(state)
+	if changed:
+		for rect in [Maps.Ferry.GATE.grow(1.5),Maps.Ferry.START_DOOR.grow(1.5)]:
+			var first: Vector2i = Vector2i((rect.position-bounds.position)/CELL)-Vector2i.ONE
+			var last: Vector2i = Vector2i((rect.end-bounds.position)/CELL)+Vector2i.ONE
+			for y in range(first.y,last.y+1):
+				for x in range(first.x,last.x+1):
+					var cell = Vector2i(x,y)
+					if grid.is_in_boundsv(cell):
+						var point = grid.get_point_position(cell)
+						grid.set_point_solid(cell,not clear(point,point))

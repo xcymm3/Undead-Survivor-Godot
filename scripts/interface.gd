@@ -156,7 +156,7 @@ func show_home() -> void:
 		var selected: bool = Data.settings.map_id == id
 		var option = button(map_row,definition.title,func(): game.call_deferred("select_map",id),selected)
 		option.name = "Map_"+id
-		option.custom_minimum_size = Vector2(212,56)
+		option.custom_minimum_size = Vector2(180,56)
 		option.toggle_mode = true
 		option.button_pressed = selected
 		option.disabled = selected
@@ -173,7 +173,7 @@ func show_home() -> void:
 	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
 	title.add_theme_constant_override("line_spacing",-12)
 	title_block.add_child(title)
-	title_block.add_child(label("守住每一波，活到下一刻。",19,Color("d8dfce")))
+	title_block.add_child(label("穿过灰松渡口，抵达下一间安全屋。" if Data.settings.map_id == "graypine_ferry" else "守住每一波，活到下一刻。",19,Color("d8dfce")))
 	var actions = VBoxContainer.new()
 	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	actions.offset_left = -450
@@ -338,8 +338,9 @@ func show_settings() -> void:
 	button(column,"返回",back,true)
 
 func show_guide() -> void:
-	var column = panel("武器与操作", "十款武器全部可用 · 弹匣独立保留 · 备弹无限",1000)
+	var column = panel("武器与操作", "生存：十款武器、无限备弹 · 战役：一把主武器、有限补给",1000)
 	current = "guide"
+	paragraph(column,"灰松渡口战役：出发前选主武器；E 开门、领取补给、启动设备或救援；H 按住 3 秒治疗。7 切换近战。桥头守住 90 秒后闸门开启，存活队员全部进入泵站后 E 关门过关。合作倒地最多救起两次，死亡后本关不复活。",17)
 	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键举枪\n空格跳跃  /  R 换弹  /  1—0 或滚轮切枪  /  Esc 暂停\n起跳锁定当前移动按键；空中转向仍有效。涉水移速为 70%，跳跃可恢复速度、拉开距离。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
@@ -425,6 +426,15 @@ func show_multiplayer() -> void:
 
 func show_result() -> void:
 	var sim = game.sim
+	if sim.mode == "campaign":
+		var result = panel("抵达泵站" if sim.won else "渡口行动失败","灰松渡口 · 第一章",640)
+		current = "result"
+		result.add_child(label("%s · %d 击杀" % [time_text(sim.elapsed),sim.kills],32))
+		paragraph(result,"全队抵达下一间安全屋。" if sim.won else "全队失去行动能力，从公路值班室重新出发。")
+		paragraph(result,"战役成绩不计入生存波次排行榜。",16)
+		if not Session.playing: button(result,"重新出发",func(): game.start_solo("campaign"),true)
+		button(result,"返回主菜单",func(): game.return_home())
+		return
 	var column = panel("坚守结束", "全队阵亡" if Session.playing else "落水耗尽生命" if sim.cause == "water" else "防线失守",640)
 	current = "result"
 	column.add_child(label("%d 波" % sim.cleared,74,RUST))

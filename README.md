@@ -120,10 +120,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/capture-hidden.ps1 -Al
 npm run verify:release
 ```
 
-流程使用固定版本的 GodotSteam 导出模板，运行成品 EXE 的无窗口冒烟检查，再生成 `build/Undead-Survivor-Godot-Windows-x64.zip`。包内包含 EXE、`steam_api64.dll`、开发用 `steam_appid.txt`、第三方及字体许可；不要只复制 EXE。正式 Steam 发布须使用自己的 App ID 和对应发布配置。
+流程使用固定版本的 GodotSteam 导出模板，运行成品 EXE 的无窗口冒烟检查，再生成 `build/Undead-Survivor-Godot-Windows-x64.zip`。包内包含可独立下载运行的单文件 EXE、版本与许可文件。EXE 内置游戏和 Steam 依赖，运行时自动解压，退出后清理，无需另行下载 DLL 或 appid。正式 Steam 发布须使用自己的 App ID 和对应发布配置。
 
 ## 资源来源
 
 六款枪械及六款人物来自 Quaternius 的 CC0 资源；地图、僵尸、四款程序化武器及合成音频来自原项目。许可说明保留在 `assets/models/WEAPON-SOURCES.md`、`assets/models/characters/License.txt` 和 `assets/THIRD-PARTY-NOTICES.txt`。
 
 引擎下载：[Godot 4.5.2](https://godotengine.org/download/archive/4.5.2-stable/)，[GodotSteam 4.16](https://github.com/GodotSteam/GodotSteam/releases/tag/v4.16)。
+
+## 灰松渡口战役（1.8.0）
+
+首页选择“灰松渡口”进入从公路值班室前往泵站安全屋的第一章，支持单人和合作。E 交互/救援，H 治疗；出发后保留一把主武器与近战，储备弹药有限。操作、内部接口验收方法及尚未验证的项目见 [战役实现说明](docs/CAMPAIGN_IMPLEMENTATION.md)。

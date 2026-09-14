@@ -10,6 +10,9 @@ var pawns: Dictionary = {}
 var zombies: Array = []
 var events: Array = []
 var mode = "survival"
+var campaign
+var campaign_replica: Dictionary = {}
+var won = false
 var elapsed = 0.0
 var wave = 1
 var cleared = 0
@@ -73,8 +76,10 @@ func add_pawn(id: String, player_name: String, index: int) -> void:
 	pawns[id].height = Data.enemy_ground_height(pawns[id].pos,map_id) if map_id == "dust" else 0.0
 
 func start(_game_mode: String) -> void:
-	mode = "survival"
-	prepare_wave()
+	mode = "campaign" if map_id == "graypine_ferry" else "survival"
+	if mode == "campaign":
+		campaign = preload("res://scripts/campaign_director.gd").new(self)
+	else: prepare_wave()
 
 func prepare_wave() -> void:
 	roster.clear()
@@ -111,7 +116,7 @@ func submit(id: String, input: Dictionary) -> void:
 	clean.yaw = wrapf(clean.yaw,-PI,PI)
 	clean.pitch = clampf(clean.pitch,-deg_to_rad(85),deg_to_rad(85))
 	clean.weapon = clampi(int(clean.weapon),0,9)
-	for key in ["jump","fire","reload","aim"]: clean[key] = input.get(key,false) == true
+	for key in ["jump","fire","reload","aim","interact","heal"]: clean[key] = input.get(key,false) == true
 	# Network polling can deliver several commands before the next physics tick.
 	# Keep a jump edge until update_pawn consumes it, even if a newer packet releases it.
 	clean.jump = clean.jump or pawns[id].input.get("jump",false)
@@ -120,14 +125,14 @@ func submit(id: String, input: Dictionary) -> void:
 
 func step(dt: float) -> void:
 	events.clear()
-	if failed: return
+	if failed or won: return
 	for id in player_bodies.keys():
 		if not pawns.has(id):
 			player_bodies[id].free()
 			player_bodies.erase(id)
 	for id in melee_swings.keys():
 		if not pawns.has(id) or pawns[id].hp <= 0: melee_swings.erase(id)
-	elapsed += dt
+	if not campaign or campaign.state.departed: elapsed += dt
 	for p in pawns.values(): update_pawn(p,dt)
 	crowd_buckets.clear()
 	for z in zombies:
@@ -138,6 +143,7 @@ func step(dt: float) -> void:
 	var living: Array = pawns.values().filter(func(p): return p.hp > 0)
 	if living.is_empty():
 		failed = true
+		if campaign: campaign.phase("FAILED","全队失去行动能力")
 		return
 	for z in zombies:
 		if z.hp <= 0:
@@ -150,6 +156,11 @@ func step(dt: float) -> void:
 	zombies = zombies.filter(func(z): return z.hp > 0 or z.down > 0)
 	if pawns.values().all(func(p): return p.hp <= 0):
 		failed = true
+		if campaign: campaign.phase("FAILED","全队失去行动能力")
+		return
+	if campaign:
+		campaign.step(dt)
+		won = campaign.state.complete
 		return
 	if rest > 0:
 		rest = maxf(0,rest-dt)
@@ -243,6 +254,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	var w: Dictionary = Data.weapons[p.weapon]
 	update_melee_swing(p,w)
 	var requested: int = input.get("weapon",p.weapon)
+	if campaign: requested = campaign.choose_weapon(p,requested)
 	if requested != p.requested:
 		p.requested = requested
 		p.reload_queued = false
@@ -262,19 +274,23 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.reload -= dt
 		if p.reload <= 0:
 			if w.get("shellReload",false):
-				p.ammo[p.weapon] = mini(int(w.capacity),p.ammo[p.weapon]+1)
+				var loaded = mini(1,p.reserve) if campaign else 1
+				p.ammo[p.weapon] = mini(int(w.capacity),p.ammo[p.weapon]+loaded)
+				if campaign: p.reserve -= loaded
 				p.reload = w.reloadDuration
 				events.append({"kind":"reload","player":p.id})
-				if p.ammo[p.weapon] >= w.capacity: p.reloading = false
+				if p.ammo[p.weapon] >= w.capacity or (campaign and p.reserve <= 0): p.reloading = false
 			else:
-				p.ammo[p.weapon] = int(w.capacity)
+				var loaded = mini(int(w.capacity)-p.ammo[p.weapon],p.reserve) if campaign else int(w.capacity)-p.ammo[p.weapon]
+				p.ammo[p.weapon] += loaded
+				if campaign: p.reserve -= loaded
 				p.reloading = false
 		return
 	if p.requested != p.weapon and p.fire_anim <= 0:
 		p.switch = .4
 		p.aim = false
 		return
-	if input.get("reload",false) and not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < w.capacity: p.reload_queued = true
+	if input.get("reload",false) and not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < w.capacity and (not campaign or p.reserve > 0): p.reload_queued = true
 	p.input.reload = false
 	if p.reload_queued and p.fire_anim <= 0:
 		p.reload = w.reloadDuration
@@ -283,7 +299,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.aim = false
 		events.append({"kind":"reload","player":p.id})
 		return
-	var trigger: bool = input.get("fire",false)
+	var trigger: bool = input.get("fire",false) and (not campaign or (campaign.state.departed and p.interaction == ""))
 	if trigger and (w.automatic or not p.trigger) and p.cooldown <= 0 and p.fire_anim <= .00001:
 		if p.ammo[p.weapon] > 0 or w.get("infiniteAmmo",false):
 			if not w.get("infiniteAmmo",false): p.ammo[p.weapon] -= 1
@@ -295,9 +311,10 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	p.trigger = trigger
 
 func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
-	if p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
+	if won or (campaign and not campaign.state.departed) or p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
 	p.hp = maxi(0,p.hp-amount)
 	p.protection = .3
+	if campaign: campaign.damage(p)
 	events.append({"kind":"hurt","player":p.id})
 	if p.hp == 0:
 		cause = "zombie"
@@ -317,7 +334,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	var delta: Vector2 = target.pos-z.pos
 	var distance = delta.length()
 	var contact = Data.contact(z.kind)
-	var base_speed: float = Data.wave_settings(wave).speed
+	var base_speed: float = 1.8 if campaign else Data.wave_settings(wave).speed
 	var speed: float = base_speed
 	z.rage_pause = maxf(0,z.rage_pause-dt)
 	z.charge_cooldown = maxf(0,z.charge_cooldown-dt)
@@ -590,10 +607,13 @@ func snapshot() -> Dictionary:
 	for id in pawns:
 		players[id] = pawns[id].duplicate(true)
 		players[id].erase("input")
-	return {"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":Data.wave_settings(wave).count,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
+	return {"campaign":campaign_state(),"won":won,"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":Data.wave_settings(wave).count,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
 
 func apply_snapshot(state: Dictionary) -> void:
 	pawns = state.pawns
+	won = state.get("won",false)
+	campaign_replica = state.get("campaign",{})
+	if map_id == "graypine_ferry": arena.sync_campaign(campaign_replica)
 	zombies = state.zombies
 	mode = state.mode
 	elapsed = state.elapsed
@@ -607,7 +627,10 @@ func apply_snapshot(state: Dictionary) -> void:
 	culprit = state.culprit
 
 func is_water(p: Vector2) -> bool:
-	return map_id == "outpost" and Data.water(p)
+	return Data.Maps.Ferry.water(p) if map_id == "graypine_ferry" else map_id == "outpost" and Data.water(p)
 
 func is_wading(p: Vector2, height: float) -> bool:
-	return map_id == "outpost" and Data.wading(p,height)
+	return (Data.Maps.Ferry.water(p) and height < -.2) if map_id == "graypine_ferry" else map_id == "outpost" and Data.wading(p,height)
+
+func campaign_state() -> Dictionary:
+	return campaign.snapshot() if campaign else campaign_replica

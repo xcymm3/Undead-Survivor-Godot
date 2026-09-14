@@ -89,6 +89,9 @@ func _ready() -> void:
 	# Explicit command-line launch modes also support silent local integration validation.
 	var args = OS.get_cmdline_user_args()
 	if "--survival" in args: start_solo("survival")
+	if "--campaign" in args:
+		Data.settings.map_id = "graypine_ferry"
+		start_solo("campaign")
 	if "--lan-host" in args: Session.host_lan("房主")
 	for arg in args:
 		if arg.begins_with("--lan-join="): Session.join_lan(arg.trim_prefix("--lan-join="),"队友")
@@ -158,7 +161,7 @@ func local_pawn() -> Dictionary:
 
 func view_pawn() -> Dictionary:
 	var local = local_pawn()
-	if local.is_empty() or local.hp > 0 or not Session.playing: return local
+	if local.is_empty() or local.hp > 0 or local.get("downed",false) or not Session.playing: return local
 	if sim.pawns.has(spectating) and sim.pawns[spectating].hp > 0: return sim.pawns[spectating]
 	for p in sim.pawns.values():
 		if p.hp > 0:
@@ -176,7 +179,7 @@ func cycle_spectator() -> void:
 
 func input_state() -> Dictionary:
 	var enabled = running and not paused and focused and not finished
-	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held}
+	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"heal":enabled and Input.is_action_pressed("heal"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held}
 	jump_pending = false
 	reload_pending = false
 	fire_pending = false
@@ -196,12 +199,12 @@ func _physics_process(dt: float) -> void:
 		queued_effects.append_array(sim.events)
 		if Session.is_host():
 			snapshot_timer += dt
-			if snapshot_timer >= .05 or sim.failed:
+			if snapshot_timer >= .05 or sim.failed or sim.won:
 				snapshot_timer = 0
 				Session.send_world(sim.snapshot(),queued_effects)
 				queued_effects.clear()
 		else: queued_effects.clear()
-	if sim.failed: finish_run()
+	if sim.failed or sim.won: finish_run()
 
 func _process(dt: float) -> void:
 	if not focused: return
@@ -258,7 +261,7 @@ func _process(dt: float) -> void:
 		death_timer += dt
 		weapon.visible = false
 		for z in sim.zombies:
-			if z.id == sim.culprit:
+			if not sim.won and z.id == sim.culprit:
 				var head = Vector3(z.pos.x,1.8*Data.enemy_scale(z.kind),z.pos.y)
 				camera.position = desired.lerp(head+(desired-head).normalized()*.85,clampf(death_timer*.8,0,1))
 				if camera.position.distance_to(head) > .05: camera.look_at(head)
@@ -270,6 +273,8 @@ func handle_effects(events: Array) -> void:
 	for event in events:
 		if not event is Dictionary or not event.has("kind"): continue
 		match event.kind:
+			"campaign_cue":
+				sound.play_at("campaign-"+event.get("cue","horde"),event.position,-8)
 			"shot":
 				var index = clampi(int(event.get("weapon",0)),0,9)
 				var w: Dictionary = Data.weapons[index]
@@ -306,10 +311,10 @@ func finish_run() -> void:
 	if finished: return
 	reset_mouse_buttons()
 	finished = true
-	death_timer = 0
+	death_timer = 1.3 if sim.won else 0.0
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	sound.set_playing(false)
-	sound.play("failure",-9)
+	sound.play("campaign-gate" if sim.won else "failure",-9)
 	if not Session.playing and sim.mode == "survival":
 		var p = local_pawn()
 		Data.record(sim.cleared,sim.kills,sim.elapsed,p.shots,p.hits)

@@ -256,6 +256,8 @@ func encode_packet(packet: Dictionary) -> PackedByteArray:
 	return var_to_bytes(envelope).compress(FileAccess.COMPRESSION_DEFLATE)
 
 func send_bytes(id: String, bytes: PackedByteArray, reliable: bool) -> void:
+	# Campaign state plus a horde can exceed one datagram on either transport.
+	reliable = reliable or bytes.size() > 1100
 	if transport == "lan" and peer and peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 		var remote = peer.get_peer(int(id))
 		if not remote or remote.get_state() != ENetPacketPeer.STATE_CONNECTED: return
@@ -297,7 +299,7 @@ func recover_input_edges(id: String, command: Dictionary) -> Dictionary:
 func send_world(state: Dictionary, effects: Array) -> void:
 	if not is_host(): return
 	send_sequence += 1
-	broadcast({"type":"world","state":state,"seq":send_sequence},state.failed)
+	broadcast({"type":"world","state":state,"seq":send_sequence},state.failed or state.get("won",false))
 	if not effects.is_empty(): broadcast({"type":"effects","effects":effects},true)
 
 func _process(dt: float) -> void:
@@ -406,11 +408,29 @@ func valid_world(value) -> bool:
 	if not value is Dictionary or value.get("map_id") != map_id: return false
 	if not value is Dictionary or not value.has_all(["pawns","zombies","mode","elapsed","wave","cleared","spawned","kills","rest","failed","cause","culprit"]): return false
 	if not value.pawns is Dictionary or value.pawns.size() > 4 or not value.zombies is Array: return false
+	if value.mode not in ["survival","campaign"] or not value.get("won",false) is bool: return false
+	if value.mode == "campaign":
+		if map_id != "graypine_ferry" or not value.get("campaign") is Dictionary: return false
+		var campaign_state: Dictionary = value.campaign
+		if not campaign_state.has_all(["phase","departed","gate_open","complete","bridge_time","taken","claimed","objective","party"]): return false
+		if campaign_state.phase not in ["PREPARE","STREET","BRIDGE_READY","BRIDGE_ACTIVE","GATE_OPEN","FINAL_APPROACH","COMPLETE","FAILED"]: return false
+		for key in ["departed","gate_open","complete"]:
+			if not campaign_state[key] is bool: return false
+		if not campaign_state.bridge_time is float or not is_finite(campaign_state.bridge_time) or campaign_state.bridge_time < 0 or campaign_state.bridge_time > 90: return false
+		if not campaign_state.taken is Dictionary or not campaign_state.claimed is Dictionary or not campaign_state.objective is String or campaign_state.objective.length() > 160: return false
+		if not campaign_state.party is int or campaign_state.party < 1 or campaign_state.party > 4: return false
 	for key in ["elapsed","wave","cleared","spawned","kills","rest","culprit"]:
 		if not (value[key] is int or value[key] is float) or not is_finite(value[key]): return false
 	for id in value.pawns:
 		var p = value.pawns[id]
 		if not members.has(id) or not p is Dictionary or not p.has_all(["pos","hp","height","yaw","pitch","weapon","ammo","appearance","fire_anim","switch","reload","reloading","aim","hits","shots","kills","protection","requested","id","name"]): return false
+		if value.mode == "campaign":
+			if not p.has_all(["reserve","primary","medkits","downed","dead","bleed","revives","hint"]): return false
+			for key in ["reserve","primary","medkits","revives"]:
+				if not p[key] is int or p[key] < 0: return false
+			if p.primary > 9 or p.medkits > 1 or p.revives > 2 or p.reserve > 6*int(Data.weapons[p.primary].capacity): return false
+			if not p.downed is bool or not p.dead is bool or not p.bleed is float or not is_finite(p.bleed) or p.bleed < 0 or p.bleed > 30: return false
+			if not p.hint is String or p.hint.length() > 160: return false
 		if not p.pos is Vector2 or not p.pos.is_finite() or not p.ammo is Array or p.ammo.size() != 10 or not p.appearance is Array or p.appearance.size() != 3: return false
 		if not p.appearance[0] is int or int(p.appearance[0]) < 0 or int(p.appearance[0]) >= Data.MODELS.size(): return false
 		for key in ["hp","height","yaw","pitch","weapon","fire_anim","switch","reload","hits","shots","kills","protection","requested"]:
