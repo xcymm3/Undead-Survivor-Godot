@@ -18,7 +18,7 @@ func _process(dt: float) -> void:
 	if not game.running or game.paused or game.finished or not game.sim: return
 	var p: Dictionary = game.local_pawn()
 	if p.is_empty() or p.hp <= 0: return
-	var origin = Vector3(p.pos.x,p.height+1.7,p.pos.y)
+	var origin = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 	var best_score = INF
 	var best = Vector3.ZERO
 	for z in game.sim.zombies:

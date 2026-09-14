@@ -10,6 +10,10 @@ func _ready() -> void:
 		queue_free()
 		return
 	if "--qa-native-smoke" in OS.get_cmdline_user_args(): call_deferred("native_smoke")
+	if "--qa-poses" in OS.get_cmdline_user_args() and OS.has_feature("web"):
+		var gallery = preload("res://scripts/qa_pose_gallery.gd").new()
+		gallery.game = game
+		add_child(gallery)
 	if "--qa-autoaim" in OS.get_cmdline_user_args():
 		aim_assist = preload("res://scripts/qa_aim_assist.gd").new()
 		aim_assist.game = game
@@ -45,7 +49,7 @@ func snapshot() -> Dictionary:
 		var p: Dictionary = game.local_pawn()
 		if not p.is_empty():
 			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "wading":p.get("wading",false), "hp": p.hp,
-				"weapon": p.weapon, "ammo": p.ammo, "shots": p.shots, "hits": p.hits,
+				"crouch": p.get("crouch",0.0), "eye_height": preload("res://scripts/player_body.gd").eye_height(p), "weapon": p.weapon, "ammo": p.ammo, "shots": p.shots, "hits": p.hits,
 				"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
 	return result
 

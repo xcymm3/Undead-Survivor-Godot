@@ -68,7 +68,7 @@ func add_pawn(id: String, player_name: String, index: int) -> void:
 	for pawn in pawns.values(): available.erase(int(pawn.appearance[0]))
 	if available.is_empty(): available = range(Data.MODELS.size())
 	var model: int = available[random.randi_range(0,available.size()-1)]
-	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"air":Vector2.ZERO,"hp":100,"protection":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0]}
+	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0]}
 
 	pawns[id].height = Data.enemy_ground_height(pawns[id].pos,map_id) if map_id == "dust" else 0.0
 
@@ -111,7 +111,7 @@ func submit(id: String, input: Dictionary) -> void:
 	clean.yaw = wrapf(clean.yaw,-PI,PI)
 	clean.pitch = clampf(clean.pitch,-deg_to_rad(85),deg_to_rad(85))
 	clean.weapon = clampi(int(clean.weapon),0,9)
-	for key in ["jump","fire","reload","aim"]: clean[key] = input.get(key,false) == true
+	for key in ["jump","fire","reload","aim","crouch"]: clean[key] = input.get(key,false) == true
 	# Network polling can deliver several commands before the next physics tick.
 	# Keep a jump edge until update_pawn consumes it, even if a newer packet releases it.
 	clean.jump = clean.jump or pawns[id].input.get("jump",false)
@@ -214,9 +214,10 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	p.yaw = input.get("yaw",p.yaw)
 	p.pitch = input.get("pitch",p.pitch)
 	var body = player_body(p)
+	body.update_stance(p,input.get("crouch",false),dt)
 	var movement = Vector2(input.get("x",0),input.get("y",0)).limit_length()
 	if body.grounded: p.air = movement
-	if input.get("jump",false) and body.grounded:
+	if input.get("jump",false) and body.grounded and p.crouch < .1:
 		body.velocity.y = PlayerBody.JUMP_SPEED
 		body.grounded = false
 		p.air = movement
@@ -227,7 +228,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 		var step_time = minf(.01,remaining)
 		remaining -= step_time
 		var wading: bool = body.grounded and is_wading(p.pos,p.height)
-		var next: Vector2 = p.pos+dir*4.2*(Data.WADE_SPEED if wading else 1.0)*step_time
+		var next: Vector2 = p.pos+dir*4.2*lerpf(1.0,.55,p.crouch)*(Data.WADE_SPEED if wading else 1.0)*step_time
 		next = next.clamp(map_definition.bounds.position+Vector2.ONE*.95,map_definition.bounds.end-Vector2.ONE*.95)
 		if not can_move(p,next):
 			var horizontal = Vector2(next.x,p.pos.y)
@@ -482,12 +483,12 @@ func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 		var last = clampf((progress-MELEE_START)/(MELEE_END-MELEE_START),0,1)
 		var right_edge = deg_to_rad(lerpf(65,-65,first)+MELEE_HALF_WIDTH)
 		var left_edge = deg_to_rad(lerpf(65,-65,last)-MELEE_HALF_WIDTH)
-		var origin = Vector3(p.pos.x,p.height+1.2,p.pos.y)
+		var origin = Vector3(p.pos.x,p.height+PlayerBody.eye_height(p)-.5,p.pos.y)
 		var facing = Basis(Vector3.UP,p.yaw)
 		var reach: float = w.range
 		# A generous vertical blade volume moves down with the diagonal swing.
-		var upper = p.height+lerpf(1.7,.7,first)+1.1+sin(p.pitch)*1.2
-		var lower = p.height+lerpf(1.7,.7,last)-1.1+sin(p.pitch)*1.2
+		var upper = p.height+PlayerBody.eye_height(p)+lerpf(0,-1,first)+1.1+sin(p.pitch)*1.2
+		var lower = p.height+PlayerBody.eye_height(p)+lerpf(0,-1,last)-1.1+sin(p.pitch)*1.2
 		for z in zombies:
 			if z.hp <= 0 or swing.damaged.has(z.id): continue
 			if p.pos.distance_to(z.pos) > reach+Data.enemy_scale(z.kind)*1.5: continue
@@ -528,10 +529,10 @@ func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 func fire(p: Dictionary, w: Dictionary) -> void:
 	if w.get("kind","gun") == "melee":
 		melee_swings[p.id] = {"weapon":p.weapon,"progress":0.0,"damaged":{},"landed":false}
-		var origin = Vector3(p.pos.x,p.height+1.2,p.pos.y)
+		var origin = Vector3(p.pos.x,p.height+PlayerBody.eye_height(p)-.5,p.pos.y)
 		events.append({"kind":"shot","player":p.id,"weapon":p.weapon,"from":origin,"to":origin})
 		return
-	var camera = Transform3D(Basis.from_euler(Vector3(p.pitch,p.yaw,0)),Vector3(p.pos.x,p.height+1.7,p.pos.y))
+	var camera = Transform3D(Basis.from_euler(Vector3(p.pitch,p.yaw,0)),Vector3(p.pos.x,p.height+PlayerBody.eye_height(p),p.pos.y))
 	var forward = -camera.basis.z
 	var reach: float = w.get("range",180.0)
 	var target = camera.origin+forward*reach

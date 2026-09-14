@@ -7,6 +7,8 @@ var started := 0
 var remote_moved := false
 var remote_jumped := false
 var remote_landed := false
+var remote_crouched := false
+var remote_stood := false
 var sent_jump := false
 var full_party_bodies := false
 var snapshots := 0
@@ -54,6 +56,9 @@ func _process(_dt: float) -> bool:
 		if not host and age > .6 and not sent_jump:
 			game.jump_pending = true
 			sent_jump = true
+		if not host:
+			if age > 2.2 and age < 3.3: Input.action_press("crouch")
+			else: Input.action_release("crouch")
 		if not host and age < 2:
 			game.fire_pending = true
 		elif not host and not sent_stop:
@@ -66,12 +71,15 @@ func _process(_dt: float) -> bool:
 				remote_jumped = remote_jumped or p.height > .3
 				remote_landed = remote_landed or (remote_jumped and p.get("grounded",false))
 				remote_shots = maxi(remote_shots,int(p.shots))
+				remote_crouched = remote_crouched or p.get("crouch",0.0) > .9
+				remote_stood = remote_stood or (remote_crouched and age > 3.4 and p.get("crouch",0.0) < .1)
 		if age > (5.0 if host else 4.5):
 			var metrics: Dictionary = session.network_metrics()
 			var body_authority: bool = full_party_bodies and game.sim.player_bodies.size() == game.sim.pawns.size() if host else game.sim.player_bodies.is_empty()
-			var good = correct_map and remote_moved and remote_jumped and remote_landed and body_authority and remote_shots > 0 and (host or (snapshots >= 20 and metrics.samples >= 2 and metrics.rtt >= 0 and metrics.loss >= 0))
+			var good = remote_crouched and remote_stood and correct_map and remote_moved and remote_jumped and remote_landed and body_authority and remote_shots > 0 and (host or (snapshots >= 20 and metrics.samples >= 2 and metrics.rtt >= 0 and metrics.loss >= 0))
 			print("NETWORK MAP: expected=%s actual=%s match=%s" % [expected_map,game.arena.map_id,correct_map])
 			print("NETWORK PHYSICS: jumped=%s landed=%s authority=%s" % [remote_jumped,remote_landed,body_authority])
+			print("NETWORK CROUCH: crouched=%s stood=%s" % [remote_crouched,remote_stood])
 			print("NETWORK METRICS: "+JSON.stringify(metrics))
 			print("NETWORK %s: moved=%s shots=%d snapshots=%d result=%s" % ["HOST" if host else "CLIENT",remote_moved,remote_shots,snapshots,"PASS" if good else "FAIL"])
 			stopping = true

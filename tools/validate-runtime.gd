@@ -58,6 +58,7 @@ func run() -> void:
 	check(p.get("grounded",false) and absf(p.height) < .08,"Capsule lands on actual ground surface")
 	check(absf(p.pos.y-5.08) < .25,"Source jump travel distance")
 	await validate_character_physics(simulation)
+	await validate_crouch(simulation)
 	await validate_wading(simulation)
 	p.pos = Vector2(0,9)
 	p.height = 0.0
@@ -73,7 +74,13 @@ func run() -> void:
 		sim.step(1.0/60)
 		check(p.ammo[i] == initial-(0 if i == 6 else 1),"Weapon fires and consumes its own magazine %d" % i)
 		game.weapon.sync(p,.016,sim.elapsed)
-		check(game.weapon.animations[i] != null and game.weapon.animations[i].has_animation("fire") and game.weapon.animations[i].has_animation("reload"),"Imported native animations %d" % i)
+		if i == 0:
+			game.weapon.models[i].pose(true,.5,0)
+			check(game.weapon.models[i].magazine.position.y < -.25,"AK magazine moves out during procedural reload")
+			game.weapon.models[i].pose(false,0,0)
+			check(game.weapon.models[i].magazine.position == Vector3.ZERO,"AK magazine returns to receiver after reload")
+		else:
+			check(game.weapon.animations[i] != null and game.weapon.animations[i].has_animation("fire") and game.weapon.animations[i].has_animation("reload"),"Imported native animations %d" % i)
 		for j in 70:
 			sim.submit("solo",{"weapon":i})
 			sim.step(1.0/60)
@@ -369,6 +376,24 @@ func run() -> void:
 			var grip: Vector3 = actor.skeleton.global_transform*actor.skeleton.get_bone_global_pose(hand).origin
 			check(actor.grip_position().distance_to(grip) < .08,"Third-person grip follows fist for weapon "+str(index))
 			check(actor.muzzle_position().is_finite(),"Finite model muzzle for weapon "+str(index))
+		var head = actor.skeleton.find_bone("Head")
+		var standing_head = actor.skeleton.get_bone_global_pose(head).origin.y
+		p.crouch = 1.0
+		actor.sync(p,.016)
+		check(actor.skeleton.get_bone_global_pose(head).origin.y < standing_head-.55,"Remote crouch lowers head to the authority stance")
+		var knee = actor.skeleton.get_bone_global_pose(actor.skeleton.find_bone("Shin.R")).origin
+		var thigh = actor.skeleton.get_bone_global_pose(actor.skeleton.find_bone("Thigh.R")).origin
+		check(knee.z < thigh.z-.3,"Crouched knees bend forward, not behind the avatar")
+		var foot = actor.skeleton.get_bone_global_pose(actor.skeleton.find_bone("Foot.R")).origin
+		check(absf(foot.y-.10) < .025,"Crouched boots remain on the ground")
+		p.weapon = 0
+		for angle in [-.7,.7]:
+			p.pitch = angle
+			actor.sync(p,.016)
+			var hand_position = actor.skeleton.global_transform*actor.skeleton.get_bone_global_pose(actor.skeleton.find_bone("Fist.R")).origin
+			check(actor.grip_position().distance_to(hand_position) < .01,"AK grip stays attached while looking up/down in crouch")
+		p.pitch = 0
+		p.crouch = 0.0
 		actor.queue_free()
 	# Exercise every menu without presenting it or changing persisted settings.
 	for method in ["show_home","show_settings","show_guide","show_scores","show_multiplayer","show_pause"]:
@@ -610,3 +635,47 @@ func validate_wading(simulation) -> void:
 		crossed_water = crossed_water or data.water(pursuit.zombies[0].pos)
 	check(crossed_water and pursuit.zombies[0].pos.y > -15,"Zombie can pursue directly across the river without using a bridge")
 	pursuit.dispose()
+
+func validate_crouch(simulation) -> void:
+	var viewport = SubViewport.new()
+	viewport.own_world_3d = true
+	root.add_child(viewport)
+	var world = EmptyArena.new()
+	viewport.add_child(world)
+	physics_box(world,Vector3(0,-.5,0),Vector3(42,1,60))
+	physics_box(world,Vector3(0,1.45,0),Vector3(3,.2,3))
+	await physics_frame
+	var sim = simulation.new(world)
+	sim.add_pawn("solo","蹲下验证",0)
+	var p: Dictionary = sim.pawns.solo
+	p.pos = Vector2(0,4)
+	for i in 15:
+		sim.submit("solo",{"crouch":true})
+		sim.update_pawn(p,1.0/60)
+	check(p.crouch > .99 and absf(sim.player_bodies.solo.collider.shape.height-1.2) < .01,"Crouch lowers the actual authority capsule")
+	check(absf(load("res://scripts/player_body.gd").eye_height(p)-1.1) < .01,"Crouch eye and firing origin use the same stance height")
+	var start: Vector2 = p.pos
+	for i in 30:
+		sim.submit("solo",{"crouch":true,"y":-1.0})
+		sim.update_pawn(p,1.0/60)
+	check(absf(p.pos.distance_to(start)-1.155) < .04,"Crouch movement is 55 percent of standing speed")
+	p.pos = Vector2.ZERO
+	for i in 15:
+		sim.submit("solo",{})
+		sim.update_pawn(p,1.0/60)
+	check(p.crouch > .99,"Releasing crouch cannot expand capsule into a low ceiling")
+	var client = simulation.new(world)
+	client.apply_snapshot(sim.snapshot())
+	check(client.pawns.solo.crouch == p.crouch and client.player_bodies.is_empty(),"Remote crouch is received without client-authoritative bodies")
+	p.pos = Vector2(0,4)
+	for i in 15:
+		sim.submit("solo",{})
+		sim.update_pawn(p,1.0/60)
+	check(p.crouch < .01 and absf(sim.player_bodies.solo.collider.shape.height-1.8) < .01,"Standing resumes after leaving the ceiling")
+	var control = InputEventKey.new()
+	control.physical_keycode = KEY_CTRL
+	control.pressed = true
+	check(control.is_action_pressed("crouch"),"Ctrl is mapped to crouch")
+	sim.dispose()
+	client.dispose()
+	viewport.free()

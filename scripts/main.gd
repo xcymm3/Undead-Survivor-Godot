@@ -176,7 +176,7 @@ func cycle_spectator() -> void:
 
 func input_state() -> Dictionary:
 	var enabled = running and not paused and focused and not finished
-	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held}
+	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"crouch":enabled and Input.is_action_pressed("crouch"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held}
 	jump_pending = false
 	reload_pending = false
 	fire_pending = false
@@ -219,7 +219,7 @@ func _process(dt: float) -> void:
 	var p = view_pawn()
 	if p.is_empty(): return
 	if p.id != Session.local_id: p = visible_pawns.get(p.id,p)
-	var desired = Vector3(p.pos.x,p.height+1.7,p.pos.y)
+	var desired = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 	if Session.playing and not Session.is_host(): camera.position = camera.position.lerp(desired,1-exp(-dt*22))
 	else: camera.position = desired
 	var spectate: bool = p.id != Session.local_id
@@ -359,12 +359,15 @@ func return_home() -> void:
 	if ui: ui.show_home()
 
 func software_qa() -> bool:
-	return Data.automation and OS.has_feature("web") and "--capture" not in OS.get_cmdline_user_args()
+	return Data.automation and OS.has_feature("web") and "--capture" not in OS.get_cmdline_user_args() and "--qa-poses" not in OS.get_cmdline_user_args()
 
 func qa_draw(dt: float) -> void:
 	if not software_qa(): return
 	draw_timer += dt
 	if draw_timer >= .5:
+		# With the render loop disabled, flush deferred scene transforms before drawing.
+		# Otherwise UI/camera updates can be captured with the previous weapon/actor pose.
+		for node in find_children("*","Node3D",true,false): node.force_update_transform()
 		RenderingServer.force_draw(true)
 		draw_timer = 0.0
 

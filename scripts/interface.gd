@@ -340,7 +340,7 @@ func show_settings() -> void:
 func show_guide() -> void:
 	var column = panel("武器与操作", "十款武器全部可用 · 弹匣独立保留 · 备弹无限",1000)
 	current = "guide"
-	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键举枪\n空格跳跃  /  R 换弹  /  1—0 或滚轮切枪  /  Esc 暂停\n起跳锁定当前移动按键；空中转向仍有效。涉水移速为 70%，跳跃可恢复速度、拉开距离。",17)
+	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键举枪\n空格跳跃  /  Ctrl 按住蹲下  /  R 换弹  /  1—0 或滚轮切枪  /  Esc 暂停\n起跳锁定当前移动按键；空中转向仍有效。涉水移速为 70%，跳跃可恢复速度、拉开距离。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation",24)

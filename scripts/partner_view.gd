@@ -52,7 +52,7 @@ func update_weapon(index: int) -> void:
 	for node in held.get_children():
 		held.remove_child(node)
 		node.queue_free()
-	var model = load("res://assets/models/%s.glb" % Data.weapons[index].id).instantiate() as Node3D
+	var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[index].id)
 	gun_model = model
 	model.scale = Vector3.ONE*.75
 	held.add_child(model)
@@ -76,6 +76,9 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	label.text = "%s  %d HP" % [p.name,p.hp]
 	if skeleton: skeleton.clear_bones_global_pose_override()
 	var w: Dictionary = Data.weapons[int(p.weapon)]
+	var crouch = float(p.get("crouch",0.0))
+	label.position.y = 2.2-.6*crouch
+	if w.id == "rifle": gun_model.pose(p.reloading,clampf(1-p.get("reload",0.0)/w.reloadDuration,0,1) if p.reloading else 0.0,p.fire_anim/w.fireDuration)
 	if weapon_animation:
 		var clip = "reload" if p.reloading else "fire"
 		if weapon_animation.has_animation(clip):
@@ -89,18 +92,21 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	avatar.animate(p,moving,dt)
 
 	if skeleton and p.hp > 0 and int(p.weapon) != 6:
-		var lift = .06 if p.aim else 0.0
+		var lift = (.06 if p.aim else 0.0)-.6*crouch
 		pose_hand("R",Vector3(.20,1.23+lift,-.28))
 		if int(p.weapon) not in [2,3]:
-			pose_hand("L",Vector3(.14,1.12,-.25) if p.reloading else Vector3(.20,1.25+lift,-.47))
+			pose_hand("L",Vector3(.14,1.12-.6*crouch,-.25) if p.reloading else Vector3(.20,1.25+lift,-.47))
 	# The grip follows the actual animated fist, never a fixed point near the face.
 	if skeleton:
 		var hand = skeleton.find_bone("Fist.R")
 		if hand >= 0:
 			held.position = to_local(skeleton.global_transform*skeleton.get_bone_global_pose(hand).origin)
 			held.position += Vector3(0,.045,.04)
+			if w.id == "rifle":
+				held.position -= Vector3(0,.045,.04)+held.basis*(preload("res://scripts/ak_rifle.gd").RIGHT_GRIP*.75)
+				if p.hp > 0: pose_hand("L",to_local(gun_model.to_global(preload("res://scripts/ak_rifle.gd").LEFT_GRIP)))
 	if axe_pivot and skeleton and p.hp > 0:
-		held.position = Vector3(.18,1.13,.05)
+		held.position = Vector3(.18,1.13-.6*crouch,.05)
 		var grip = axe_pivot.to_global(Vector3(0,-.13,0))
 		pose_hand("R",to_local(grip))
 		var hand = skeleton.find_bone("Fist.R")
@@ -142,4 +148,5 @@ func pose_hand(side: String, target: Vector3) -> void:
 	skeleton.force_update_all_bone_transforms()
 
 func grip_position() -> Vector3:
+	if weapon_index == 0: return gun_model.to_global(preload("res://scripts/ak_rifle.gd").RIGHT_GRIP)
 	return axe_pivot.to_global(Vector3(0,-.13,0)) if axe_pivot else held.to_global(Vector3(0,-.045,-.04))

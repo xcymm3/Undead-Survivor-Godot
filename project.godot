@@ -37,6 +37,11 @@ gdscript/warnings/inference_on_variant=0
 
 [input]
 
+crouch={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":4194326)]
+}
+
 forward={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":87)]
