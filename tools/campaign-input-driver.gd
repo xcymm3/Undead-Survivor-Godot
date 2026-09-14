@@ -24,8 +24,11 @@ func command(dt: float) -> Dictionary:
 	var advance = false
 	if action == "defend":
 		advance = state.gate_open
-		angle += dt*.7
-		goal = Vector2(cos(angle)*5,-18+sin(angle)*5)
+		# Separate teammates and use a wider loop so the horde cannot cut across
+		# the entire defensive route. These remain ordinary movement inputs.
+		angle += dt*.45
+		var offset = float(str(p.id).hash() % 628)/100.0
+		goal = Vector2(cos(angle+offset)*7,-18+sin(angle+offset)*7)
 	elif arrived:
 		interact = action != ""
 		if action == "": advance = true
@@ -63,6 +66,11 @@ func command(dt: float) -> Dictionary:
 		yaw = atan2(-aim.x,-aim.z)
 		pitch = atan2(aim.y,Vector2(aim.x,aim.z).length())
 		fire = true
-	var heal: bool = p.hp < 55 and p.medkits > 0
+	# A threatened bot must keep fighting instead of repeatedly interrupting
+	# its own three-second heal until the whole party goes down.
+	var nearest = 1000.0
+	for z in game.sim.zombies:
+		if z.hp > 0: nearest = minf(nearest,z.pos.distance_to(p.pos))
+	var heal: bool = p.hp < 70 and p.medkits > 0 and nearest > 8.0
 	var direction = delta.normalized() if delta.length() > .25 else Vector2.ZERO
 	return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":pitch,"weapon":6 if p.reserve == 0 and p.ammo[p.primary] == 0 else p.primary,"fire":fire and not interact and not heal,"reload":p.ammo[p.primary] < 5,"interact":interact,"heal":heal,"jump":game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.state == "charging" and z.pos.distance_to(p.pos) < 8)}

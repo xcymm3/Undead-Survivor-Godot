@@ -1,6 +1,6 @@
 # 灰松渡口：实现与验收边界
 
-版本：1.8.0。设计来源为 `CAMPAIGN_01_GRAYPINE_FERRY.md`。
+版本：1.8.1。设计来源为 `CAMPAIGN_01_GRAYPINE_FERRY.md`。
 
 ## 进入与操作
 
@@ -47,3 +47,4 @@ ENet 验收在真实的 2/4 个进程中检查地图准备、输入、移动、�
 下载 `Undead-Survivor-Godot.exe` 即可启动，无需另行下载 DLL 或 appid。启动器把游戏、Steam 依赖、许可文件与版本一并嵌入，运行时解压到本次实例的临时目录，退出后清理；存档继续使用 Godot 用户数据目录。
 
 启动器使用 Windows .NET Framework 4.x；Steam 合作需要安装并登录 Steam。成品检查只使用规定的 headless 参数，在只有 EXE 的隔离目录中测试中文/空格路径、并发运行、输出转发和退出清理。正式分发必须使用 GitHub Actions 全绿后产出的文件。
+
