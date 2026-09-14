@@ -18,7 +18,7 @@ jobs:
   verify-and-package:
     name: 测试 → 无界面试玩 → EXE 验收 → 打包
     runs-on: windows-2022
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - name: 检出源码
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -96,6 +96,9 @@ jobs:
           $expected = ((Get-Content release-assets/SHA256SUMS.txt -Raw).Trim() -split '\s+')[0]
           if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'ZIP checksum mismatch.' }
           Expand-Archive -LiteralPath $zip -DestinationPath release-assets/unpacked -Force
+          $exe = 'release-assets/unpacked/Undead-Survivor-Godot.exe'
+          $exeExpected = ((Get-Content release-assets/SHA256SUMS.txt | Where-Object { $_ -match '  Undead-Survivor-Godot\.exe$' }) -split '\s+')[0]
+          if ((Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $exeExpected) { throw 'EXE checksum mismatch.' }
           $version = (Get-Content -Raw -Encoding utf8 release-assets/unpacked/VERSION).Trim()
           if ($version -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') { throw 'Invalid packaged version.' }
           $tag = "v$version"
@@ -107,12 +110,14 @@ jobs:
             exit 0
           }
           @"
-          推荐下载 **Undead-Survivor-Godot-Windows-x64.zip**，解压后运行 EXE。
-          如单独下载 EXE，请同时下载 steam_api64.dll 和 steam_appid.txt，放在同一目录。
+          新增「灰松渡口」战役：从公路值班室出发，穿过街道与河桥尸潮，抵达泵站安全屋。支持单人与合作、有限弹药、医疗和倒地救援。
+          推荐直接下载 **Undead-Survivor-Godot.exe**，双击即可启动，无需另下 DLL 或 appid。
+          EXE 内置游戏和 Steam 依赖，运行时自动解压到临时目录，退出后清理；Steam 合作仍需登录 Steam。
+          ZIP 内也包含相同的单文件 EXE。启动器使用 Windows 自带的 .NET Framework 4.x。
 
           源码提交：$env:RELEASE_COMMIT
-          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：规则检查、2/4 人 ENet、无界面浏览器试玩、成品 EXE 无窗口检查全部通过。
-          Steam 跨账号联机与原生 GPU 画面不属于此次自动验收范围。
+          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：规则检查、内部输入整关试玩、真实 ENet 双人/四人整关合作、无界面浏览器检查、成品 EXE 及单文件隔离启动无窗口检查全部通过。
+          Steam 跨账号联机与原生 GPU 画面不属于此次自动验收范围。8～12 分钟首次真人通关为待校准的设计目标，自动瞄准测试角色的通关时长不能替代该结论。
           "@ | Set-Content -Encoding utf8 release-notes.md
           if (-not $exists) {
             & gh release create $tag --target $env:RELEASE_COMMIT --title "Undead Survivor $tag" --notes-file release-notes.md --draft

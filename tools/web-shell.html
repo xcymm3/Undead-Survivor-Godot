@@ -25,6 +25,7 @@
     const engine = new Engine($GODOT_CONFIG);
     const qaArgs = ['--', '--automation', '--silent'];
     if (new URLSearchParams(location.search).get('autoaim') === '1') qaArgs.push('--qa-autoaim');
+    if (new URLSearchParams(location.search).get("campaignGallery") === "1") qaArgs.push("--qa-campaign-gallery");
     engine.startGame({canvas: document.getElementById('canvas'), args: qaArgs,
       onPrintError: (...args) => console.error(...args)
     }).then(() => {
