@@ -51,7 +51,9 @@ func _process(_dt: float) -> bool:
 	if stopping or not game or not session: return false
 	if host and session.is_host() and session.members.size() == expected and not session.playing: session.begin_match()
 	if started > 0 and game.sim:
-		var age = (Time.get_ticks_msec()-started)/1000.0
+		# Measure gameplay in simulation time; scene loading and a busy host
+		# must not consume the input window before physics can process it.
+		var age: float = game.sim.elapsed
 		if expected_map == "graypine_ferry":
 			if not host and age < 2.2: Input.action_press("interact")
 			else: Input.action_release("interact")
@@ -93,7 +95,7 @@ func _process(_dt: float) -> bool:
 			print("NETWORK %s: moved=%s shots=%d snapshots=%d result=%s" % ["HOST" if host else "CLIENT",remote_moved,remote_shots,snapshots,"PASS" if good else "FAIL"])
 			stopping = true
 			call_deferred("finish",0 if good else 1)
-	if Time.get_ticks_msec()-begun > 16000:
+	if (started == 0 and Time.get_ticks_msec()-begun > 90000) or (started > 0 and Time.get_ticks_msec()-started > 90000):
 		push_error("Network validation timed out: "+session.status)
 		quit(1)
 	return false

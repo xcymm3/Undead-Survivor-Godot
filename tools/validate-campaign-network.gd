@@ -63,7 +63,7 @@ func _process(delta: float) -> bool:
 				print("CAMPAIGN NETWORK ROUTE: party=%d role=%s elapsed=%.2f kills=%d snapshots=%d" % [expected,"host" if host else "client",game.sim.elapsed,game.sim.kills,snapshots])
 				call_deferred("finish",good)
 				stopping = true
-	if Time.get_ticks_msec()-began > 240000:
+	if Time.get_ticks_msec()-began > 480000:
 		print("CAMPAIGN NETWORK TIMEOUT: task=",driver.index if driver else -1," phase=",game.sim.campaign_state() if game.sim else {}," pawn=",game.local_pawn() if game.sim else {})
 		call_deferred("finish",false)
 		stopping = true

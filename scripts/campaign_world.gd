@@ -74,19 +74,20 @@ func _ready() -> void:
 	# Ground is split around the river; no invisible floor spans the water.
 	block("SouthGround",Vector3(0,-.55,53.9),Vector3(160,1,172.2),"72775a",true,false)
 	block("NorthGround",Vector3(0,-.55,-93.9),Vector3(160,1,92.2),"72775a",true,false)
-	for i in range(Layout.ROUTE.size()-1):
-		var a: Vector2 = Layout.ROUTE[i]
-		var b: Vector2 = Layout.ROUTE[i+1]
-		if minf(a.y,b.y) < -31 and maxf(a.y,b.y) > -49: continue
-		var road = block("Road",Vector3((a.x+b.x)/2,-.035,(a.y+b.y)/2),Vector3(8,.025,a.distance_to(b)+1),"4d5550",false)
-		road.rotation.y = atan2(b.x-a.x,b.y-a.y)
+	for route in [Layout.ROUTE,Layout.SHOP_ROUTE,Layout.STREET_PANEL_ROUTE,Layout.SHOP_RETURN,Layout.PUMP_ROUTE,Layout.VALVE_ROUTE,Layout.FINISH_ROUTE]:
+		for i in range(route.size()-1):
+			var a: Vector2 = route[i]
+			var b: Vector2 = route[i+1]
+			if minf(a.y,b.y) < -31 and maxf(a.y,b.y) > -49: continue
+			var road = block("Road",Vector3((a.x+b.x)/2,-.035,(a.y+b.y)/2),Vector3(8,.025,a.distance_to(b)+1),"4d5550",false)
+			road.rotation.y = atan2(b.x-a.x,b.y-a.y)
 	room(Layout.START,Vector2(10,10),"Start",false)
 	room(Layout.EXIT,Vector2(12,12),"Exit",true)
 	block("StartBench",Vector3(-3,.45,115),Vector3(1,.9,3),"6c5238")
 	block("StartSupplies",Vector3(-3,1.1,115),Vector3(.6,.4,.9),"9d8757",false)
 	block("ExitBench",Vector3(28,.45,-127),Vector3(1,.9,3),"6c5238")
 	for pos in [Vector3(0,3.8,115),Vector3(25,3.8,-125)]: block("CeilingLamp",pos,Vector3(1.4,.15,.3),"f0da9a",false)
-	for data in [["start",Layout.START_DOOR],["gate",Layout.GATE],["exit",Layout.EXIT_DOOR]]:
+	for data in [["start",Layout.START_DOOR],["street",Layout.STREET_GATE],["gate",Layout.GATE],["exit",Layout.EXIT_DOOR]]:
 		var rect: Rect2 = data[1]
 		doors[data[0]] = block(data[0],Vector3(rect.get_center().x,2,rect.get_center().y),Vector3(rect.size.x,4,rect.size.y),"a77843",true,false)
 		for h in [.3,1.1,1.9,2.7,3.5]:
@@ -99,6 +100,17 @@ func _ready() -> void:
 			doors[data[0]].add_child(brace)
 	doors.exit.position.y = 6.5
 	doors.exit.collision_layer = 0
+	room(Vector2(-55,75),Vector2(12,18),"Shop",true)
+	room(Vector2(-52,-109),Vector2(16,24),"PumpHouse",true)
+	for point in [Layout.SHOP,Layout.STREET_PANEL,Layout.PUMP,Layout.VALVE]:
+		block("ControlPedestal",Vector3(point.x,.65,point.y-.8),Vector3(.8,1.3,.5),"b58143")
+		block("ControlLight",Vector3(point.x,1.4,point.y-.8),Vector3(.3,.2,.1),"b4d47e",false)
+	for info in [["E 领取检修钥匙",Layout.SHOP],["E 解锁检修通道",Layout.STREET_PANEL],["E 复位断路器",Layout.PUMP],["E 恢复门供电",Layout.VALVE]]:
+		sign_at(info[0],Vector3(info[1].x,2.3,info[1].y-1),3.5)
+	for info in [["商铺检修入口 ←",Vector2(-35,80)],["西侧泵房 ←",Vector2(8,-99)],["东侧阀站 →",Vector2(35,-77)]]:
+		sign_at(info[0],Vector3(info[1].x,2.5,info[1].y),4)
+	block("StreetFenceWest",Vector3(-48.75,2.6,59),Vector3(62.5,5.2,1),"5d6559")
+	block("StreetFenceEast",Vector3(33.75,2.6,59),Vector3(92.5,5.2,1),"5d6559")
 	# Full-width north fence makes the event mandatory while leaving both river banks accessible.
 	for side in [-1,1]: block("NorthFence",Vector3(side*41.25,2.6,-57),Vector3(77.5,5.2,1.2),"5d6559")
 	for side in [-1,1]: block("Boundary",Vector3(side*79,3,0),Vector3(2,6,280),"425747")
@@ -168,7 +180,7 @@ func _ready() -> void:
 		supply_labels[item.id] = sign_at("医疗 +" if item.kind == "med" else "弹药",Vector3(item.pos.x,1.6,item.pos.y),1.8)
 	for info in [["公路值班室\nE 开门出发",Vector3(0,2.9,110.6),2.6],["泵站避难点 ↑",Vector3(12,2.6,94),4],["维修院落 ← 医疗",Vector3(-23,2.6,55),4],["河桥控制台 ↑",Vector3(8,2.6,15),4],["E 启动卷扬机",Vector3(8,2.6,-17),2.6],["检修闸门",Vector3(0,5.4,-57),4],["泵站避难点 →",Vector3(20,2.6,-82),4],["泵站安全屋",Vector3(25,3.4,-118.8),3.2]]: sign_at(info[0],info[1],info[2])
 	set_meta("navigation_obstacles",obstacles)
-	for pos in [Vector3(0,3,115),Vector3(8,3,-16),Vector3(25,3,-125)]:
+	for pos in [Vector3(0,3,115),Vector3(8,3,-16),Vector3(25,3,-125),Vector3(-55,3,75),Vector3(-52,3,-109)]:
 		var light = OmniLight3D.new()
 		light.position = pos
 		light.light_color = Color("ffd18a")
@@ -178,7 +190,7 @@ func _ready() -> void:
 
 func sync(state: Dictionary) -> void:
 	for id in doors:
-		var opened: bool = state.get("departed",false) if id == "start" else state.get("gate_open",false) if id == "gate" else not state.get("complete",false)
+		var opened: bool = state.get("departed",false) if id == "start" else state.get("gate_open",false) if id == "gate" else state.get("shop_open",false) if id == "street" else state.get("power_ready",false) and not state.get("complete",false)
 		var progress: float = float(state.get("bridge_time",0))/90.0 if id == "gate" and not opened else 0.0
 		doors[id].position.y = 6.5 if opened else 2+minf(.8,progress)*1.0
 		doors[id].collision_layer = 0 if opened else 1

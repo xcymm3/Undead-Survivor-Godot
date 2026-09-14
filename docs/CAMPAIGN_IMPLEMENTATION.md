@@ -50,3 +50,5 @@ ENet 验收在真实的 2/4 个进程中检查地图准备、输入、移动、�
 
 启动器使用 Windows .NET Framework 4.x；Steam 合作需要安装并登录 Steam。成品检查只使用规定的 headless 参数，在只有 EXE 的隔离目录中测试中文/空格路径、并发运行、输出转发和退出清理。正式分发必须使用 GitHub Actions 全绿后产出的文件。
 
+
+推进扩展与受限角色校准见 [CAMPAIGN_PACING.md](CAMPAIGN_PACING.md)。开发分支新增商铺钥匙→岗亭开锁、泵房复位→阀站供电的必需操作链；原有 v1.8.1 发布文件未重新打包。

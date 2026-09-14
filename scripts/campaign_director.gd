@@ -3,7 +3,7 @@ const Layout = preload("res://scripts/campaign_layout.gd")
 var owner_ref: WeakRef
 var sim:
 	get: return owner_ref.get_ref()
-var state = {"phase":"PREPARE","departed":false,"gate_open":false,"complete":false,"bridge_time":0.0,"taken":{},"claimed":{},"objective":"在值班室选择主武器，E 开门出发","party":1,"zones":{},"rest_until":0.0,"pressure_until":0.0,"relief_ready":0.0,"elite_cancelled":false}
+var state = {"shop_key":false,"shop_open":false,"pump_ready":false,"power_ready":false,"milestones":{},"phase":"PREPARE","departed":false,"gate_open":false,"complete":false,"bridge_time":0.0,"taken":{},"claimed":{},"objective":"在值班室选择主武器，E 开门出发","party":1,"zones":{},"rest_until":0.0,"pressure_until":0.0,"relief_ready":0.0,"elite_cancelled":false}
 var credit = 0.0
 var bridge_window = -1
 var bridge_spawned = 0
@@ -58,6 +58,14 @@ func near(p: Dictionary, point: Vector2, distance := 2.0) -> bool:
 	return sim.arena.surface_hit(Vector3(p.pos.x,p.height+1.1,p.pos.y),Vector3(point.x,p.height+1.1,point.y)).is_empty()
 
 func target(p: Dictionary) -> Dictionary:
+	if state.departed and not state.shop_key and near(p,Layout.SHOP):
+		return {"id":"key","label":"取出岗亭检修钥匙","seconds":1.0}
+	if state.shop_key and not state.shop_open and near(p,Layout.STREET_PANEL):
+		return {"id":"shop","label":"解锁街道检修通道","seconds":2.0}
+	if state.gate_open and not state.pump_ready and near(p,Layout.PUMP):
+		return {"id":"pump","label":"复位泵房断路器","seconds":3.0}
+	if state.pump_ready and not state.power_ready and near(p,Layout.VALVE):
+		return {"id":"power","label":"恢复安全屋门供电","seconds":3.0}
 	for other in sim.pawns.values():
 		if other.id != p.id and other.get("downed",false) and near(p,other.pos):
 			return {"id":"revive:"+other.id,"label":"救起 "+other.name,"seconds":4.0}
@@ -76,6 +84,7 @@ func target(p: Dictionary) -> Dictionary:
 	return {}
 
 func finish_label() -> String:
+	if not state.power_ready: return "先检修泵房与东侧阀站，恢复门供电"
 	var alive = survivors()
 	var inside = alive.filter(func(p): return Layout.EXIT_ROOM.grow(-.5).has_point(p.pos) and not p.downed)
 	if inside.size() != alive.size(): return "等待队友 %d/%d" % [inside.size(),alive.size()]
@@ -119,12 +128,31 @@ func interactions(dt: float) -> void:
 				p.dead = true
 
 func perform(p: Dictionary, id: String) -> void:
-	if id == "depart" and not state.departed and start_room_ready():
+	if id == "key" and state.departed and not state.shop_key and near(p,Layout.SHOP):
+		state.shop_key = true
+		state.milestones.key = sim.elapsed
+		phase("STREET","钥匙已取得，前往东侧岗亭解锁检修通道")
+	elif id == "shop" and state.shop_key and not state.shop_open and near(p,Layout.STREET_PANEL):
+		state.shop_open = true
+		state.milestones.shop = sim.elapsed
+		phase("STREET","检修通道已开，穿过街道前往河桥")
+		sim.arena.sync_campaign(state)
+	elif id == "pump" and state.gate_open and not state.pump_ready and near(p,Layout.PUMP):
+		state.pump_ready = true
+		state.milestones.pump = sim.elapsed
+		phase("FINAL_APPROACH","前往东侧阀站恢复安全屋门供电")
+	elif id == "power" and state.pump_ready and not state.power_ready and near(p,Layout.VALVE):
+		state.power_ready = true
+		state.milestones.power = sim.elapsed
+		phase("FINAL_APPROACH","供电恢复，撤入泵站安全屋并关门")
+		sim.arena.sync_campaign(state)
+	elif id == "depart" and not state.departed and start_room_ready():
 		state.departed = true
 		sim.elapsed = 0.0
-		phase("STREET","沿街道前进，寻找河桥控制台")
+		phase("STREET","沿街道进入西侧商铺，解锁检修通道")
 		sim.arena.sync_campaign(state)
 	elif id == "winch" and state.phase == "BRIDGE_READY":
+		state.milestones.bridge_start = sim.elapsed
 		phase("BRIDGE_ACTIVE","守住桥头，等待检修闸门打开")
 		sim.events.append({"kind":"campaign_cue","cue":"winch","position":Vector3(8,1,-16)})
 	elif id == "finish" and state.gate_open and finish_label() == "关闭安全屋门，完成本关":
@@ -232,6 +260,7 @@ func step(dt: float) -> void:
 					if kind == "football": elite_spawned = true
 					if kind == "imp": bridge_imps += 1
 		if t >= 90:
+			state.milestones.bridge_end = sim.elapsed
 			state.gate_open = true
 			phase("GATE_OPEN","穿过北岸闸门，前往工具棚休整")
 			sim.paths.clear()
@@ -239,11 +268,11 @@ func step(dt: float) -> void:
 			sim.arena.sync_campaign(state)
 	if state.phase == "GATE_OPEN" and survivors().all(func(p): return p.pos.y < -60):
 		state.rest_until = sim.elapsed+25
-		phase("FINAL_APPROACH","补充物资，沿堤岸抵达泵站安全屋")
+		phase("FINAL_APPROACH","补充物资，沿服务路进入西侧泵房检修")
 	# Rest belongs to the shed approach, not the whole remaining route.
 	# The leading player commits the party to the final encounter; returning
 	# to the shed must not restart the timer or replenish encounter budgets.
-	if state.gate_open and living.any(func(p): return p.pos.y < -82):
+	if state.gate_open and (state.zones.has("final") or living.any(func(p): return p.pos.y < -82)):
 		state.rest_until = 0.0
 	if state.phase != "BRIDGE_ACTIVE" and sim.elapsed >= state.pressure_until and sim.elapsed >= state.rest_until:
 		for zone in Layout.ZONES:

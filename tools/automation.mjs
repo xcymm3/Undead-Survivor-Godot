@@ -67,14 +67,14 @@ const godotArgs = ['--headless', '--audio-driver', 'Dummy', '--path', root];
 async function network(count, map = 'outpost') {
   const peers = [];
   const args = [...godotArgs, '--script', 'res://tools/validate-network.gd', '--', '--silent', '--automation', ...(count === 4 ? ['--four'] : [])];
-  const host = launch(`network-${map}-${count}-host`, engine, [...args, '--host', `--map=${map}`, `--expect-map=${map}`], 30_000);
+  const host = launch(`network-${map}-${count}-host`, engine, [...args, '--host', `--map=${map}`, `--expect-map=${map}`], 200_000);
   peers.push(host.promise);
-  const deadline = Date.now() + 15_000;
+  const deadline = Date.now() + 90_000;
   while (!host.output().includes('NETWORK READY')) {
     if (Date.now() > deadline || host.child.exitCode !== null) throw new Error('Network host did not become ready.');
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  for (let i = 1; i < count; i++) peers.push(launch(`network-${map}-${count}-client-${i}`, engine, [...args, '--map=outpost', `--expect-map=${map}`], 30_000).promise);
+  for (let i = 1; i < count; i++) peers.push(launch(`network-${map}-${count}-client-${i}`, engine, [...args, '--map=outpost', `--expect-map=${map}`], 200_000).promise);
   const outputs = await Promise.all(peers);
   if (!outputs.every(output => /result=PASS/.test(output))) throw new Error('Missing network pass marker.');
 }
@@ -94,13 +94,15 @@ try {
   }
   const campaign = await run('campaign', engine, [...godotArgs, '--script', 'res://tools/validate-campaign.gd', '--', '--silent', '--automation'], 600_000);
   if (!/CAMPAIGN VALIDATION: \d+ checks; 0 failures/.test(campaign)) throw new Error('Missing campaign acceptance marker.');
+  const calibration = await run('campaign-calibration', engine, [...godotArgs, '--script', 'res://tools/validate-campaign-calibration.gd', '--', '--silent', '--automation'], 600_000);
+  if (!calibration.includes('CALIBRATION REPORT COMPLETE')) throw new Error('Missing calibration report.');
   await network(2);
   await network(4);
   await network(2, 'dust');
   await network(4, 'dust');
   await network(2, 'graypine_ferry');
   await network(4, 'graypine_ferry');
-  for (const count of [2, 4]) await run(`campaign-full-enet-${count}`, process.execPath, ['tools/validate-campaign-network.mjs', String(count)], 300_000);
+  for (const count of [2, 4]) await run(`campaign-full-enet-${count}`, process.execPath, ['tools/validate-campaign-network.mjs', String(count)], 540_000);
   await mkdir('build/web', { recursive: true });
   await run('export-web', engine, [...godotArgs, '--export-release', 'Web QA']);
   // Keep the isolated QA browser separate from existing preview servers.

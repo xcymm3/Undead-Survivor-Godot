@@ -83,6 +83,8 @@ func index_obstacle(rect: Rect2, is_water: bool) -> void:
 
 func clear(a: Vector2, b: Vector2, allow_water := false) -> bool:
 	if map_id == "graypine_ferry":
+		if not campaign_state.get("shop_open",false) and segment_rect(a,b,Maps.Ferry.STREET_GATE.grow(.95)): return false
+		if not campaign_state.get("power_ready",false) and segment_rect(a,b,Maps.Ferry.EXIT_DOOR.grow(.95)): return false
 		if not campaign_state.get("gate_open",false) and segment_rect(a,b,Maps.Ferry.GATE.grow(.95)): return false
 		if not campaign_state.get("departed",false) and segment_rect(a,b,Maps.Ferry.START_DOOR.grow(.95)): return false
 	if not bounds.grow(-.95).has_point(a) or not bounds.grow(-.95).has_point(b): return false
@@ -140,10 +142,11 @@ func steep_edge(p: Vector2) -> bool:
 func sync_campaign(state: Dictionary) -> void:
 	if map_id != "graypine_ferry": return
 	var changed: bool = campaign_state.get("gate_open",false) != state.get("gate_open",false) or campaign_state.get("departed",false) != state.get("departed",false)
+	changed = changed or campaign_state.get("shop_open",false) != state.get("shop_open",false) or campaign_state.get("power_ready",false) != state.get("power_ready",false)
 	campaign_state = state.duplicate(true)
 	scenery.sync(state)
 	if changed:
-		for rect in [Maps.Ferry.GATE.grow(1.5),Maps.Ferry.START_DOOR.grow(1.5)]:
+		for rect in [Maps.Ferry.GATE.grow(1.5),Maps.Ferry.START_DOOR.grow(1.5),Maps.Ferry.STREET_GATE.grow(1.5),Maps.Ferry.EXIT_DOOR.grow(1.5)]:
 			var first: Vector2i = Vector2i((rect.position-bounds.position)/CELL)-Vector2i.ONE
 			var last: Vector2i = Vector2i((rect.end-bounds.position)/CELL)+Vector2i.ONE
 			for y in range(first.y,last.y+1):

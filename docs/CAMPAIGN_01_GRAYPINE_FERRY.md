@@ -199,3 +199,5 @@ HUD 保留血量、武器和队友信息，战役区域显示当前目标、主�
 该文件中的 `capture-hidden.ps1` 流程与当前 `AGENTS.md` 禁令冲突，不能使用；隐藏父窗口或离屏 SubViewport 均不能作为本机截图替代方案。本机仅运行真正 headless 检查，GPU 取图须使用另行获授权的隔离环境。实际打开截图并记录发现、修复、复查；截图生成和功能检查不能替代视觉质量审查。
 
 当前验收状态：本关已接入内部输入遍历、边界规则测试和软件 Web 取图；最新结果见 artifacts/campaign-acceptance.json 与 artifacts/visual-review.md。GPU 视觉质量、连续运动手感、8～12 分钟真人节奏和 Steam 双账号合作均待验收。
+
+当前开发分支在原设计基础上新增商铺/岗亭及泵房/阀站推进链，路线、预算增量与校准边界以 [CAMPAIGN_PACING.md](CAMPAIGN_PACING.md) 为准；旧设计时间预算仍是目标，不是实测成绩。

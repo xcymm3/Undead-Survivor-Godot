@@ -17,7 +17,7 @@ function launch(role) {
   let output = '';
   const child = spawn(engine, ['--log-file', path.join(root, `artifacts/campaign-enet-${count}-${role}-live.log`), ...args, ...(role === 'host' ? ['--host'] : [])], { windowsHide: true, cwd: root });
   children.add(child);
-  const timer = setTimeout(() => stop(child), 260_000);
+  const timer = setTimeout(() => stop(child), 500_000);
   child.stdout.on('data', data => { output += data; });
   child.stderr.on('data', data => { output += data; });
   const promise = new Promise((resolve, reject) => {

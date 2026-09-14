@@ -27,6 +27,11 @@ func sync_from(p: Dictionary) -> void:
 	if velocity.y <= 0:
 		var support = move_and_collide(Vector3.DOWN*floor_snap_length,true,safe_margin)
 		grounded = support != null and support.get_normal().dot(Vector3.UP) >= cos(floor_max_angle)
+		# A capsule already within the recovery margin can report a zero normal.
+		# Verify nearby ground independently before preserving an old air input.
+		if not grounded:
+			var floor_hit = get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(position+Vector3.UP*.05,position+Vector3.DOWN*.08,collision_mask))
+			grounded = not floor_hit.is_empty() and floor_hit.normal.dot(Vector3.UP) >= cos(floor_max_angle)
 
 func advance(horizontal: Vector2, dt: float) -> void:
 	velocity.x = horizontal.x

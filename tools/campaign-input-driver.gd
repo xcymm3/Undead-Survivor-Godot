@@ -1,5 +1,6 @@
 extends RefCounted
 ## QA input policy only. Does not mutate pawns, enemies, inventory or director state.
+const Layout = preload("res://scripts/campaign_layout.gd")
 var game
 var tasks: Array = []
 var index = 0
@@ -8,9 +9,19 @@ var angle = 0.0
 
 func _init(current_game, yard: bool) -> void:
 	game = current_game
-	tasks = [[Vector2(0,111),"depart"],[Vector2(0,103),""],[Vector2(18,96),""],[Vector2(18,78),""],[Vector2(-15,70),""],[Vector2(-15,53),""]]
+	tasks = [[Vector2(0,111),"depart"],[Vector2(0,103),""],[Vector2(18,96),""],[Vector2(18,78),""],[Vector2(-15,70),""]]
+	for point in Layout.SHOP_ROUTE: tasks.append([point,"key" if point == Layout.SHOP else ""])
+	tasks.append([Vector2(-58,73),"shop_ammo"])
+	for point in Layout.STREET_PANEL_ROUTE: tasks.append([point,"shop" if point == Layout.STREET_PANEL else ""])
+	for point in Layout.SHOP_RETURN: tasks.append([point,""])
 	if yard: tasks.append_array([[Vector2(-33,52),""],[Vector2(-44,52),""],[Vector2(-44,41),"yard_ammo"],[Vector2(-44,32),""],[Vector2(-29,32),""],[Vector2(-15,40),""]])
-	tasks.append_array([[Vector2(8,30),""],[Vector2(8,6),""],[Vector2(0,-8),""],[Vector2(11,-11),"bridge_ammo"],[Vector2(8,-14.4),"winch"],[Vector2(0,-18),"defend"],[Vector2(0,-29),""],[Vector2(0,-50),""],[Vector2(0,-62),""],[Vector2(20,-77),"shed_ammo"],[Vector2(36,-92),""],[Vector2(8,-103),""],[Vector2(25,-115),""],[Vector2(25,-123),"finish"]])
+	tasks.append_array([[Vector2(8,30),""],[Vector2(8,6),""],[Vector2(0,-8),""],[Vector2(11,-11),"bridge_ammo"],[Vector2(8,-14.4),"winch"],[Vector2(0,-18),"defend"],[Vector2(0,-29),""],[Vector2(0,-50),""],[Vector2(0,-62),""],[Vector2(20,-77),"shed_ammo"],[Vector2(23,-77),"shed_med"]])
+	for point in Layout.PUMP_ROUTE: tasks.append([point,"pump" if point == Layout.PUMP else ""])
+	tasks.append([Vector2(-55,-112),"pump_ammo"])
+	tasks.append([Vector2(-55,-114),"pump_med"])
+	for point in Layout.VALVE_ROUTE: tasks.append([point,"power" if point == Layout.VALVE else ""])
+	tasks.append([Vector2(69,-124),"valve_ammo"])
+	for point in Layout.FINISH_ROUTE: tasks.append([point,"finish" if point == Layout.FINISH_ROUTE[-1] else ""])
 
 func command(dt: float) -> Dictionary:
 	var p: Dictionary = game.local_pawn()
@@ -34,6 +45,11 @@ func command(dt: float) -> Dictionary:
 		if action == "": advance = true
 		elif action == "depart": advance = state.departed
 		elif action == "winch": advance = state.phase == "BRIDGE_ACTIVE" or state.gate_open
+		elif action.ends_with("_med"): advance = state.taken.has(action) or p.medkits > 0
+		elif action == "key": advance = state.shop_key
+		elif action == "shop": advance = state.shop_open
+		elif action == "pump": advance = state.pump_ready
+		elif action == "power": advance = state.power_ready
 		elif action == "finish": advance = state.complete
 		else: advance = state.claimed.get(action,[]).has(p.id) or p.reserve >= int(Data.weapons[p.primary].capacity)*6
 	if advance:
@@ -44,7 +60,7 @@ func command(dt: float) -> Dictionary:
 		if path.is_empty():
 			path = game.arena.path_to(p.pos,goal)
 			path.append(goal)
-		while path.size() > 1 and p.pos.distance_to(path[0]) < .85: path.remove_at(0)
+		while path.size() > 1 and p.pos.distance_to(path[0]) < .35: path.remove_at(0)
 		goal = path[0]
 	var delta: Vector2 = goal-p.pos
 	var yaw: float = p.yaw

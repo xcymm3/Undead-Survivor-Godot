@@ -4,6 +4,10 @@ var game
 var last_request = ""
 var pending_frames = 0
 const VIEWS = {
+	"shop":[Vector2(-55,78),0.0,0.0],
+	"pump":[Vector2(-52,-109),0.0,0.0],
+	"valve":[Vector2(70,-119),0.0,0.0],
+	"checkpoint":[Vector2(60,71),0.0,0.0],
 	"start":[Vector2(0,114),0.0,0.0],
 	"street":[Vector2(18,96),0.0,-.08],
 	"yard":[Vector2(-44,48),0.0,-.06],
@@ -47,6 +51,8 @@ func _process(_dt: float) -> void:
 		game.yaw = view[1]
 		game.pitch = view[2]
 		game.sim.campaign.state.departed = value.name != "start"
+		game.sim.campaign.state.power_ready = value.name == "exit"
+		game.sim.campaign.state.shop_open = value.name != "shop"
 		game.sim.campaign.state.gate_open = value.get("opened",false)
 		game.sim.campaign.state.phase = "BRIDGE_ACTIVE" if value.name in ["control","bridge","gate"] else "PREPARE" if value.name == "start" else "STREET"
 		game.sim.campaign.state.objective = "等待检修闸门打开" if value.name in ["control","bridge","gate"] else "在值班室选择武器，E 开门出发" if value.name == "start" else "前往泵站安全屋"

@@ -412,9 +412,9 @@ func valid_world(value) -> bool:
 	if value.mode == "campaign":
 		if map_id != "graypine_ferry" or not value.get("campaign") is Dictionary: return false
 		var campaign_state: Dictionary = value.campaign
-		if not campaign_state.has_all(["phase","departed","gate_open","complete","bridge_time","taken","claimed","objective","party"]): return false
+		if not campaign_state.has_all(["phase","departed","gate_open","complete","bridge_time","taken","claimed","objective","party","shop_key","shop_open","pump_ready","power_ready"]): return false
 		if campaign_state.phase not in ["PREPARE","STREET","BRIDGE_READY","BRIDGE_ACTIVE","GATE_OPEN","FINAL_APPROACH","COMPLETE","FAILED"]: return false
-		for key in ["departed","gate_open","complete"]:
+		for key in ["departed","gate_open","complete","shop_key","shop_open","pump_ready","power_ready"]:
 			if not campaign_state[key] is bool: return false
 		if not campaign_state.bridge_time is float or not is_finite(campaign_state.bridge_time) or campaign_state.bridge_time < 0 or campaign_state.bridge_time > 90: return false
 		if not campaign_state.taken is Dictionary or not campaign_state.claimed is Dictionary or not campaign_state.objective is String or campaign_state.objective.length() > 160: return false

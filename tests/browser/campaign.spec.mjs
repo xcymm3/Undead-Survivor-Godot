@@ -29,7 +29,7 @@ test('campaign authored scene and HUD software visual evidence', async ({ page }
   await page.goto('/?campaignGallery=1');
   await page.waitForFunction(() => window.__campaignGalleryReady, null, { timeout: 90_000 });
   for (const [width, height, views] of [
-    [960, 540, ['start', 'street', 'yard', 'control', 'bridge', 'river', 'gate', 'shed', 'exit']],
+    [960, 540, ['start', 'street', 'shop', 'checkpoint', 'pump', 'valve', 'yard', 'control', 'bridge', 'river', 'gate', 'shed', 'exit']],
     [1440, 900, ['control']], [1920, 1080, ['exit']],
   ]) {
     await page.setViewportSize({ width, height });

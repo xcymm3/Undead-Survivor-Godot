@@ -98,8 +98,17 @@ func play(party: int, yard: bool) -> void:
 	var passed = await move_party(Vector2(0,111))
 	await hold(1.2)
 	check(game.sim.campaign.state.departed,"Internal input opens start door (%d)" % party)
-	for goal in [Vector2(0,103),Vector2(18,96),Vector2(18,78),Vector2(-15,70),Vector2(-15,53)]:
+	for goal in [Vector2(0,103),Vector2(18,96),Vector2(18,78),Vector2(-15,70)]:
 		passed = await move_party(goal) and passed
+	for goal in Layout.SHOP_ROUTE: passed = await move_party(goal) and passed
+	await hold(2.3)
+	check(game.sim.campaign.state.shop_key and not game.sim.campaign.state.shop_open,"Shop key does not remotely open street passage (%d)" % party)
+	passed = await move_party(Vector2(-58,73)) and passed
+	await hold(.4)
+	for goal in Layout.STREET_PANEL_ROUTE: passed = await move_party(goal) and passed
+	await hold(2.3)
+	check(game.sim.campaign.state.shop_open,"Key unlocks checkpoint through normal input (%d)" % party)
+	for goal in Layout.SHOP_RETURN: passed = await move_party(goal) and passed
 	if yard:
 		for goal in [Vector2(-33,52),Vector2(-44,52),Vector2(-44,41)]: passed = await move_party(goal) and passed
 		await hold(.4)
@@ -122,7 +131,17 @@ func play(party: int, yard: bool) -> void:
 	for goal in [Vector2(0,-29),Vector2(0,-50),Vector2(0,-62),Vector2(20,-77)]: passed = await move_party(goal) and passed
 	await hold(.5)
 	var kills_before_final: int = game.sim.kills
-	for goal in [Vector2(36,-92),Vector2(8,-103),Vector2(25,-115),Vector2(25,-123)]: passed = await move_party(goal) and passed
+	for goal in Layout.PUMP_ROUTE: passed = await move_party(goal) and passed
+	await hold(3.3)
+	check(game.sim.campaign.state.pump_ready,"Pump repair requires physical interaction (%d)" % party)
+	passed = await move_party(Vector2(-55,-112)) and passed
+	await hold(.4)
+	for goal in Layout.VALVE_ROUTE: passed = await move_party(goal) and passed
+	await hold(3.3)
+	check(game.sim.campaign.state.power_ready,"Valve restores exit door power (%d)" % party)
+	passed = await move_party(Vector2(69,-124)) and passed
+	await hold(.4)
+	for goal in Layout.FINISH_ROUTE: passed = await move_party(goal) and passed
 	check(game.sim.kills > kills_before_final,"Final approach produces combat before entering safe room (%d)" % party)
 	await hold(2)
 	check(passed and game.sim.won,"Entire hostile route completes through internal inputs (%d, yard=%s)" % [party,yard])
@@ -132,6 +151,13 @@ func play(party: int, yard: bool) -> void:
 	print("CAMPAIGN PLAY: ",JSON.stringify(summary))
 
 func fixtures() -> void:
+	await start(1)
+	game.sim.pawns.solo.pos = Vector2(17.99438,78.49961)
+	game.sim.pawns.solo.height = -.049905
+	await hold(3.0,"")
+	var resume_position: Vector2 = game.local_pawn().pos
+	for i in 20: tick({"solo":Vector2(15,76)},"")
+	check(game.local_pawn().pos.distance_to(resume_position) > 1.0,"Stationary capsule resumes movement after observation pause")
 	await start(1)
 	game.sim.campaign.state.departed = true
 	game.sim.campaign.state.gate_open = true
@@ -230,6 +256,9 @@ func fixtures() -> void:
 	malformed = sim.snapshot()
 	malformed.campaign.bridge_time = NAN
 	check(not session.valid_world(malformed),"Transport rejects non-finite event timers")
+	check(sim.campaign.finish_label().contains("供电"),"Exit closure rejects missing repair objectives")
+	sim.campaign.state.power_ready = true
+	sim.arena.sync_campaign(sim.campaign.state)
 	p.pos = Vector2(25,-124)
 	p.hp = 100
 	p.height = 0
