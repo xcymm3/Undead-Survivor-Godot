@@ -121,14 +121,32 @@ func play(party: int, yard: bool) -> void:
 	check(game.sim.campaign.state.gate_open,"90-second event opens gate (%d)" % party)
 	for goal in [Vector2(0,-29),Vector2(0,-50),Vector2(0,-62),Vector2(20,-77)]: passed = await move_party(goal) and passed
 	await hold(.5)
+	var kills_before_final: int = game.sim.kills
 	for goal in [Vector2(36,-92),Vector2(8,-103),Vector2(25,-115),Vector2(25,-123)]: passed = await move_party(goal) and passed
+	check(game.sim.kills > kills_before_final,"Final approach produces combat before entering safe room (%d)" % party)
 	await hold(2)
 	check(passed and game.sim.won,"Entire hostile route completes through internal inputs (%d, yard=%s)" % [party,yard])
 	var summary = {"party":party,"yard":yard,"won":game.sim.won,"seconds":game.sim.elapsed,"kills":game.sim.kills,"hp":game.local_pawn().hp,"shots":game.local_pawn().shots}
 	runs.append(summary)
+	summary["final_kills"] = game.sim.kills-kills_before_final
 	print("CAMPAIGN PLAY: ",JSON.stringify(summary))
 
 func fixtures() -> void:
+	await start(1)
+	game.sim.campaign.state.departed = true
+	game.sim.campaign.state.gate_open = true
+	game.sim.campaign.phase("FINAL_APPROACH","QA")
+	game.sim.campaign.state.rest_until = game.sim.elapsed+25
+	game.sim.pawns.solo.pos = Vector2(20,-77)
+	game.sim.campaign.step(.05)
+	check(game.sim.campaign.state.rest_until > game.sim.elapsed and not game.sim.campaign.state.zones.has("final"),"Shed preserves its rest interval")
+	game.sim.pawns.solo.pos = Vector2(36,-84)
+	game.sim.campaign.step(.05)
+	check(game.sim.campaign.state.rest_until == 0 and game.sim.campaign.state.zones.has("final"),"Leaving shed activates final encounter before rest timer expires")
+	var final_until: float = game.sim.campaign.state.zones.final.until
+	game.sim.pawns.solo.pos = Vector2(20,-77)
+	game.sim.campaign.step(.05)
+	check(game.sim.campaign.state.rest_until == 0 and game.sim.campaign.state.zones.final.until == final_until,"Returning to shed cannot reset rest or final encounter")
 	await start(2)
 	var sim = game.sim
 	var p: Dictionary = sim.pawns.solo

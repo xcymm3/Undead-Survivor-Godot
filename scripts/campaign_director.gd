@@ -240,6 +240,11 @@ func step(dt: float) -> void:
 	if state.phase == "GATE_OPEN" and survivors().all(func(p): return p.pos.y < -60):
 		state.rest_until = sim.elapsed+25
 		phase("FINAL_APPROACH","补充物资，沿堤岸抵达泵站安全屋")
+	# Rest belongs to the shed approach, not the whole remaining route.
+	# The leading player commits the party to the final encounter; returning
+	# to the shed must not restart the timer or replenish encounter budgets.
+	if state.gate_open and living.any(func(p): return p.pos.y < -82):
+		state.rest_until = 0.0
 	if state.phase != "BRIDGE_ACTIVE" and sim.elapsed >= state.pressure_until and sim.elapsed >= state.rest_until:
 		for zone in Layout.ZONES:
 			if zone.id == "final" and not state.gate_open: continue
