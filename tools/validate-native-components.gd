@@ -35,8 +35,25 @@ func run() -> void:
 	var pawn: Dictionary = game.local_pawn()
 	pawn.hp = 42
 	game.ui.tick(.016)
-	check(card.bar.value == 42 and card.hp.text.begins_with("42"),"Native health widget updates from authority")
+	check(card.bar.value == 42 and card.hp.text == "+42","Native health widget updates from authority")
 	check(card.panel.mouse_filter == Control.MOUSE_FILTER_IGNORE,"HUD does not capture combat input")
+	await process_frame
+	await process_frame
+	var single_width: float = card.panel.size.x
+	check(single_width >= 210 and single_width <= 260,"Single health card stays compact")
+	for i in 3:
+		var peer: Dictionary = pawn.duplicate(true)
+		peer.id = "hud_fixture_"+str(i)
+		peer.name = "队友长名字布局验证"
+		game.sim.pawns[peer.id] = peer
+	game.ui.tick(.016)
+	await process_frame
+	await process_frame
+	check(game.ui.native_hud.cards.size() == 4 and is_equal_approx(card.panel.size.x,single_width),"Each teammate gets a separate card without stretching the local card")
+	for id in game.sim.pawns.keys():
+		if str(id).begins_with("hud_fixture_"): game.sim.pawns.erase(id)
+	game.ui.tick(.016)
+
 	game.ui.native_hud.size = Vector2(960,540)
 	game.ui.native_hud.layout()
 	check(game.ui.native_hud.content.size.x >= 1440,"HUD maintains readable layout at smaller viewport sizes")

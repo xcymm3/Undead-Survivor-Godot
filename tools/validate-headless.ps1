@@ -1,11 +1,12 @@
 param(
-    [ValidateSet('Import', 'Runtime', 'Profile', 'NetworkHost', 'NetworkClient', 'BakeWorld', 'NativeComponents', 'BakeDust', 'Maps')]
+    [ValidateSet('Import', 'Parse', 'Runtime', 'Profile', 'NetworkHost', 'NetworkClient', 'BakeWorld', 'NativeComponents', 'BakeDust', 'Maps', 'Campaign', 'Calibration')]
     [string]$Mode = 'Runtime',
     [string]$Godot = '',
+    [string]$Script = 'res://scripts/main.gd',
     [switch]$FourPlayers,
     [switch]$VerboseEngine,
-    [ValidateSet('', 'outpost', 'dust')][string]$Map = '',
-    [ValidateSet('', 'outpost', 'dust')][string]$ExpectMap = '',
+    [ValidateSet('', 'outpost', 'dust', 'graypine_ferry')][string]$Map = '',
+    [ValidateSet('', 'outpost', 'dust', 'graypine_ferry')][string]$ExpectMap = '',
     [ValidateRange(10, 600)][int]$TimeoutSeconds = 180
 )
 $ErrorActionPreference = 'Stop'
@@ -16,10 +17,13 @@ $arguments = @('--headless', '--audio-driver', 'Dummy', '--path', ('"' + $projec
 if ($VerboseEngine) { $arguments += '--verbose' }
 switch ($Mode) {
     'Import' { $arguments += @('--editor', '--import', '--quit') }
+    'Parse' { $arguments += @('--script', 'res://tools/validate-scripts.gd', '--', '--silent', '--automation', ('--parse-script=' + $Script)) }
     'Runtime' { $arguments += @('--script', 'res://tools/validate-runtime.gd', '--', '--silent') }
     'Profile' { $arguments += @('--script', 'res://tools/profile-simulation.gd', '--', '--silent') }
     'BakeWorld' { $arguments += @('--script', 'res://tools/bake-world.gd', '--', '--silent', '--automation') }
     'BakeDust' { $arguments += @('--script', 'res://tools/bake-dust.gd', '--', '--silent', '--automation') }
+    'Calibration' { $arguments += @('--script', 'res://tools/validate-campaign-calibration.gd', '--', '--silent', '--automation') }
+    'Campaign' { $arguments += @('--script', 'res://tools/validate-campaign.gd', '--', '--silent', '--automation') }
     'Maps' { $arguments += @('--script', 'res://tools/validate-maps.gd', '--', '--silent', '--automation') }
     'NativeComponents' { $arguments += @('--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation') }
     default {

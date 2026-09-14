@@ -12,7 +12,7 @@ func _ready() -> void:
 	multi.visible_instance_count = 0
 	var view = MultiMeshInstance3D.new()
 	view.multimesh = multi
-	view.custom_aabb = AABB(Vector3(-30,-3,-55),Vector3(60,20,75))
+	view.custom_aabb = AABB(Vector3(-90,-10,-150),Vector3(180,50,300))
 	material = StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
 	material.roughness = .85
@@ -70,3 +70,9 @@ func step(dt: float) -> void:
 
 static func particle_transform(p: Dictionary) -> Transform3D:
 	return Transform3D(p.get("basis",Basis.IDENTITY) * Basis.from_scale(p.get("scale",Vector3.ONE*p.size)),p.pos)
+
+func explosion(pos: Vector3) -> void:
+	for i in 48:
+		if particles.size() >= 384: particles.pop_front()
+		var direction = Vector3(randf_range(-1,1),randf_range(-.2,1),randf_range(-1,1)).normalized()
+		particles.append({"pos":pos,"velocity":direction*randf_range(3,12),"life":randf_range(.35,.8),"color":Color("f0b24b") if i < 20 else Color("55534a"),"size":.15 if i < 20 else .3})

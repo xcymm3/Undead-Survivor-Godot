@@ -35,7 +35,7 @@ func _ready() -> void:
 		var view = MultiMeshInstance3D.new()
 		view.multimesh = multi
 		view.material_override = material
-		view.custom_aabb = AABB(Vector3(-25,-4,-52),Vector3(50,14,70))
+		view.custom_aabb = AABB(Vector3(-90,-5,-250),Vector3(180,35,500))
 		add_child(view)
 		batches[kind] = multi
 
@@ -57,7 +57,7 @@ static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stri
 static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array:
 	var result: Array = []
 	var alive: bool = z.hp > 0
-	var moving: bool = not stationary and alive and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
+	var moving: bool = not stationary and alive and z.get("guard_awake",true) and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
 	var pace: float = 1.6 if z.kind == "imp" else 1.35 if z.kind == "football" else 1.7 if z.rage else .75 if z.kind == "giant" else 1.0
 	var stride = sin((elapsed-z.born)*5*pace+z.id*2) if moving else 0.0
 	var profile = Data.attack(z.kind,z.rage)
@@ -87,6 +87,12 @@ static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array
 	return result
 
 func sync(zombies: Array, elapsed: float, stationary: bool) -> void:
+	var required: Dictionary = {}
+	for z in zombies: required[z.kind] = required.get(z.kind,0)+1
+	for kind in required:
+		if required[kind] > batches[kind].instance_count:
+			batches[kind].instance_count = nearest_po2(required[kind])
+			for i in batches[kind].instance_count: batches[kind].set_instance_color(i,Color.WHITE)
 	var counts: Dictionary = {}
 	for kind in kinds: counts[kind] = 0
 	for z in zombies: counts[z.kind] += 1
@@ -100,7 +106,7 @@ func sync(zombies: Array, elapsed: float, stationary: bool) -> void:
 		var index: int = counts[z.kind]
 		counts[z.kind] += 1
 		var alive: bool = z.hp > 0
-		var moving: bool = not stationary and alive and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
+		var moving: bool = not stationary and alive and z.get("guard_awake",true) and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
 		var pace = 1.6 if z.kind == "imp" else 1.35 if z.kind == "football" else 1.7 if z.rage else .75 if z.kind == "giant" else 1.0
 		var stride = sin((elapsed-z.born)*5*pace+z.id*2) if moving else 0.0
 		var profile = Data.attack(z.kind,z.rage)

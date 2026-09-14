@@ -17,9 +17,13 @@ var focused = true
 var finished = false
 var yaw = 0.0
 var pitch = 0.0
+var requested_slot = 1
+var equipment_prop: Node3D
+var equipment_prop_slot = -1
 var requested_weapon = 0
 var jump_pending = false
 var reload_pending = false
+var aim_pending = false
 var fire_pending = false
 var fire_held = false
 var aim_held = false
@@ -89,6 +93,9 @@ func _ready() -> void:
 	# Explicit command-line launch modes also support silent local integration validation.
 	var args = OS.get_cmdline_user_args()
 	if "--survival" in args: start_solo("survival")
+	if "--campaign" in args:
+		Data.settings.map_id = "graypine_ferry"
+		start_solo("campaign")
 	if "--lan-host" in args: Session.host_lan("房主")
 	for arg in args:
 		if arg.begins_with("--lan-join="): Session.join_lan(arg.trim_prefix("--lan-join="),"队友")
@@ -97,7 +104,7 @@ func _ready() -> void:
 		observer.game = self
 		add_child(observer)
 
-func start_solo(mode: String) -> void:
+func start_solo(mode: String, campaign_seed := -1) -> void:
 	Session.leave()
 	reset_game()
 	load_map(Data.settings.map_id)
@@ -106,6 +113,7 @@ func start_solo(mode: String) -> void:
 	sim.pawns.solo.pos = arena.definition.spawn
 	yaw = arena.definition.yaw
 	sim.pawns.solo.yaw = yaw
+	if campaign_seed >= 0: sim.random.seed = campaign_seed
 	sim.start(mode)
 	resume_game()
 
@@ -140,6 +148,7 @@ func reset_game() -> void:
 	yaw = 0
 	pitch = 0
 	requested_weapon = 0
+	requested_slot = 1
 	jump_pending = false
 	reload_pending = false
 	fire_pending = false
@@ -158,7 +167,7 @@ func local_pawn() -> Dictionary:
 
 func view_pawn() -> Dictionary:
 	var local = local_pawn()
-	if local.is_empty() or local.hp > 0 or not Session.playing: return local
+	if local.is_empty() or local.hp > 0 or local.get("downed",false) or not Session.playing: return local
 	if sim.pawns.has(spectating) and sim.pawns[spectating].hp > 0: return sim.pawns[spectating]
 	for p in sim.pawns.values():
 		if p.hp > 0:
@@ -176,7 +185,12 @@ func cycle_spectator() -> void:
 
 func input_state() -> Dictionary:
 	var enabled = running and not paused and focused and not finished
-	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held}
+	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"heal":enabled and Input.is_action_pressed("heal"),"crouch":enabled and Input.is_action_pressed("crouch"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held}
+	if sim and sim.mode == "campaign":
+		command.slot = requested_slot
+		command.use_self = enabled and fire_pending
+		command.use_other = enabled and aim_pending
+	aim_pending = false
 	jump_pending = false
 	reload_pending = false
 	fire_pending = false
@@ -196,12 +210,12 @@ func _physics_process(dt: float) -> void:
 		queued_effects.append_array(sim.events)
 		if Session.is_host():
 			snapshot_timer += dt
-			if snapshot_timer >= .05 or sim.failed:
+			if snapshot_timer >= .05 or sim.failed or sim.won:
 				snapshot_timer = 0
 				Session.send_world(sim.snapshot(),queued_effects)
 				queued_effects.clear()
 		else: queued_effects.clear()
-	if sim.failed: finish_run()
+	if sim.failed or sim.won: finish_run()
 
 func _process(dt: float) -> void:
 	if not focused: return
@@ -219,11 +233,18 @@ func _process(dt: float) -> void:
 	var p = view_pawn()
 	if p.is_empty(): return
 	if p.id != Session.local_id: p = visible_pawns.get(p.id,p)
-	var desired = Vector3(p.pos.x,p.height+1.7,p.pos.y)
+	var desired = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 	if Session.playing and not Session.is_host(): camera.position = camera.position.lerp(desired,1-exp(-dt*22))
 	else: camera.position = desired
 	var spectate: bool = p.id != Session.local_id
 	camera.rotation = Vector3(p.pitch,p.yaw,0) if spectate else Vector3(pitch,yaw,0)
+	var medical_view: bool = not p.get("healing","").is_empty() or p.get("being_healed",false)
+	if medical_view and not finished:
+		var back = Vector3(sin(p.yaw),.3,cos(p.yaw))
+		var camera_target: Vector3 = desired+back*2.6
+		var obstruction = arena.surface_hit(desired,camera_target)
+		camera.position = obstruction.position+(desired-obstruction.position).normalized()*.2 if not obstruction.is_empty() else camera_target
+		camera.look_at(Vector3(p.pos.x,p.height+1.1,p.pos.y))
 	var w: Dictionary = Data.weapons[int(p.weapon)]
 	var magnification: float = 6.0 if w.id == "sniper" else 1.0 if w.get("kind", "gun") in ["melee","flame"] else 1.25
 	var aim_fov = rad_to_deg(2*atan(tan(deg_to_rad(61)/2)/magnification))
@@ -239,10 +260,24 @@ func _process(dt: float) -> void:
 			aim_distance = impact.distance
 			aim_target = camera.position-camera.global_basis.z*aim_distance
 	weapon.sync(p,dt,visual_time,camera.to_local(aim_target))
+	var equipment_slot: int = p.get("slot",1)
+	weapon.visible = not medical_view and equipment_slot < 4 and not finished
+	if equipment_prop_slot != equipment_slot:
+		if equipment_prop: equipment_prop.queue_free()
+		equipment_prop = null
+		equipment_prop_slot = equipment_slot
+		if equipment_slot >= 4:
+			equipment_prop = preload("res://scripts/campaign_props.gd").model(equipment_slot)
+			camera.add_child(equipment_prop)
+			equipment_prop.position = Vector3(.24,-.20,-.55)
+	if equipment_prop: equipment_prop.visible = not medical_view and not finished
+	if medical_view: camera.fov = 61
 	enemies.sync(visible_zombies,visual_time,false)
 	effects.step(dt)
 	for id in sim.pawns:
-		if id == Session.local_id: continue
+		if id == Session.local_id and not medical_view:
+			if partners.has(id): partners[id].visible = false
+			continue
 		if not partners.has(id):
 			var partner = preload("res://scripts/partner_view.gd").new()
 			add_child(partner)
@@ -258,7 +293,7 @@ func _process(dt: float) -> void:
 		death_timer += dt
 		weapon.visible = false
 		for z in sim.zombies:
-			if z.id == sim.culprit:
+			if not sim.won and z.id == sim.culprit:
 				var head = Vector3(z.pos.x,1.8*Data.enemy_scale(z.kind),z.pos.y)
 				camera.position = desired.lerp(head+(desired-head).normalized()*.85,clampf(death_timer*.8,0,1))
 				if camera.position.distance_to(head) > .05: camera.look_at(head)
@@ -270,6 +305,11 @@ func handle_effects(events: Array) -> void:
 	for event in events:
 		if not event is Dictionary or not event.has("kind"): continue
 		match event.kind:
+			"explosion":
+				effects.explosion(event.position)
+				sound.play_at("grenade-explosion",event.position,-6)
+			"campaign_cue":
+				sound.play_at("campaign-"+event.get("cue","horde"),event.position,-8)
 			"shot":
 				var index = clampi(int(event.get("weapon",0)),0,9)
 				var w: Dictionary = Data.weapons[index]
@@ -306,10 +346,10 @@ func finish_run() -> void:
 	if finished: return
 	reset_mouse_buttons()
 	finished = true
-	death_timer = 0
+	death_timer = 1.3 if sim.won else 0.0
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	sound.set_playing(false)
-	sound.play("failure",-9)
+	sound.play("campaign-gate" if sim.won else "failure",-9)
 	if not Session.playing and sim.mode == "survival":
 		var p = local_pawn()
 		Data.record(sim.cleared,sim.kills,sim.elapsed,p.shots,p.hits)
@@ -347,6 +387,7 @@ func return_home() -> void:
 	sim = null
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if weapon: weapon.visible = false
+	if equipment_prop: equipment_prop.visible = false
 	if enemies: enemies.clear()
 	for partner in partners.values(): partner.queue_free()
 	partners.clear()
@@ -359,12 +400,15 @@ func return_home() -> void:
 	if ui: ui.show_home()
 
 func software_qa() -> bool:
-	return Data.automation and OS.has_feature("web") and "--capture" not in OS.get_cmdline_user_args()
+	return Data.automation and OS.has_feature("web") and "--capture" not in OS.get_cmdline_user_args() and "--qa-poses" not in OS.get_cmdline_user_args()
 
 func qa_draw(dt: float) -> void:
 	if not software_qa(): return
 	draw_timer += dt
 	if draw_timer >= .5:
+		# With the render loop disabled, flush deferred scene transforms before drawing.
+		# Otherwise UI/camera updates can be captured with the previous weapon/actor pose.
+		for node in find_children("*","Node3D",true,false): node.force_update_transform()
 		RenderingServer.force_draw(true)
 		draw_timer = 0.0
 
@@ -389,6 +433,7 @@ func apply_graphics() -> void:
 	request_draw()
 
 func reset_mouse_buttons() -> void:
+	aim_pending = false
 	fire_pending = false
 	fire_held = false
 	aim_held = false
@@ -406,6 +451,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event.is_action("aim") and not event.is_echo():
 		aim_held = event.is_action_pressed("aim")
+		if aim_held: aim_pending = true
 		get_viewport().set_input_as_handled()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -430,12 +476,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		var max_delta = minf(180,deg_to_rad(25)/maxf(.000001,sensitivity))
 		if absf(delta.x) <= max_delta: yaw = wrapf(yaw-delta.x*sensitivity,-PI,PI)
 		if absf(delta.y) <= max_delta: pitch = clampf(pitch-delta.y*sensitivity,-deg_to_rad(85),deg_to_rad(85))
-	if event.is_action_pressed("weapon_previous"): requested_weapon = posmod(requested_weapon-1,10)
-	if event.is_action_pressed("weapon_next"): requested_weapon = (requested_weapon+1)%10
+	if sim.mode == "campaign":
+		if event.is_action_pressed("weapon_previous"): requested_slot = posmod(requested_slot-2,5)+1
+		if event.is_action_pressed("weapon_next"): requested_slot = requested_slot%5+1
+	else:
+		if event.is_action_pressed("weapon_previous"): requested_weapon = posmod(requested_weapon-1,10)
+		if event.is_action_pressed("weapon_next"): requested_weapon = (requested_weapon+1)%10
 	if event.is_action_pressed("jump"): jump_pending = true
 	if event.is_action_pressed("reload"): reload_pending = true
 	for i in 10:
-		if event.is_action_pressed("weapon_%d" % i): requested_weapon = i
+		if event.is_action_pressed("weapon_%d" % i):
+			if sim.mode == "campaign":
+				if i < 5: requested_slot = i+1
+			else: requested_weapon = i
 
 func _focus_lost() -> void:
 	if "--capture" in OS.get_cmdline_user_args(): return

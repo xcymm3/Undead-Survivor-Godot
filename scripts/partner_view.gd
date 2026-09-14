@@ -5,11 +5,17 @@ var previous_position = Vector3.ZERO
 var label: Label3D
 var held: Node3D
 var weapon_index = -1
+var medical_prop: Node3D
+var medical_slot = -1
 var weapon_animation: AnimationPlayer
 var axe_pivot: Node3D
 var skeleton: Skeleton3D
 var gun_model: Node3D
 var flash: MeshInstance3D
+
+static func display_name(value: String) -> String:
+	var clean = value.replace("\n"," ").replace("\r"," ").strip_edges()
+	return clean.left(8)+"…" if clean.length() > 8 else clean
 
 func setup(p: Dictionary) -> void:
 	var appearance: Array = p.appearance
@@ -18,9 +24,9 @@ func setup(p: Dictionary) -> void:
 	avatar.build(int(appearance[0]))
 	label = Label3D.new()
 	label.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
-	label.text = p.name
-	label.font_size = 36
-	label.pixel_size = .008
+	label.text = display_name(p.name)
+	label.font_size = 28
+	label.pixel_size = .003
 	label.position.y = 2.2
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.modulate = Color("eadfc6")
@@ -52,7 +58,7 @@ func update_weapon(index: int) -> void:
 	for node in held.get_children():
 		held.remove_child(node)
 		node.queue_free()
-	var model = load("res://assets/models/%s.glb" % Data.weapons[index].id).instantiate() as Node3D
+	var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[index].id)
 	gun_model = model
 	model.scale = Vector3.ONE*.75
 	held.add_child(model)
@@ -73,9 +79,13 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	update_weapon(int(p.weapon))
 	held.visible = p.hp > 0
 	held.rotation.x = p.pitch
-	label.text = "%s  %d HP" % [p.name,p.hp]
+	label.text = "%s\n%d HP" % [display_name(p.name),p.hp]
+	if p.get("downed",false): label.text = "%s\n需要救援 %d 秒" % [display_name(p.name),ceili(p.bleed)]
 	if skeleton: skeleton.clear_bones_global_pose_override()
 	var w: Dictionary = Data.weapons[int(p.weapon)]
+	var crouch = float(p.get("crouch",0.0))
+	label.position.y = 2.2-.6*crouch
+	if w.id == "rifle": gun_model.pose(p.reloading,clampf(1-p.get("reload",0.0)/w.reloadDuration,0,1) if p.reloading else 0.0,p.fire_anim/w.fireDuration)
 	if weapon_animation:
 		var clip = "reload" if p.reloading else "fire"
 		if weapon_animation.has_animation(clip):
@@ -87,20 +97,47 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	if axe_pivot:
 		preload("res://scripts/weapon_view.gd").sample_axe(axe_pivot,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0)
 	avatar.animate(p,moving,dt)
+	var medical: bool = not p.get("healing","").is_empty() or p.get("being_healed",false)
+	var item_slot: int = p.get("slot",1)
+	if medical: item_slot = 5
+	if item_slot != medical_slot:
+		if medical_prop: medical_prop.queue_free()
+		medical_prop = null
+		medical_slot = item_slot
+		if item_slot >= 4:
+			medical_prop = preload("res://scripts/campaign_props.gd").model(item_slot)
+			add_child(medical_prop)
+	if item_slot >= 4 or medical:
+		held.visible = false
+		flash.visible = false
+		if medical_prop:
+			medical_prop.visible = p.hp > 0
+			medical_prop.position = Vector3(0,1.10,-.30)
+		if skeleton and p.hp > 0:
+			var reach = -.55 if p.get("healing","") != "" and p.healing != p.id else -.28
+			var bob = sin(p.get("heal_time",0.0)*12)*.04 if medical else 0.0
+			pose_hand("R",Vector3(.12,1.13+bob,reach))
+			pose_hand("L",Vector3(-.12,1.10-bob,reach))
+			if medical_prop: medical_prop.position.z = reach
+		if medical: label.text = display_name(p.name)+"\n治疗中"
+		return
 
 	if skeleton and p.hp > 0 and int(p.weapon) != 6:
-		var lift = .06 if p.aim else 0.0
+		var lift = (.06 if p.aim else 0.0)-.6*crouch
 		pose_hand("R",Vector3(.20,1.23+lift,-.28))
 		if int(p.weapon) not in [2,3]:
-			pose_hand("L",Vector3(.14,1.12,-.25) if p.reloading else Vector3(.20,1.25+lift,-.47))
+			pose_hand("L",Vector3(.14,1.12-.6*crouch,-.25) if p.reloading else Vector3(.20,1.25+lift,-.47))
 	# The grip follows the actual animated fist, never a fixed point near the face.
 	if skeleton:
 		var hand = skeleton.find_bone("Fist.R")
 		if hand >= 0:
 			held.position = to_local(skeleton.global_transform*skeleton.get_bone_global_pose(hand).origin)
 			held.position += Vector3(0,.045,.04)
+			if w.id == "rifle":
+				held.position -= Vector3(0,.045,.04)+held.basis*(preload("res://scripts/ak_rifle.gd").RIGHT_GRIP*.75)
+				if p.hp > 0: pose_hand("L",to_local(gun_model.to_global(preload("res://scripts/ak_rifle.gd").LEFT_GRIP)))
 	if axe_pivot and skeleton and p.hp > 0:
-		held.position = Vector3(.18,1.13,.05)
+		held.position = Vector3(.18,1.13-.6*crouch,.05)
 		var grip = axe_pivot.to_global(Vector3(0,-.13,0))
 		pose_hand("R",to_local(grip))
 		var hand = skeleton.find_bone("Fist.R")
@@ -142,4 +179,5 @@ func pose_hand(side: String, target: Vector3) -> void:
 	skeleton.force_update_all_bone_transforms()
 
 func grip_position() -> Vector3:
+	if weapon_index == 0: return gun_model.to_global(preload("res://scripts/ak_rifle.gd").RIGHT_GRIP)
 	return axe_pivot.to_global(Vector3(0,-.13,0)) if axe_pivot else held.to_global(Vector3(0,-.045,-.04))

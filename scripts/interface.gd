@@ -156,7 +156,7 @@ func show_home() -> void:
 		var selected: bool = Data.settings.map_id == id
 		var option = button(map_row,definition.title,func(): game.call_deferred("select_map",id),selected)
 		option.name = "Map_"+id
-		option.custom_minimum_size = Vector2(212,56)
+		option.custom_minimum_size = Vector2(180,56)
 		option.toggle_mode = true
 		option.button_pressed = selected
 		option.disabled = selected
@@ -173,7 +173,7 @@ func show_home() -> void:
 	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
 	title.add_theme_constant_override("line_spacing",-12)
 	title_block.add_child(title)
-	title_block.add_child(label("守住每一波，活到下一刻。",19,Color("d8dfce")))
+	title_block.add_child(label("穿过灰松渡口，抵达下一间安全屋。" if Data.settings.map_id == "graypine_ferry" else "守住每一波，活到下一刻。",19,Color("d8dfce")))
 	var actions = VBoxContainer.new()
 	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	actions.offset_left = -450
@@ -338,9 +338,10 @@ func show_settings() -> void:
 	button(column,"返回",back,true)
 
 func show_guide() -> void:
-	var column = panel("武器与操作", "十款武器全部可用 · 弹匣独立保留 · 备弹无限",1000)
+	var column = panel("武器与操作", "生存：十款武器、无限备弹 · 战役：一把主武器、有限补给",1000)
 	current = "guide"
-	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键举枪\n空格跳跃  /  R 换弹  /  1—0 或滚轮切枪  /  Esc 暂停\n起跳锁定当前移动按键；空中转向仍有效。涉水移速为 70%，跳跃可恢复速度、拉开距离。",17)
+	paragraph(column,"灰松渡口战役：出发前选主武器；E 开门、领取补给、启动设备或救援；H 按住 3 秒治疗。7 切换近战。桥头守住 90 秒后闸门开启，存活队员全部进入泵站后 E 关门过关。合作倒地最多救起两次，死亡后本关不复活。",17)
+	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键举枪\n空格跳跃  /  Ctrl 按住蹲下  /  R 换弹  /  1—0 或滚轮切枪  /  Esc 暂停\n战役：1 主武器 / 2 副武器 / 3 消防斧 / 4 手雷 / 5 医疗包 / E 拾取与交互\n医疗包：左键自己，右键瞄准近处队友；治疗时无法行动。\n起跳锁定当前移动按键；空中转向仍有效。涉水移速为 70%，跳跃可恢复速度、拉开距离。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation",24)
@@ -425,6 +426,15 @@ func show_multiplayer() -> void:
 
 func show_result() -> void:
 	var sim = game.sim
+	if sim.mode == "campaign":
+		var result = panel("抵达泵站" if sim.won else "渡口行动失败","灰松渡口 · 第一章",640)
+		current = "result"
+		result.add_child(label("%s · %d 击杀" % [time_text(sim.elapsed),sim.kills],32))
+		paragraph(result,"全队抵达下一间安全屋。" if sim.won else "全队失去行动能力，从公路值班室重新出发。")
+		paragraph(result,"战役成绩不计入生存波次排行榜。",16)
+		if not Session.playing: button(result,"重新出发",func(): game.start_solo("campaign"),true)
+		button(result,"返回主菜单",func(): game.return_home())
+		return
 	var column = panel("坚守结束", "全队阵亡" if Session.playing else "落水耗尽生命" if sim.cause == "water" else "防线失守",640)
 	current = "result"
 	column.add_child(label("%d 波" % sim.cleared,74,RUST))
@@ -445,7 +455,7 @@ func tick(dt: float) -> void:
 	hurt_flash = maxf(0,hurt_flash-dt)
 	native_hud.sync()
 	var pawn: Dictionary = game.view_pawn()
-	var state = [game.running,current,pawn.get("weapon",-1),pawn.get("aim",false),game.weapon.ads > .8,hit_flash,hurt_flash,hud.size]
+	var state = [game.running,current,pawn.get("weapon",-1),pawn.get("slot",1),pawn.get("healing",""),pawn.get("aim",false),game.weapon.ads > .8,hit_flash,hurt_flash,hud.size]
 	if state != overlay_state:
 		overlay_state = state
 		hud.queue_redraw()
@@ -458,7 +468,7 @@ func _draw_hud() -> void:
 	var screen = hud.size
 	var center = screen*.5
 	var w: Dictionary = Data.weapons[int(p.weapon)]
-	var scoped: bool = int(p.weapon) == 5 and game.weapon.ads > .8
+	var scoped: bool = int(p.weapon) == 5 and p.get("slot",1) < 4 and p.get("healing","").is_empty() and not p.get("being_healed",false) and game.weapon.ads > .8
 	if scoped:
 		var radius = minf(screen.x,screen.y)*.43
 		var points = PackedVector2Array()
@@ -478,6 +488,9 @@ func _draw_hud() -> void:
 			hud.draw_line(center+Vector2(-5,i*28),center+Vector2(5,i*28),Color.BLACK,1)
 	elif current.is_empty():
 		var color = Color("eadfc6")
+		if p.aim and w.get("kind", "gun") == "gun":
+			hud.draw_circle(center,3.5,Color("242a24"))
+			hud.draw_circle(center,1.8,Color("ff7253"))
 		if not p.aim or w.get("kind", "gun") in ["melee","flame"]:
 			for dir in [Vector2.UP,Vector2.DOWN,Vector2.LEFT,Vector2.RIGHT]: hud.draw_line(center+dir*5,center+dir*12,color,2)
 	if hit_flash > 0:

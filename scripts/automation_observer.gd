@@ -10,6 +10,14 @@ func _ready() -> void:
 		queue_free()
 		return
 	if "--qa-native-smoke" in OS.get_cmdline_user_args(): call_deferred("native_smoke")
+	if "--qa-campaign-gallery" in OS.get_cmdline_user_args() and OS.has_feature("web"):
+		var gallery = preload("res://scripts/qa_campaign_gallery.gd").new()
+		gallery.game = game
+		add_child(gallery)
+	if "--qa-poses" in OS.get_cmdline_user_args() and OS.has_feature("web"):
+		var gallery = preload("res://scripts/qa_pose_gallery.gd").new()
+		gallery.game = game
+		add_child(gallery)
 	if "--qa-autoaim" in OS.get_cmdline_user_args():
 		aim_assist = preload("res://scripts/qa_aim_assist.gd").new()
 		aim_assist.game = game
@@ -33,6 +41,8 @@ func snapshot() -> Dictionary:
 				"width": rect.size.x, "height": rect.size.y, "disabled": node.disabled})
 	if game.sim:
 		result.mode = game.sim.mode
+		result.campaign = game.sim.campaign_state()
+		result.won = game.sim.won
 		result.elapsed = game.sim.elapsed
 		result.wave = game.sim.wave
 		result.cleared = game.sim.cleared
@@ -45,7 +55,7 @@ func snapshot() -> Dictionary:
 		var p: Dictionary = game.local_pawn()
 		if not p.is_empty():
 			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "wading":p.get("wading",false), "hp": p.hp,
-				"weapon": p.weapon, "ammo": p.ammo, "shots": p.shots, "hits": p.hits,
+				"crouch": p.get("crouch",0.0), "eye_height": preload("res://scripts/player_body.gd").eye_height(p), "slot":p.get("slot",0), "primary":p.get("primary",0), "secondary":p.get("secondary",2), "grenades":p.get("grenades",0), "healing":p.get("healing",""), "heal_time":p.get("heal_time",0.0), "weapon": p.weapon, "ammo": p.ammo, "shots": p.shots, "hits": p.hits,
 				"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
 	return result
 
@@ -64,6 +74,17 @@ func native_smoke() -> void:
 	Input.parse_input_event(event)
 	var p: Dictionary = game.local_pawn()
 	var passed = p.shots > 0 and p.ammo[0] < Data.weapons[0].capacity and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
+	game.return_home()
+	Data.settings.map_id = "graypine_ferry"
+	game.start_solo("campaign")
+	await get_tree().create_timer(.2).timeout
+	Input.action_press("forward")
+	Input.action_press("interact")
+	await get_tree().create_timer(2.4).timeout
+	Input.action_release("forward")
+	Input.action_release("interact")
+	passed = passed and game.sim.mode == "campaign" and game.sim.campaign.state.departed and game.local_pawn().get("primary",-1) == 1 and game.local_pawn().get("reserve",-1) == 225
+	print("PACKAGED CAMPAIGN SMOKE: "+("PASS" if passed else "FAIL"))
 	var tree = get_tree()
 	reparent(tree.root)
 	game.return_home()

@@ -6,11 +6,14 @@ var active = 0
 var muzzle: MeshInstance3D
 var axe_pivot: Node3D
 
+static func create_model(id: String) -> Node3D:
+	if id == "rifle": return preload("res://scripts/ak_rifle.gd").new()
+	return load("res://assets/models/%s.glb" % id).instantiate()
+
 func _ready() -> void:
 	scale = Vector3.ONE*.5
 	for definition in Data.weapons:
-		var scene: PackedScene = load("res://assets/models/%s.glb" % definition.id)
-		var model: Node3D = scene.instantiate()
+		var model: Node3D = create_model(definition.id)
 		add_child(model)
 		model.visible = false
 		models.append(model)
@@ -47,8 +50,15 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	ads = move_toward(ads,1.0 if p.aim else 0.0,dt*7)
 	var hide_scope: bool = w.id == "sniper" and ads > .8
 	for i in models.size(): models[i].visible = i == active and not hide_scope
-	var hip = Vector3(.19,-.16 if w.length < .6 else -.2,-.38)
+	var hip = Vector3(.19,-.085 if w.length < .6 else -.10,-.46)
+	if w.id == "rifle": hip = Vector3(.22,-.10,-.50)
+	if w.id == "heavy-machine-gun": hip = Vector3(.16,-.095,-.74)
 	var aim = Data.v3(w.ads)
+	if w.id == "rifle": aim = Vector3(0,-.103,-.48)
+	# The bulky procedural receivers need clearance below the center sight line.
+	if w.id in ["auto-shotgun","heavy-machine-gun"]: aim = Vector3(0,-.20,-.62)
+	if w.id == "heavy-machine-gun": aim = Vector3(-.02,-.10,-.80)
+	if w.get("kind", "gun") == "flame": aim = hip
 	position = hip.lerp(aim,ads)
 	position.y += sin(elapsed*1.6)*.003
 	var visual_target = aim_target.normalized()*maxf(6,aim_target.length())
@@ -59,6 +69,8 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		position.y -= reload_pulse*.07
 		rotation.z -= reload_pulse*.22
 		rotation.x -= reload_pulse*.1
+	var reload_phase = clampf(1-p.get("reload",0.0)/maxf(.1,w.reloadDuration),0,1) if p.reloading else 0.0
+	if w.id == "rifle": models[active].pose(p.reloading,reload_phase,p.fire_anim/w.fireDuration)
 	var player: AnimationPlayer = animations[active]
 	if player:
 		var clip = ""
@@ -109,6 +121,7 @@ static func sample_axe(pivot: Node3D, progress: float) -> void:
 
 static func muzzle_offset(w: Dictionary) -> Vector3:
 	match w.id:
+		"rifle": return preload("res://scripts/ak_rifle.gd").MUZZLE
 		"flamethrower": return Vector3(.04,.03,-1.01)
 		"auto-shotgun": return Vector3(.05,.04,-1.09)*.72
 		"heavy-machine-gun": return Vector3(.04,.04,-1.17)

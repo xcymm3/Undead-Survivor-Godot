@@ -105,8 +105,16 @@ func animate(p: Dictionary, moving: bool, dt: float) -> void:
 	position.y = .14 if p.hp <= 0 else 0.0
 	var stride = sin(clock*9)*.55 if moving else 0.0
 	var grounded: bool = p.get("grounded",p.height <= .06)
+	var crouch = float(p.get("crouch",0.0)) if p.hp > 0 else 0.0
+	var hips = skeleton.find_bone("Hips")
+	skeleton.set_bone_pose_position(hips,skeleton.get_bone_rest(hips).origin+Vector3(0,-.6*crouch,0))
+	skeleton.set_bone_pose_rotation(skeleton.find_bone("Chest"),Quaternion(Vector3.RIGHT,.16 if not p.get("healing","").is_empty() else -.12*crouch))
 	for side in ["R","L"]:
 		var swing = stride*(1 if side == "R" else -1)
 		skeleton.set_bone_pose_rotation(skeleton.find_bone("Thigh."+side),Quaternion(Vector3.RIGHT,swing if grounded else -.35))
 		skeleton.set_bone_pose_rotation(skeleton.find_bone("Shin."+side),Quaternion(Vector3.RIGHT,maxf(0,-swing)*.8 if grounded else .7))
+		if crouch > 0:
+			skeleton.set_bone_pose_rotation(skeleton.find_bone("Thigh."+side),Quaternion(Vector3.RIGHT,lerpf(swing,1.4+swing*.3,crouch)))
+			skeleton.set_bone_pose_rotation(skeleton.find_bone("Shin."+side),Quaternion(Vector3.RIGHT,-2.77*crouch))
+			skeleton.set_bone_pose_rotation(skeleton.find_bone("Foot."+side),Quaternion(Vector3.RIGHT,1.37*crouch))
 	skeleton.force_update_all_bone_transforms()

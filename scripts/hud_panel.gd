@@ -1,5 +1,6 @@
 extends Control
 ## Retained native widgets; Canvas drawing is reserved for the aiming overlay.
+var controls_hint: Label
 var wave_label: Label
 var count_label: Label
 var time_label: Label
@@ -14,6 +15,9 @@ var network_card: PanelContainer
 var health_row: HBoxContainer
 var cards: Dictionary = {}
 var slots: Array[Label] = []
+var equipment_slots: Array[Dictionary] = []
+var campaign_arsenal: VBoxContainer
+const EquipmentIcon = preload("res://scripts/hud_equipment_icon.gd")
 var arsenal: VBoxContainer
 var content: Control
 var ui
@@ -37,17 +41,42 @@ func setup(owner_ui) -> void:
 	wave_label = text(column,24)
 	count_label = text(column)
 	time_label = text(column,14)
-	var weapon_card = card(content,Vector2(158,0))
+	var weapon_card = card(content,Vector2(226,0))
 	weapon_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
-	weapon_card.offset_left = -186
-	weapon_card.offset_top = -235
+	weapon_card.offset_left = -254
+	weapon_card.offset_right = -28
+	weapon_card.offset_top = -230
 	column = column_in(weapon_card)
-	weapon_label = text(column,19)
+	weapon_label = text(column,17)
+	weapon_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	ammo_label = text(column,36)
 	ammo_note = text(column,12)
 	arsenal = VBoxContainer.new()
 	column.add_child(arsenal)
 	for i in 10: slots.append(text(arsenal,13))
+	campaign_arsenal = VBoxContainer.new()
+	campaign_arsenal.add_theme_constant_override("separation",5)
+	column.add_child(campaign_arsenal)
+	for i in 5:
+		var panel = card(campaign_arsenal,Vector2(174,62 if i < 3 else 36))
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation",8)
+		panel.add_child(row)
+		var key = text(row,15)
+		key.text = str(i+1)
+		key.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		var icon = EquipmentIcon.new()
+		icon.custom_minimum_size = Vector2(78,40) if i < 3 else Vector2(25,25)
+		row.add_child(icon)
+		var detail = column_in(row)
+		detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		detail.alignment = BoxContainer.ALIGNMENT_CENTER
+		var title = text(detail,13)
+		title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		title.custom_minimum_size.x = 40
+		var note = text(detail,12)
+		equipment_slots.append({"panel":panel,"icon":icon,"title":title,"note":note,
+			"selected":slot_style(true),"idle":slot_style(false)})
 	health_row = HBoxContainer.new()
 	health_row.add_theme_constant_override("separation",12)
 	health_row.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -67,7 +96,8 @@ func setup(owner_ui) -> void:
 	spectator_label.offset_left = 28
 	spectator_label.offset_top = -185
 	var hint = text(content,14)
-	hint.text = "ESC 暂停   ·   R 换弹   ·   1—0 切换武器"
+	controls_hint = hint
+	hint.text = "ESC 暂停 · R 换弹 · E 交互/救援"
 	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_left = 28
 	hint.offset_top = -36
@@ -118,12 +148,13 @@ func text(parent: Node, font_size := 16) -> Label:
 	return result
 
 func health_card(id: String) -> Dictionary:
-	var panel = card(health_row,Vector2(210,94))
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var panel = card(health_row,Vector2(236,86))
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	panel.size_flags_vertical = Control.SIZE_SHRINK_END
 	var row = HBoxContainer.new()
 	panel.add_child(row)
 	var portrait = TextureRect.new()
-	portrait.custom_minimum_size = Vector2(50,66)
+	portrait.custom_minimum_size = Vector2(44,58)
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	row.add_child(portrait)
@@ -132,7 +163,7 @@ func health_card(id: String) -> Dictionary:
 	var title = text(column,15)
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.custom_minimum_size.x = 90
-	var hp = text(column,24)
+	var hp = text(column,21)
 	var bar = ProgressBar.new()
 	bar.show_percentage = false
 	bar.custom_minimum_size.y = 7
@@ -151,14 +182,46 @@ func sync() -> void:
 	wave_label.text = "第 %02d 波" % sim.wave
 	count_label.text = "击杀 %d  ·  场上 %d" % [sim.kills,sim.alive_count()]
 	time_label.text = ui.time_text(sim.elapsed)
+	var campaign: Dictionary = sim.campaign_state()
+	if sim.mode == "campaign":
+		wave_label.text = "灰松渡口"
+		count_label.text = "击杀 %d · 医疗包 %d" % [sim.kills,p.get("medkits",0)]
 	var w: Dictionary = Data.weapons[int(p.weapon)]
-	weapon_label.text = w.label
+	weapon_label.text = "%s · %s级" % [w.label,w.tier]
 	var infinite: bool = w.get("infiniteAmmo",false)
 	ammo_label.text = "∞  近战" if infinite else "%02d / ∞" % p.ammo[int(p.weapon)]
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
-	arsenal.visible = not (int(p.weapon) == 5 and ui.game.weapon.ads > .8)
-	for i in slots.size():
-		slots[i].text = "%s %d  %s  %s" % ["›" if int(p.weapon) == i else " ",(i+1)%10,Data.weapons[i].label,"∞" if Data.weapons[i].get("infiniteAmmo",false) else str(p.ammo[i])]
+	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
+	if sim.mode == "campaign":
+		controls_hint.text = "1 主武器 · 2 副武器 · 3 斧 · 4 手雷 · 5 医疗包 · E 拾取/交互"
+		if not infinite: ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
+		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 补给点换枪"
+		if p.slot >= 4:
+			weapon_label.text = "手雷" if p.slot == 4 else "医疗包"
+			ammo_label.text = str(p.grenades if p.slot == 4 else p.medkits)
+			ammo_note.text = "左键投掷 · 3 秒引信" if p.slot == 4 else "左键自己 · 右键队友"
+
+	arsenal.visible = not (int(p.weapon) == 5 and p.get("slot",1) < 4 and ui.game.weapon.ads > .8)
+	campaign_arsenal.visible = sim.mode == "campaign" and arsenal.visible
+	arsenal.visible = sim.mode != "campaign" and arsenal.visible
+	if sim.mode == "campaign":
+		for i in 5:
+			var item: Dictionary = equipment_slots[i]
+			var index: int = p.primary if i == 0 else p.secondary if i == 1 else 6
+			var selected: bool = p.slot == i+1
+			var available: bool = i < 3 or (p.grenades if i == 3 else p.medkits) > 0
+			item.panel.add_theme_stylebox_override("panel",item.selected if selected else item.idle)
+			item.icon.kind = str(Data.weapons[index].id) if i < 3 else "grenade" if i == 3 else "medkit"
+			item.icon.modulate = Color("c7ef8a") if selected and available else Color("f2eedf") if available else Color("647064")
+			item.title.text = str(Data.weapons[index].label) if i < 3 else "手雷" if i == 3 else "医疗包"
+			item.note.visible = i < 3
+			item.note.text = str(Data.weapons[index].tier)+" 级"
+			if i >= 3: item.title.text += "  1 / 1" if available else "  空"
+			item.icon.queue_redraw()
+	else:
+		for i in slots.size():
+			slots[i].text = "%s %d  %s  %s" % ["›" if int(p.weapon) == i else " ",(i+1)%10,Data.weapons[i].label,"∞" if Data.weapons[i].get("infiniteAmmo",false) else str(p.ammo[i])]
+
 	var ids: Array = sim.pawns.keys()
 	ids.erase(Session.local_id)
 	if sim.pawns.has(Session.local_id): ids.push_front(Session.local_id)
@@ -171,18 +234,32 @@ func sync() -> void:
 		var item: Dictionary = cards[ids[i]] if cards.has(ids[i]) else health_card(ids[i])
 		health_row.move_child(item.panel,i)
 		item.name.text = "我" if ids[i] == Session.local_id and not Session.playing else str(pawn.get("name",ids[i]))
-		item.hp.text = "%d  %s" % [pawn.hp,"生命" if pawn.hp > 0 else "阵亡"]
+		item.hp.text = "+%d" % pawn.hp if pawn.hp > 0 else "阵亡"
+		if pawn.get("downed",false): item.hp.text = "倒地 %d 秒" % ceili(pawn.get("bleed",0))
 		item.bar.value = pawn.hp
 		item.bar.modulate = Color.WHITE if pawn.hp > 50 else Color("e0bc62") if pawn.hp > 25 else Color("dd6958")
 		var key = str(pawn.appearance)
 		if ui.portraits.has(key): item.portrait.texture = ui.portraits[key].get_texture()
 	rest_label.visible = sim.rest > 0
 	if rest_label.visible: rest_label.text = "整波清除 · 全员恢复   %.1f 秒后继续" % sim.rest
+	if sim.mode == "campaign":
+		rest_label.visible = true
+		rest_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rest_label.add_theme_stylebox_override("normal",style(Color(.04,.055,.05,.8),8))
+		rest_label.text = campaign.get("objective","")+"\n"+p.get("hint","")
+		if campaign.get("phase") == "BRIDGE_ACTIVE": rest_label.text += "\n闸门开启 %.0f / 90 秒" % campaign.get("bridge_time",0)
 	var local: Dictionary = ui.game.local_pawn()
 	spectator_label.visible = not local.is_empty() and local.hp <= 0 and Session.playing
 	if spectator_label.visible: spectator_label.text = "正在观战 %s · 左键切换队友 · 清波后复活" % p.name
+	if sim.mode == "campaign" and spectator_label.visible: spectator_label.text = "等待队友救援" if local.get("downed",false) else "正在观战 · 本关不复活"
 	network_card.visible = Session.playing and not Session.is_host() and Data.settings.network_stats
 	if network_card.visible:
 		var metrics = Session.network_metrics()
 		network_label.text = "网络状态："+metrics.quality
 		network_detail.text = "正在采样…" if metrics.samples == 0 or metrics.loss < 0 else "%d ms · 同步丢包 %.0f%%" % [metrics.rtt,metrics.loss]
+
+static func slot_style(selected: bool) -> StyleBoxFlat:
+	var result = style(Color("283727") if selected else Color(.08,.1,.08,.8),6)
+	result.border_color = Color("b4dd7a") if selected else Color("384335")
+	result.border_width_left = 3 if selected else 1
+	return result

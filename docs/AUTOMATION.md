@@ -55,19 +55,29 @@ Web QA 是测试导出，使用同一场景、规则、资源和输入代码。�
 
 版本以根目录 `VERSION` 为准。后续发布前运行 `node tools/version.mjs 1.7.8`（替换为本次版本），会同步 Godot 项目版本和 EXE 的文件/产品版本 `1.7.8.0`。流水线会检查三处一致，打包时也读取成品 EXE 版本核验。同一版本已公开时不会覆盖附件或移动标签；未升版本的提交继续测试和保存 Artifacts，但不重复发布。旧 `build-2` 保留为历史构建。
 
-Release 同时提供完整 ZIP、独立 EXE、Steam DLL、appid 和许可文件。推荐 ZIP；单独下载 EXE 时必须同时下载 DLL 与 appid。构建报告仍位于以下 Actions 入口。
+Release 提供可直接启动的单文件 EXE、包含相同 EXE 的 ZIP、校验和与许可文件。只下载 `Undead-Survivor-Godot.exe` 即可，无需另外下载 DLL 或 appid。构建报告仍位于以下 Actions 入口。
 
 仓库 **Actions → Godot 自动验收与 Windows 打包 → 对应运行 → Artifacts**：
 
 - `acceptance-<commit>`：每阶段日志、验收 JSON/Markdown、浏览器截图、HTML 报告和 trace；失败也上传。
-- `Undead-Survivor-Godot-Windows-x64-<commit>`：仅全部成功后上传，含 ZIP 和 SHA256SUMS.txt。解压内层 ZIP 后运行 EXE，Steam DLL 与 appid 必须随包保留。
+- `Undead-Survivor-Godot-Windows-x64-<commit>`：仅全部成功后上传，含 ZIP 和 SHA256SUMS.txt。解压内层 ZIP 后运行 EXE，或直接使用 Release 的单文件 EXE。
 
 HTML 报告不会自动打开。需要查看时由用户主动打开；自动流程不启动报告网页。
 
 ## 验收边界
+
+完整交付的测试计划必须包含[视觉质量验收](VISUAL_QA.md)：原生 GPU 场景矩阵、逐图审查、缺陷修复复查，以及真实浏览器流程截图审查。功能验收全绿仅表示自动化检查通过；未做视觉审查时必须单列“视觉质量待验收”，不能称为完整视觉验收通过。GPU 执行仍须符合本次用户授权与桌面保护约定。
 
 - 截图和规则检查不能证明与原版主观手感完全一致，仍保留人工体验验收。
 - Chromium 运行真实 WebGL，但采用软件渲染；Web 自动化模式将 3D 分辨率降至 50%、关闭阴影/MSAA、逻辑主循环限制 20 FPS、战斗画面每秒提交两次，物理仍为 60 Hz、玩法数值不变。窗口尺寸为 960×600，不代表玩家显卡帧率、高画质效果或流畅度验收。
 - Windows EXE 验证的是成品内资源、主场景、逻辑与输入路径；不启动 Windows 图形窗口，因此不声称验证了原生 GPU 显示效果。
 - ENet 测试不代表双账号 Steam 房间/P2P 验收；Steam 登录与跨电脑联网仍需专门环境。
 - 推送门禁由本地工具与工作约定执行；Actions 验证失败会阻止本次下载包产生。仓库分支保护并未由此自动开启。
+
+## 单文件 Windows 发布
+
+`tools/export-windows.ps1` 先把 GodotSteam 原生游戏导出到 `build/payload/`，然后调用 `tools/build-single-exe.ps1`，将游戏、Steam DLL、appid、版本和许可文件压缩嵌入无控制台启动器。最终下载文件为 `build/Undead-Survivor-Godot.exe`；后续 `npm run verify:release` 与 Actions 均自动生成这一格式。直接使用 Godot 导出预设只生成内部 payload，发布必须走上述脚本。
+
+启动器使用 Windows 10/11 自带的 .NET Framework 4.x，不需要额外下载 .NET Desktop Runtime。每次启动在 `%TEMP%/Undead-Survivor-Godot/<随机标识>/` 解压，设置该目录为游戏工作目录，原样转发参数、输出和退出码，等待游戏退出后清理。首次及后续启动均有解压耗时，需要临时磁盘空间；强制结束启动器或断电可能留下该次临时目录。多个实例使用不同目录，游戏存档仍使用原有 Godot `user://` 路径。Steam 功能保持原样，仍需 Steam 客户端和账号。
+
+发布验收除检查内部游戏 EXE，还会把最终 EXE 单独复制到含中文和空格的空目录，使用独立临时路径，同时运行两个严格 headless 冒烟实例，检查输出、退出码、下载目录没有额外依赖、退出后临时文件清理。ZIP 不再携带外置 Steam DLL；SHA256SUMS 同时记录 ZIP 和单文件 EXE 的哈希。

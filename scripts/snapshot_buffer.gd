@@ -48,6 +48,7 @@ static func blend(a: Dictionary, b: Dictionary, weight: float, player: bool) -> 
 	result[angle] = lerp_angle(a[angle],b[angle],weight)
 	if player:
 		result.height = lerpf(a.height,b.height,weight)
+		result.crouch = lerpf(a.get("crouch",0.0),b.get("crouch",0.0),weight)
 		result.pitch = lerpf(a.pitch,b.pitch,weight)
 		for key in ["fire_anim","reload","switch"]:
 			if a.weapon == b.weapon and b[key] <= a[key]: result[key] = lerpf(a[key],b[key],weight)

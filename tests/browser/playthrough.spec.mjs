@@ -88,6 +88,11 @@ test('真实键鼠完成菜单、战斗、换弹、暂停、死亡和重开，�
     await page.mouse.move(480, 300);
     await clickButton(page, '单人模式');
     await until(page, () => window.__survivorSnapshot?.mode === 'survival');
+    await page.keyboard.down("Control");
+    await until(page, () => window.__survivorSnapshot?.player?.crouch > .95);
+    expect((await snapshot(page)).player.eye_height).toBeCloseTo(1.1, 1);
+    await page.keyboard.up("Control");
+    await until(page, () => window.__survivorSnapshot?.player?.crouch < .05);
     const start = await snapshot(page);
     await page.keyboard.down('w');
     await until(page, () => window.__survivorSnapshot?.player?.z < 7.5);

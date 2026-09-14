@@ -1,11 +1,14 @@
 extends RefCounted
-const IDS = ["outpost","dust"]
+const IDS = ["outpost","dust","graypine_ferry"]
+const Ferry = preload("res://scripts/campaign_layout.gd")
 const Dust = preload("res://scripts/dust_layout.gd")
 
 static func valid(id) -> bool:
 	return id is String and id in IDS
 
 static func definition(id: String) -> Dictionary:
+	if id == "graypine_ferry":
+		return {"id":id,"title":"灰松渡口","subtitle":"战役 · 街道 / 河桥尸潮 / 泵站安全屋","bounds":Ferry.BOUNDS,"scene":"res://scenes/graypine_ferry.tscn","spawn":Ferry.START,"yaw":0.0,"safe":[Ferry.START],"spawns":Ferry.BRIDGE_POINTS,"camera":Vector3(48,38,20),"look_at":Vector3(0,0,-35),"sky":Color("a3b9ae"),"fog":Color("a3b9ae"),"sun":Color("ffe0b3")}
 	if id == "dust":
 		return {"id":"dust","title":"沙漠之城","subtitle":"DUST · 中央通道 / 地下通路 / 双庭院", "bounds":Rect2(-50,-44,102,88),
 			"scene":"res://scenes/dust.tscn","spawn":Dust.point(704,301),"yaw":PI/2,

@@ -1,12 +1,12 @@
 # Undead Survivor · Godot
 
-当前 Godot 版本：`1.7.7`。发布版本由根目录 `VERSION` 管理，Release 使用 `v1.7.7` 这样的版本标签。
+当前 Godot 版本：`1.7.11`。发布版本由根目录 `VERSION` 管理，Release 使用 `v1.7.7` 这样的版本标签。
 
 `Undead-Survivor` 0.7.7 的独立 Godot 4 原生移植工程。游戏运行时使用 GDScript、Godot 场景、原生网格、着色器和音频，不依赖 React、Three.js、Electron 或浏览器。
 
 移植基线：相邻原项目提交 `7775293140052ccf9f86ea86929bfbc8889a4a5b`。原目录没有修改。
 
-仓库：[xcymm3/Undead-Survivor-Godot](https://github.com/xcymm3/Undead-Survivor-Godot)。[下载最新 Windows 版本](https://github.com/xcymm3/Undead-Survivor-Godot/releases/latest)，推荐 ZIP，解压后运行 EXE。main 分支自动验收与打包成功后会发布 GitHub Release；日志、截图和浏览器回放保存在 Actions Artifacts。自动化入口：`npm run verify` / `npm run verify:release`；完整步骤见 [自动化流程](docs/AUTOMATION.md)。
+仓库：[xcymm3/Undead-Survivor-Godot](https://github.com/xcymm3/Undead-Survivor-Godot)。[下载最新 Windows 版本](https://github.com/xcymm3/Undead-Survivor-Godot/releases/latest)，推荐直接下载单个 EXE，双击启动，无需另下 DLL；运行时自动释放内置依赖，退出后清理。main 分支自动验收与打包成功后会发布 GitHub Release；日志、截图和浏览器回放保存在 Actions Artifacts。自动化入口：`npm run verify` / `npm run verify:release`；完整步骤见 [自动化流程](docs/AUTOMATION.md)。
 
 ![Godot 实际主菜单](docs/screenshots/home.png)
 
@@ -127,3 +127,7 @@ npm run verify:release
 六款枪械及六款人物来自 Quaternius 的 CC0 资源；地图、僵尸、四款程序化武器及合成音频来自原项目。许可说明保留在 `assets/models/WEAPON-SOURCES.md`、`assets/models/characters/License.txt` 和 `assets/THIRD-PARTY-NOTICES.txt`。
 
 引擎下载：[Godot 4.5.2](https://godotengine.org/download/archive/4.5.2-stable/)，[GodotSteam 4.16](https://github.com/GodotSteam/GodotSteam/releases/tag/v4.16)。
+
+## 灰松渡口战役（1.8.0）
+
+首页选择“灰松渡口”进入从公路值班室前往泵站安全屋的第一章，支持单人和合作。E 交互/救援，H 治疗；出发后保留一把主武器与近战，储备弹药有限。操作、内部接口验收方法及尚未验证的项目见 [战役实现说明](docs/CAMPAIGN_IMPLEMENTATION.md)。
