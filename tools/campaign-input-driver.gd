@@ -17,6 +17,7 @@ func _init(current_game, _yard: bool) -> void:
 	Layout = preload("res://scripts/night_layout.gd")
 	tasks = [[Vector2(-3.7,72.3),"grenade:night_start"],[Vector2(0,66.5),"depart"]]
 	for point in Layout.ROUTE.slice(1):
+		if point == Layout.EXIT: tasks.append_array([[Layout.HOLDOUT,"holdout"],[Layout.HOLDOUT,"defend"]])
 		tasks.append([point,"finish" if point == Layout.EXIT else ""])
 		if point == Vector2(-9,21): tasks.append_array([[Vector2(-14,25),"night_shop"],[Vector2(-15,26.3),"grenade:night_shop"]])
 		if point == Vector2(-6,-34): tasks.append_array([[Vector2(-12,-32),"night_van"],[Vector2(-13,-30.7),"grenade:night_van"]])
@@ -41,7 +42,7 @@ func command(dt: float) -> Dictionary:
 	var action: String = tasks[index][1]
 	# Supplies are optional on the escape route. A wounded, armed test pawn must
 	# not repeatedly walk back into a surrounded pickup instead of seeking safety.
-	if game.sim.map_id == "graypine_night" and state.departed and action not in ["","depart","finish"] and p.hp < 75 and p.ammo[p.primary]+p.reserve > int(Data.weapons[p.primary].capacity):
+	if game.sim.map_id == "graypine_night" and state.departed and action not in ["","depart","finish","holdout","defend"] and p.hp < 75 and p.ammo[p.primary]+p.reserve > int(Data.weapons[p.primary].capacity):
 		if game.sim.zombies.any(func(z): return z.hp > 0 and z.get("guard_awake",true) and z.pos.distance_to(p.pos) < 7):
 			index += 1
 			path.clear()
@@ -50,16 +51,17 @@ func command(dt: float) -> Dictionary:
 	var interact = false
 	var advance = false
 	if action == "defend":
-		advance = state.gate_open
+		advance = state.exit_control
 		# Separate teammates and use a wider loop so the horde cannot cut across
 		# the entire defensive route. These remain ordinary movement inputs.
 		angle += dt*.45
 		var offset = float(str(p.id).hash() % 628)/100.0
-		goal = Vector2(cos(angle+offset)*7,-18+sin(angle+offset)*7)
+		goal = Layout.HOLDOUT+Vector2(cos(angle+offset)*3.0,3.5+sin(angle+offset)*2.0)
 	elif arrived:
 		interact = action != ""
 		if action == "": advance = true
 		elif action == "depart": advance = state.departed
+		elif action == "holdout": advance = state.holdout_started
 		elif action == "winch": advance = state.phase == "BRIDGE_ACTIVE" or state.gate_open
 		elif action.ends_with("_med"): advance = state.taken.has(action) or p.medkits > 0
 		elif action == "key": advance = state.shop_key

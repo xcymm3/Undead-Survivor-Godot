@@ -22,6 +22,12 @@ test('night route software visual matrix', async ({ page }, info) => {
   await page.evaluate(view => { window.__campaignView = view; }, idle);
   await page.waitForFunction(view => JSON.stringify(window.__campaignRendered) === JSON.stringify(view), idle);
   await page.screenshot({ path: info.outputPath('night_woods-idle-later-1440.png'), timeout: 60_000 });
+  for (const state of [{holdout:false, holdout_time:0, unlocked:false}, {holdout:true, holdout_time:15, unlocked:false}, {holdout:true, holdout_time:30, unlocked:true}]) {
+    const view = {name:'night_exit',width:1440,height:900,time:3,party:2,...state};
+    await page.evaluate(view => { window.__campaignView = view; }, view);
+    await page.waitForFunction(view => JSON.stringify(window.__campaignRendered) === JSON.stringify(view), view);
+    await page.screenshot({path:info.outputPath(`holdout-${state.holdout_time}.png`),timeout:60_000});
+  }
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });
 });

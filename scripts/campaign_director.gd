@@ -175,7 +175,8 @@ func queue_batch(id: String, count: int, kinds: Array) -> void:
 	var roster: Array = []
 	for i in roundi(count*multiply()): roster.append(kinds[i%kinds.size()])
 	reinforcement_batches.append({"id":id,"queued_at":sim.elapsed,"roster":roster,"spawned":0})
-	sim.events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(8,1,-16)})
+	var source: Vector2 = Layout.HOLDOUT if id.begins_with("night_holdout_") else standing()[0].pos if not standing().is_empty() else Layout.START
+	sim.events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(source.x,1,source.y)})
 
 
 func safe_point(point: Vector2) -> bool:

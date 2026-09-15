@@ -89,7 +89,7 @@ func index_obstacle(rect: Rect2, is_water: bool) -> void:
 func clear(a: Vector2, b: Vector2, allow_water := false) -> bool:
 	if map_id == "graypine_night":
 		if not campaign_state.get("departed",false) and segment_rect(a,b,Maps.Night.START_DOOR.grow(.95)): return false
-		if campaign_state.get("complete",false) and segment_rect(a,b,Maps.Night.EXIT_DOOR.grow(.95)): return false
+		if (not campaign_state.get("exit_control",false) or campaign_state.get("complete",false)) and segment_rect(a,b,Maps.Night.EXIT_DOOR.grow(.95)): return false
 	if not bounds.grow(-.95).has_point(a) or not bounds.grow(-.95).has_point(b): return false
 	for y in range(floori(minf(a.y,b.y)/4),floori(maxf(a.y,b.y)/4)+1):
 		for x in range(floori(minf(a.x,b.x)/4),floori(maxf(a.x,b.x)/4)+1):
@@ -107,7 +107,7 @@ func endpoint_link(a: Vector2, b: Vector2) -> bool:
 	for obstacle in obstacles:
 		if segment_rect(a,b,Rect2(obstacle.minX,obstacle.minZ,obstacle.maxX-obstacle.minX,obstacle.maxZ-obstacle.minZ)): return false
 	var gates = [["departed",Maps.Night.START_DOOR]]
-	if map_id == "graypine_night" and campaign_state.get("complete",false) and segment_rect(a,b,Maps.Night.EXIT_DOOR): return false
+	if map_id == "graypine_night" and (not campaign_state.get("exit_control",false) or campaign_state.get("complete",false)) and segment_rect(a,b,Maps.Night.EXIT_DOOR): return false
 	for gate in gates:
 		if not campaign_state.get(gate[0],false) and segment_rect(a,b,gate[1]): return false
 	return true
@@ -140,7 +140,7 @@ func surface_hit(origin: Vector3, end: Vector3) -> Dictionary:
 
 
 func sync_campaign(state: Dictionary) -> void:
-	var changed: bool = campaign_state.get("departed",false) != state.get("departed",false) or campaign_state.get("complete",false) != state.get("complete",false)
+	var changed: bool = campaign_state.get("exit_control",false) != state.get("exit_control",false) or campaign_state.get("departed",false) != state.get("departed",false) or campaign_state.get("complete",false) != state.get("complete",false)
 	campaign_state = state.duplicate(true)
 	scenery.sync(state)
 	if changed: build_grid()

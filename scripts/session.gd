@@ -8,7 +8,7 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-6"
+const PROTOCOL = "undead-survivor-godot-7"
 const PORT = 27777
 var map_id = "graypine_night"
 var transport = ""
@@ -413,9 +413,11 @@ func valid_world(value) -> bool:
 		if map_id != "graypine_night" or not value.get("campaign") is Dictionary: return false
 		var campaign_state: Dictionary = value.campaign
 		if not campaign_state.has_all(["phase","departed","gate_open","complete","bridge_time","taken","claimed","objective","party","shop_key","shop_open","leak_closed","pump_ready","power_ready","late_stage","exit_control"]): return false
-		if campaign_state.phase not in ["PREPARE","STREET","BRIDGE_READY","BRIDGE_ACTIVE","GATE_OPEN","FINAL_APPROACH","COMPLETE","FAILED"]: return false
+		if campaign_state.phase not in ["PREPARE","STREET","BRIDGE_READY","BRIDGE_ACTIVE","GATE_OPEN","FINAL_APPROACH","HOLDOUT","ESCAPE","COMPLETE","FAILED"]: return false
 		for key in ["departed","gate_open","complete","shop_key","shop_open","leak_closed","pump_ready","power_ready","late_stage","exit_control"]:
 			if not campaign_state[key] is bool: return false
+		if not campaign_state.get("holdout_started") is bool: return false
+		if not (campaign_state.get("holdout_time") is float or campaign_state.get("holdout_time") is int) or not is_finite(campaign_state.holdout_time) or campaign_state.holdout_time < 0 or campaign_state.holdout_time > 30: return false
 		if not campaign_state.bridge_time is float or not is_finite(campaign_state.bridge_time) or campaign_state.bridge_time < 0 or campaign_state.bridge_time > 90: return false
 		if not campaign_state.taken is Dictionary or not campaign_state.claimed is Dictionary or not campaign_state.objective is String or campaign_state.objective.length() > 160: return false
 		if not campaign_state.party is int or campaign_state.party < 1 or campaign_state.party > 4: return false

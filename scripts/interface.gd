@@ -159,7 +159,7 @@ func show_home() -> void:
 	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
 	title.add_theme_constant_override("line_spacing",-12)
 	title_block.add_child(title)
-	title_block.add_child(label("穿过灰松夜路，抵达亮灯的安全屋。" if Data.settings.map_id == "graypine_night" else "守住每一波，活到下一刻。",19,Color("d8dfce")))
+	title_block.add_child(label("穿过灰松夜路，抵达门前，坚守 30 秒后进入安全屋。" if Data.settings.map_id == "graypine_night" else "守住每一波，活到下一刻。",19,Color("d8dfce")))
 	var actions = VBoxContainer.new()
 	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	actions.offset_left = -450
@@ -337,7 +337,7 @@ func show_guide() -> void:
 	for i in Data.weapons.size():
 		var w: Dictionary = Data.weapons[i]
 		for text in [w.label,w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
-	paragraph(column,"夜路敌人预置在道路、店铺和树林中；靠近或局部枪声会惊动它们。普通僵尸追击速度高于玩家，利用遮蔽物与推击脱离包围。",17)
+	paragraph(column,"夜路敌人预置在道路、店铺和树林中；枪声和子弹落点会引来调查，看到玩家后开始追击。普通僵尸追击速度高于玩家，利用遮蔽物与推击脱离包围。",17)
 	paragraph(column,"增援按计时或事件投放有限批次，安全条件不满足时延后。无需清光地图；枪械通过补给点更换，每人最多携带一个手雷和一个医疗包。",17)
 	button(column,"返回",back,true)
 

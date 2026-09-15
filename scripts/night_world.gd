@@ -1,4 +1,10 @@
 extends "res://scripts/campaign_world.gd"
+var holdout_label: Label3D
+
+func sync(state: Dictionary) -> void:
+	super(state)
+	if is_instance_valid(holdout_label):
+		holdout_label.text = "门已解锁 · 进屋关门" if state.get("exit_control",false) else "坚守 %d 秒" % ceili(30-state.get("holdout_time",0.0)) if state.get("holdout_started",false) else "E 启动门锁 · 坚守 30 秒"
 
 func _init() -> void:
 	Layout = preload("res://scripts/night_layout.gd")
@@ -82,7 +88,14 @@ func _ready() -> void:
 	for item in Layout.ITEMS:
 		supplies[item.id] = block("Supplies",Vector3(item.pos.x,.35,item.pos.y),Vector3(1.6,.7,1.2),"685946",false)
 		supply_labels[item.id] = sign_at("补给",Vector3(item.pos.x,1.7,item.pos.y),2.1)
-	for info in [["E 开门 · 沿绿灯前往安全屋",Vector3(0,2.8,65.2),3.0],["林边诊所 ↑",Vector3(8,2.6,39),3.0],["穿过店内 ↑",Vector3(-9,3.1,29.4),3.8],["安全屋 →",Vector3(-8,2.4,3),2.8],["安全屋 ←",Vector3(19,2.4,-24),2.8],["安全屋 ↑",Vector3(12,3.0,-53.8),3.0]]:
+	block("DoorControl",Vector3(14.4,1,-50),Vector3(.6,2,.5),"a87938",false)
+	var sign_index = get_child_count()
+	holdout_label = sign_at("E 启动门锁 · 坚守 30 秒",Vector3(12,2.7,-53.25),3.0)
+	# Both backing and text sit outside the closed door and rise with it.
+	var sign_back = get_child(sign_index)
+	sign_back.reparent(doors.exit,true)
+	holdout_label.reparent(doors.exit,true)
+	for info in [["E 开门 · 沿绿灯前往安全屋",Vector3(0,2.8,65.2),3.0],["林边诊所 ↑",Vector3(8,2.6,39),3.0],["穿过店内 ↑",Vector3(-9,3.1,29.4),3.8],["安全屋 →",Vector3(-8,2.4,3),2.8],["安全屋 ←",Vector3(19,2.4,-24),2.8]]:
 		sign_at(info[0],info[1],info[2])
 	for p in [Vector3(0,3.6,70),Vector3(-9,3.8,24),Vector3(-14,3.8,11),Vector3(-12,3,-32),Vector3(12,3.7,-60),Vector3(12,3.6,-52)]: lamp(p,"ffcb85",2.6,11)
 	for p in [Vector3(8,3.5,51),Vector3(-9,3.5,32),Vector3(16,3,-9),Vector3(7,3,-25),Vector3(-6,3,-43)]:

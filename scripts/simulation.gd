@@ -439,6 +439,14 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	# Authored guards exist from map start; proximity with sight or damage wakes them once.
 	if z.has("guard_awake") and not z.guard_awake:
 		if map_id == "graypine_night" and z.hp >= float(Data.enemies[z.original].health):
+			if z.get("investigate_until",0.0) > elapsed:
+				var goal: Vector2 = z.investigate_pos
+				if z.pos.distance_to(goal) < 1.0:
+					if z.get("search_until",0.0) <= 0: z.search_until = elapsed+2.0
+					z.heading += dt*1.3
+					if elapsed >= z.search_until: z.investigate_until = 0.0
+				else: move_zombie(z,goal,float(z.get("chase_speed",4.8))*.5,dt,z.pos.distance_to(goal),.4)
+				return
 			z.heading = z.get("idle_heading",0.0)+sin(elapsed*.43+z.id)*.3
 			if elapsed > 0 and z.id%4 == 0:
 				var phase_time = fmod(elapsed+z.id*1.731,16.0)
@@ -536,6 +544,9 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		if z.attack_time >= profile.y: z.attack_time = 0.0
 		return
 	var goal = approach_goal(z,target)
+	move_zombie(z,goal,speed,dt,distance,contact)
+
+func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance: float, contact: float) -> void:
 	var direction = (goal-z.pos).normalized()
 	var cached: Dictionary = paths.get(z.id,{"until":0.0,"path":PackedVector2Array(),"goal":Vector2.INF,"direct_until":0.0,"direct":false})
 	if elapsed >= cached.get("direct_until",0.0) or cached.get("direct_goal",Vector2.INF).distance_to(goal) > .65:
@@ -589,6 +600,7 @@ func stun(z: Dictionary, duration: float) -> void:
 	z.attack_time = 0.0
 
 func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary, position: Vector3) -> void:
+	z.guard_awake = true
 	if z.hp <= 0: return
 	var armor_kind: String = z.kind if z.armor > 0 and armor_contact else ""
 	if not armor_kind.is_empty():
@@ -686,6 +698,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 		var origin = Vector3(p.pos.x,p.height+PlayerBody.eye_height(p)-.5,p.pos.y)
 		events.append({"kind":"shot","player":p.id,"weapon":p.weapon,"from":origin,"to":origin})
 		return
+	if campaign: campaign.emit_noise(Vector3(p.pos.x,p.height+1.2,p.pos.y),"gunshot")
 	var camera = Transform3D(Basis.from_euler(Vector3(p.pitch,p.yaw,0)),Vector3(p.pos.x,p.height+PlayerBody.eye_height(p),p.pos.y))
 	var forward = -camera.basis.z
 	var reach: float = w.get("range",180.0)
@@ -705,6 +718,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	if not obstruction.is_empty():
 		var blocked_shot = {"kind":"shot","player":p.id,"weapon":p.weapon,"from":camera.origin,"to":obstruction.position}
 		if w.id in ["shotgun", "auto-shotgun"]: blocked_shot.pellet_ends = [obstruction.position]
+		if campaign: campaign.emit_noise(obstruction.position,"impact")
 		events.append(blocked_shot)
 		return
 	var direction = (target-muzzle).normalized()
@@ -732,7 +746,9 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 			damaged[hit.z.id] = true
 			landed = true
 			hit_enemy(hit.z,w.damage*(w.get("headshotMultiplier",2) if hit.head else 1),hit.armor,p,muzzle+ray*hit.distance)
+			if campaign: campaign.emit_noise(muzzle+ray*hit.distance,"impact")
 		if not candidates.is_empty() and not w.get("piercing",false): distance = candidates[0].distance
+		if campaign and not wall.is_empty() and (w.get("piercing",false) or candidates.is_empty()): campaign.emit_noise(wall.position,"impact")
 		if pellet == 0: target = muzzle+ray*distance
 		if w.id in ["shotgun", "auto-shotgun"]: pellet_ends.append(muzzle+ray*distance)
 	if landed: p.hits += 1

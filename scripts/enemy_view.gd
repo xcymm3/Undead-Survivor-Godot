@@ -67,7 +67,7 @@ static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stri
 	var basis = Basis(Vector3.UP,z.heading).scaled(Vector3.ONE*Data.enemy_scale(z.kind))
 	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_night"))
 	var transform = Transform3D(basis,Vector3(z.pos.x,ground+absf(stride)*.04,z.pos.y))
-	if z.hp > 0 and not z.get("guard_awake",true) and z.get("map_id","") == "graypine_night":
+	if z.hp > 0 and not z.get("guard_awake",true) and z.get("move_speed",0.0) <= .05 and z.get("map_id","") == "graypine_night":
 		# Root pose is shared by skeleton rendering and CPU ray boxes: no invisible hitbox motion.
 		var breath = sin(elapsed*1.4+z.id*2.17)
 		transform.origin.y += breath*.018
@@ -93,9 +93,9 @@ static func bone_for(part: Dictionary) -> int:
 	return 0
 
 static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
-	var moving: bool = not stationary and z.get("move_speed",0.0) > .05 and z.hp > 0 and z.get("guard_awake",true) and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
+	var moving: bool = not stationary and z.get("move_speed",0.0) > .05 and z.hp > 0 and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
 	var stride = sin(z.get("gait",(elapsed-z.born)*5+z.id*2)) if moving else 0.0
-	var idle: bool = z.hp > 0 and not z.get("guard_awake",true) and z.get("map_id","") == "graypine_night"
+	var idle: bool = z.hp > 0 and not z.get("guard_awake",true) and z.get("move_speed",0.0) <= .05 and z.get("map_id","") == "graypine_night"
 	if idle: stride = sin(elapsed*1.4+z.id*2.17)*.08
 	var running: bool = moving and z.get("move_speed",0.0) > 3.5
 	var bones: Array[Transform3D] = [Transform3D.IDENTITY]

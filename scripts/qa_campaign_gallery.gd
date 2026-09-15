@@ -85,8 +85,11 @@ func _process(_dt: float) -> void:
 		p.hint = "E 交互 / 救援 · 5 医疗包"
 		if game.sim.map_id == "graypine_night":
 			game.sim.campaign.state.gate_open = true
-			game.sim.campaign.state.exit_control = true
-			game.sim.campaign.state.objective = "沿绿灯前往安全屋 · 无需清光尸群"
+			game.sim.campaign.state.exit_control = value.get("unlocked",false)
+			game.sim.campaign.state.holdout_started = value.get("holdout",false)
+			game.sim.campaign.state.holdout_time = float(value.get("holdout_time",0.0))
+			game.sim.campaign.state.phase = "ESCAPE" if value.get("unlocked",false) else "HOLDOUT" if value.get("holdout",false) else "STREET"
+			game.sim.campaign.state.objective = "门已解锁！进入安全屋并按 E 关门" if value.get("unlocked",false) else "守住门前 · 解锁剩余 %d 秒" % ceili(30-value.get("holdout_time",0.0)) if value.get("holdout",false) else "沿绿灯前往安全屋 · 门前启动解锁"
 			game.sim.elapsed = float(value.get("time",2.0))
 		game.arena.sync_campaign(game.sim.campaign.state)
 		pending_frames = 2
