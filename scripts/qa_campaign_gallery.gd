@@ -59,12 +59,18 @@ func _process(_dt: float) -> void:
 		last_request = request
 		var view: Array = VIEWS[value.name]
 		var p: Dictionary = game.local_pawn()
-		p.pos = view[0]
+		p.pos = Vector2(value.position[0],value.position[1]) if value.has("position") else view[0]
 		p.height = Data.enemy_ground_height(p.pos,game.sim.map_id)
-		game.yaw = view[1]
-		game.pitch = view[2]
-		p.yaw = view[1]
-		p.pitch = view[2]
+		game.yaw = float(value.get("yaw",view[1]))
+		game.pitch = float(value.get("pitch",view[2]))
+		p.yaw = game.yaw
+		p.pitch = game.pitch
+		Data.settings.shadows = int(value.get("shadows",3))
+		game.apply_graphics()
+		# Explicit software-gallery controls for isolating light/depth artifacts.
+		if value.has("flash_shadow"): game.flashlight.shadow_enabled = value.flash_shadow
+		for light in game.arena.scenery.find_children("*","OmniLight3D",true,false):
+			if value.has("lamp_shadow"): light.shadow_enabled = value.lamp_shadow
 		p.slot = 3 if value.name == "axe" else 4 if value.name == "grenade" else 5 if value.name in ["medkit","heal_self","heal_other"] else 1
 		p.weapon = 6 if value.name == "axe" else p.primary
 		p.requested = p.weapon
@@ -111,3 +117,4 @@ func _process(_dt: float) -> void:
 		pending_frames = 2
 		RenderingServer.render_loop_enabled = true
 	game._process(1.0/60)
+	JavaScriptBridge.eval("window.__lightingState="+JSON.stringify({"flash_shadow":game.flashlight.shadow_enabled,"energy":game.flashlight.light_energy,"world_shadows":game.arena.find_children("*","Light3D",true,false).map(func(light): return light.shadow_enabled)}),true)

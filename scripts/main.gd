@@ -51,7 +51,8 @@ func _ready() -> void:
 	add_child(camera)
 	camera.current = true
 	flashlight = SpotLight3D.new()
-	flashlight.position = Vector3(.15,-.12,-.25)
+	# Keep the shadow camera inside the player's clearance, including at oblique walls.
+	flashlight.position = Vector3.ZERO
 	flashlight.spot_range = 23
 	flashlight.spot_angle = 38
 	flashlight.spot_angle_attenuation = 1.2
@@ -263,6 +264,10 @@ func _process(dt: float) -> void:
 	camera.fov = lerpf(61,aim_fov,weapon.ads)
 	var aim_target = camera.position-camera.global_basis.z*180
 	var aim_surface: Dictionary = arena.surface_hit(camera.position,aim_target)
+	if flashlight.visible:
+		var wall_distance = camera.position.distance_to(aim_surface.position) if not aim_surface.is_empty() else 180.0
+		# Near walls must not saturate after moving the beam back onto the sight line.
+		flashlight.light_energy = 3.2*clampf(pow(wall_distance/1.8,2),.025,1.0)
 	if not aim_surface.is_empty(): aim_target = aim_surface.position
 	var aim_distance = camera.position.distance_to(aim_target)
 	for zombie in visible_zombies:
@@ -430,7 +435,9 @@ func request_draw() -> void:
 
 func apply_graphics() -> void:
 	flashlight.visible = arena.map_id == "graypine_night"
-	arena.sun.shadow_enabled = Data.settings.shadows > 0
+	flashlight.shadow_enabled = Data.settings.shadows > 0
+	for light in arena.find_children("*","Light3D",true,false):
+		light.shadow_enabled = Data.settings.shadows > 0
 	arena.sun.directional_shadow_max_distance = [0,25,45,65,90][int(Data.settings.shadows)]
 	RenderingServer.directional_shadow_atlas_set_size([512,512,1024,2048,4096][int(Data.settings.shadows)],true)
 	camera.far = [90,150,250][int(Data.settings.distance)]

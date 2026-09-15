@@ -10,6 +10,7 @@ func run() -> void:
 	game.set_physics_process(false)
 	await process_frame
 	await start(1,71245)
+	validate_lighting()
 	check(game.sim.zombies.size() >= 180,"Dense baseline population exists before departure")
 	check(game.sim.zombies.all(func(z): return not z.guard_awake),"Habitats begin idle")
 	check(game.sim.zombies.all(func(z): return game.arena.clear(z.pos,z.pos)),"No infected start inside solid cover")
@@ -103,3 +104,33 @@ func run() -> void:
 	await create_timer(.15).timeout
 	print("NIGHT VALIDATION: %d checks; %d failures" % [count,failures.size()])
 	quit(0 if failures.is_empty() else 1)
+
+func validate_lighting() -> void:
+	var data = root.get_node("Data")
+	var saved_shadows = data.settings.shadows
+	for level in [0,3]:
+		data.settings.shadows = level
+		game.apply_graphics()
+		var lights = game.arena.find_children("*","Light3D",true,false)
+		check(lights.size() > 2,"Night shadow setting includes local lamps and sun")
+		check(lights.all(func(light): return light.shadow_enabled == (level > 0)),"Shadow setting reaches every night world light at level "+str(level))
+		check(game.flashlight.shadow_enabled == (level > 0),"Shadow setting reaches the flashlight at level "+str(level))
+	check(game.flashlight.position == Vector3.ZERO,"Flashlight shadow camera stays at the viewpoint, inside wall clearance")
+	var p: Dictionary = game.local_pawn()
+	var saved = p.duplicate(true)
+	var old_yaw = game.yaw
+	var old_pitch = game.pitch
+	p.pos = Vector2(4.43,70)
+	game.yaw = -PI/2
+	game.pitch = 0.0
+	game._process(.016)
+	check(game.flashlight.light_energy < .2,"Close wall beam intensity stays bounded")
+	p.pos = Vector2(0,70)
+	game.yaw = 0.0
+	game._process(.016)
+	check(is_equal_approx(game.flashlight.light_energy,3.2),"Flashlight retains full energy beyond the near-wall range")
+	for key in saved: p[key] = saved[key]
+	game.yaw = old_yaw
+	game.pitch = old_pitch
+	data.settings.shadows = saved_shadows
+	game.apply_graphics()

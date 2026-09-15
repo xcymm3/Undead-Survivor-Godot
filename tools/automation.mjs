@@ -114,7 +114,8 @@ try {
       server.close(error => error ? reject(error) : resolve(port));
     });
   });
-  await run('browser-playthrough', process.execPath, ['node_modules/@playwright/test/cli.js', 'test'], 600_000);
+  // Full-quality shadow matrices and adjacent-angle video add software rasterization work.
+  await run('browser-playthrough', process.execPath, ['node_modules/@playwright/test/cli.js', 'test'], 900_000);
   if (release) {
     await powershell('export-windows', 'tools/export-windows.ps1', [], 900_000);
     // Never launch the EXE graphically: the package itself runs its smoke check headless.
