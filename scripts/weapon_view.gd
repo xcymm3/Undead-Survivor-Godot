@@ -13,7 +13,7 @@ static func create_model(id: String) -> Node3D:
 func _ready() -> void:
 	scale = Vector3.ONE*.5
 	for definition in Data.weapons:
-		var model: Node3D = create_model(definition.id)
+		var model: Node3D = preload("res://scripts/revolver_view.gd").new() if definition.id == "revolver" else create_model(definition.id)
 		add_child(model)
 		model.visible = false
 		models.append(model)
@@ -50,21 +50,24 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	ads = move_toward(ads,1.0 if p.aim else 0.0,dt*7)
 	var hide_scope: bool = w.id == "sniper" and ads > .8
 	for i in models.size(): models[i].visible = i == active and not hide_scope
+	if active != 3: models[3].reset_motion()
 	var hip = Vector3(.19,-.085 if w.length < .6 else -.10,-.46)
 	if w.id == "rifle": hip = Vector3(.22,-.10,-.50)
+	if w.id == "revolver": hip = Vector3(.18,-.10,-.58)
 	if w.id == "heavy-machine-gun": hip = Vector3(.16,-.095,-.74)
 	var aim = Data.v3(w.ads)
 	if w.id == "rifle": aim = Vector3(0,-.103,-.48)
+	if w.id == "revolver": aim = Vector3(0,-.0965,-.58)
 	# The bulky procedural receivers need clearance below the center sight line.
 	if w.id in ["auto-shotgun","heavy-machine-gun"]: aim = Vector3(0,-.20,-.62)
 	if w.id == "heavy-machine-gun": aim = Vector3(-.02,-.10,-.80)
 	if w.get("kind", "gun") == "flame": aim = hip
 	position = hip.lerp(aim,ads)
-	position.y += sin(elapsed*1.6)*.003
+	if w.id != "revolver": position.y += sin(elapsed*1.6)*.003
 	var visual_target = aim_target.normalized()*maxf(6,aim_target.length())
 	quaternion = Quaternion(Vector3.FORWARD,(visual_target-position).normalized())
 	if p.switch > 0: position.y -= sin((1-p.switch/.4)*PI)*.5
-	if p.reloading:
+	if p.reloading and w.id != "revolver":
 		var reload_pulse = sin(clampf(1-p.reload/maxf(.1,w.reloadDuration),0,1)*PI)
 		position.y -= reload_pulse*.07
 		rotation.z -= reload_pulse*.22
@@ -92,7 +95,8 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 			player.seek(progress*player.get_animation(clip).length,true)
 	if w.id == "axe" and axe_pivot:
 		sample_axe(axe_pivot,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0)
-	if p.fire_anim > 0 and w.get("kind","gun") != "melee":
+	if w.id == "revolver": models[3].sync_pose(p,dt,elapsed,ads)
+	if p.fire_anim > 0 and w.get("kind","gun") != "melee" and w.id != "revolver":
 		var pulse = sin((1-p.fire_anim/w.fireDuration)*PI)
 		position.z += pulse*.035*w.recoil
 		rotation.x += pulse*.025*w.recoil
@@ -128,4 +132,5 @@ static func muzzle_offset(w: Dictionary) -> Vector3:
 	return Vector3(0,0,-w.length*.72)
 
 func muzzle_position() -> Vector3:
+	if active == 3: return models[3].gun.to_global(preload("res://scripts/revolver_view.gd").MUZZLE)
 	return models[active].to_global(muzzle_offset(Data.weapons[active]))

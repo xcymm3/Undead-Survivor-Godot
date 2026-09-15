@@ -272,6 +272,11 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 
 func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	if campaign and (p.slot >= 4 or not p.healing.is_empty() or p.being_healed):
+		if p.weapon == 3 and p.reloading:
+			p.reloading = false
+			p.reload = 0.0
+			p.reload_queued = false
+			p.input.reload = false
 		p.aim = false
 		p.trigger = false
 		return

@@ -89,6 +89,7 @@ func run() -> void:
 	check(game.sound.spatial_players[0].max_distance > 0,"World audio has distance attenuation")
 	game.sound.clear_effects()
 	check(game.sound.spatial_players.all(func(p): return p.stream == null),"World voice resources clear on scene reset")
+	validate_revolver()
 	validate_buffer()
 	var session = root.get_node("Session")
 	var packet = {"type":"probe","state":{"test":123}}
@@ -119,6 +120,55 @@ func run() -> void:
 	await create_timer(.15).timeout
 	print("NATIVE COMPONENTS: %d checks; %d failures" % [checks,failures.size()])
 	quit(0 if failures.is_empty() else 1)
+
+func validate_revolver() -> void:
+	var p: Dictionary = game.local_pawn().duplicate(true)
+	p.weapon = 3
+	p.requested = 3
+	p.switch = 0.0
+	p.hp = 100
+	p.aim = false
+	p.reloading = false
+	p.fire_anim = 0.0
+	var rig = game.weapon.models[3]
+	var before = p.duplicate(true)
+	game.weapon.sync(p,.016,0)
+	check(p == before,"Revolver presentation never mutates authoritative ammo or input")
+	check(rig.right_hand.is_visible_in_tree() and rig.left_hand.is_visible_in_tree(),"Only the revolver equips articulated first-person hands")
+	var states = []
+	for phase in [.1,.3,.5,.65,.85]:
+		p.reloading = true
+		p.reload = 1.6*(1-phase)
+		game.weapon.sync(p,.016,phase)
+		states.append(rig.left_hand.position)
+	check(states[0].distance_to(states[2]) > .2,"Reload reaches from cylinder latch to fresh-round retrieval")
+	check(states[2].distance_to(states[3]) > .15,"Speedloader returns to the open cylinder")
+	p.reloading = false
+	p.switch = .4
+	game.weapon.sync(p,.016,1)
+	check(rig.state_name == "cancel","Interrupted reload begins a finite visual recovery")
+	for i in 20: game.weapon.sync(p,.016,1+i*.016)
+	check(rig.cylinder_open == 0 and not rig.loader.visible and not rig.shells.visible,"Cancellation removes loose props and closes the cylinder")
+	p.weapon = 0
+	game.weapon.sync(p,.016,2)
+	check(not rig.visible,"Switching to other weapons hides both revolver hands")
+	p.weapon = 3
+	p.hp = 0
+	game.weapon.sync(p,.016,2)
+	check(not rig.visible,"Death cannot leave live revolver hands on screen")
+	# Exercise real authority interruption separately from the presentation sampler.
+	for phase in [.2,.5,.85]:
+		var state: Dictionary = game.local_pawn().duplicate(true)
+		state.weapon = 3
+		state.requested = 3
+		state.ammo[3] = 1
+		state.reloading = true
+		state.reload = 1.6*(1-phase)
+		state.fire_anim = 0.0
+		state.switch = 0.0
+		game.sim.update_arsenal(state,{"weapon":0},.016)
+		check(not state.reloading and state.ammo[3] == 1,"Switching cancels revolver reload without granting rounds at phase "+str(phase))
+	game.weapon.sync(game.local_pawn(),.016,0)
 
 func validate_buffer() -> void:
 	var buffer = load("res://scripts/snapshot_buffer.gd").new()

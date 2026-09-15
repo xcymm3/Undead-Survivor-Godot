@@ -4,6 +4,8 @@ var game
 var last_request = ""
 var pending_frames = 0
 var ready_for_capture = false
+var playback = false
+var animation_clock = 0.0
 
 func _ready() -> void:
 	if not OS.has_feature("web") or not Data.automation or "--qa-poses" not in OS.get_cmdline_user_args():
@@ -43,7 +45,7 @@ func presented() -> void:
 	if pending_frames <= 0: return
 	pending_frames -= 1
 	if pending_frames == 0:
-		RenderingServer.render_loop_enabled = false
+		RenderingServer.render_loop_enabled = playback
 		JavaScriptBridge.eval("window.__poseRendered="+last_request,true)
 		if not ready_for_capture:
 			ready_for_capture = true
@@ -51,19 +53,44 @@ func presented() -> void:
 
 func _process(_dt: float) -> void:
 	var request = str(JavaScriptBridge.eval("JSON.stringify(window.__poseRequest || {})",true))
-	if request != last_request:
+	if request != last_request or playback:
+		if request != last_request: animation_clock = 0.0
 		last_request = request
 		var pose = JSON.parse_string(request)
 		if not pose is Dictionary: return
+		playback = pose.get("playback",false)
+		if playback:
+			animation_clock += _dt
+			var t = fmod(animation_clock,8.0)
+			pose.weapon = 3
+			pose.speed = 4.2 if t < 2.0 else 0.0
+			pose.aim = t >= 2 and t < 3.8
+			pose.time = animation_clock
+			pose.stride = animation_clock*12.0
+			if t >= 3 and t < 3.8: pose.fire = fmod(t-3,.45)/.36
+			if t >= 4 and t < 5.6: pose.reload = (t-4)/1.6
+			if t >= 6 and t < 6.55: pose.reload = (t-6)/1.6
+			if t >= 6.55 and t < 6.95: pose.switch = .4-(t-6.55)
+			if t >= 6.75 and t < 7.4: pose.weapon = 0
+			if t >= 7.4 and t < 7.6: pose.switch = .2-(t-7.4)
 		var p = game.local_pawn()
 		p.weapon = clampi(int(pose.get("weapon",0)),0,9)
 		p.requested = p.weapon
 		p.crouch = 1.0 if pose.get("crouch",false) else 0.0
 		p.aim = pose.get("aim",false)
+		p.hp = 0 if pose.get("dead",false) else 100
+		p.switch = float(pose.get("switch",0.0))
+		p.shots = int(pose.get("shots",0))
 		p.reloading = pose.has("reload")
 		p.reload = Data.weapons[p.weapon].reloadDuration*(1-float(pose.get("reload",0.0)))
 		p.fire_anim = Data.weapons[p.weapon].fireDuration*(1-float(pose.get("fire",1.0)))
-		game.weapon.ads = 1.0 if p.aim else 0.0
+		if not playback: game.weapon.ads = 1.0 if p.aim else 0.0
+		game.sim.elapsed = float(pose.get("time",0.0))
+		var revolver = game.weapon.models[3]
+		if not playback: revolver.reset_motion()
+		revolver.preview_speed = float(pose.get("speed",0.0))
+		revolver.motion = revolver.preview_speed
+		revolver.preview_stride = float(pose.get("stride",0.0))
 		game.yaw = float(pose.get("yaw",0.0))
 		game.pitch = float(pose.get("pitch",0.0))
 		var partner = game.sim.pawns["pose-partner"]
@@ -75,3 +102,5 @@ func _process(_dt: float) -> void:
 		pending_frames = 2 if ready_for_capture else 6
 		RenderingServer.render_loop_enabled = true
 	game._process(1.0/60)
+	var rig = game.weapon.models[3]
+	JavaScriptBridge.eval("window.__revolverPose="+JSON.stringify({"state":rig.state_name,"open":rig.cylinder_open,"visible":rig.is_visible_in_tree(),"loader":rig.loader.is_visible_in_tree()}),true)

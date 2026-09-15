@@ -21,6 +21,15 @@ func run() -> void:
 	print("NIGHT HABITATS: total=",game.sim.zombies.size()," solid_occluded_from_nearest_route=",hidden)
 	check(hidden >= 60,"Many habitats are behind real cover, independent of darkness")
 	var p: Dictionary = game.local_pawn()
+	for slot in [4,5]:
+		var reload_probe: Dictionary = p.duplicate(true)
+		reload_probe.weapon = 3
+		reload_probe.slot = slot
+		reload_probe.reloading = true
+		reload_probe.reload = .8
+		reload_probe.ammo[3] = 2
+		game.sim.update_arsenal(reload_probe,{"slot":slot},.016)
+		check(not reload_probe.reloading and reload_probe.ammo[3] == 2,"Revolver reload cancels without free ammunition when equipping item slot "+str(slot))
 	check(game.arena.surface_hit(Vector3(0,1.7,60),Vector3(0,1.7,-49)).size() > 0,"Buildings obstruct long-range shooting lane")
 	game.sim.campaign.state.departed = true
 	game.arena.sync_campaign(game.sim.campaign.state)

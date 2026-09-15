@@ -79,6 +79,21 @@ func run() -> void:
 			check(game.weapon.models[i].magazine.position.y < -.25,"AK magazine moves out during procedural reload")
 			game.weapon.models[i].pose(false,0,0)
 			check(game.weapon.models[i].magazine.position == Vector3.ZERO,"AK magazine returns to receiver after reload")
+		elif i == 3:
+			var revolver = game.weapon.models[i]
+			revolver.sample_pose(.5,true,0,0,1)
+			check(revolver.cylinder_open > .99,"Revolver opens articulated cylinder during reload")
+			var empty = 0
+			for part in revolver.drum.get_children():
+				if str(part.name).begins_with("CartridgeHead") and not part.visible: empty += 1
+			check(empty == 6,"Revolver empties all six chambers after ejection")
+			revolver.sample_pose(.69,true,0,0,1)
+			var inserted = 0
+			for part in revolver.loader.get_children():
+				if str(part.name).begins_with("FreshRound") and not part.visible: inserted += 1
+			check(inserted == 6,"Revolver transfers all six speedloader rounds into cylinder")
+			revolver.sample_pose(0,false,0,0,1)
+			check(revolver.cylinder_open == 0 and not revolver.loader.visible and not revolver.shells.visible,"Revolver closes and clears reload props")
 		else:
 			check(game.weapon.animations[i] != null and game.weapon.animations[i].has_animation("fire") and game.weapon.animations[i].has_animation("reload"),"Imported native animations %d" % i)
 		for j in 70:
