@@ -1,6 +1,6 @@
 extends RefCounted
 ## QA input policy only. Does not mutate pawns, enemies, inventory or director state.
-const Layout = preload("res://scripts/campaign_layout.gd")
+var Layout = preload("res://scripts/campaign_layout.gd")
 var game
 var tasks: Array = []
 var index = 0
@@ -14,6 +14,14 @@ var grenade_aim = Vector2.ZERO
 
 func _init(current_game, yard: bool) -> void:
 	game = current_game
+	if game.sim.map_id == "graypine_night":
+		Layout = preload("res://scripts/night_layout.gd")
+		tasks = [[Vector2(-3.7,72.3),"grenade:night_start"],[Vector2(0,66.5),"depart"]]
+		for point in Layout.ROUTE.slice(1):
+			tasks.append([point,"finish" if point == Layout.EXIT else ""])
+			if point == Vector2(-9,21): tasks.append_array([[Vector2(-14,25),"night_shop"],[Vector2(-15,26.3),"grenade:night_shop"]])
+			if point == Vector2(-6,-34): tasks.append_array([[Vector2(-12,-32),"night_van"],[Vector2(-13,-30.7),"grenade:night_van"]])
+		return
 	tasks = [[Vector2(0,111),"depart"],[Vector2(0,103),""],[Vector2(18,96),""],[Vector2(18,78),""],[Vector2(-15,70),""]]
 	for point in Layout.SHOP_ROUTE: tasks.append([point,"key" if point == Layout.SHOP else ""])
 	tasks.append([Vector2(-58,73),"shop_ammo"])
@@ -63,6 +71,13 @@ func command(dt: float) -> Dictionary:
 	if state.is_empty() or index >= tasks.size(): return {}
 	var goal: Vector2 = tasks[index][0]
 	var action: String = tasks[index][1]
+	# Supplies are optional on the escape route. A wounded, armed test pawn must
+	# not repeatedly walk back into a surrounded pickup instead of seeking safety.
+	if game.sim.map_id == "graypine_night" and state.departed and action not in ["","depart","finish"] and p.hp < 75 and p.ammo[p.primary]+p.reserve > int(Data.weapons[p.primary].capacity):
+		if game.sim.zombies.any(func(z): return z.hp > 0 and z.get("guard_awake",true) and z.pos.distance_to(p.pos) < 7):
+			index += 1
+			path.clear()
+			return {}
 	var arrived = p.pos.distance_to(goal) < .55
 	var interact = false
 	var advance = false
@@ -107,10 +122,11 @@ func command(dt: float) -> Dictionary:
 	var yaw: float = p.yaw
 	var pitch = 0.0
 	var fire = false
-	var distance = 32.0
+	var distance = 14.0 if game.sim.map_id == "graypine_night" else 32.0
 	var enemy_point = Vector2.INF
 	for z in game.sim.zombies:
 		if z.hp <= 0 or z.pos.distance_to(p.pos) >= distance: continue
+		if game.sim.map_id == "graypine_night" and not z.get("guard_awake",true) and z.pos.distance_to(p.pos) > 7: continue
 		var poses: Array = load("res://scripts/enemy_view.gd").transforms(z,game.sim.elapsed,false)
 		var point: Vector3 = poses[0].origin
 		for part in Data.parts.size():
@@ -164,4 +180,6 @@ func command(dt: float) -> Dictionary:
 				direction = candidate
 				interact = false
 				break
+	if game.sim.map_id == "graypine_night" and distance < 2.2 and not heal:
+		return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":0.0,"slot":3,"fire":fmod(fire_clock,.3) < .15,"interact":false}
 	return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":pitch,"weapon":6 if p.reserve == 0 and p.ammo[p.primary] == 0 else p.primary,"fire":heal or (fire and not interact),"reload":p.ammo[p.weapon] < 5,"interact":interact,"slot":5 if heal or not p.get("healing","").is_empty() else 1 if p.reserve > 0 or p.ammo[p.primary] > 0 else 2 if p.reserves[p.secondary] > 0 or p.ammo[p.secondary] > 0 else 3,"jump":game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.state == "charging" and z.pos.distance_to(p.pos) < 8)}

@@ -151,7 +151,7 @@ func show_home() -> void:
 	var map_row = HBoxContainer.new()
 	map_row.add_theme_constant_override("separation",12)
 	map_panel.add_child(map_row)
-	for id in Data.Maps.IDS:
+	for id in Data.Maps.PLAYABLE:
 		var definition = Data.Maps.definition(id)
 		var selected: bool = Data.settings.map_id == id
 		var option = button(map_row,definition.title,func(): game.call_deferred("select_map",id),selected)
@@ -173,7 +173,7 @@ func show_home() -> void:
 	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
 	title.add_theme_constant_override("line_spacing",-12)
 	title_block.add_child(title)
-	title_block.add_child(label("穿过灰松渡口，抵达下一间安全屋。" if Data.settings.map_id == "graypine_ferry" else "守住每一波，活到下一刻。",19,Color("d8dfce")))
+	title_block.add_child(label("穿过灰松夜路，抵达亮灯的安全屋。" if Data.settings.map_id == "graypine_night" else "守住每一波，活到下一刻。",19,Color("d8dfce")))
 	var actions = VBoxContainer.new()
 	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	actions.offset_left = -450
@@ -377,10 +377,10 @@ func show_multiplayer() -> void:
 		column.add_child(label("战场："+Data.Maps.definition(Session.map_id).title,22))
 		if Session.is_host():
 			var maps = OptionButton.new()
-			for id in Data.Maps.IDS: maps.add_item(Data.Maps.definition(id).title)
-			maps.selected = Data.Maps.IDS.find(Session.map_id)
+			for id in Data.Maps.PLAYABLE: maps.add_item(Data.Maps.definition(id).title)
+			maps.selected = Data.Maps.PLAYABLE.find(Session.map_id)
 			maps.disabled = Session.loading
-			maps.item_selected.connect(func(index): Session.choose_map(Data.Maps.IDS[index]))
+			maps.item_selected.connect(func(index): Session.choose_map(Data.Maps.PLAYABLE[index]))
 			column.add_child(maps)
 		column.add_child(label("房间  "+Session.room_code,22))
 		button(column,"复制房间地址 / 房间号",func(): DisplayServer.clipboard_set(Session.room_code))

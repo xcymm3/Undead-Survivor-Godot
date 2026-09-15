@@ -184,7 +184,7 @@ func sync() -> void:
 	time_label.text = ui.time_text(sim.elapsed)
 	var campaign: Dictionary = sim.campaign_state()
 	if sim.mode == "campaign":
-		wave_label.text = "灰松渡口"
+		wave_label.text = "灰松夜路" if sim.map_id == "graypine_night" else "灰松渡口"
 		count_label.text = "击杀 %d · 医疗包 %d" % [sim.kills,p.get("medkits",0)]
 	var w: Dictionary = Data.weapons[int(p.weapon)]
 	weapon_label.text = "%s · %s级" % [w.label,w.tier]

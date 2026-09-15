@@ -3,7 +3,7 @@ extends Node
 var game
 var last_request = ""
 var pending_frames = 0
-const VIEWS = {
+var VIEWS = {
 	"loading":[Vector2(-65,215),0.0,-.1],
 	"repair":[Vector2(-65,-190),0.0,-.1],
 	"service":[Vector2(65,-208),0.0,-.1],
@@ -32,8 +32,11 @@ func _ready() -> void:
 	if not Data.automation or not OS.has_feature("web") or "--qa-campaign-gallery" not in OS.get_cmdline_user_args():
 		queue_free()
 		return
-	Data.settings.map_id = "graypine_ferry"
-	game.start_solo("campaign")
+	if "--qa-night-gallery" in OS.get_cmdline_user_args():
+		VIEWS = preload("res://scripts/night_layout.gd").VIEWS.duplicate()
+		Data.settings.map_id = "graypine_night"
+	else: Data.settings.map_id = "graypine_ferry"
+	game.start_solo("campaign",71245)
 	game.set_process(false)
 	game.set_physics_process(false)
 	Data.settings.resolution = 1.0
@@ -57,7 +60,7 @@ func _process(_dt: float) -> void:
 		var view: Array = VIEWS[value.name]
 		var p: Dictionary = game.local_pawn()
 		p.pos = view[0]
-		p.height = Data.enemy_ground_height(p.pos,"graypine_ferry")
+		p.height = Data.enemy_ground_height(p.pos,game.sim.map_id)
 		game.yaw = view[1]
 		game.pitch = view[2]
 		p.yaw = view[1]
@@ -99,6 +102,11 @@ func _process(_dt: float) -> void:
 		game.sim.campaign.state.phase = "BRIDGE_ACTIVE" if value.name in ["control","bridge","gate"] else "PREPARE" if value.name == "start" else "STREET"
 		game.sim.campaign.state.objective = "等待检修闸门打开" if value.name in ["control","bridge","gate"] else "检查装备，E 开门出发" if value.name == "start" else "前往泵站安全屋"
 		p.hint = "E 交互 / 救援 · 5 医疗包"
+		if game.sim.map_id == "graypine_night":
+			game.sim.campaign.state.gate_open = true
+			game.sim.campaign.state.exit_control = true
+			game.sim.campaign.state.objective = "沿绿灯前往安全屋 · 无需清光尸群"
+			game.sim.elapsed = float(value.get("time",2.0))
 		game.arena.sync_campaign(game.sim.campaign.state)
 		pending_frames = 2
 		RenderingServer.render_loop_enabled = true

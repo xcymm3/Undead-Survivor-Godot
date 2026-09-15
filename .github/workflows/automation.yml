@@ -110,14 +110,14 @@ jobs:
             exit 0
           }
           @"
-          扩建「灰松渡口」卸货区、泵房工作区和终点维修通道，增加沿途操作目标。HUD 改为每人独立血卡、三个大武器槽和两个小道具槽；每人最多携带一枚手雷和一个医疗包，用后可补领。
+          以「灰松夜路」替换旧长战役入口：堵车街口、暗店、林缘与终点安全屋。加入夜景、手电、密集遮挡、局部唤醒和守路者待机动作，约三分钟为设计目标。保留每人独立血卡及手雷、医疗包各一个的携带限制。
           推荐直接下载 **Undead-Survivor-Godot.exe**，双击即可启动，无需另下 DLL 或 appid。
           EXE 内置游戏和 Steam 依赖，运行时自动解压到临时目录，退出后清理；Steam 合作仍需登录 Steam。
           ZIP 内也包含相同的单文件 EXE。启动器使用 Windows 自带的 .NET Framework 4.x。
 
           源码提交：$env:RELEASE_COMMIT
           [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：规则检查、内部输入整关试玩、真实 ENet 双人/四人整关合作、无界面浏览器检查、成品 EXE 及单文件隔离启动无窗口检查全部通过。
-          Steam 跨账号联机与原生 GPU 画面不属于此次自动验收范围。8～15 分钟首次真人通关与难度仍待验收；自动输入测试包含成功与失败样本，功能检查通过不代表平衡达标。
+          Steam 跨账号联机与原生 GPU 画面不属于此次自动验收范围。约三分钟首次真人通关、趣味性与难度仍待验收；自动输入测试包含成功与失败样本，功能检查通过不代表平衡达标。
           "@ | Set-Content -Encoding utf8 release-notes.md
           if (-not $exists) {
             & gh release create $tag --target $env:RELEASE_COMMIT --title "Undead Survivor $tag" --notes-file release-notes.md --draft

@@ -1,6 +1,8 @@
 # Undead Survivor · Godot
 
-当前 Godot 版本：`1.7.11`。发布版本由根目录 `VERSION` 管理，Release 使用 `v1.7.7` 这样的版本标签。
+当前 Godot 版本：`1.9.0`。发布版本由根目录 `VERSION` 管理。
+
+当前战役为 **灰松夜路**：以约三分钟抵达安全屋为目标，穿过堵车街口、暗店与林缘。200 只单人预置守路者分散在遮挡后，局部目视与枪声唤醒，无需清场。旧十五分钟灰松渡口已退出常规选图。设计、刷新规则及验收边界见 [灰松夜路](docs/NIGHT_ROUTE.md)。
 
 `Undead-Survivor` 0.7.7 的独立 Godot 4 原生移植工程。游戏运行时使用 GDScript、Godot 场景、原生网格、着色器和音频，不依赖 React、Three.js、Electron 或浏览器。
 

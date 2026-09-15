@@ -92,17 +92,17 @@ try {
     const result = await run(name, engine, [...godotArgs, '--script', `res://tools/validate-${name}.gd`, '--', '--silent', '--automation']);
     if (!new RegExp(`${marker}: \\d+ checks; 0 failures`).test(result)) throw new Error(`Missing ${name} pass marker.`);
   }
-  const campaign = await run('campaign', engine, [...godotArgs, '--script', 'res://tools/validate-campaign.gd', '--', '--silent', '--automation'], 900_000);
+  const campaign = await run('legacy-campaign-fixtures', engine, [...godotArgs, '--script', 'res://tools/validate-campaign.gd', '--', '--silent', '--automation', '--fixtures-only'], 900_000);
   if (!/CAMPAIGN VALIDATION: \d+ checks; 0 failures/.test(campaign)) throw new Error('Missing campaign acceptance marker.');
-  const calibration = await run('campaign-calibration', engine, [...godotArgs, '--script', 'res://tools/validate-campaign-calibration.gd', '--', '--silent', '--automation'], 900_000);
-  if (!calibration.includes('CALIBRATION REPORT COMPLETE')) throw new Error('Missing calibration report.');
+  const night = await run('night-campaign', engine, [...godotArgs, '--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation'], 900_000);
+  if (!/NIGHT VALIDATION: \d+ checks; 0 failures/.test(night)) throw new Error('Missing night campaign acceptance marker.');
   await network(2);
   await network(4);
   await network(2, 'dust');
   await network(4, 'dust');
   await network(2, 'graypine_ferry');
   await network(4, 'graypine_ferry');
-  for (const count of [2, 4]) await run(`campaign-full-enet-${count}`, process.execPath, ['tools/validate-campaign-network.mjs', String(count)], 960_000);
+  for (const count of [2, 4]) await run(`night-full-enet-${count}`, process.execPath, ['tools/validate-campaign-network.mjs', String(count), '--night'], 960_000);
   await mkdir('build/web', { recursive: true });
   await run('export-web', engine, [...godotArgs, '--export-release', 'Web QA']);
   // Keep the isolated QA browser separate from existing preview servers.
@@ -132,7 +132,7 @@ try {
   for (const child of children) stop(child);
   const report = { status: failure ? 'failed' : 'passed', startedAt, finishedAt: new Date().toISOString(),
     commit: git(['rev-parse', 'HEAD']), sourceDigest, release, stages, failure,
-    boundaries: ['覆盖生存双地图与灰松渡口战役；包含内部输入单人/多人整关遍历和真实 ENet 双人/四人整关合作。', '三张地图分别运行本机 ENet 双人和四人检查；不代表 Steam 双账号验证。真人 8～15 分钟节奏与原生 GPU 质量待验收。', '网页使用独立无界面 Chromium、实际键鼠输入及只读遥测；截图不能证明主观手感或原版地图视觉一致性。', release ? '本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。' : '本次为 npm run verify 全量验收，不包含 verify:release 的 Windows EXE 导出与打包。'] };
+    boundaries: ['覆盖生存双地图、旧战役规则回归，以及灰松夜路内部输入试玩与真实 ENet 双人/四人整关合作。旧十五分钟路线不再作为现行关卡执行整关校准。', '三张地图分别运行本机 ENet 双人和四人检查；不代表 Steam 双账号验证。灰松夜路真人约三分钟节奏、趣味性与原生 GPU 质量待验收。', '网页使用独立无界面 Chromium、实际键鼠输入及只读遥测；截图不能证明主观手感或原版地图视觉一致性。', release ? '本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。' : '本次为 npm run verify 全量验收，不包含 verify:release 的 Windows EXE 导出与打包。'] };
   await writeFile('artifacts/acceptance.json', JSON.stringify(report, null, 2));
   await writeFile('artifacts/acceptance.md', `# 自动验收：${report.status}\n\n提交：${report.commit}\n\n源码 SHA-256：${sourceDigest ?? '未完成导入'}\n\n| 阶段 | 结果 | 耗时 |\n| --- | --- | --- |\n${stages.map(s => `| ${s.name} | ${s.passed ? '通过' : '失败'} | ${s.seconds.toFixed(1)}s |`).join('\n')}\n\n${report.boundaries.map(b => '- ' + b).join('\n')}\n${failure ? '\n```text\n' + failure + '\n```\n' : ''}`);
   process.exitCode = failure ? 1 : 0;

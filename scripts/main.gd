@@ -6,6 +6,7 @@ var arena
 var enemies
 var sim
 var camera: Camera3D
+var flashlight: SpotLight3D
 var weapon
 var sound
 var effects
@@ -49,6 +50,17 @@ func _ready() -> void:
 	camera.cull_mask = 3
 	add_child(camera)
 	camera.current = true
+	flashlight = SpotLight3D.new()
+	flashlight.position = Vector3(.15,-.12,-.25)
+	flashlight.spot_range = 23
+	flashlight.spot_angle = 38
+	flashlight.spot_angle_attenuation = 1.2
+	flashlight.light_color = Color("e4e8cd")
+	flashlight.light_energy = 3.2
+	flashlight.shadow_enabled = true
+	flashlight.shadow_bias = .12
+	flashlight.shadow_normal_bias = 1.5
+	camera.add_child(flashlight)
 	weapon = preload("res://scripts/weapon_view.gd").new()
 	camera.add_child(weapon)
 	weapon.visible = false
@@ -94,7 +106,7 @@ func _ready() -> void:
 	var args = OS.get_cmdline_user_args()
 	if "--survival" in args: start_solo("survival")
 	if "--campaign" in args:
-		Data.settings.map_id = "graypine_ferry"
+		Data.settings.map_id = "graypine_night"
 		start_solo("campaign")
 	if "--lan-host" in args: Session.host_lan("房主")
 	for arg in args:
@@ -417,6 +429,7 @@ func request_draw() -> void:
 	if software_qa(): draw_timer = .5
 
 func apply_graphics() -> void:
+	flashlight.visible = arena.map_id == "graypine_night"
 	arena.sun.shadow_enabled = Data.settings.shadows > 0
 	arena.sun.directional_shadow_max_distance = [0,25,45,65,90][int(Data.settings.shadows)]
 	RenderingServer.directional_shadow_atlas_set_size([512,512,1024,2048,4096][int(Data.settings.shadows)],true)

@@ -10,7 +10,7 @@ void vertex() {
 	float stride = INSTANCE_CUSTOM.r;
 	float lunge = INSTANCE_CUSTOM.g;
 	float flags = floor(INSTANCE_CUSTOM.a + 0.1);
-	bool exposed = flags >= 8.0;
+	bool exposed = mod(flags,16.0) >= 8.0;
 	bool armor = INSTANCE_CUSTOM.b > 0.5;
 	float angle = 0.0;
 	if (abs(limb) >= 1.0) angle = stride * limb * 0.27;
@@ -26,11 +26,18 @@ void vertex() {
 		VERTEX.y += sin(lunge*3.14159265)*0.16;
 	}
 	if (UV2.y == 2.0 && exposed) { VERTEX.y -= 0.85; VERTEX.z -= 0.18; }
+	if (flags >= 16.0 && abs(limb) > 0.0 && abs(limb) < 1.0) {
+		float droop = 1.15+stride;
+		mat2 turn = mat2(vec2(cos(droop),sin(droop)),vec2(-sin(droop),cos(droop)));
+		VERTEX.yz = turn * (VERTEX.yz-vec2(1.35,0.0))+vec2(1.35,0.0);
+		NORMAL.yz = turn * NORMAL.yz;
+	}
 	if ((UV2.y == 1.0 || UV2.y == 2.0) && !armor) VERTEX = vec3(0.0,-100.0,0.0);
 }
 void fragment() {
 	vec3 color = part_color.rgb;
-	if (UV2.y == 3.0) {
+	// Interpolation can round a constant 3 to 2.999999: classify, never compare exactly.
+	if (abs(UV2.y - 3.0) < 0.25) {
 		int flags = int(floor(instance_flags.a+0.1));
 		int palette = flags % 4;
 		bool rage = (flags % 8) >= 4;

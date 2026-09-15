@@ -1,6 +1,7 @@
 extends RefCounted
 ## Authority-only equipment, pickups, healing and ballistic grenades.
-const Layout = preload("res://scripts/campaign_layout.gd")
+var Layout:
+	get: return director.Layout
 const GUNS = [0,1,2,3,4,5,7,8,9]
 const HEAL_SECONDS = 3.0
 const GRENADE_FUSE = 3.0

@@ -8,7 +8,7 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-4"
+const PROTOCOL = "undead-survivor-godot-5"
 const PORT = 27777
 var map_id = "outpost"
 var transport = ""
@@ -410,7 +410,7 @@ func valid_world(value) -> bool:
 	if not value.pawns is Dictionary or value.pawns.size() > 4 or not value.zombies is Array: return false
 	if value.mode not in ["survival","campaign"] or not value.get("won",false) is bool: return false
 	if value.mode == "campaign":
-		if map_id != "graypine_ferry" or not value.get("campaign") is Dictionary: return false
+		if map_id not in ["graypine_ferry","graypine_night"] or not value.get("campaign") is Dictionary: return false
 		var campaign_state: Dictionary = value.campaign
 		if not campaign_state.has_all(["phase","departed","gate_open","complete","bridge_time","taken","claimed","objective","party","shop_key","shop_open","leak_closed","pump_ready","power_ready","late_stage","loading_release","loading_power","pump_fault_a","pump_fault_b","exit_relay","exit_control"]): return false
 		if campaign_state.phase not in ["PREPARE","STREET","BRIDGE_READY","BRIDGE_ACTIVE","GATE_OPEN","FINAL_APPROACH","COMPLETE","FAILED"]: return false

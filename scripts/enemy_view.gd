@@ -46,6 +46,12 @@ static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stri
 	var basis = Basis(Vector3.UP,z.heading).scaled(Vector3.ONE*Data.enemy_scale(z.kind))
 	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","outpost"))
 	var transform = Transform3D(basis,Vector3(z.pos.x,ground+absf(stride)*.04,z.pos.y))
+	if z.hp > 0 and not z.get("guard_awake",true) and z.get("map_id","") == "graypine_night":
+		# Root pose is shared by GPU instances and CPU ray boxes: no invisible hitbox motion.
+		var breath = sin(elapsed*1.4+z.id*2.17)
+		transform.origin.y += breath*.018
+		transform.basis *= Basis(Vector3.RIGHT,.06+sin(elapsed*.65+z.id)*.045)
+		transform.basis *= Basis(Vector3.BACK,breath*.025)
 	if z.hp <= 0:
 		transform.basis *= Basis(Vector3.RIGHT,-clampf((.85-z.down)/.65,0,1)*PI/2)
 		transform.origin.y = ground-.15
@@ -60,6 +66,8 @@ static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array
 	var moving: bool = not stationary and alive and z.get("guard_awake",true) and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
 	var pace: float = 1.6 if z.kind == "imp" else 1.35 if z.kind == "football" else 1.7 if z.rage else .75 if z.kind == "giant" else 1.0
 	var stride = sin((elapsed-z.born)*5*pace+z.id*2) if moving else 0.0
+	var idle: bool = alive and not z.get("guard_awake",true) and z.get("map_id","") == "graypine_night"
+	if idle: stride = sin(elapsed*1.4+z.id*2.17)*.08
 	var profile = Data.attack(z.kind,z.rage)
 	var lunge = 0.0
 	if z.attack_time > 0:
@@ -83,6 +91,11 @@ static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array
 		if part.get("shield",false) and z.attack_time > 0 and z.attack_time < .45:
 			pos.y -= .85
 			pos.z -= .18
+		if idle and absf(limb) > 0 and absf(limb) < 1:
+			var pivot = Vector3(pos.x,1.35,0)
+			var droop = 1.15+stride
+			pos = pivot+Basis(Vector3.RIGHT,droop)*(pos-pivot)
+			rotation += droop
 		result.append(root * Transform3D(Basis(Vector3.RIGHT,rotation).scaled(Data.v3(part.size)),pos))
 	return result
 
@@ -109,11 +122,14 @@ func sync(zombies: Array, elapsed: float, stationary: bool) -> void:
 		var moving: bool = not stationary and alive and z.get("guard_awake",true) and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
 		var pace = 1.6 if z.kind == "imp" else 1.35 if z.kind == "football" else 1.7 if z.rage else .75 if z.kind == "giant" else 1.0
 		var stride = sin((elapsed-z.born)*5*pace+z.id*2) if moving else 0.0
+		var idle: bool = alive and not z.get("guard_awake",true) and z.get("map_id","") == "graypine_night"
+		if idle: stride = sin(elapsed*1.4+z.id*2.17)*.08
 		var profile = Data.attack(z.kind,z.rage)
 		var lunge = 0.0
 		if z.attack_time > 0: lunge = z.attack_time/profile.x if z.attack_time <= profile.x else maxf(0,1-(z.attack_time-profile.x)/.35)
 		var transform = root_transform(z,elapsed,stationary,stride)
 		var flags = int(z.id)%4+(4 if z.rage else 0)+(8 if z.attack_time > 0 and z.attack_time < .45 else 0)
+		if idle: flags += 16
 		batches[z.kind].set_instance_transform(index,transform)
 		batches[z.kind].set_instance_custom_data(index,Color(stride,lunge,1 if z.armor > 0 else 0,flags))
 	for kind in kinds: batches[kind].visible_instance_count = counts[kind]

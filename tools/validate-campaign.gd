@@ -1,7 +1,7 @@
 extends SceneTree
 ## Internal gameplay API QA: inputs go through Simulation.submit and real capsule movement.
 ## Explicit state fixtures below test edge cases; traversal never teleports or grants invulnerability.
-const Layout = preload("res://scripts/campaign_layout.gd")
+var Layout = preload("res://scripts/campaign_layout.gd")
 var game
 var count = 0
 var failures: Array[String] = []
@@ -363,7 +363,8 @@ func run() -> void:
 	await load("res://tools/campaign-navigation-fixtures.gd").run(self)
 	await load("res://tools/campaign-annex-fixtures.gd").run(self)
 	await fixtures()
-	for party in [1,2,4]: await play(party,party != 2)
+	if "--fixtures-only" not in OS.get_cmdline_user_args():
+		for party in [1,2,4]: await play(party,party != 2)
 	var report = {"checks":count,"failures":failures,"runs":runs,"boundary":"Internal input traversal and explicit edge-case fixtures; not human pacing, GPU visuals or Steam cross-account acceptance"}
 	var file = FileAccess.open("res://artifacts/campaign-acceptance.json",FileAccess.WRITE)
 	file.store_string(JSON.stringify(report,"  "))
@@ -372,4 +373,7 @@ func run() -> void:
 	game.return_home()
 	game.queue_free()
 	await process_frame
+	await physics_frame
+	await process_frame
+	await create_timer(.15).timeout
 	quit(0 if failures.is_empty() else 1)

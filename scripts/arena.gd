@@ -32,11 +32,19 @@ func _ready() -> void:
 	environment.environment.fog_enabled = true
 	environment.environment.fog_light_color = definition.fog
 	environment.environment.fog_density = .0015 if map_id == "dust" else .003
+	if map_id == "graypine_night":
+		environment.environment.ambient_light_color = Color("839caf")
+		environment.environment.ambient_light_energy = .24
+		environment.environment.fog_density = .018
 	add_child(environment)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-48,-32,0) if map_id == "dust" else Vector3(-52,-35,0)
 	sun.light_color = definition.sun
 	sun.light_energy = .8
+	if map_id == "graypine_night":
+		sun.light_energy = .24
+		sun.shadow_bias = .12
+		sun.shadow_normal_bias = 2.0
 	sun.shadow_enabled = Data.settings.quality > 0
 	sun.directional_shadow_max_distance = 65
 	add_child(sun)
@@ -82,6 +90,9 @@ func index_obstacle(rect: Rect2, is_water: bool) -> void:
 			collision_buckets[key].append(obstacle)
 
 func clear(a: Vector2, b: Vector2, allow_water := false) -> bool:
+	if map_id == "graypine_night":
+		if not campaign_state.get("departed",false) and segment_rect(a,b,Maps.Night.START_DOOR.grow(.95)): return false
+		if campaign_state.get("complete",false) and segment_rect(a,b,Maps.Night.EXIT_DOOR.grow(.95)): return false
 	if map_id == "graypine_ferry":
 		if not campaign_state.get("shop_open",false) and segment_rect(a,b,Maps.Ferry.STREET_GATE.grow(.95)): return false
 		if not campaign_state.get("exit_control",false) and segment_rect(a,b,Maps.Ferry.EXIT_DOOR.grow(.95)): return false
@@ -107,11 +118,13 @@ func endpoint_link(a: Vector2, b: Vector2) -> bool:
 	if clear(a,b,Data.water(a)): return true
 	# Ferry players can stand inside the enemy clearance margin. Project only
 	# across free physical space, never through a wall or a closed door.
-	if map_id != "graypine_ferry" or clear(a,a): return false
+	if map_id not in ["graypine_ferry","graypine_night"] or clear(a,a): return false
 	if not bounds.has_point(a) or not bounds.has_point(b): return false
 	for obstacle in obstacles:
 		if segment_rect(a,b,Rect2(obstacle.minX,obstacle.minZ,obstacle.maxX-obstacle.minX,obstacle.maxZ-obstacle.minZ)): return false
-	for gate in [["departed",Maps.Ferry.START_DOOR],["shop_open",Maps.Ferry.STREET_GATE],["gate_open",Maps.Ferry.GATE],["exit_control",Maps.Ferry.EXIT_DOOR]]:
+	var gates = [["departed",Maps.Night.START_DOOR]] if map_id == "graypine_night" else [["departed",Maps.Ferry.START_DOOR],["shop_open",Maps.Ferry.STREET_GATE],["gate_open",Maps.Ferry.GATE],["exit_control",Maps.Ferry.EXIT_DOOR]]
+	if map_id == "graypine_night" and campaign_state.get("complete",false) and segment_rect(a,b,Maps.Night.EXIT_DOOR): return false
+	for gate in gates:
 		if not campaign_state.get(gate[0],false) and segment_rect(a,b,gate[1]): return false
 	return true
 
@@ -152,6 +165,12 @@ func steep_edge(p: Vector2) -> bool:
 	return false
 
 func sync_campaign(state: Dictionary) -> void:
+	if map_id == "graypine_night":
+		var night_changed: bool = campaign_state.get("departed",false) != state.get("departed",false) or campaign_state.get("complete",false) != state.get("complete",false)
+		campaign_state = state.duplicate(true)
+		scenery.sync(state)
+		if night_changed: build_grid()
+		return
 	if map_id != "graypine_ferry": return
 	var changed: bool = campaign_state.get("gate_open",false) != state.get("gate_open",false) or campaign_state.get("departed",false) != state.get("departed",false)
 	changed = changed or campaign_state.get("shop_open",false) != state.get("shop_open",false) or campaign_state.get("exit_control",false) != state.get("exit_control",false)

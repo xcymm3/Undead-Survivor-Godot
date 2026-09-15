@@ -1,5 +1,7 @@
 extends RefCounted
-const IDS = ["outpost","dust","graypine_ferry"]
+const IDS = ["outpost","dust","graypine_ferry","graypine_night"]
+const PLAYABLE = ["graypine_night","outpost","dust"]
+const Night = preload("res://scripts/night_layout.gd")
 const Ferry = preload("res://scripts/campaign_layout.gd")
 const Dust = preload("res://scripts/dust_layout.gd")
 
@@ -7,6 +9,8 @@ static func valid(id) -> bool:
 	return id is String and id in IDS
 
 static func definition(id: String) -> Dictionary:
+	if id == "graypine_night":
+		return {"id":id,"title":"灰松夜路","subtitle":"紧凑战役 · 堵车街口 / 暗店 / 林边安全屋 · 约 3 分钟目标","bounds":Night.BOUNDS,"scene":"res://scenes/graypine_night.tscn","spawn":Night.START,"yaw":0.0,"safe":[Night.START],"spawns":Night.ENTRIES,"camera":Vector3(25,18,65),"look_at":Vector3(0,1,35),"sky":Color("101d2b"),"fog":Color("1d2b35"),"sun":Color("95b3d1")}
 	if id == "graypine_ferry":
 		return {"id":id,"title":"灰松渡口","subtitle":"战役 · 街道 / 河桥尸潮 / 泵站安全屋","bounds":Ferry.BOUNDS,"scene":"res://scenes/graypine_ferry.tscn","spawn":Ferry.START,"yaw":0.0,"safe":[Ferry.START],"spawns":Ferry.BRIDGE_POINTS,"camera":Vector3(48,38,20),"look_at":Vector3(0,0,-35),"sky":Color("a3b9ae"),"fog":Color("a3b9ae"),"sun":Color("ffe0b3")}
 	if id == "dust":

@@ -76,11 +76,11 @@ func add_pawn(id: String, player_name: String, index: int) -> void:
 	pawns[id].height = Data.enemy_ground_height(pawns[id].pos,map_id) if map_id == "dust" else 0.0
 
 func start(_game_mode: String) -> void:
-	mode = "campaign" if map_id == "graypine_ferry" else "survival"
+	mode = "campaign" if map_id in ["graypine_ferry","graypine_night"] else "survival"
 	if mode == "campaign":
 		zombies.clear()
 		paths.clear()
-		campaign = preload("res://scripts/campaign_director.gd").new(self)
+		campaign = preload("res://scripts/night_director.gd").new(self) if map_id == "graypine_night" else preload("res://scripts/campaign_director.gd").new(self)
 	else: prepare_wave()
 
 func prepare_wave() -> void:
@@ -358,13 +358,25 @@ func charge_knockback(p: Dictionary, direction: Vector2) -> void:
 func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	# Authored guards exist from map start; proximity with sight or damage wakes them once.
 	if z.has("guard_awake") and not z.guard_awake:
+		if map_id == "graypine_night" and z.hp >= float(Data.enemies[z.original].health):
+			z.heading = z.get("idle_heading",0.0)+sin(elapsed*.43+z.id)*.3
+			if elapsed > 0 and z.id%4 == 0:
+				var phase_time = fmod(elapsed+z.id*1.731,16.0)
+				if phase_time < 4 or (phase_time > 8 and phase_time < 12):
+					var home: Vector2 = z.get("home",z.pos)
+					var idle_goal = home+Vector2(sin(z.id),cos(z.id))*1.1 if phase_time < 4 else home
+					var idle_delta: Vector2 = idle_goal-z.pos
+					var next_idle: Vector2 = z.pos+idle_delta.limit_length(dt*.3)
+					if arena.clear(z.pos,next_idle): z.pos = next_idle
+					if idle_delta.length() > .1: z.heading = atan2(idle_delta.x,idle_delta.y)
+			return
 		var sees_player = pawns.values().any(func(p): return p.hp > 0 and p.pos.distance_to(z.pos) < 14 and arena.surface_hit(Vector3(z.pos.x,1.2,z.pos.y),Vector3(p.pos.x,p.height+1.2,p.pos.y)).is_empty())
 		if z.hp >= float(Data.enemies[z.original].health) and not sees_player: return
 		z.guard_awake = true
 	var delta: Vector2 = target.pos-z.pos
 	var distance = delta.length()
 	var contact = Data.contact(z.kind)
-	var base_speed: float = 1.8 if campaign else Data.wave_settings(wave).speed
+	var base_speed: float = 3.8+fmod(z.id*.13,.4) if map_id == "graypine_night" else 1.8 if campaign else Data.wave_settings(wave).speed
 	var speed: float = base_speed
 	z.rage_pause = maxf(0,z.rage_pause-dt)
 	z.charge_cooldown = maxf(0,z.charge_cooldown-dt)
@@ -420,7 +432,8 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 				z.charge_cooldown = 3.2
 				break
 		return
-	if distance <= contact and target.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
+	var contact_visible = map_id != "graypine_night" or distance > contact or arena.surface_hit(Vector3(z.pos.x,1.1,z.pos.y),Vector3(target.pos.x,target.height+1.1,target.pos.y)).is_empty()
+	if distance <= contact and contact_visible and target.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
 		if z.target != target.id: z.attack_time = 0.0
 		z.target = target.id
 		z.heading = atan2(delta.x,delta.y)
@@ -435,18 +448,22 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		if z.attack_time >= profile.y: z.attack_time = 0.0
 		return
 	z.attack_time = 0.0
-	var direction = delta.normalized()
+	var goal: Vector2 = target.pos
+	if map_id == "graypine_night" and distance > 4 and distance < 22 and z.id%3 != 0:
+		var right = Vector2(cos(target.yaw),-sin(target.yaw))
+		var candidate: Vector2 = target.pos+right*(3.4 if z.id%2 == 0 else -3.4)
+		if arena.clear(candidate,candidate) and arena.clear(candidate,target.pos): goal = candidate
+	var direction = (goal-z.pos).normalized()
 	var cached: Dictionary = paths.get(z.id,{"until":0.0,"path":PackedVector2Array(),"goal":Vector2.INF,"direct_until":0.0,"direct":false})
-	if elapsed >= cached.get("direct_until",0.0) or cached.goal.distance_to(target.pos) > .65:
-		cached.direct = arena.clear(z.pos,target.pos)
+	if elapsed >= cached.get("direct_until",0.0) or cached.goal.distance_to(goal) > .65:
+		cached.direct = arena.clear(z.pos,goal)
 		cached.direct_until = elapsed+.15+fmod(z.id*.027,.12)
-		cached.goal = target.pos
 		paths[z.id] = cached
 	if not cached.get("direct",false):
-		if elapsed >= cached.until or cached.goal.distance_to(target.pos) > 1.3:
+		if elapsed >= cached.until or cached.goal.distance_to(goal) > 1.3:
 			cached.until = elapsed+.65+fmod(z.id*.037,.25)
-			cached.path = arena.path_to(z.pos,target.pos)
-			cached.goal = target.pos
+			cached.path = arena.path_to(z.pos,goal)
+			cached.goal = goal
 			paths[z.id] = cached
 		var route: PackedVector2Array = cached.path
 		while route.size() > 1 and z.pos.distance_to(route[0]) < .4: route.remove_at(0)
@@ -463,7 +480,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 				var offset: Vector2 = z.pos-other.pos
 				var d = offset.length_squared()
 				if d > .001 and d < radius*radius: separation += offset.normalized()*(radius-sqrt(d))
-	direction = (direction+separation.limit_length(.25)).normalized()
+	direction = (direction+separation.limit_length(.8 if map_id == "graypine_night" else .25)).normalized()
 	var next: Vector2 = z.pos+direction*minf(speed*dt,maxf(0,distance-contact*.96))
 	if arena.clear(z.pos,next): z.pos = next
 	else:
@@ -512,7 +529,11 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		p.kills += 1
 		paths.erase(z.id)
 		events.append({"kind":"death","player":p.id,"position":position})
-	else: events.append({"kind":"blood","player":p.id,"position":position})
+	else:
+		if map_id == "graypine_night" and z.kind == "normal" and elapsed >= z.get("stagger_ready",-1.0):
+			stun(z,.18)
+			z["stagger_ready"] = elapsed+.8
+		events.append({"kind":"blood","player":p.id,"position":position})
 
 func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 	if not melee_swings.has(p.id): return
@@ -643,7 +664,7 @@ func apply_snapshot(state: Dictionary) -> void:
 	pawns = state.pawns
 	won = state.get("won",false)
 	campaign_replica = state.get("campaign",{})
-	if map_id == "graypine_ferry": arena.sync_campaign(campaign_replica)
+	if map_id in ["graypine_ferry","graypine_night"]: arena.sync_campaign(campaign_replica)
 	zombies = state.zombies
 	mode = state.mode
 	elapsed = state.elapsed

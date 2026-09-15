@@ -1,5 +1,5 @@
 extends Node3D
-const Layout = preload("res://scripts/campaign_layout.gd")
+var Layout = preload("res://scripts/campaign_layout.gd")
 var obstacles: Array = []
 var doors: Dictionary = {}
 var supplies: Dictionary = {}

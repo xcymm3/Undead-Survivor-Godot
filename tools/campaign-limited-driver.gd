@@ -30,7 +30,7 @@ func command(dt: float) -> Dictionary:
 	result.pitch = pitch
 	result.x = move_world.x*cos(yaw)-move_world.y*sin(yaw)
 	result.y = move_world.x*sin(yaw)+move_world.y*cos(yaw)
-	result.fire = result.fire and steady >= reaction
+	result.fire = result.fire and (steady >= reaction or (game.sim.map_id == "graypine_night" and result.get("slot",1) == 3 and absf(angle_difference(yaw,requested_yaw)) < .6))
 	if game.sim.zombies.any(func(z): return z.hp > 0 and z.pos.distance_to(p.pos) < 10): pause_left = 0.0
 	if pause_left > 0:
 		pause_left -= dt

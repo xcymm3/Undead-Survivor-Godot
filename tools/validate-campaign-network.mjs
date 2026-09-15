@@ -4,9 +4,11 @@ import path from 'node:path';
 
 const count = Number(process.argv[2] ?? 2);
 if (![2, 4].includes(count)) throw new Error('Expected two or four players');
+const night = process.argv.includes('--night');
+const prefix = night ? 'night-enet' : 'campaign-enet';
 const root = process.cwd();
 const engine = path.join(root, '.runtime/Godot_v4.5.2-stable_win64_console.exe');
-const args = ['--headless', '--audio-driver', 'Dummy', '--path', root, '--script', 'res://tools/validate-campaign-network.gd', '--', '--automation', '--silent', '--map=graypine_ferry', ...(count === 4 ? ['--four'] : [])];
+const args = ['--headless', '--audio-driver', 'Dummy', '--path', root, '--script', 'res://tools/validate-campaign-network.gd', '--', '--automation', '--silent', ...(night ? ['--night', '--map=graypine_night'] : ['--map=graypine_ferry']), ...(count === 4 ? ['--four'] : [])];
 const children = new Set();
 await mkdir('artifacts', { recursive: true });
 function stop(child) {
@@ -15,7 +17,7 @@ function stop(child) {
 }
 function launch(role) {
   let output = '';
-  const child = spawn(engine, ['--log-file', path.join(root, `artifacts/campaign-enet-${count}-${role}-live.log`), ...args, ...(role === 'host' ? ['--host'] : [])], { windowsHide: true, cwd: root });
+  const child = spawn(engine, ['--log-file', path.join(root, `artifacts/${prefix}-${count}-${role}-live.log`), ...args, ...(role === 'host' ? ['--host'] : [])], { windowsHide: true, cwd: root });
   children.add(child);
   const timer = setTimeout(() => stop(child), 930_000);
   child.stdout.on('data', data => { output += data; });
@@ -25,7 +27,7 @@ function launch(role) {
     child.once('close', async code => {
       clearTimeout(timer);
       children.delete(child);
-      await writeFile(`artifacts/campaign-enet-${count}-${role}.log`, output);
+      await writeFile(`artifacts/${prefix}-${count}-${role}.log`, output);
       if (code !== 0 || !output.includes('CAMPAIGN NETWORK FULL: PASS') || /^(?:SCRIPT ERROR|ERROR):/m.test(output)) reject(new Error(`${role} failed (${code}):\n${output.slice(-4500)}`));
       else { console.log(output.trim()); resolve(); }
     });

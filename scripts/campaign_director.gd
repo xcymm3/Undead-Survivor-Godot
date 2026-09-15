@@ -1,5 +1,5 @@
 extends RefCounted
-const Layout = preload("res://scripts/campaign_layout.gd")
+var Layout = preload("res://scripts/campaign_layout.gd")
 const Objectives = preload("res://scripts/campaign_objectives.gd")
 var owner_ref: WeakRef
 var sim:

@@ -16,7 +16,7 @@ func _initialize() -> void:
 	call_deferred("run")
 
 func run() -> void:
-	root.get_node("Data").settings.map_id = "graypine_ferry"
+	root.get_node("Data").settings.map_id = "graypine_night" if "--night" in OS.get_cmdline_user_args() else "graypine_ferry"
 	game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
 	game.set_physics_process(false)

@@ -75,7 +75,7 @@ func native_smoke() -> void:
 	var p: Dictionary = game.local_pawn()
 	var passed = p.shots > 0 and p.ammo[0] < Data.weapons[0].capacity and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
 	game.return_home()
-	Data.settings.map_id = "graypine_ferry"
+	Data.settings.map_id = "graypine_night"
 	game.start_solo("campaign")
 	await get_tree().create_timer(.2).timeout
 	Input.action_press("forward")
