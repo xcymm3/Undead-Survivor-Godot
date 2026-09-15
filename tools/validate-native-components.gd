@@ -134,13 +134,13 @@ func validate_revolver() -> void:
 	var before = p.duplicate(true)
 	game.weapon.sync(p,.016,0)
 	check(p == before,"Revolver presentation never mutates authoritative ammo or input")
-	check(rig.right_hand.is_visible_in_tree() and rig.left_hand.is_visible_in_tree(),"Only the revolver equips articulated first-person hands")
+	check(rig.find_children("RightHand","",true,false).is_empty() and rig.find_children("LeftHand","",true,false).is_empty() and rig.find_children("*Forearm*","",true,false).is_empty(),"Revolver first-person model contains no hands or forearms")
 	var states = []
 	for phase in [.1,.3,.5,.65,.85]:
 		p.reloading = true
 		p.reload = 1.6*(1-phase)
 		game.weapon.sync(p,.016,phase)
-		states.append(rig.left_hand.position)
+		states.append(rig.loader_anchor.position)
 	check(states[0].distance_to(states[2]) > .2,"Reload reaches from cylinder latch to fresh-round retrieval")
 	check(states[2].distance_to(states[3]) > .15,"Speedloader returns to the open cylinder")
 	p.reloading = false
@@ -151,11 +151,11 @@ func validate_revolver() -> void:
 	check(rig.cylinder_open == 0 and not rig.loader.visible and not rig.shells.visible,"Cancellation removes loose props and closes the cylinder")
 	p.weapon = 0
 	game.weapon.sync(p,.016,2)
-	check(not rig.visible,"Switching to other weapons hides both revolver hands")
+	check(not rig.visible,"Switching to other weapons hides the revolver model")
 	p.weapon = 3
 	p.hp = 0
 	game.weapon.sync(p,.016,2)
-	check(not rig.visible,"Death cannot leave live revolver hands on screen")
+	check(not rig.visible,"Death cannot leave a live revolver model on screen")
 	# Exercise real authority interruption separately from the presentation sampler.
 	for phase in [.2,.5,.85]:
 		var state: Dictionary = game.local_pawn().duplicate(true)

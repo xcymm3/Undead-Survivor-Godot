@@ -1,7 +1,6 @@
 extends Node3D
-## First-person-only articulated revolver and gloved hands. Never owns ammunition.
+## First-person-only articulated revolver without arms or hands. Never owns ammunition.
 const MUZZLE = Vector3(0,.095,-.71)
-const RIGHT = Vector3(.035,-.125,.18)
 const SUPPORT = Vector3(-.035,-.165,.22)
 var gun: Node3D
 var drum: Node3D
@@ -11,11 +10,7 @@ var trigger: Node3D
 var ejector: Node3D
 var loader: Node3D
 var shells: Node3D
-var right_hand: Node3D
-var left_hand: Node3D
-var right_fingers: Array = []
-var left_fingers: Array = []
-var limbs: Array = []
+var loader_anchor: Node3D
 var materials: Dictionary = {}
 var last_reload = false
 var cancel_time = 0.0
@@ -125,77 +120,14 @@ func _init() -> void:
 	for i in 6:
 		var a = TAU*i/6
 		tube(shells,"Case",Vector3(cos(a)*.055,sin(a)*.055,0),.017,.105,"c6a367",true)
-	right_hand = make_hand("RightHand",false)
-	left_hand = make_hand("LeftHand",true)
-	loader = pivot(left_hand,"Speedloader",Vector3(0,.012,-.105))
+	loader_anchor = pivot(gun,"LoaderAnchor")
+	loader = pivot(loader_anchor,"Speedloader",Vector3(0,.012,-.105))
 	tube(loader,"LoaderHandle",Vector3(0,0,.02),.028,.09,"252f3e")
 	tube(loader,"LoaderDisc",Vector3(0,0,-.018),.084,.027,"4b5b69",true)
 	for i in 6:
 		var a = TAU*i/6
 		tube(loader,"FreshRound"+str(i),Vector3(cos(a)*.055,sin(a)*.055,-.09),.017,.12,"c4a369",true)
-	for side in [1,-1]:
-		var pieces = []
-		for title in ["Sleeve","Forearm","Cuff"]:
-			pieces.append(segment(gun,("Right" if side == 1 else "Left")+title,Vector3.ZERO,Vector3.UP,.04,"34404f" if title == "Sleeve" else "647081" if title == "Forearm" else "25303e"))
-		limbs.append(pieces)
 	sample_pose(0.0,false,0.0,0.0,0)
-
-func make_hand(title: String, left: bool) -> Node3D:
-	var hand = pivot(gun,title)
-	# Rounded glove silhouette and separate articulated phalanges, rather than solid cubes.
-	var palm = segment(hand,"GlovePalm",Vector3(0,-.042,0),Vector3(0,.04,0),.047,"687589")
-	palm.scale = Vector3(1,.98,.57)
-	var padding = segment(hand,"BackPadding",Vector3(0,-.02,.02),Vector3(0,.025,.02),.034,"899ab2")
-	padding.scale.z = .4
-	segment(hand,"FlexibleWrist",Vector3(0,-.055,0),Vector3(0,-.115,.02),.035,"687589")
-	var digits = []
-	for i in 4:
-		var finger = pivot(hand,"Finger"+str(i),Vector3(-.026,.045-i*.028,-.007))
-		var index = i == 0 and not left
-		if index: finger.position = Vector3(.018,.042,-.075)
-		var first_length = .065 if index else .036
-		var middle_length = .05 if index else .027
-		var middle = pivot(finger,"Middle",Vector3(-first_length,0,0))
-		var tip = pivot(middle,"Tip",Vector3(-middle_length,0,0))
-		segment(finger,"Proximal",Vector3.ZERO,Vector3(-first_length,0,0),.014,"7a8799")
-		segment(middle,"MiddlePad",Vector3.ZERO,Vector3(-middle_length,0,0),.013,"5e6c7d")
-		segment(tip,"Fingertip",Vector3.ZERO,Vector3(-.034 if index else -.025,0,0),.012,"8993a1")
-		digits.append([finger,middle,tip])
-	var thumb = pivot(hand,"OpposedThumb",Vector3(.03,.034,0))
-	segment(thumb,"ThumbBase",Vector3.ZERO,Vector3(.021,.017,-.019),.018,"7a8799")
-	segment(thumb,"ThumbTip",Vector3(.021,.017,-.019),Vector3(.007,.028,-.05),.016,"8993a1")
-	if left:
-		hand.scale.x = -1
-		left_fingers = digits
-	else: right_fingers = digits
-	return hand
-
-func pose_hand(hand: Node3D, at: Vector3, angles: Vector3, curl: float, digits: Array, firing := 0.0) -> void:
-	hand.position = at
-	hand.rotation = angles
-	for i in digits.size():
-		var chain: Array = digits[i]
-		chain[0].rotation.y = -curl*.7-(.2*firing if i == 0 else 0.0)
-		chain[1].rotation.y = -curl*.85
-		chain[2].rotation.y = -curl*.65
-		if hand == right_hand and i == 0:
-			chain[0].rotation.y = -1.30-.1*firing
-			chain[1].rotation.y = -.25-.2*firing
-			chain[2].rotation.y = -.3
-
-func arm(index: int, wrist: Vector3) -> void:
-	var side = 1.0 if index == 0 else -1.0
-	var shoulder = Vector3(side*.67,-.86,.9)
-	var elbow = shoulder.lerp(wrist,.50)+Vector3(side*.13,-.13,.03)
-	var cuff = wrist.lerp(elbow,.14)
-	var pairs = [[shoulder,elbow,.075],[elbow,cuff,.055],[cuff,wrist,.056]]
-	for i in 3:
-		var part = limbs[index][i]
-		var a: Vector3 = pairs[i][0]
-		var b: Vector3 = pairs[i][1]
-		part.position = (a+b)/2
-		part.quaternion = Quaternion(Vector3.UP,(b-a).normalized())
-		part.scale = Vector3(float(pairs[i][2])/.04,a.distance_to(b),float(pairs[i][2])/.04)
 
 func curve(t: float, times: Array, values: Array) -> Vector3:
 	for i in range(times.size()-1):
@@ -227,19 +159,17 @@ func sample_pose(t: float, reload_active: bool, fire: float, aim: float, shots: 
 	shells.rotation = Vector3(fall*.6,0,fall)
 	for part in drum.get_children():
 		if str(part.name).begins_with("CartridgeHead"): part.visible = not reload_active or t < .31 or t >= .67
-	var hand_pos = SUPPORT
-	var hand_rot = Vector3(.08,-.25,-.18)
+	var loader_pos = SUPPORT
+	var loader_rot = Vector3(.08,-.25,-.18)
 	if reload_active:
 		var times = [0.0,.10,.22,.32,.43,.51,.61,.69,.76,.86,1.0]
-		hand_pos = curve(t,times,[SUPPORT,Vector3(-.08,.02,.12),Vector3(-.24,.01,-.10),Vector3(-.24,.01,-.25),Vector3(-.52,-.50,.32),Vector3(-.48,-.36,.40),Vector3(-.245,.04,.20),Vector3(-.245,.04,.11),Vector3(-.42,-.23,.30),Vector3(-.18,-.01,.02),SUPPORT])
-		hand_rot = curve(t,times,[hand_rot,Vector3(.1,-.2,.1),Vector3(.25,0,.3),Vector3(.25,0,.3),Vector3(.3,-.5,-.4),Vector3(.1,-.2,-.2),Vector3.ZERO,Vector3.ZERO,Vector3(.2,-.2,-.3),Vector3(0,-.2,-.25),hand_rot])
+		loader_pos = curve(t,times,[SUPPORT,Vector3(-.08,.02,.12),Vector3(-.24,.01,-.10),Vector3(-.24,.01,-.25),Vector3(-.52,-.50,.32),Vector3(-.48,-.36,.40),Vector3(-.245,.04,.20),Vector3(-.245,.04,.11),Vector3(-.42,-.23,.30),Vector3(-.18,-.01,.02),SUPPORT])
+		loader_rot = curve(t,times,[loader_rot,Vector3(.1,-.2,.1),Vector3(.25,0,.3),Vector3(.25,0,.3),Vector3(.3,-.5,-.4),Vector3(.1,-.2,-.2),Vector3.ZERO,Vector3.ZERO,Vector3(.2,-.2,-.3),Vector3(0,-.2,-.25),loader_rot])
 	loader.visible = reload_active and t >= .48 and t < .77
 	for part in loader.get_children():
 		if str(part.name).begins_with("FreshRound"): part.visible = t < .67
-	pose_hand(right_hand,RIGHT,Vector3(0,-.18,.08),1.0,right_fingers,kick)
-	pose_hand(left_hand,hand_pos,hand_rot,.65 if loader.visible else .85,left_fingers)
-	arm(0,right_hand.transform*Vector3(0,-.11,.02))
-	arm(1,left_hand.transform*Vector3(0,-.11,.02))
+	loader_anchor.position = loader_pos
+	loader_anchor.rotation = loader_rot
 	state_name = "reload" if reload_active else "fire" if fire > 0 else "aim" if aim > .5 else "walk" if motion > .1 else "idle"
 
 func reset_motion() -> void:

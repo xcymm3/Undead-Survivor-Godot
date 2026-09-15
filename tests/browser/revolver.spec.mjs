@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.use({ video: { mode: 'on', size: { width: 1280, height: 800 } } });
 
-test('revolver articulated hands and complete action sequence', async ({ page }, info) => {
+test('revolver without arms and complete action sequence', async ({ page }, info) => {
   test.setTimeout(300_000);
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
