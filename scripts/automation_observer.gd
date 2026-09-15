@@ -56,12 +56,17 @@ func snapshot() -> Dictionary:
 		if not p.is_empty():
 			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "wading":p.get("wading",false), "hp": p.hp,
 				"crouch": p.get("crouch",0.0), "eye_height": preload("res://scripts/player_body.gd").eye_height(p), "slot":p.get("slot",0), "primary":p.get("primary",0), "secondary":p.get("secondary",2), "grenades":p.get("grenades",0), "healing":p.get("healing",""), "heal_time":p.get("heal_time",0.0), "weapon": p.weapon, "ammo": p.ammo, "shots": p.shots, "hits": p.hits,
-				"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
+				"shove_cd":p.get("shove_cd",0.0),"shove_gap":p.get("shove_gap",0.0),"shove_count":p.get("shove_count",0),"shove_anim":p.get("shove_anim",0.0),"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
 	return result
 
 func native_smoke() -> void:
 	# Packaged-EXE validation: same scene, real input path, no renderer or Steam login.
-	game.start_solo("survival")
+	game.start_solo("campaign")
+	Input.action_press("forward")
+	Input.action_press("interact")
+	await get_tree().create_timer(2.4).timeout
+	Input.action_release("forward")
+	Input.action_release("interact")
 	await get_tree().create_timer(.25).timeout
 	var event = InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
@@ -73,7 +78,7 @@ func native_smoke() -> void:
 	event.pressed = false
 	Input.parse_input_event(event)
 	var p: Dictionary = game.local_pawn()
-	var passed = p.shots > 0 and p.ammo[0] < Data.weapons[0].capacity and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
+	var passed = p.shots > 0 and p.ammo[p.primary] < Data.weapons[p.primary].capacity and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
 	game.return_home()
 	Data.settings.map_id = "graypine_night"
 	game.start_solo("campaign")

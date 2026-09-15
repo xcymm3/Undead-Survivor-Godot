@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('weapon poses with revolver hands and remote crouch visual evidence', async ({ page }, info) => {
+test('weapon poses without first-person hands and remote crouch visual evidence', async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -22,7 +22,7 @@ test('weapon poses with revolver hands and remote crouch visual evidence', async
     await page.waitForFunction(pose => JSON.stringify(window.__poseRendered) === JSON.stringify(pose), pose, { timeout: 30_000 });
     const file = info.outputPath(`${name}.png`);
     await page.screenshot({ path: file });
-    // Only the revolver has first-person hands; other weapons retain weapon-only presentation.
+    // All guns retain weapon-only presentation without first-person arms.
     // Screenshots remain visual-review evidence; console and safety checks follow below.
     await info.attach(name, { path: file, contentType: 'image/png' });
   }

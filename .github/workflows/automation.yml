@@ -110,14 +110,14 @@ jobs:
             exit 0
           }
           @"
-          移除左轮第一人称双手和手臂，所有枪械恢复无第一人称手臂。保留左轮持枪、行走、开镜、射击、换弹、切换及中断的枪械动画，保留 v1.10.1 贴墙光照修复。
+          仅保留灰松夜路地图，后续仅检验夜路单人和双人。添加右键推击、中键切换开镜和准星冷却环；普通僵尸随机追击速度 4.6～5.2 米/秒，使用分散接敌目标、跑步/攻击动画和空间攻击音效。医疗包右键保留队友治疗，所有枪械仍无第一人称手臂。
           推荐直接下载 **Undead-Survivor-Godot.exe**，双击即可启动，无需另下 DLL 或 appid。
           EXE 内置游戏和 Steam 依赖，运行时自动解压到临时目录，退出后清理；Steam 合作仍需登录 Steam。
           ZIP 内也包含相同的单文件 EXE。启动器使用 Windows 自带的 .NET Framework 4.x。
 
           源码提交：$env:RELEASE_COMMIT
-          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：规则检查、内部输入整关试玩、真实 ENet 双人/四人整关合作、浏览器真实输入的左轮射击/取消/完成换弹、动作截图与连续展示录像、成品 EXE 及单文件隔离启动无窗口检查全部通过。
-          Steam 跨账号联机与原生 GPU 画面不属于此次自动验收范围。约三分钟首次真人通关、趣味性与难度仍待验收；自动输入测试包含成功与失败样本，功能检查通过不代表平衡达标。
+          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：规则检查、内部输入整关试玩、灰松夜路真实 ENet 双人整关合作、浏览器真实输入的左轮射击/取消/完成换弹、动作截图与连续展示录像、成品 EXE 及单文件隔离启动无窗口检查全部通过。
+          Steam 跨账号联机、原生 GPU 画面与实际音效听感不属于此次自动验收范围。约三分钟首次真人通关、趣味性与难度仍待验收；自动输入测试包含成功与失败样本，功能检查通过不代表平衡达标。
           "@ | Set-Content -Encoding utf8 release-notes.md
           if (-not $exists) {
             & gh release create $tag --target $env:RELEASE_COMMIT --title "Undead Survivor $tag" --notes-file release-notes.md --draft

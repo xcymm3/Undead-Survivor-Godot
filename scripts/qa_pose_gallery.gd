@@ -11,7 +11,10 @@ func _ready() -> void:
 	if not OS.has_feature("web") or not Data.automation or "--qa-poses" not in OS.get_cmdline_user_args():
 		queue_free()
 		return
-	game.start_solo("survival")
+	game.start_solo("campaign")
+	game.sim.zombies.clear()
+	game.local_pawn().pos = Vector2(0,9)
+	game.local_pawn().height = 0.0
 	Data.settings.resolution = 1.0
 	Data.settings.frame_limit = 20
 	Data.settings.pixelated = false
@@ -73,6 +76,20 @@ func _process(_dt: float) -> void:
 			if t >= 6.55 and t < 6.95: pose.switch = .4-(t-6.55)
 			if t >= 6.75 and t < 7.4: pose.weapon = 0
 			if t >= 7.4 and t < 7.6: pose.switch = .2-(t-7.4)
+		if pose.has("enemy"):
+			var kind: String = pose.get("enemy_kind","normal")
+			if not Data.enemies.has(kind): kind = "normal"
+			if game.sim.zombies.is_empty() or game.sim.zombies[0].kind != kind:
+				game.sim.zombies.clear()
+				game.sim.spawn(Vector2(-1.0,.5 if kind == "giant" else 5.6),kind)
+			var z: Dictionary = game.sim.zombies[0]
+			z.id = 1
+			z.born = 0.0
+			z.gait = float(pose.get("time",0.0))*11.5
+			z.heading = 0.0
+			z.move_speed = 5.0 if pose.enemy == "run" else 0.0
+			z.attack_time = float(pose.get("attack",0.0))
+		else: game.sim.zombies.clear()
 		var p = game.local_pawn()
 		p.weapon = clampi(int(pose.get("weapon",0)),0,9)
 		p.requested = p.weapon
@@ -99,8 +116,10 @@ func _process(_dt: float) -> void:
 		partner.yaw = float(pose.get("partner_yaw",PI))
 		partner.pos = Vector2(-1.2,5.3) if pose.get("partner",false) else Vector2(-150,-30)
 		JavaScriptBridge.eval("window.__poseApplied="+request,true)
-		pending_frames = 2 if ready_for_capture else 6
+		pending_frames = 8
 		RenderingServer.render_loop_enabled = true
 	game._process(1.0/60)
 	var rig = game.weapon.models[3]
 	JavaScriptBridge.eval("window.__revolverPose="+JSON.stringify({"state":rig.state_name,"open":rig.cylinder_open,"visible":rig.is_visible_in_tree(),"loader":rig.loader.is_visible_in_tree()}),true)
+
+	JavaScriptBridge.eval("window.__enemyPose="+JSON.stringify({"count":game.sim.zombies.size(),"visible":game.enemies.visible_count(game.sim.zombies[0].kind) if not game.sim.zombies.is_empty() else 0,"focused":game.focused,"gait":game.sim.zombies[0].gait if not game.sim.zombies.is_empty() else 0,"attack":game.sim.zombies[0].attack_time if not game.sim.zombies.is_empty() else 0}),true)

@@ -100,6 +100,10 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		var pulse = sin((1-p.fire_anim/w.fireDuration)*PI)
 		position.z += pulse*.035*w.recoil
 		rotation.x += pulse*.025*w.recoil
+	if p.get("shove_anim",0.0) > 0:
+		var push = sin((1-p.shove_anim/.32)*PI)
+		position.z -= push*.22
+		rotation.x += push*.2
 	muzzle.global_position = muzzle_position()
 	muzzle.visible = not hide_scope and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") != "melee"
 	muzzle.scale = Vector3.ONE*(2.3 if w.get("kind") == "flame" else 1.0)

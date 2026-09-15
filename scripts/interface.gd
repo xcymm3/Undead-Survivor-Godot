@@ -147,21 +147,7 @@ func show_home() -> void:
 	map_panel.position = Vector2(86,120)
 	map_panel.add_theme_constant_override("separation",12)
 	menu.add_child(map_panel)
-	map_panel.add_child(label("选择战场",18,Color("d8cfb6")))
-	var map_row = HBoxContainer.new()
-	map_row.add_theme_constant_override("separation",12)
-	map_panel.add_child(map_row)
-	for id in Data.Maps.PLAYABLE:
-		var definition = Data.Maps.definition(id)
-		var selected: bool = Data.settings.map_id == id
-		var option = button(map_row,definition.title,func(): game.call_deferred("select_map",id),selected)
-		option.name = "Map_"+id
-		option.custom_minimum_size = Vector2(180,56)
-		option.toggle_mode = true
-		option.button_pressed = selected
-		option.disabled = selected
-		option.add_theme_color_override("font_disabled_color",Color("fff7e8"))
-		option.add_theme_stylebox_override("disabled",box(RUST,12))
+	map_panel.add_child(label("灰松夜路",26,Color("fff7e8")))
 	map_panel.add_child(label(game.arena.definition.subtitle,16,Color("c8c5b8")))
 	var title_block = VBoxContainer.new()
 	title_block.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
@@ -181,7 +167,7 @@ func show_home() -> void:
 	actions.custom_minimum_size.x = 340
 	actions.add_theme_constant_override("separation",14)
 	menu.add_child(actions)
-	for item in [["单人模式",func(): game.start_solo("survival")],["多人模式",show_multiplayer]]:
+	for item in [["单人模式",func(): game.start_solo("campaign")],["多人模式",show_multiplayer]]:
 		var option = button(actions,item[0],item[1])
 		option.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		option.custom_minimum_size.y = 76
@@ -194,7 +180,7 @@ func show_home() -> void:
 		option.add_theme_stylebox_override("focus",box(Color(.49,.1,.08,.83),20))
 		option.add_theme_stylebox_override("pressed",box(Color(.38,.08,.06,.9),20))
 	actions.add_child(HSeparator.new())
-	for item in [["波次排行榜",show_scores],["武器与操作",show_guide],["退出游戏",func(): game.quit_game()]]:
+	for item in [["武器与操作",show_guide],["退出游戏",func(): game.quit_game()]]:
 		var option = button(actions,item[0],item[1])
 		option.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		option.add_theme_stylebox_override("normal",box(Color.TRANSPARENT,20))
@@ -221,7 +207,7 @@ func show_home() -> void:
 		notice.size.x = 650
 
 func show_pause() -> void:
-	var column = panel("休息片刻", "合作对局仍在进行" if Session.playing else "战斗与坚守计时已暂停",560)
+	var column = panel("休息片刻", "合作对局仍在进行" if Session.playing else "行动计时已暂停",560)
 	current = "pause"
 	button(column,"继续游戏",func(): game.resume_game(),true)
 	if not Session.playing: button(column,"重新开始",func(): game.start_solo(game.sim.mode))
@@ -265,7 +251,7 @@ func show_settings() -> void:
 		Data.settings.sensitivity = v/100*.0022
 		Data.save())
 	value.value_changed.connect(func(v): slider.value = v)
-	paragraph(column,"按住右键开镜时，转向灵敏度会随真实视野同步降低。",15,Color("74796c"))
+	paragraph(column,"按中键切换开镜时，转向灵敏度会随真实视野同步降低。",15,Color("74796c"))
 	column.add_child(label("主音量",20))
 	var volume = HSlider.new()
 	volume.min_value = 0
@@ -338,10 +324,10 @@ func show_settings() -> void:
 	button(column,"返回",back,true)
 
 func show_guide() -> void:
-	var column = panel("武器与操作", "生存：十款武器、无限备弹 · 战役：一把主武器、有限补给",1000)
+	var column = panel("武器与操作", "灰松夜路 · 有限补给 · 到达安全屋",1000)
 	current = "guide"
-	paragraph(column,"灰松渡口战役：出发前选主武器；E 开门、领取补给、启动设备或救援；H 按住 3 秒治疗。7 切换近战。桥头守住 90 秒后闸门开启，存活队员全部进入泵站后 E 关门过关。合作倒地最多救起两次，死亡后本关不复活。",17)
-	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键举枪\n空格跳跃  /  Ctrl 按住蹲下  /  R 换弹  /  1—0 或滚轮切枪  /  Esc 暂停\n战役：1 主武器 / 2 副武器 / 3 消防斧 / 4 手雷 / 5 医疗包 / E 拾取与交互\n医疗包：左键自己，右键瞄准近处队友；治疗时无法行动。\n起跳锁定当前移动按键；空中转向仍有效。涉水移速为 70%，跳跃可恢复速度、拉开距离。",17)
+	paragraph(column,"灰松夜路：从安全屋出发，沿绿灯穿过堵车街口、店铺与林缘，到达终点安全屋后按住 E 关门。无需清光尸群。合作倒地可救援，死亡后本关不复活。",17)
+	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键推击  /  中键切换开镜\n空格跳跃  /  Ctrl 按住蹲下  /  R 换弹  /  1—5 或滚轮切换装备  /  Esc 暂停\n战役：1 主武器 / 2 副武器 / 3 消防斧 / 4 手雷 / 5 医疗包 / E 拾取与交互\n医疗包：左键自己，右键瞄准近处队友；治疗时无法行动。\n连续推击第 3 次后冷却 3.5 秒，准星上方圆环显示恢复进度。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation",24)
@@ -350,23 +336,13 @@ func show_guide() -> void:
 	for heading in ["武器","等级","弹量","伤害 / 次","装填"]: grid.add_child(label(heading,16,RUST))
 	for i in Data.weapons.size():
 		var w: Dictionary = Data.weapons[i]
-		for text in ["%d  %s" % [(i+1)%10,w.label],w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
-	paragraph(column,"持盾者正面防御；攻击时放低盾牌。狂暴者半血加速。橄榄球蓄力后沿锁定方向冲锋，可侧移躲避。巨人拥有 6000 HP，并能范围砸击。",17)
-	paragraph(column,"首波 9 只；每两波提升敌人阶位。清完整波全员恢复 100 HP，阵亡队友复活，休整 3 秒。玩家和僵尸均可涉水过河，桥面保持正常移速；橄榄球冲入水中后转为涉水追击。",17)
-	button(column,"返回",back,true)
-
-func show_scores() -> void:
-	var column = panel("坚守记录", "仅记录本机正式单人成绩 · 按清完波数、击杀和时长排序",850)
-	current = "scores"
-	if Data.scores.is_empty(): paragraph(column,"这里还没有记录。走进哨站，开始第一次坚守。",22)
-	else:
-		for i in Data.scores.size():
-			var score: Dictionary = Data.scores[i]
-			column.add_child(label("%02d     %d 波     %d 击杀     %s     %s" % [i+1,score.waves,score.kills,time_text(score.duration),str(score.date).left(10)],19))
+		for text in [w.label,w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
+	paragraph(column,"夜路敌人预置在道路、店铺和树林中；靠近或局部枪声会惊动它们。普通僵尸追击速度高于玩家，利用遮蔽物与推击脱离包围。",17)
+	paragraph(column,"增援按计时或事件投放有限批次，安全条件不满足时延后。无需清光地图；枪械通过补给点更换，每人最多携带一个手雷和一个医疗包。",17)
 	button(column,"返回",back,true)
 
 func show_multiplayer() -> void:
-	var column = panel("一起坚守", "房主模拟整场战斗 · 2—4 人合作 · 逐波复活",850)
+	var column = panel("一起撤离", "灰松夜路 · 房主模拟整场战斗 · 倒地可救援",850)
 	current = "multiplayer"
 	if OS.has_feature("web"):
 		paragraph(column,"浏览器验收版仅支持单人模式。Steam 与局域网多人模式请使用 Windows 版。")
@@ -375,13 +351,6 @@ func show_multiplayer() -> void:
 	paragraph(column,Session.status,17,RUST)
 	if Session.active:
 		column.add_child(label("战场："+Data.Maps.definition(Session.map_id).title,22))
-		if Session.is_host():
-			var maps = OptionButton.new()
-			for id in Data.Maps.PLAYABLE: maps.add_item(Data.Maps.definition(id).title)
-			maps.selected = Data.Maps.PLAYABLE.find(Session.map_id)
-			maps.disabled = Session.loading
-			maps.item_selected.connect(func(index): Session.choose_map(Data.Maps.PLAYABLE[index]))
-			column.add_child(maps)
 		column.add_child(label("房间  "+Session.room_code,22))
 		button(column,"复制房间地址 / 房间号",func(): DisplayServer.clipboard_set(Session.room_code))
 		for id in Session.members:
@@ -427,25 +396,13 @@ func show_multiplayer() -> void:
 func show_result() -> void:
 	var sim = game.sim
 	if sim.mode == "campaign":
-		var result = panel("抵达泵站" if sim.won else "渡口行动失败","灰松渡口 · 第一章",640)
+		var result = panel("抵达安全屋" if sim.won else "夜路行动失败","灰松夜路",640)
 		current = "result"
 		result.add_child(label("%s · %d 击杀" % [time_text(sim.elapsed),sim.kills],32))
-		paragraph(result,"全队抵达下一间安全屋。" if sim.won else "全队失去行动能力，从公路值班室重新出发。")
-		paragraph(result,"战役成绩不计入生存波次排行榜。",16)
+		paragraph(result,"全队抵达下一间安全屋。" if sim.won else "全队失去行动能力，从起点安全屋重新出发。")
 		if not Session.playing: button(result,"重新出发",func(): game.start_solo("campaign"),true)
 		button(result,"返回主菜单",func(): game.return_home())
 		return
-	var column = panel("坚守结束", "全队阵亡" if Session.playing else "落水耗尽生命" if sim.cause == "water" else "防线失守",640)
-	current = "result"
-	column.add_child(label("%d 波" % sim.cleared,74,RUST))
-	paragraph(column,"已清完波数",18)
-	column.add_child(label("%d 击杀   ·   %s" % [sim.kills,time_text(sim.elapsed)],27))
-	var p: Dictionary = game.local_pawn()
-	if not p.is_empty(): paragraph(column,"本局射击 %d 次，命中 %d 次" % [p.shots,p.hits],18)
-	paragraph(column,"合作成绩不计入单人排行榜。" if Session.playing else "本局成绩已保存到本机波次排行榜。" if Data.persistent else "存档写入失败，本局成绩仅保留在当前会话。",16,Color("797b6f"))
-	if not Session.playing: button(column,"再次坚守",func(): game.start_solo(sim.mode),true)
-	button(column,"返回主菜单",func(): game.return_home())
-
 static func time_text(value: float) -> String:
 	return "%02d:%02d" % [floori(value/60),floori(value)%60]
 
@@ -455,7 +412,7 @@ func tick(dt: float) -> void:
 	hurt_flash = maxf(0,hurt_flash-dt)
 	native_hud.sync()
 	var pawn: Dictionary = game.view_pawn()
-	var state = [game.running,current,pawn.get("weapon",-1),pawn.get("slot",1),pawn.get("healing",""),pawn.get("aim",false),game.weapon.ads > .8,hit_flash,hurt_flash,hud.size]
+	var state = [game.running,current,pawn.get("weapon",-1),pawn.get("slot",1),pawn.get("healing",""),pawn.get("aim",false),game.weapon.ads > .8,pawn.get("shove_cd",0.0),pawn.get("shove_gap",0.0),hit_flash,hurt_flash,hud.size]
 	if state != overlay_state:
 		overlay_state = state
 		hud.queue_redraw()
@@ -493,6 +450,11 @@ func _draw_hud() -> void:
 			hud.draw_circle(center,1.8,Color("ff7253"))
 		if not p.aim or w.get("kind", "gun") in ["melee","flame"]:
 			for dir in [Vector2.UP,Vector2.DOWN,Vector2.LEFT,Vector2.RIGHT]: hud.draw_line(center+dir*5,center+dir*12,color,2)
+	if current.is_empty() and p.hp > 0 and p.get("shove_cd",0.0) > 0:
+		var ring = center-Vector2(0,32)
+		hud.draw_arc(ring,11,0,TAU,48,Color("383e39"),3,true)
+		var progress = 1.0-clampf(p.shove_cd/3.5,0,1)
+		hud.draw_arc(ring,11,-PI/2,-PI/2+TAU*progress,48,Color("f0b46a"),3,true)
 	if hit_flash > 0:
 		for d in [Vector2(-1,-1),Vector2(1,-1),Vector2(-1,1),Vector2(1,1)]: hud.draw_line(center+d*7,center+d*13,Color.WHITE,2)
 	if hurt_flash > 0:

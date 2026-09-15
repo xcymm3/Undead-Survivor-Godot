@@ -3,12 +3,11 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const count = Number(process.argv[2] ?? 2);
-if (![2, 4].includes(count)) throw new Error('Expected two or four players');
-const night = process.argv.includes('--night');
-const prefix = night ? 'night-enet' : 'campaign-enet';
+if (count !== 2) throw new Error('Only night two-player validation is supported');
+const prefix = 'night-enet';
 const root = process.cwd();
 const engine = path.join(root, '.runtime/Godot_v4.5.2-stable_win64_console.exe');
-const args = ['--headless', '--audio-driver', 'Dummy', '--path', root, '--script', 'res://tools/validate-campaign-network.gd', '--', '--automation', '--silent', ...(night ? ['--night', '--map=graypine_night'] : ['--map=graypine_ferry']), ...(count === 4 ? ['--four'] : [])];
+const args = ['--headless', '--audio-driver', 'Dummy', '--path', root, '--script', 'res://tools/validate-campaign-network.gd', '--', '--automation', '--silent', '--night', '--map=graypine_night'];
 const children = new Set();
 await mkdir('artifacts', { recursive: true });
 function stop(child) {

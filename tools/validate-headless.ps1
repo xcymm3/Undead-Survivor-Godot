@@ -1,12 +1,9 @@
 param(
-    [ValidateSet('Import', 'Parse', 'Runtime', 'Profile', 'NetworkHost', 'NetworkClient', 'BakeWorld', 'NativeComponents', 'BakeDust', 'Maps', 'Campaign', 'Calibration', 'Night')]
-    [string]$Mode = 'Runtime',
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Night')]
+    [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
-    [switch]$FourPlayers,
     [switch]$VerboseEngine,
-    [ValidateSet('', 'outpost', 'dust', 'graypine_ferry', 'graypine_night')][string]$Map = '',
-    [ValidateSet('', 'outpost', 'dust', 'graypine_ferry', 'graypine_night')][string]$ExpectMap = '',
     [ValidateRange(10, 600)][int]$TimeoutSeconds = 180
 )
 $ErrorActionPreference = 'Stop'
@@ -18,23 +15,9 @@ if ($VerboseEngine) { $arguments += '--verbose' }
 switch ($Mode) {
     'Import' { $arguments += @('--editor', '--import', '--quit') }
     'Parse' { $arguments += @('--script', 'res://tools/validate-scripts.gd', '--', '--silent', '--automation', ('--parse-script=' + $Script)) }
-    'Runtime' { $arguments += @('--script', 'res://tools/validate-runtime.gd', '--', '--silent') }
-    'Profile' { $arguments += @('--script', 'res://tools/profile-simulation.gd', '--', '--silent') }
-    'BakeWorld' { $arguments += @('--script', 'res://tools/bake-world.gd', '--', '--silent', '--automation') }
-    'BakeDust' { $arguments += @('--script', 'res://tools/bake-dust.gd', '--', '--silent', '--automation') }
-    'Calibration' { $arguments += @('--script', 'res://tools/validate-campaign-calibration.gd', '--', '--silent', '--automation') }
     'Night' { $arguments += @('--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation') }
-    'Campaign' { $arguments += @('--script', 'res://tools/validate-campaign.gd', '--', '--silent', '--automation') }
-    'Maps' { $arguments += @('--script', 'res://tools/validate-maps.gd', '--', '--silent', '--automation') }
     'NativeComponents' { $arguments += @('--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation') }
-    default {
-        $arguments += @('--script', 'res://tools/validate-network.gd', '--', '--silent')
-        if ($Mode -eq 'NetworkHost') { $arguments += '--host' }
-        if ($FourPlayers) { $arguments += '--four' }
-    }
 }
-if ($Map) { $arguments += ('--map=' + $Map) }
-if ($ExpectMap) { $arguments += ('--expect-map=' + $ExpectMap) }
 # Headless prevents graphics windows; CreateNoWindow prevents console flashes.
 $startInfo = New-Object System.Diagnostics.ProcessStartInfo
 $startInfo.FileName = $Godot

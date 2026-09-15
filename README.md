@@ -1,137 +1,52 @@
 # Undead Survivor · Godot
 
-当前 Godot 版本：`1.10.2`。发布版本由根目录 `VERSION` 管理。
+当前版本 **1.11.0**。游戏仅保留 **灰松夜路**，目标是在约三分钟内穿过堵车街口、暗店和林缘，抵达下一间安全屋。旧哨站、沙漠、渡口及附属场景已移除，旧存档会自动选择夜路。
 
-所有枪械均不显示第一人称手臂。左轮保留持枪、移动、开镜、射击、转轮退壳/快速装填、收拔枪和中断的枪械动画。动作设计和验证范围见 [左轮动作样板](docs/REVOLVER_ANIMATION.md)。
+[下载 Windows 单文件 EXE](https://github.com/xcymm3/Undead-Survivor-Godot/releases/latest)。无需另下 DLL；游戏与 Steam 依赖内置，运行时释放到临时目录，退出后清理。
 
-当前战役为 **灰松夜路**：以约三分钟抵达安全屋为目标，穿过堵车街口、暗店与林缘。200 只单人预置守路者分散在遮挡后，局部目视与枪声唤醒，无需清场。旧十五分钟灰松渡口已退出常规选图。设计、刷新规则及验收边界见 [灰松夜路](docs/NIGHT_ROUTE.md)。
+![灰松夜路菜单：独立无界面 Chromium 软件截图](docs/screenshots/night-home.png)
 
-`Undead-Survivor` 0.7.7 的独立 Godot 4 原生移植工程。游戏运行时使用 GDScript、Godot 场景、原生网格、着色器和音频，不依赖 React、Three.js、Electron 或浏览器。
+## 玩法与操作
 
-移植基线：相邻原项目提交 `7775293140052ccf9f86ea86929bfbc8889a4a5b`。原目录没有修改。
+单人开局预置 200 只僵尸，分布在道路、店铺、遮挡后与树林中；接近或局部枪声会惊动它们。定时与事件增援生成有限批次，安全条件不满足时保留数量、延后投放。无需清光地图，进入终点安全屋并按住 E 关门即可完成。
 
-仓库：[xcymm3/Undead-Survivor-Godot](https://github.com/xcymm3/Undead-Survivor-Godot)。[下载最新 Windows 版本](https://github.com/xcymm3/Undead-Survivor-Godot/releases/latest)，推荐直接下载单个 EXE，双击启动，无需另下 DLL；运行时自动释放内置依赖，退出后清理。main 分支自动验收与打包成功后会发布 GitHub Release；日志、截图和浏览器回放保存在 Actions Artifacts。自动化入口：`npm run verify` / `npm run verify:release`；完整步骤见 [自动化流程](docs/AUTOMATION.md)。
+普通僵尸速度在 4.6～5.2 米/秒之间随机，超过玩家的 4.2 米/秒。尸群使用分散接敌目标和局部分离；狭窄通道仍需依次通过。奔跑、攻击前摇和挥击采用原生骨骼姿态，空间音效区分蓄力、命中与挥空。
 
-![Godot 实际主菜单](docs/screenshots/home.png)
-
-## 启动
-
-- **直接玩**：双击 `start-game.cmd`。
-- **进入编辑器**：双击 `open-editor.cmd`，或用 Godot 4.5.2 打开 `project.godot`，按 F6/F5 运行。
-- **Steam 合作**：先登录 Steam，再双击 `start-steam.cmd`。
-
-本机已准备标准 Godot 4.5.2 和 GodotSteam 4.16 / Godot 4.5 运行环境，保存在忽略版本控制的 `.runtime/`。复制项目到其他电脑时，启动脚本会自动下载固定版本、校验 SHA-256 并导入资源。单人和局域网在首次准备完毕后可以离线运行。也可用环境变量 `GODOT_BINARY` 指定现有标准 Godot。
-
-## 已移植的游戏内容
-
-- 原始 44 × 62 米哨站、建筑、车辆、路障、树林、河岸、两座桥、北侧和东侧六个固定刷怪点。
-- WASD 移动、±85° 俯仰、原生胶囊体跳跃、空中转向、沿墙滑动、僵尸阻挡；实体河床可涉水，跳跃可拉开与水中僵尸的距离。
-- 十款武器的数值、独立弹匣、无限备弹、切换、换弹、自动/半自动攻击、爆头倍率、霰弹扇面、近战多目标和火焰穿透。
-- 六款 Quaternius 枪械和原有四款程序化武器；原开火、装填及机械动作已烘焙为原生 GLB 动画。
-- 机械瞄具、红点、全息、反射镜、低倍刻度镜、6× 圆形狙击镜；倍率改变真实视野并同步降低鼠标灵敏度。
-- 普通、路障、铁桶、小鬼、持盾、狂暴、巨人、橄榄球八类僵尸。护甲脱落、攻击前摇、伤害保护、盾牌正面防御、半血狂暴、范围砸击、锁定方向冲锋与眩晕。
-- 原波次数量、阶位权重、速度和刷新上限、刷新安全规则；清波全员恢复、休整三秒、继续下一波。
-- 练习模式、正式模式、失败特写、结算、本机前十排行榜、重开、暂停与失焦处理。
-- 原始音乐、死亡声和护甲音效转换为 WAV；枪声、火焰、挥砍、装填、受伤和失败声使用本地合成音频。
-- 五档画质预设及自定义分辨率、抗锯齿、阴影、特效、视距、帧率、像素化、音量、灵敏度、全屏。
-- Steam 房间创建、搜索、房间号加入、真实 Steam 昵称、2～4 人房主权威合作；额外提供原生 ENet 局域网直连。
-- 随机角色与配色、队友模型和动画、阵亡观战、切换观战对象、清波复活、全队阵亡结算、断线处理。
-
-![Godot 原生第一人称画面](docs/screenshots/practice.png)
-
-## 操作
-
-| 按键 | 功能 |
+| 操作 | 按键 |
 | --- | --- |
-| WASD / 鼠标 | 移动 / 转向与俯仰 |
-| 空格 | 单次跳跃；锁定起跳时的移动按键，空中可转向 |
-| 左键 / 右键 | 攻击 / 按住瞄准 |
-| R | 装填 |
-| 1—0 / 滚轮 | 切换十款武器 |
-| Esc | 暂停 / 继续；多人时房主模拟持续运行 |
-| M / F11 | 静音 / 全屏 |
-| 阵亡后左键 | 切换存活队友的第一人称视角 |
+| 移动 / 转向 | WASD / 鼠标 |
+| 跳跃 / 蹲下 | 空格 / Ctrl |
+| 攻击 / 推击 | 左键 / 右键 |
+| 切换开镜 | 中键 |
+| 换弹 | R |
+| 主武器 / 副武器 / 消防斧 | 1 / 2 / 3 |
+| 手雷 / 医疗包 | 4 / 5 |
+| 拾取、开关门、救援 | 按住 E |
+| 暂停 / 静音 / 全屏 | Esc / M / F11 |
 
-首波 9 只。第 1～6、7～8、9～11、12 波以后分别每波增加 6、5、4、3 只。生命值为 100；普通近战造成 10 点伤害，橄榄球冲撞造成 30 点伤害并轻微击退。玩家与僵尸均可涉水，移速为正常的 70%；玩家起跳后恢复正常水平速度，桥面保持正常移速。入水不扣血、不传送。
+相邻推击间隔不超过三秒时累计次数，第三次推击触发 3.5 秒冷却，准星上方圆环显示恢复进度。推击会中断换弹，不补发未装填子弹。医疗包右键用于治疗近处队友，左键治疗自己，治疗期间无法行动。
+
+补给点生成玩家人数两倍的枪械，通过换枪获得新弹药；每人最多携带一个手雷和一个医疗包。手雷投出三秒后爆炸，当前不伤害自己或队友。前段补给为 B 级，林缘补给为 A 级。所有枪械均无第一人称手臂，左轮保留枪械自身的持握、晃动、瞄准、射击、换弹与中断动作。
 
 ## 合作
 
-**Steam**：所有人使用本 Godot 工程及 `start-steam.cmd`，使用不同 Steam 账号。房主进入「多人模式」创建房间，队友搜索或输入房间号；至少两人后房主开始。开发 App ID 为 `480`。标准 Godot 没有 Steam 单例时会明确提示使用 GodotSteam。
+支持 Steam 房间和原生 ENet 局域网直连。房主决定位置、血量、命中与击杀，客户端只发送输入。合作倒地可以救援，死亡后本关不复活；房主退出则对局结束。房间上限仍为四人，本轮及后续仅检验单人与双人。
 
-**局域网**：房主创建局域网房间，复制显示的地址给队友；队友填写昵称及 `房主IP:27777`。跨电脑时需要系统防火墙允许 UDP 27777。`127.0.0.1` 仅用于同机双进程验证。
+Steam 合作需登录 Steam；开发 App ID 为 480。局域网加入地址为房主 IP:27777。Godot 版不能与原 Electron 版混合联机。Steam 跨账号和跨电脑体验尚待实际验证。
 
-房主决定位置、血量、弹药、命中和击杀，客户端只发送输入。暂停或切到后台不会暂停合作模拟；后台停止绘制。单人暂停不会累计坚守时间。房主退出后对局结束，不做房主迁移。
+## 开发与验证
 
-**Godot 版使用独立网络协议，不能与原 Electron 版混合联机。** 已完成同机双客户端及四客户端 ENet 实际连接检查；Steam 的接口和运行环境已接入，跨账号、跨电脑 Steam 联网尚待实机验收。
+本项目是独立 Godot 4 原生工程，运行时不依赖 React、Three.js 或浏览器。双击 start-game.cmd 启动，open-editor.cmd 打开编辑器，start-steam.cmd 启动 Steam 版本。固定引擎为 Godot 4.5.2，发布使用匹配的 GodotSteam 模板。
 
-## 工程与资源
+- npm run verify：夜路规则与原生组件、单人内部输入整关、真实 ENet 双人整关、独立 headless Chromium 输入和软件截图。
+- npm run verify:release：追加 Windows 导出、成品 EXE 无窗口冒烟、单文件隔离启动检查和 ZIP 打包。
+- 不再运行旧地图或三人、四人测试。所有本机自动检查均无窗口，不捕获鼠标或干扰桌面。
+- Actions 全绿后发布单 EXE、ZIP、版本和校验和；当前源码摘要门禁须通过后才提交。
 
-```text
-project.godot               Godot 工程入口
-scenes/main.tscn            原生主场景
-scripts/main.gd             游戏生命周期、输入、镜头、观战
-scripts/simulation.gd       单人/房主共用的权威模拟
-scripts/arena.gd            场景重建、共享地形、碰撞、寻路
-scripts/enemy_view.gd       尸群实例化与逐部件命中
-scripts/enemy_animation.gdshader  GPU 肢体动画
-scripts/session.gd          Steam / ENet 房间和传输
-scripts/interface.gd        原生菜单、设置、HUD、结算
-assets/data/               原场景几何、碰撞与平衡参数
-assets/models/             十款武器 GLB、六款人物 glTF
-assets/audio/              本地音乐和音效
-tools/                     资源转换、启动、验证和导出工具
-docs/PORTING.md             迁移对应关系与验证边界
-```
+单人固定受限输入样本用于约三分钟的合成校准；双人整关角色熟悉路线。自动通过不代表真人时长、趣味性或难度达标。软件截图不替代原生 GPU 验收，静音测试不验证实际音效听感。
 
-资源已经转换并包含在工程中，正常开发、运行不需要原项目。仅重新提取资源时需要相邻原仓库的 Node 依赖：
+设计与验证细节：[夜路](docs/NIGHT_ROUTE.md)、[近身战斗](docs/CLOSE_COMBAT.md)、[地图入口](docs/MAPS.md)、[自动化](docs/AUTOMATION.md)、[视觉验收](docs/VISUAL_QA.md)。旧设计文档仅作历史记录。
 
-```powershell
-node tools/convert-assets.mjs ../Undead-Survivor
-```
+## 资源与许可
 
-图形使用 Godot Compatibility 渲染器。抗锯齿采用原生 MSAA，光照、粒子和文字由 Godot 重建，因此与 Three.js 的像素结果不同。原地图几何、武器造型和动画姿态保留。详情见 [移植说明](docs/PORTING.md)。
-
-设置和波次榜存放在 `user://survivor-godot-v1.json`，与原浏览器/Electron 存档独立；不会读取、覆盖或伪造原时长榜。
-
-## 验证
-
-后续编辑默认使用下面的后台入口：强制 `--headless` 和 `Dummy` 音频，并通过 `CreateNoWindow` 禁止子进程创建控制台窗口。日志写入工程根目录，超时只结束本次验证进程，不操作已打开的编辑器或游戏。
-
-```powershell
-./tools/validate-headless.ps1 -Mode Import
-./tools/validate-headless.ps1 -Mode Runtime
-./tools/validate-headless.ps1 -Mode Profile
-```
-
-双客户端连接检查可在两个终端分别运行（先房主、后客户端）：
-
-```powershell
-./tools/validate-headless.ps1 -Mode NetworkHost
-./tools/validate-headless.ps1 -Mode NetworkClient
-```
-
-GPU 截图默认禁用，不属于自动编辑验证流程。旧截图脚本使用不可见父窗口与 `SubViewport`，但图形进程初始化仍可能闪现窗口，不能保证完全不干扰桌面。只有明确要求视觉验收时才手动启用：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/capture-hidden.ps1 -AllowGraphics
-```
-
-## 导出 Windows 成品
-
-工程带有 Windows Steam 导出预设。推荐运行完整验收后再打包：
-
-```powershell
-npm run verify:release
-```
-
-流程使用固定版本的 GodotSteam 导出模板，运行成品 EXE 的无窗口冒烟检查，再生成 `build/Undead-Survivor-Godot-Windows-x64.zip`。包内包含 EXE、`steam_api64.dll`、开发用 `steam_appid.txt`、第三方及字体许可；不要只复制 EXE。正式 Steam 发布须使用自己的 App ID 和对应发布配置。
-
-## 资源来源
-
-六款枪械及六款人物来自 Quaternius 的 CC0 资源；地图、僵尸、四款程序化武器及合成音频来自原项目。许可说明保留在 `assets/models/WEAPON-SOURCES.md`、`assets/models/characters/License.txt` 和 `assets/THIRD-PARTY-NOTICES.txt`。
-
-引擎下载：[Godot 4.5.2](https://godotengine.org/download/archive/4.5.2-stable/)，[GodotSteam 4.16](https://github.com/GodotSteam/GodotSteam/releases/tag/v4.16)。
-
-## 灰松渡口战役（1.8.0）
-
-首页选择“灰松渡口”进入从公路值班室前往泵站安全屋的第一章，支持单人和合作。E 交互/救援，H 治疗；出发后保留一把主武器与近战，储备弹药有限。操作、内部接口验收方法及尚未验证的项目见 [战役实现说明](docs/CAMPAIGN_IMPLEMENTATION.md)。
+六款枪械及人物资源来自 Quaternius CC0 素材；地图、僵尸、程序化武器和合成音频来自原项目及本工程。许可见 assets/THIRD-PARTY-NOTICES.txt、assets/models/WEAPON-SOURCES.md 和人物目录许可。正常运行不需要相邻原项目；转换工具仅用于开发，不修改相邻项目。

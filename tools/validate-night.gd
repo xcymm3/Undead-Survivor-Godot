@@ -1,7 +1,33 @@
-extends "res://tools/validate-campaign.gd"
+extends SceneTree
+## Internal gameplay API QA: inputs go through Simulation.submit and real capsule movement.
+## Explicit state fixtures below test edge cases; traversal never teleports or grants invulnerability.
+var Layout = preload("res://scripts/night_layout.gd")
+var game
+var count = 0
+var failures: Array[String] = []
+var runs: Array = []
 
-func _init() -> void:
-	Layout = preload("res://scripts/night_layout.gd")
+func _initialize() -> void:
+	call_deferred("run")
+
+func check(ok: bool, message: String) -> void:
+	count += 1
+	if not ok:
+		failures.append(message)
+		print("CAMPAIGN FAIL: "+message)
+
+func start(party := 1, seed_value := -1) -> void:
+	game.return_home()
+	root.get_node("Data").settings.map_id = Layout.ID
+	game.start_solo("campaign",seed_value)
+	if party > 1:
+		game.sim.campaign = null
+		for i in range(1,party): game.sim.add_pawn("qa%d" % i,"队友%d" % i,i)
+		if seed_value >= 0: game.sim.random.seed = seed_value
+		game.sim.start("campaign")
+	await physics_frame
+	await process_frame
+
 
 func run() -> void:
 	game = load("res://scenes/main.tscn").instantiate()
@@ -87,7 +113,7 @@ func run() -> void:
 			game.sim.submit("solo",driver.command(.05))
 			game.sim.step(.05)
 			if i%100 == 0: await process_frame
-		var result = {"seed":seed_value,"won":game.sim.won,"failed":game.sim.failed,"seconds":game.sim.elapsed,"kills":game.sim.kills,"task":driver.index,"position":game.local_pawn().pos,"remaining":game.sim.zombies.filter(func(enemy): return enemy.hp > 0).size(),"timings":timings,"diagnostics":game.sim.campaign.diagnostics()}
+		var result = {"shoves":game.local_pawn().get("shoves",0),"shove_hits":game.local_pawn().get("shove_hits",0),"seed":seed_value,"won":game.sim.won,"failed":game.sim.failed,"seconds":game.sim.elapsed,"kills":game.sim.kills,"task":driver.index,"position":game.local_pawn().pos,"remaining":game.sim.zombies.filter(func(enemy): return enemy.hp > 0).size(),"timings":timings,"diagnostics":game.sim.campaign.diagnostics()}
 		runs.append(result)
 		print("NIGHT RESULT ",JSON.stringify(result))
 	check(runs.all(func(result): return result.won),"Both fixed limited-input seeds reach the safe room")

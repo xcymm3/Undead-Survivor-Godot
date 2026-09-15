@@ -32,7 +32,7 @@ const MODELS = ["蓝衣青年", "棕衣大叔", "绿衣队员", "红衣女性"]
 const PALETTE = [0x355747,0x365d73,0x794638,0x987f4c,0x663a4b,0x4b595b]
 
 func _ready() -> void:
-	if automation: settings.map_id = "outpost"
+	if automation: settings.map_id = "graypine_night"
 	if not automation and FileAccess.file_exists(SAVE_PATH):
 		var loaded = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
 		if loaded is Dictionary:
@@ -43,7 +43,7 @@ func _ready() -> void:
 			if loaded.get("scores") is Array:
 				for entry in loaded.scores:
 					if valid_score(entry): scores.append(entry)
-	if not Maps.valid(settings.map_id) or settings.map_id == "graypine_ferry": settings.map_id = "graypine_night"
+	if not Maps.valid(settings.map_id): settings.map_id = "graypine_night"
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--map=") and Maps.valid(arg.trim_prefix("--map=")): settings.map_id = arg.trim_prefix("--map=")
 	settings.sensitivity = clampf(settings.sensitivity, .00022, .0044)
@@ -125,11 +125,8 @@ static func riverbed_height(p: Vector2) -> float:
 	var offset = absf(p.y-river_center(p.x))
 	return lerpf(RIVER_BED_Y,RIVER_GROUND_Y,clampf((offset-RIVER_BED_HALF)/(RIVER_BANK_HALF-RIVER_BED_HALF),0,1))
 
-static func enemy_ground_height(p: Vector2, map_id := "outpost") -> float:
-	if map_id == "graypine_night": return Maps.Night.height(p)
-	if map_id == "graypine_ferry": return Maps.Ferry.height(p)
-	if map_id == "dust": return Maps.Dust.height(p)
-	return .04 if bridge(p) else riverbed_height(p)
+static func enemy_ground_height(p: Vector2, _map_id := "graypine_night") -> float:
+	return Maps.Night.height(p)
 
 static func wading(p: Vector2, feet: float) -> bool:
 	return water(p) and feet < RIVER_WATER_Y+.08
@@ -141,7 +138,7 @@ static func contact(kind: String) -> float:
 	return {"imp": 1.0, "shield": 1.3, "giant": 1.8, "football": 1.35}.get(kind, 1.25)
 
 static func attack(kind: String, rage := false) -> Vector2:
-	return {"imp": Vector2(.18,.7), "shield": Vector2(.3,1), "berserker": Vector2(.15,.55) if rage else Vector2(.25,.85), "giant": Vector2(.65,1.5), "football": Vector2(.2,.7)}.get(kind, Vector2(.35,1.1))
+	return {"imp": Vector2(.18,.7), "shield": Vector2(.3,1), "berserker": Vector2(.15,.55) if rage else Vector2(.25,.85), "giant": Vector2(.65,1.5), "football": Vector2(.2,.7)}.get(kind, Vector2(.5,1.3))
 
 static func from_matrix(m: Array) -> Transform3D:
 	return Transform3D(Basis(Vector3(m[0],m[1],m[2]),Vector3(m[4],m[5],m[6]),Vector3(m[8],m[9],m[10])),Vector3(m[12],m[13],m[14]))

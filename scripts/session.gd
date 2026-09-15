@@ -8,9 +8,9 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-5"
+const PROTOCOL = "undead-survivor-godot-6"
 const PORT = 27777
-var map_id = "outpost"
+var map_id = "graypine_night"
 var transport = ""
 var local_id = "solo"
 var host_id = ""
@@ -31,7 +31,7 @@ var steam_ready = false
 var last_host = 0.0
 var heartbeat = 0.0
 var input_sequences: Dictionary = {}
-var sent_edges = {"jump":0,"reload":0,"use_self":0,"use_other":0}
+var sent_edges = {"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0}
 var received_edges: Dictionary = {}
 var send_sequence = 0
 var receive_sequence = -1
@@ -287,7 +287,7 @@ func send_input(command: Dictionary) -> void:
 
 func recover_input_edges(id: String, command: Dictionary) -> Dictionary:
 	var clean = command.duplicate()
-	var previous: Dictionary = received_edges.get(id,{"jump":0,"reload":0,"use_self":0,"use_other":0})
+	var previous: Dictionary = received_edges.get(id,{"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0})
 	for action in previous:
 		var sequence = command.get(action+"_seq",0)
 		if not sequence is int or sequence < 0: return {}
@@ -410,11 +410,11 @@ func valid_world(value) -> bool:
 	if not value.pawns is Dictionary or value.pawns.size() > 4 or not value.zombies is Array: return false
 	if value.mode not in ["survival","campaign"] or not value.get("won",false) is bool: return false
 	if value.mode == "campaign":
-		if map_id not in ["graypine_ferry","graypine_night"] or not value.get("campaign") is Dictionary: return false
+		if map_id != "graypine_night" or not value.get("campaign") is Dictionary: return false
 		var campaign_state: Dictionary = value.campaign
-		if not campaign_state.has_all(["phase","departed","gate_open","complete","bridge_time","taken","claimed","objective","party","shop_key","shop_open","leak_closed","pump_ready","power_ready","late_stage","loading_release","loading_power","pump_fault_a","pump_fault_b","exit_relay","exit_control"]): return false
+		if not campaign_state.has_all(["phase","departed","gate_open","complete","bridge_time","taken","claimed","objective","party","shop_key","shop_open","leak_closed","pump_ready","power_ready","late_stage","exit_control"]): return false
 		if campaign_state.phase not in ["PREPARE","STREET","BRIDGE_READY","BRIDGE_ACTIVE","GATE_OPEN","FINAL_APPROACH","COMPLETE","FAILED"]: return false
-		for key in ["departed","gate_open","complete","shop_key","shop_open","leak_closed","pump_ready","power_ready","late_stage","loading_release","loading_power","pump_fault_a","pump_fault_b","exit_relay","exit_control"]:
+		for key in ["departed","gate_open","complete","shop_key","shop_open","leak_closed","pump_ready","power_ready","late_stage","exit_control"]:
 			if not campaign_state[key] is bool: return false
 		if not campaign_state.bridge_time is float or not is_finite(campaign_state.bridge_time) or campaign_state.bridge_time < 0 or campaign_state.bridge_time > 90: return false
 		if not campaign_state.taken is Dictionary or not campaign_state.claimed is Dictionary or not campaign_state.objective is String or campaign_state.objective.length() > 160: return false
@@ -425,6 +425,9 @@ func valid_world(value) -> bool:
 	for id in value.pawns:
 		var p = value.pawns[id]
 		if not members.has(id) or not p is Dictionary or not p.has_all(["pos","hp","height","yaw","pitch","weapon","ammo","appearance","fire_anim","switch","reload","reloading","aim","hits","shots","kills","protection","requested","id","name"]): return false
+		for field in ["shove_cd","shove_gap","shove_anim","shove_window"]:
+			if not (p.get(field) is float or p.get(field) is int) or not is_finite(p[field]) or p[field] < 0 or p[field] > 3.5: return false
+		if not p.get("shove_count") is int or p.shove_count < 0 or p.shove_count > 2: return false
 		if value.mode == "campaign":
 			if not p.has_all(["reserve","primary","secondary","slot","reserves","grenades","healing","heal_time","being_healed","medkits","downed","dead","bleed","revives","hint"]): return false
 			for field in ["secondary","slot","grenades"]:
@@ -450,6 +453,8 @@ func valid_world(value) -> bool:
 	for z in value.zombies:
 		if not z is Dictionary or not z.has_all(["id","pos","kind","hp","armor","down","born","heading","attack_time","rage","rage_pause","state"]): return false
 		if z.get("map_id") != map_id: return false
+		for field in ["chase_speed","move_speed"]:
+			if not (z.get(field) is float or z.get(field) is int) or not is_finite(z[field]) or z[field] < 0 or z[field] > 15: return false
 		if not z.pos is Vector2 or not z.pos.is_finite() or not Data.enemies.has(z.kind): return false
 		for key in ["id","hp","armor","down","born","heading","attack_time","rage_pause"]:
 			if not (z[key] is int or z[key] is float) or not is_finite(z[key]): return false
@@ -500,7 +505,7 @@ func leave() -> void:
 	host_id = ""
 	members.clear()
 	input_sequences.clear()
-	sent_edges = {"jump":0,"reload":0,"use_self":0,"use_other":0}
+	sent_edges = {"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0}
 	received_edges.clear()
 	room_code = ""
 	nonce = ""
@@ -574,7 +579,7 @@ func choose_map(id: String) -> void:
 	changed.emit()
 
 func valid_campaign_equipment(state: Dictionary) -> bool:
-	var station_count = preload("res://scripts/campaign_layout.gd").ITEMS.filter(func(item): return item.kind == "ammo").size()
+	var station_count = preload("res://scripts/night_layout.gd").ITEMS.filter(func(item): return item.kind == "ammo").size()
 	if not state.get("loot") is Array or state.loot.size() > station_count*8: return false
 	var ids: Dictionary = {}
 	for item in state.loot:

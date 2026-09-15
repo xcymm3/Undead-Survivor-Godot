@@ -16,19 +16,19 @@ func _initialize() -> void:
 	call_deferred("run")
 
 func run() -> void:
-	root.get_node("Data").settings.map_id = "graypine_night" if "--night" in OS.get_cmdline_user_args() else "graypine_ferry"
+	root.get_node("Data").settings.map_id = "graypine_night"
 	game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
 	game.set_physics_process(false)
 	game.set_process(false)
 	session = root.get_node("Session")
 	host = "--host" in OS.get_cmdline_user_args()
-	expected = 4 if "--four" in OS.get_cmdline_user_args() else 2
+	expected = 2
 	began = Time.get_ticks_msec()
 	session.world_received.connect(func(_state): snapshots += 1)
 	session.match_started.connect(func():
 		game.set_physics_process(false)
-		driver = load("res://tools/campaign-input-driver.gd").new(game,expected == 4))
+		driver = load("res://tools/campaign-input-driver.gd").new(game,false))
 	if host:
 		session.host_lan("战役验收房主")
 		if session.active: print("CAMPAIGN NETWORK READY")
@@ -63,7 +63,7 @@ func _process(delta: float) -> bool:
 				print("CAMPAIGN NETWORK ROUTE: party=%d role=%s elapsed=%.2f kills=%d snapshots=%d" % [expected,"host" if host else "client",game.sim.elapsed,game.sim.kills,snapshots])
 				call_deferred("finish",good)
 				stopping = true
-	# Wall time is independent of in-game pacing. Four native peers can run
+	# Wall time is independent of in-game pacing. Two native peers can run
 	# below the requested 3x time scale on a busy CPU; never waive victory.
 	if Time.get_ticks_msec()-began > 900000:
 		print("CAMPAIGN NETWORK TIMEOUT: task=",driver.index if driver else -1," phase=",game.sim.campaign_state() if game.sim else {}," pawn=",game.local_pawn() if game.sim else {})

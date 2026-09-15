@@ -53,6 +53,8 @@ static func blend(a: Dictionary, b: Dictionary, weight: float, player: bool) -> 
 		for key in ["fire_anim","reload","switch"]:
 			if a.weapon == b.weapon and b[key] <= a[key]: result[key] = lerpf(a[key],b[key],weight)
 	else:
+		if a.has("gait") and b.has("gait") and b.gait >= a.gait and b.gait-a.gait < 5:
+			result.gait = lerpf(a.gait,b.gait,weight)
 		for key in ["attack_time","down","state_time","rage_pause"]:
 			if a.get("state") == b.get("state") and a.has(key) and b.has(key) and absf(b[key]-a[key]) < .2:
 				result[key] = lerpf(a[key],b[key],weight)

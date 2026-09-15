@@ -11,7 +11,7 @@ test('night route software visual matrix', async ({ page }, info) => {
   for (const [width, height] of [[960, 540], [1440, 900], [1920, 1080]]) {
     await page.setViewportSize({ width, height });
     for (const name of ['night_street', 'night_shop', 'night_woods', 'night_exit']) {
-      const view = { name, width, height, time: 2.5, party: width === 1920 ? 4 : 1 };
+      const view = { name, width, height, time: 2.5, party: width === 1920 ? 2 : 1 };
       await page.evaluate(view => { window.__campaignView = view; }, view);
       await page.waitForFunction(view => JSON.stringify(window.__campaignRendered) === JSON.stringify(view), view);
       await page.screenshot({ path: info.outputPath(`${name}-${width}.png`), timeout: 60_000 });

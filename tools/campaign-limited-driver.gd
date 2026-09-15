@@ -26,6 +26,7 @@ func command(dt: float) -> Dictionary:
 	var yaw = p.yaw+clampf(angle_difference(p.yaw,desired),-turn_rate*dt,turn_rate*dt)
 	var pitch = move_toward(float(p.pitch),float(result.pitch)+cos(clock_time*1.3)*error_angle,turn_rate*dt)
 	steady = steady+dt if absf(angle_difference(yaw,requested_yaw)) < .08 else 0.0
+	result.shove = result.get("shove",false) and absf(angle_difference(yaw,requested_yaw)) < .5
 	result.yaw = yaw
 	result.pitch = pitch
 	result.x = move_world.x*cos(yaw)-move_world.y*sin(yaw)

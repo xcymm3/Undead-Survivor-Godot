@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('campaign can be selected and departed using real keyboard input', async ({ page }, info) => {
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
-  for (const text of ['灰松夜路', '单人模式']) {
+  for (const text of ['单人模式']) {
     const button = await page.evaluate(text => window.__survivorSnapshot.buttons.find(b => b.text === text && !b.disabled), text);
     expect(button).toBeTruthy();
     const canvas = await page.locator('canvas').boundingBox();
@@ -33,12 +33,12 @@ test('campaign authored scene and HUD software visual evidence', async ({ page }
   await page.goto('/?campaignGallery=1');
   await page.waitForFunction(() => window.__campaignGalleryReady, null, { timeout: 90_000 });
   for (const [width, height, views] of [
-    [960, 540, ['hud_four_empty', 'start', 'loot', 'grenade', 'medkit', 'heal_self', 'heal_other', 'street', 'shop', 'checkpoint', 'pump', 'valve', 'yard', 'control', 'bridge', 'river', 'gate', 'shed', 'exit']],
-    [1440, 900, ['hud_duo', 'loading', 'repair', 'service', 'control', 'heal_self', 'heal_other']], [1920, 1080, ['hud_four', 'exit', 'loot', 'medkit']],
+    [960, 540, ['hud_duo_empty', 'start', 'loot', 'grenade', 'medkit', 'heal_self', 'heal_other', 'axe']],
+    [1440, 900, ['hud_duo', 'heal_self', 'heal_other']], [1920, 1080, ['hud_duo', 'loot', 'medkit']],
   ]) {
     await page.setViewportSize({ width, height });
     for (const name of views) {
-      const view = { name: name.startsWith('hud_') ? 'start' : name, party: name === 'hud_duo' ? 2 : name.startsWith('hud_four') ? 4 : 1, empty: name === 'hud_four_empty', width, height, opened: name === 'exit' };
+      const view = { name: name.startsWith('hud_') ? 'start' : name, party: name.startsWith('hud_duo') || name === 'heal_other' ? 2 : 1, empty: name === 'hud_duo_empty', width, height, opened: name === 'exit' };
       await page.evaluate(view => { window.__campaignView = view; }, view);
       await page.waitForFunction(view => JSON.stringify(window.__campaignRendered) === JSON.stringify(view), view);
       const file = info.outputPath(`campaign-${name}-${width}.png`);

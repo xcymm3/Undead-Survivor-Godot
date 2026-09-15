@@ -4,7 +4,7 @@ const EnemyView = preload("res://scripts/enemy_view.gd")
 const PlayerBody = preload("res://scripts/player_body.gd")
 var player_bodies: Dictionary = {}
 var arena
-var map_id = "outpost"
+var map_id = "graypine_night"
 var map_definition: Dictionary
 var pawns: Dictionary = {}
 var zombies: Array = []
@@ -30,6 +30,10 @@ var paths: Dictionary = {}
 var crowd_buckets: Dictionary = {}
 # Authority-only swing history; clients receive the resulting damage and animation.
 var melee_swings: Dictionary = {}
+const SHOVE_INTERVAL = .65
+const SHOVE_COOLDOWN = 3.5
+const SHOVE_WINDOW = 3.0
+const SHOVE_LIMIT = 3
 const MELEE_START = .22
 const MELEE_END = .66
 const MELEE_HALF_WIDTH = 20.0
@@ -71,16 +75,16 @@ func add_pawn(id: String, player_name: String, index: int) -> void:
 	for pawn in pawns.values(): available.erase(int(pawn.appearance[0]))
 	if available.is_empty(): available = range(Data.MODELS.size())
 	var model: int = available[random.randi_range(0,available.size()-1)]
-	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0]}
+	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"shove_cd":0.0,"shove_gap":0.0,"shove_window":0.0,"shove_count":0,"shoves":0,"shove_hits":0,"shove_anim":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0]}
 
-	pawns[id].height = Data.enemy_ground_height(pawns[id].pos,map_id) if map_id == "dust" else 0.0
+	pawns[id].height = 0.0
 
 func start(_game_mode: String) -> void:
-	mode = "campaign" if map_id in ["graypine_ferry","graypine_night"] else "survival"
+	mode = "campaign"
 	if mode == "campaign":
 		zombies.clear()
 		paths.clear()
-		campaign = preload("res://scripts/night_director.gd").new(self) if map_id == "graypine_night" else preload("res://scripts/campaign_director.gd").new(self)
+		campaign = preload("res://scripts/night_director.gd").new(self)
 	else: prepare_wave()
 
 func prepare_wave() -> void:
@@ -102,7 +106,9 @@ func weighted(weights: Array) -> int:
 
 func spawn(pos: Vector2, kind: String) -> void:
 	var def: Dictionary = Data.enemies[kind]
-	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":float(def.health),"body":float(def.health-def.armor),"armor":float(def.armor),"down":0.0,"born":elapsed,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
+	var locomotion = RandomNumberGenerator.new()
+	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
+	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":float(def.health),"body":float(def.health-def.armor),"armor":float(def.armor),"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
 	next_id += 1
 
 func submit(id: String, input: Dictionary) -> void:
@@ -118,7 +124,7 @@ func submit(id: String, input: Dictionary) -> void:
 	clean.yaw = wrapf(clean.yaw,-PI,PI)
 	clean.pitch = clampf(clean.pitch,-deg_to_rad(85),deg_to_rad(85))
 	clean.weapon = clampi(int(clean.weapon),0,9)
-	for key in ["jump","fire","reload","aim","crouch","interact","heal","use_self","use_other"]: clean[key] = input.get(key,false) == true
+	for key in ["jump","fire","reload","aim","crouch","interact","heal","use_self","use_other","shove"]: clean[key] = input.get(key,false) == true
 	if campaign:
 		var slot = input.get("slot",pawns[id].slot)
 		if not slot is int or slot < 1 or slot > 5: return
@@ -126,7 +132,7 @@ func submit(id: String, input: Dictionary) -> void:
 	# Network polling can deliver several commands before the next physics tick.
 	# Keep a jump edge until update_pawn consumes it, even if a newer packet releases it.
 	clean.jump = clean.jump or pawns[id].input.get("jump",false)
-	for action in ["use_self","use_other"]: clean[action] = clean[action] or pawns[id].input.get(action,false)
+	for action in ["use_self","use_other","shove"]: clean[action] = clean[action] or pawns[id].input.get(action,false)
 	pawns[id].input = clean
 	pawns[id].input_age = 0.0
 
@@ -189,7 +195,7 @@ func step(dt: float) -> void:
 		for p in pawns.values():
 			if p.hp <= 0:
 				p.pos = safe_spawn()
-				p.height = Data.enemy_ground_height(p.pos,map_id) if map_id == "dust" else 0.0
+				p.height = 0.0
 				p.velocity = 0.0
 			p.hp = 100
 			p.protection = 0.0
@@ -229,6 +235,11 @@ func can_move(p: Dictionary, point: Vector2) -> bool:
 	return true
 
 func update_pawn(p: Dictionary, dt: float) -> void:
+	p.shove_cd = maxf(0,p.get("shove_cd",0.0)-dt)
+	p.shove_gap = maxf(0,p.get("shove_gap",0.0)-dt)
+	p.shove_anim = maxf(0,p.get("shove_anim",0.0)-dt)
+	p.shove_window = maxf(0,p.get("shove_window",0.0)-dt)
+	if p.shove_window <= 0: p.shove_count = 0
 	p.protection = maxf(0,p.protection-dt)
 	p.cooldown = maxf(0,p.cooldown-dt)
 	p.fire_anim = maxf(0,p.fire_anim-dt)
@@ -240,7 +251,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	var locked: bool = campaign != null and (not p.healing.is_empty() or p.being_healed)
 	if locked:
 		input = input.duplicate()
-		for action in ["x","y","jump","fire","aim","reload"]: input[action] = 0
+		for action in ["x","y","jump","fire","aim","reload","shove"]: input[action] = 0
 		p.air = Vector2.ZERO
 	var body = player_body(p)
 	body.update_stance(p,input.get("crouch",false),dt)
@@ -267,6 +278,8 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 		body.sync_to(p)
 	p.wading = body.grounded and is_wading(p.pos,p.height)
 	p.input.jump = false
+	if input.get("shove",false): try_shove(p)
+	p.input.shove = false
 	update_arsenal(p,input,dt)
 	if campaign: p.reserve = p.reserves[p.primary]
 
@@ -279,6 +292,9 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 			p.input.reload = false
 		p.aim = false
 		p.trigger = false
+		return
+	if p.get("shove_anim",0.0) > 0:
+		p.aim = false
 		return
 	var w: Dictionary = Data.weapons[p.weapon]
 	update_melee_swing(p,w)
@@ -360,7 +376,66 @@ func charge_knockback(p: Dictionary, direction: Vector2) -> void:
 		body.move_and_collide(Vector3(direction.x,0,direction.y)*(CHARGE_KNOCKBACK/13.0))
 		body.sync_to(p)
 
+func try_shove(p: Dictionary) -> bool:
+	if p.hp <= 0 or p.shove_cd > 0 or p.shove_gap > 0 or p.switch > 0: return false
+	if campaign and (not campaign.state.departed or p.slot >= 4 or p.interaction != "" or not p.healing.is_empty() or p.being_healed): return false
+	p.shoves = p.get("shoves",0)+1
+	p.shove_gap = SHOVE_INTERVAL
+	p.shove_anim = .32
+	p.fire_anim = 0.0
+	p.shove_count += 1
+	p.shove_window = SHOVE_WINDOW
+	if p.shove_count >= SHOVE_LIMIT:
+		p.shove_cd = SHOVE_COOLDOWN
+		p.shove_count = 0
+	p.aim = false
+	p.reloading = false
+	p.reload = 0.0
+	p.reload_queued = false
+	p.input.reload = false
+	melee_swings.erase(p.id)
+	var forward = Vector2(-sin(p.yaw),-cos(p.yaw))
+	var hits = 0
+	for z in zombies:
+		if z.hp <= 0: continue
+		var delta: Vector2 = z.pos-p.pos
+		if delta.length() > 2.0 or absf(Data.enemy_ground_height(z.pos,map_id)-p.height) > 1.1: continue
+		if delta.length() > .05 and forward.dot(delta.normalized()) < cos(deg_to_rad(70)): continue
+		if not arena.surface_hit(Vector3(p.pos.x,p.height+1.1,p.pos.y),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+1.1,z.pos.y)).is_empty(): continue
+		if z.kind == "football" and z.state in ["charging","windup"]: continue
+		var heavy: bool = z.kind in ["giant","shield","football"]
+		z.guard_awake = true
+		z.attack_time = 0.0
+		z.state = "stunned"
+		z.state_time = .35 if heavy else 1.0
+		z.shove_time = .18
+		z.shove_velocity = (delta.normalized() if delta.length() > .05 else forward)*(2.0 if heavy else 7.2)
+		paths.erase(z.id)
+		hits += 1
+	p.shove_hits = p.get("shove_hits",0)+hits
+	events.append({"kind":"shove","player":p.id,"position":Vector3(p.pos.x,p.height+1.2,p.pos.y),"hits":hits})
+	return true
+
+func approach_goal(z: Dictionary, target: Dictionary) -> Vector2:
+	var distance: float = z.pos.distance_to(target.pos)
+	if distance > 24: return target.pos
+	# Stable per-enemy offsets avoid a shared chase point; navigation validates each slot.
+	var sector = fmod(z.id*2.399963,TAU)
+	var radius = Data.contact(z.kind)*.88
+	if distance > 5: radius += 1.4+fmod(z.id*.37,1.8)
+	var candidate: Vector2 = target.pos+Vector2(cos(sector),sin(sector))*radius
+	if arena.clear(candidate,candidate) and arena.clear(candidate,target.pos): return candidate
+	return target.pos
+
 func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
+	z.move_speed = 0.0
+	if z.get("shove_time",0.0) > 0:
+		var duration = minf(dt,z.shove_time)
+		z.shove_time -= duration
+		for i in 6:
+			var pushed: Vector2 = z.pos+z.shove_velocity*duration/6.0
+			if arena.clear(z.pos,pushed): z.pos = pushed
+			else: break
 	# Authored guards exist from map start; proximity with sight or damage wakes them once.
 	if z.has("guard_awake") and not z.guard_awake:
 		if map_id == "graypine_night" and z.hp >= float(Data.enemies[z.original].health):
@@ -381,15 +456,15 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	var delta: Vector2 = target.pos-z.pos
 	var distance = delta.length()
 	var contact = Data.contact(z.kind)
-	var base_speed: float = 3.8+fmod(z.id*.13,.4) if map_id == "graypine_night" else 1.8 if campaign else Data.wave_settings(wave).speed
+	var base_speed: float = float(z.get("chase_speed",4.8))
 	var speed: float = base_speed
 	z.rage_pause = maxf(0,z.rage_pause-dt)
 	z.charge_cooldown = maxf(0,z.charge_cooldown-dt)
-	if z.kind == "imp": speed = minf(4,base_speed*1.75)
-	if z.kind == "shield": speed = minf(3.6,base_speed*1.1)
-	if z.kind == "giant": speed *= .75
+	if z.kind == "imp": speed = base_speed*1.08
+	if z.kind == "shield": speed = base_speed*.78
+	if z.kind == "giant": speed *= .68
 	if z.kind == "berserker": speed = minf(5.8,base_speed*(2.6 if z.rage else 1.35))
-	if z.kind == "football": speed = minf(3.3,base_speed*(1.25 if z.armor > 0 else 1.05))
+	if z.kind == "football": speed = base_speed*(.90 if z.armor > 0 else 1.0)
 	var wading: bool = is_water(z.pos)
 	if wading:
 		speed *= Data.WADE_SPEED
@@ -426,6 +501,8 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			if arena.clear(z.pos,next,true): cancel_charge(z)
 			else: stun(z,CHARGE_WALL_STUN)
 			return
+		z.move_speed = z.pos.distance_to(next)/maxf(dt,.001)
+		z.gait = z.get("gait",0.0)+z.pos.distance_to(next)*2.3
 		z.pos = next
 		if is_water(next):
 			cancel_charge(z)
@@ -437,31 +514,33 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 				z.charge_cooldown = 3.2
 				break
 		return
-	var contact_visible = map_id != "graypine_night" or distance > contact or arena.surface_hit(Vector3(z.pos.x,1.1,z.pos.y),Vector3(target.pos.x,target.height+1.1,target.pos.y)).is_empty()
-	if distance <= contact and contact_visible and target.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
-		if z.target != target.id: z.attack_time = 0.0
-		z.target = target.id
-		z.heading = atan2(delta.x,delta.y)
+	var contact_visible = arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(target.pos.x,target.height+1.1,target.pos.y)).is_empty() if distance <= contact else false
+	if z.attack_time > 0 or (distance <= contact and contact_visible and absf(target.height-Data.enemy_ground_height(z.pos,map_id)) < 1.1):
 		var profile = Data.attack(z.kind,z.rage)
+		if z.attack_time <= 0:
+			z.target = target.id
+			z.heading = atan2(delta.x,delta.y)
+			events.append({"kind":"enemy_windup","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
 		var before: float = z.attack_time
 		z.attack_time += dt
 		if before < profile.x and z.attack_time >= profile.x:
-			if z.kind == "giant":
-				for p in pawns.values():
-					if z.pos.distance_to(p.pos) <= 2.4: damage_pawn(p,z)
-			else: damage_pawn(target,z)
+			var hit = false
+			for victim in pawns.values():
+				if z.kind != "giant" and victim.id != z.target: continue
+				var offset: Vector2 = victim.pos-z.pos
+				if victim.hp <= 0 or offset.length() > (2.4 if z.kind == "giant" else contact+.15): continue
+				if Vector2(sin(z.heading),cos(z.heading)).dot(offset.normalized()) < .4: continue
+				if not arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(victim.pos.x,victim.height+1.1,victim.pos.y)).is_empty(): continue
+				hit = damage_pawn(victim,z) or hit
+			events.append({"kind":"enemy_impact" if hit else "enemy_miss","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
 		if z.attack_time >= profile.y: z.attack_time = 0.0
 		return
-	z.attack_time = 0.0
-	var goal: Vector2 = target.pos
-	if map_id == "graypine_night" and distance > 4 and distance < 22 and z.id%3 != 0:
-		var right = Vector2(cos(target.yaw),-sin(target.yaw))
-		var candidate: Vector2 = target.pos+right*(3.4 if z.id%2 == 0 else -3.4)
-		if arena.clear(candidate,candidate) and arena.clear(candidate,target.pos): goal = candidate
+	var goal = approach_goal(z,target)
 	var direction = (goal-z.pos).normalized()
 	var cached: Dictionary = paths.get(z.id,{"until":0.0,"path":PackedVector2Array(),"goal":Vector2.INF,"direct_until":0.0,"direct":false})
-	if elapsed >= cached.get("direct_until",0.0) or cached.goal.distance_to(goal) > .65:
+	if elapsed >= cached.get("direct_until",0.0) or cached.get("direct_goal",Vector2.INF).distance_to(goal) > .65:
 		cached.direct = arena.clear(z.pos,goal)
+		cached.direct_goal = goal
 		cached.direct_until = elapsed+.15+fmod(z.id*.027,.12)
 		paths[z.id] = cached
 	if not cached.get("direct",false):
@@ -477,7 +556,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		direction = (route[0]-z.pos).normalized()
 	var separation = Vector2.ZERO
 	var cell = Vector2i(floori(z.pos.x/3),floori(z.pos.y/3))
-	var radius = 2.1 if z.kind == "giant" else .85 if z.kind == "imp" else 1.35
+	var radius = 2.1 if z.kind == "giant" else .85 if z.kind == "imp" else 1.65
 	for y in range(-1,2):
 		for x in range(-1,2):
 			for other in crowd_buckets.get(cell+Vector2i(x,y),[]):
@@ -485,14 +564,17 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 				var offset: Vector2 = z.pos-other.pos
 				var d = offset.length_squared()
 				if d > .001 and d < radius*radius: separation += offset.normalized()*(radius-sqrt(d))
-	direction = (direction+separation.limit_length(.8 if map_id == "graypine_night" else .25)).normalized()
-	var next: Vector2 = z.pos+direction*minf(speed*dt,maxf(0,distance-contact*.96))
+	direction = (direction+separation.limit_length(.75)).normalized()
+	var old_position: Vector2 = z.pos
+	var next: Vector2 = z.pos+direction*minf(speed*dt,maxf(0,distance-contact*.88))
 	if arena.clear(z.pos,next): z.pos = next
 	else:
 		var x = Vector2(next.x,z.pos.y)
 		if arena.clear(z.pos,x): z.pos = x
 		var y = Vector2(z.pos.x,next.y)
 		if arena.clear(z.pos,y): z.pos = y
+	z.gait = z.get("gait",0.0)+z.pos.distance_to(old_position)*2.3
+	z.move_speed = z.pos.distance_to(old_position)/maxf(dt,.001)
 	if direction.length_squared() > .01: z.heading = atan2(direction.x,direction.y)
 
 func cancel_charge(z: Dictionary) -> void:
@@ -669,7 +751,7 @@ func apply_snapshot(state: Dictionary) -> void:
 	pawns = state.pawns
 	won = state.get("won",false)
 	campaign_replica = state.get("campaign",{})
-	if map_id in ["graypine_ferry","graypine_night"]: arena.sync_campaign(campaign_replica)
+	arena.sync_campaign(campaign_replica)
 	zombies = state.zombies
 	mode = state.mode
 	elapsed = state.elapsed
@@ -683,10 +765,10 @@ func apply_snapshot(state: Dictionary) -> void:
 	culprit = state.culprit
 
 func is_water(p: Vector2) -> bool:
-	return Data.Maps.Ferry.water(p) if map_id == "graypine_ferry" else map_id == "outpost" and Data.water(p)
+	return false
 
 func is_wading(p: Vector2, height: float) -> bool:
-	return (Data.Maps.Ferry.water(p) and height < -.2) if map_id == "graypine_ferry" else map_id == "outpost" and Data.wading(p,height)
+	return false
 
 func campaign_state() -> Dictionary:
 	return campaign.snapshot() if campaign else campaign_replica

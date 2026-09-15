@@ -1,6 +1,6 @@
 extends RefCounted
 ## QA input policy only. Does not mutate pawns, enemies, inventory or director state.
-var Layout = preload("res://scripts/campaign_layout.gd")
+var Layout = preload("res://scripts/night_layout.gd")
 var game
 var tasks: Array = []
 var index = 0
@@ -12,47 +12,15 @@ var grenade_pending = 0.0
 var grenade_count = 0
 var grenade_aim = Vector2.ZERO
 
-func _init(current_game, yard: bool) -> void:
+func _init(current_game, _yard: bool) -> void:
 	game = current_game
-	if game.sim.map_id == "graypine_night":
-		Layout = preload("res://scripts/night_layout.gd")
-		tasks = [[Vector2(-3.7,72.3),"grenade:night_start"],[Vector2(0,66.5),"depart"]]
-		for point in Layout.ROUTE.slice(1):
-			tasks.append([point,"finish" if point == Layout.EXIT else ""])
-			if point == Vector2(-9,21): tasks.append_array([[Vector2(-14,25),"night_shop"],[Vector2(-15,26.3),"grenade:night_shop"]])
-			if point == Vector2(-6,-34): tasks.append_array([[Vector2(-12,-32),"night_van"],[Vector2(-13,-30.7),"grenade:night_van"]])
-		return
-	tasks = [[Vector2(0,111),"depart"],[Vector2(0,103),""],[Vector2(18,96),""],[Vector2(18,78),""],[Vector2(-15,70),""]]
-	for point in Layout.SHOP_ROUTE: tasks.append([point,"key" if point == Layout.SHOP else ""])
-	tasks.append([Vector2(-58,73),"shop_ammo"])
-	append_objective_route(Layout.LOADING_ROUTE)
-	for point in Layout.STREET_PANEL_ROUTE: tasks.append([point,"shop" if point == Layout.STREET_PANEL else ""])
-	for point in Layout.SHOP_RETURN: tasks.append([point,""])
-	if yard: tasks.append_array([[Vector2(-33,52),""],[Vector2(-44,52),""],[Vector2(-44,41),"yard_ammo"],[Vector2(-44,32),""],[Vector2(-29,32),""],[Vector2(-15,40),""]])
-	tasks.append_array([[Vector2(8,30),""],[Vector2(8,6),""],[Vector2(0,-8),""],[Vector2(11,-11),"bridge_ammo"],[Vector2(8,-14.4),"winch"],[Vector2(0,-18),"defend"],[Vector2(0,-29),""],[Vector2(0,-50),""],[Vector2(0,-62),""],[Vector2(20,-77),"shed_ammo"],[Vector2(23,-77),"shed_med"]])
-	for point in Layout.PUMP_ROUTE: tasks.append([point,"leak" if point == Layout.LEAK else ""])
-	append_objective_route(Layout.REPAIR_ROUTE)
-	for point in Layout.PUMP_INTERIOR: tasks.append([point,"pump" if point == Layout.PUMP else ""])
-	tasks.append([Vector2(-55,-112),"pump_ammo"])
-	tasks.append([Vector2(-55,-114),"pump_med"])
-	for point in Layout.VALVE_ROUTE: tasks.append([point,"power" if point == Layout.VALVE else ""])
-	tasks.append([Vector2(69,-124),"valve_ammo"])
-	append_objective_route(Layout.SERVICE_ROUTE)
-	for point in Layout.FINISH_ROUTE: tasks.append([point,"finish" if point == Layout.FINISH_ROUTE[-1] else ""])
-	var expanded: Array = []
-	for task in tasks:
-		expanded.append(task)
-		for item in Layout.ITEMS:
-			if task[1] == item.id and item.kind == "ammo": expanded.append([item.pos+Vector2(-1,1.3),"grenade:"+item.id])
-	tasks = expanded
+	Layout = preload("res://scripts/night_layout.gd")
+	tasks = [[Vector2(-3.7,72.3),"grenade:night_start"],[Vector2(0,66.5),"depart"]]
+	for point in Layout.ROUTE.slice(1):
+		tasks.append([point,"finish" if point == Layout.EXIT else ""])
+		if point == Vector2(-9,21): tasks.append_array([[Vector2(-14,25),"night_shop"],[Vector2(-15,26.3),"grenade:night_shop"]])
+		if point == Vector2(-6,-34): tasks.append_array([[Vector2(-12,-32),"night_van"],[Vector2(-13,-30.7),"grenade:night_van"]])
 
-func append_objective_route(route: Array) -> void:
-	var objectives = load("res://scripts/campaign_objectives.gd")
-	for point in route:
-		var action: String = objectives.at(point)
-		tasks.append([point,action])
-		var supplies = {"loading_power":[Vector2(-28,145),"loading_ammo"],"pump_fault_b":[Vector2(-18,-180),"repair_ammo"],"exit_relay":[Vector2(62,-220),"service_ammo"]}
-		if supplies.has(action): tasks.append(supplies[action])
 
 func command(dt: float) -> Dictionary:
 	fire_clock += dt
@@ -141,7 +109,7 @@ func command(dt: float) -> Dictionary:
 		yaw = atan2(-aim.x,-aim.z)
 		pitch = atan2(aim.y,Vector2(aim.x,aim.z).length())
 		fire = true
-	if arrived and action.ends_with("_ammo") and distance >= 6:
+	if arrived and state.get("loot",[]).any(func(loot): return loot.station == action and not loot.taken) and distance >= 6:
 		for loot in state.get("loot",[]):
 			if loot.station == action and not loot.taken:
 				var aim: Vector2 = loot.pos-p.pos
@@ -152,7 +120,7 @@ func command(dt: float) -> Dictionary:
 	# its own three-second heal until the whole party goes down.
 	var nearest = 1000.0
 	for z in game.sim.zombies:
-		if z.hp > 0: nearest = minf(nearest,z.pos.distance_to(p.pos))
+		if z.hp > 0 and z.get("guard_awake",true): nearest = minf(nearest,z.pos.distance_to(p.pos))
 	var heal: bool = p.hp < 70 and p.medkits > 0 and nearest > 8.0
 	if arrived and action.begins_with("grenade:") and distance >= 6:
 		for item in Layout.ITEMS:
@@ -180,6 +148,10 @@ func command(dt: float) -> Dictionary:
 				direction = candidate
 				interact = false
 				break
-	if game.sim.map_id == "graypine_night" and distance < 2.2 and not heal:
-		return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":0.0,"slot":3,"fire":fmod(fire_clock,.3) < .15,"interact":false}
-	return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":pitch,"weapon":6 if p.reserve == 0 and p.ammo[p.primary] == 0 else p.primary,"fire":heal or (fire and not interact),"reload":p.ammo[p.weapon] < 5,"interact":interact,"slot":5 if heal or not p.get("healing","").is_empty() else 1 if p.reserve > 0 or p.ammo[p.primary] > 0 else 2 if p.reserves[p.secondary] > 0 or p.ammo[p.secondary] > 0 else 3,"jump":game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.state == "charging" and z.pos.distance_to(p.pos) < 8)}
+	var shove: bool = not heal and p.get("shove_cd",0.0) <= 0 and p.get("shove_gap",0.0) <= 0 and game.sim.zombies.any(func(z): return z.hp > 0 and z.attack_time >= .25 and z.pos.distance_to(p.pos) < 2.0 and Vector2(-sin(yaw),-cos(yaw)).dot((z.pos-p.pos).normalized()) > .6)
+	# Finish the active axe strike instead of repeatedly cancelling its damage
+	# window with a shove. This policy reads the same weapon animation as a player.
+	if p.slot == 3 and p.fire_anim > float(Data.weapons[p.weapon].fireDuration)*.34: shove = false
+	if game.sim.map_id == "graypine_night" and distance < (3.8 if p.slot == 3 else 2.2) and not heal:
+		return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":0.0,"slot":3,"shove":shove,"fire":fmod(fire_clock,.3) < .15,"interact":false}
+	return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":pitch,"shove":shove,"weapon":6 if p.reserve == 0 and p.ammo[p.primary] == 0 else p.primary,"fire":heal or (fire and not interact),"reload":p.ammo[p.weapon] < 5,"interact":interact,"slot":5 if heal or not p.get("healing","").is_empty() else 1 if p.reserve > 0 or p.ammo[p.primary] > 0 else 2 if p.reserves[p.secondary] > 0 or p.ammo[p.secondary] > 0 else 3,"jump":game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.state == "charging" and z.pos.distance_to(p.pos) < 8)}

@@ -1,53 +1,74 @@
 extends Node3D
-## Eight instanced batches, one per enemy kind. Limb animation runs on the GPU.
-## Ray hits use the identical per-part poses below, independent of the rendering device.
-var batches: Dictionary = {}
+## Shared rigid-part skeletons use exactly the same transforms as authority ray hits.
+var meshes: Dictionary = {}
+var actors: Dictionary = {}
+var skin: Skin
+var material: StandardMaterial3D
 var kinds = ["normal","cone","bucket","imp","shield","berserker","giant","football"]
 
 func _ready() -> void:
+	skin = Skin.new()
+	for part in 6: skin.add_bind(part,Transform3D.IDENTITY)
+	material = StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.roughness = 1.0
+
+func mesh_for(kind: String, palette: int, rage: bool, armor: bool) -> ArrayMesh:
+	var key = kind+str(palette)+str(rage)+str(armor)
+	if meshes.has(key): return meshes[key]
 	var cube = BoxMesh.new().get_mesh_arrays()
-	for kind_index in kinds.size():
-		var kind: String = kinds[kind_index]
-		var surface = SurfaceTool.new()
-		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-		for part in Data.parts:
-			if part.has("kind") and part.kind != kind: continue
-			var pos = Data.v3(part.position)
-			var size = Data.v3(part.size)
-			var flag = 2 if part.get("shield",false) else 1 if part.get("armor",false) else 3 if part.get("shirt",false) else 0
-			for index in cube[Mesh.ARRAY_INDEX]:
-				surface.set_normal(cube[Mesh.ARRAY_NORMAL][index])
-				surface.set_color(Data.rgb(int(part.color)))
-				surface.set_uv(Vector2(pos.y,pos.z))
-				surface.set_uv2(Vector2(part.get("limb",0),flag))
-				surface.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*size+pos)
-		var material = ShaderMaterial.new()
-		material.shader = load("res://scripts/enemy_animation.gdshader")
-		material.set_shader_parameter("kind",kind_index)
-		var multi = MultiMesh.new()
-		multi.transform_format = MultiMesh.TRANSFORM_3D
-		multi.use_custom_data = true
-		multi.use_colors = true
-		multi.mesh = surface.commit()
-		multi.instance_count = 256
-		for i in 256: multi.set_instance_color(i,Color.WHITE)
-		multi.visible_instance_count = 0
-		var view = MultiMeshInstance3D.new()
-		view.multimesh = multi
-		view.material_override = material
-		view.custom_aabb = AABB(Vector3(-90,-5,-250),Vector3(180,35,500))
-		add_child(view)
-		batches[kind] = multi
+	var surface = SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for j in Data.parts.size():
+		var part: Dictionary = Data.parts[j]
+		if (part.has("kind") and part.kind != kind) or (part.get("armor",false) and not armor): continue
+		var color = Data.rgb(int(part.color))
+		if part.get("shirt",false):
+			color = [Color(.349,.392,.314),Color(.424,.345,.353),Color(.329,.408,.467),Color(.510,.443,.341)][palette]
+			color = {"imp":Color(.341,.251,.373),"shield":Color(.275,.365,.396),"berserker":Color(.714,.231,.173) if rage else Color(.494,.220,.184),"giant":Color(.443,.349,.263),"football":Color(.561,.157,.188)}.get(kind,color)
+		for index in cube[Mesh.ARRAY_INDEX]:
+			surface.set_normal(cube[Mesh.ARRAY_NORMAL][index])
+			surface.set_color(color)
+			surface.set_bones(PackedInt32Array([bone_for(part),0,0,0]))
+			surface.set_weights(PackedFloat32Array([1,0,0,0]))
+			surface.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*Data.v3(part.size)+Data.v3(part.position))
+	surface.index()
+	meshes[key] = surface.commit()
+	return meshes[key]
+
+func create_actor(z: Dictionary) -> Dictionary:
+	var body = Node3D.new()
+	add_child(body)
+	var skeleton = Skeleton3D.new()
+	skeleton.name = "Pose"
+	body.add_child(skeleton)
+	for j in 6:
+		skeleton.add_bone("part_"+str(j))
+		skeleton.set_bone_rest(j,Transform3D.IDENTITY)
+	var view = MeshInstance3D.new()
+	body.add_child(view)
+	view.skeleton = NodePath("../Pose")
+	view.skin = skin
+	view.material_override = material
+	view.custom_aabb = AABB(Vector3(-4,-3,-4),Vector3(8,9,8))
+	return {"body":body,"skeleton":skeleton,"view":view,"kind":z.kind}
 
 func clear() -> void:
-	for multi in batches.values(): multi.visible_instance_count = 0
+	for actor in actors.values(): retire_actor(actor)
+	actors.clear()
+
+func retire_actor(actor: Dictionary) -> void:
+	# Bone updates are deferred by Skeleton3D. Hide immediately, but release the
+	# hierarchy at the frame boundary after pending engine notifications finish.
+	actor.body.hide()
+	actor.body.queue_free()
 
 static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stride: float) -> Transform3D:
 	var basis = Basis(Vector3.UP,z.heading).scaled(Vector3.ONE*Data.enemy_scale(z.kind))
-	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","outpost"))
+	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_night"))
 	var transform = Transform3D(basis,Vector3(z.pos.x,ground+absf(stride)*.04,z.pos.y))
 	if z.hp > 0 and not z.get("guard_awake",true) and z.get("map_id","") == "graypine_night":
-		# Root pose is shared by GPU instances and CPU ray boxes: no invisible hitbox motion.
+		# Root pose is shared by skeleton rendering and CPU ray boxes: no invisible hitbox motion.
 		var breath = sin(elapsed*1.4+z.id*2.17)
 		transform.origin.y += breath*.018
 		transform.basis *= Basis(Vector3.RIGHT,.06+sin(elapsed*.65+z.id)*.045)
@@ -55,84 +76,77 @@ static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stri
 	if z.hp <= 0:
 		transform.basis *= Basis(Vector3.RIGHT,-clampf((.85-z.down)/.65,0,1)*PI/2)
 		transform.origin.y = ground-.15
+	if z.get("move_speed",0.0) > 3.5 and z.attack_time <= 0: transform.basis *= Basis(Vector3.RIGHT,.12)
+	if z.attack_time > 0:
+		var strike = sin(clampf(z.attack_time/Data.attack(z.kind,z.rage).x,0,1)*PI/2)
+		transform.basis *= Basis(Vector3.RIGHT,strike*.10)
 	if z.state == "windup": transform.basis *= Basis(Vector3.RIGHT,-.22)
 	if z.state == "charging": transform.basis *= Basis(Vector3.RIGHT,.28)
 	if z.state == "stunned": transform.basis *= Basis(Vector3.BACK,sin(elapsed*16)*.08)
 	return transform
 
-static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array:
-	var result: Array = []
-	var alive: bool = z.hp > 0
-	var moving: bool = not stationary and alive and z.get("guard_awake",true) and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
-	var pace: float = 1.6 if z.kind == "imp" else 1.35 if z.kind == "football" else 1.7 if z.rage else .75 if z.kind == "giant" else 1.0
-	var stride = sin((elapsed-z.born)*5*pace+z.id*2) if moving else 0.0
-	var idle: bool = alive and not z.get("guard_awake",true) and z.get("map_id","") == "graypine_night"
+static func bone_for(part: Dictionary) -> int:
+	if part.get("shield",false): return 5
+	var limb: float = part.get("limb",0.0)
+	if absf(limb) >= 1: return 1 if limb > 0 else 2
+	if limb != 0: return 3 if limb > 0 else 4
+	return 0
+
+static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
+	var moving: bool = not stationary and z.get("move_speed",0.0) > .05 and z.hp > 0 and z.get("guard_awake",true) and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
+	var stride = sin(z.get("gait",(elapsed-z.born)*5+z.id*2)) if moving else 0.0
+	var idle: bool = z.hp > 0 and not z.get("guard_awake",true) and z.get("map_id","") == "graypine_night"
 	if idle: stride = sin(elapsed*1.4+z.id*2.17)*.08
-	var profile = Data.attack(z.kind,z.rage)
-	var lunge = 0.0
-	if z.attack_time > 0:
-		lunge = z.attack_time / profile.x if z.attack_time <= profile.x else maxf(0,1-(z.attack_time-profile.x)/.35)
-	var root = root_transform(z,elapsed,stationary,stride)
+	var running: bool = moving and z.get("move_speed",0.0) > 3.5
+	var bones: Array[Transform3D] = [Transform3D.IDENTITY]
+	for side in [1.0,-1.0]:
+		var pivot = Vector3(-side*.19,.83,0.0)
+		var rotation = Basis(Vector3.RIGHT,stride*side*(.75 if running else .35))
+		bones.append(Transform3D(rotation,pivot-rotation*pivot))
+	for side in [1.0,-1.0]:
+		var angle = .85-stride*side*.6 if running else .65-stride*side*.2
+		if idle: angle = 1.15+stride
+		if z.attack_time > 0:
+			var hit_at: float = Data.attack(z.kind,z.rage).x
+			var progress: float = z.attack_time/hit_at
+			if progress <= .6: angle = lerpf(.65,-.75,smoothstep(0.0,.6,progress))
+			elif progress <= 1: angle = lerpf(-.75,.35,smoothstep(.6,1.0,progress))
+			else: angle = lerpf(.35,.65,clampf((z.attack_time-hit_at)/.35,0,1))
+		var pivot = Vector3(-side*.43,1.35,-.045)
+		var rotation = Basis(Vector3.RIGHT,angle)
+		bones.append(Transform3D(rotation,pivot-rotation*pivot))
+	bones.append(Transform3D(Basis.IDENTITY,Vector3(0,-.85,-.18)) if z.attack_time > 0 and z.attack_time < .45 else Transform3D.IDENTITY)
+	return {"root":root_transform(z,elapsed,stationary,stride),"bones":bones}
+
+static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array:
+	var state = pose_state(z,elapsed,stationary)
+	var result: Array = []
 	for part in Data.parts:
 		if (part.has("kind") and part.kind != z.kind) or (part.get("armor",false) and z.armor <= 0):
-			result.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*.00001), Vector3(0,-100,0)))
-			continue
-		var pos = Data.v3(part.position)
-		var limb: float = part.get("limb",0)
-		var rotation = 0.0
-		if absf(limb) >= 1:
-			pos.z += stride*limb*.2
-			pos.y += maxf(0,stride*signf(limb))*.075
-			rotation = stride*limb*.27
-		elif limb != 0:
-			pos.z += -stride*signf(limb)*.07+lunge*.28
-			pos.y += sin(lunge*PI)*.16
-			rotation = -stride*signf(limb)*.16
-		if part.get("shield",false) and z.attack_time > 0 and z.attack_time < .45:
-			pos.y -= .85
-			pos.z -= .18
-		if idle and absf(limb) > 0 and absf(limb) < 1:
-			var pivot = Vector3(pos.x,1.35,0)
-			var droop = 1.15+stride
-			pos = pivot+Basis(Vector3.RIGHT,droop)*(pos-pivot)
-			rotation += droop
-		result.append(root * Transform3D(Basis(Vector3.RIGHT,rotation).scaled(Data.v3(part.size)),pos))
+			result.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*.00001),Vector3(0,-100,0)))
+		else:
+			result.append(state.root * state.bones[bone_for(part)] * Transform3D(Basis.IDENTITY.scaled(Data.v3(part.size)),Data.v3(part.position)))
 	return result
 
 func sync(zombies: Array, elapsed: float, stationary: bool) -> void:
-	var required: Dictionary = {}
-	for z in zombies: required[z.kind] = required.get(z.kind,0)+1
-	for kind in required:
-		if required[kind] > batches[kind].instance_count:
-			batches[kind].instance_count = nearest_po2(required[kind])
-			for i in batches[kind].instance_count: batches[kind].set_instance_color(i,Color.WHITE)
-	var counts: Dictionary = {}
-	for kind in kinds: counts[kind] = 0
-	for z in zombies: counts[z.kind] += 1
-	for kind in kinds:
-		var multi: MultiMesh = batches[kind]
-		if counts[kind] > multi.instance_count:
-			multi.instance_count = maxi(counts[kind],multi.instance_count*2)
-			for i in multi.instance_count: multi.set_instance_color(i,Color.WHITE)
-		counts[kind] = 0
+	var present: Dictionary = {}
 	for z in zombies:
-		var index: int = counts[z.kind]
-		counts[z.kind] += 1
-		var alive: bool = z.hp > 0
-		var moving: bool = not stationary and alive and z.get("guard_awake",true) and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
-		var pace = 1.6 if z.kind == "imp" else 1.35 if z.kind == "football" else 1.7 if z.rage else .75 if z.kind == "giant" else 1.0
-		var stride = sin((elapsed-z.born)*5*pace+z.id*2) if moving else 0.0
-		var idle: bool = alive and not z.get("guard_awake",true) and z.get("map_id","") == "graypine_night"
-		if idle: stride = sin(elapsed*1.4+z.id*2.17)*.08
-		var profile = Data.attack(z.kind,z.rage)
-		var lunge = 0.0
-		if z.attack_time > 0: lunge = z.attack_time/profile.x if z.attack_time <= profile.x else maxf(0,1-(z.attack_time-profile.x)/.35)
-		var transform = root_transform(z,elapsed,stationary,stride)
-		var flags = int(z.id)%4+(4 if z.rage else 0)+(8 if z.attack_time > 0 and z.attack_time < .45 else 0)
-		if idle: flags += 16
-		batches[z.kind].set_instance_transform(index,transform)
-		batches[z.kind].set_instance_custom_data(index,Color(stride,lunge,1 if z.armor > 0 else 0,flags))
-	for kind in kinds: batches[kind].visible_instance_count = counts[kind]
+		present[z.id] = true
+		if not actors.has(z.id): actors[z.id] = create_actor(z)
+		var actor: Dictionary = actors[z.id]
+		actor.kind = z.kind
+		var state = pose_state(z,elapsed,stationary)
+		actor.body.transform = state.root
+		actor.view.mesh = mesh_for(z.kind,int(z.id)%4,z.rage,z.armor > 0)
+		for j in range(1,6): actor.skeleton.set_bone_pose(j,state.bones[j])
+		actor.skeleton.force_update_all_bone_transforms()
+	for id in actors.keys():
+		if not present.has(id):
+			retire_actor(actors[id])
+			actors.erase(id)
+
+func visible_count(kind: String) -> int:
+	return actors.values().filter(func(actor): return actor.kind == kind and actor.body.is_visible_in_tree()).size()
 
 static func ray_box(origin: Vector3, direction: Vector3, transform: Transform3D, max_distance: float) -> float:
 	var inverse = transform.affine_inverse()
@@ -153,7 +167,7 @@ static func ray_box(origin: Vector3, direction: Vector3, transform: Transform3D,
 
 static func hit(z: Dictionary, origin: Vector3, direction: Vector3, distance: float, elapsed: float, stationary: bool) -> Dictionary:
 	var scale = Data.enemy_scale(z.kind)
-	var broad = Transform3D(Basis.IDENTITY.scaled(Vector3(3*scale,3.2*scale,3*scale)),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,z.get("map_id","outpost"))+1.4*scale,z.pos.y))
+	var broad = Transform3D(Basis.IDENTITY.scaled(Vector3(3*scale,3.2*scale,3*scale)),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,z.get("map_id","graypine_night"))+1.4*scale,z.pos.y))
 	if ray_box(origin,direction,broad,distance) == INF: return {}
 	var poses = transforms(z,elapsed,stationary)
 	var nearest = distance

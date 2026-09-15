@@ -5,7 +5,7 @@
 ## 每次修改
 
 1. AI 根据需求修改代码，补充相关规则或浏览器回归场景。
-2. 运行 `npm run verify`：准备固定引擎和 Web 模板、导入、规则检查、双人和四人 ENet、导出 Web、无界面 Chromium 真实输入试玩。
+2. 运行 `npm run verify`：准备固定引擎和 Web 模板、导入、规则检查、夜路双人 ENet、导出 Web、无界面 Chromium 真实输入试玩。
 3. 查看 `artifacts/acceptance.md` 与浏览器截图、日志、trace。任何失败都修复重跑；报告记录源码 SHA-256，修改源码后旧报告失效。
 4. 确认报告后运行 `node tools/automation.mjs --check-report`，只提交本次相关文件并推送。当前会话用户已授权提交推送；如后续明确要求人工确认，则在推送前等待确认。
 5. GitHub Actions 对 main 推送、PR、版本标签或手动触发重新验收，通过后导出 Windows、运行成品 EXE 的无窗口冒烟检查、打包 ZIP，上传构建产物。
@@ -33,7 +33,7 @@ npm run verify:release
 按显式文件清单提交的示例（先根据本次改动填写文件）：
 
 ```powershell
-./tools/submit.ps1 -Message 'fix: 修复换弹期间的武器切换' -Files scripts/simulation.gd,tools/validate-runtime.gd
+./tools/submit.ps1 -Message 'fix: 修复换弹期间的武器切换' -Files scripts/simulation.gd,tools/validate-native-components.gd
 ```
 
 ## 浏览器实际验证什么

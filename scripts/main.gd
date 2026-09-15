@@ -25,6 +25,7 @@ var requested_weapon = 0
 var jump_pending = false
 var reload_pending = false
 var aim_pending = false
+var shove_pending = false
 var fire_pending = false
 var fire_held = false
 var aim_held = false
@@ -198,11 +199,12 @@ func cycle_spectator() -> void:
 
 func input_state() -> Dictionary:
 	var enabled = running and not paused and focused and not finished
-	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"heal":enabled and Input.is_action_pressed("heal"),"crouch":enabled and Input.is_action_pressed("crouch"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held}
+	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"heal":enabled and Input.is_action_pressed("heal"),"crouch":enabled and Input.is_action_pressed("crouch"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held,"shove":enabled and shove_pending}
 	if sim and sim.mode == "campaign":
 		command.slot = requested_slot
 		command.use_self = enabled and fire_pending
-		command.use_other = enabled and aim_pending
+		command.use_other = enabled and shove_pending and requested_slot == 5
+	shove_pending = false
 	aim_pending = false
 	jump_pending = false
 	reload_pending = false
@@ -322,6 +324,10 @@ func handle_effects(events: Array) -> void:
 	for event in events:
 		if not event is Dictionary or not event.has("kind"): continue
 		match event.kind:
+			"shove":
+				sound.play_at("shove-hit" if event.get("hits",0) > 0 else "shove",event.position,-9)
+			"enemy_windup", "enemy_impact", "enemy_miss":
+				sound.play_at(event.kind.replace("_","-"),event.position,-12)
 			"explosion":
 				effects.explosion(event.position)
 				sound.play_at("grenade-explosion",event.position,-6)
@@ -453,6 +459,7 @@ func apply_graphics() -> void:
 	request_draw()
 
 func reset_mouse_buttons() -> void:
+	shove_pending = false
 	aim_pending = false
 	fire_pending = false
 	fire_held = false
@@ -461,7 +468,6 @@ func reset_mouse_buttons() -> void:
 func _input(event: InputEvent) -> void:
 	request_draw()
 	if event.is_action_released("fire"): fire_held = false
-	if event.is_action_released("aim"): aim_held = false
 	if not running or paused or finished or not focused: return
 	if event.is_action("fire") and not event.is_echo():
 		fire_held = event.is_action_pressed("fire")
@@ -470,8 +476,11 @@ func _input(event: InputEvent) -> void:
 			else: fire_pending = true
 		get_viewport().set_input_as_handled()
 	elif event.is_action("aim") and not event.is_echo():
-		aim_held = event.is_action_pressed("aim")
-		if aim_held: aim_pending = true
+		if event.is_action_pressed("aim"): aim_held = not aim_held
+		get_viewport().set_input_as_handled()
+
+	elif event.is_action_pressed("shove") and not event.is_echo():
+		shove_pending = true
 		get_viewport().set_input_as_handled()
 
 func _unhandled_input(event: InputEvent) -> void:

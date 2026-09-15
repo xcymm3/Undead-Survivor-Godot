@@ -26,7 +26,6 @@ for (const name of ['geometry', 'terrain', 'terrainView', 'world', 'config', 'we
     .replace(/from ['"]\.\/([^'"]+)['"]/g, (_, id) => `from './${id}.mjs'`);
   fs.writeFileSync(path.join(cache, name + '.mjs'), code);
 }
-const { createWorld } = await import(pathToFileURL(path.join(cache, 'world.mjs')));
 const { WEAPONS } = await import(pathToFileURL(path.join(cache, 'weapons.mjs')));
 // Godot gameplay adjustments must survive rebuilding assets from the original project.
 for (const weapon of WEAPONS) {
@@ -37,28 +36,6 @@ for (const weapon of WEAPONS) {
 const config = await import(pathToFileURL(path.join(cache, 'config.mjs')));
 const { prepareWeapon, prepareProceduralWeapon } = await import(pathToFileURL(path.join(cache, 'weapon.mjs')));
 const audio = await import(pathToFileURL(path.join(cache, 'soundSynthesis.mjs')));
-const scene = new THREE.Scene(); const world = createWorld(scene); scene.updateMatrixWorld(true);
-const meshes = [], signs = [], geometries = {}, materials = {};
-scene.traverse(node => {
-  if (node.userData.sign) signs.push({ ...node.userData.sign, matrix: node.matrixWorld.toArray() });
-  if (!(node instanceof THREE.Mesh)) return;
-  const geo = node.geometry;
-  if (!geometries[geo.uuid]) geometries[geo.uuid] = {
-    position: Array.from(geo.attributes.position.array), normal: Array.from(geo.attributes.normal.array),
-    index: geo.index ? Array.from(geo.index.array) : [],
-  };
-  const mat = node.material;
-  materials[mat.uuid] = { color: mat.color.toArray(), roughness: mat.roughness ?? 1, unshaded: mat.isMeshBasicMaterial === true, double: mat.side === THREE.DoubleSide };
-  const transforms = [], colors = [];
-  if (node.isInstancedMesh) {
-    for (let i = 0; i < node.count; i++) {
-      const m = new THREE.Matrix4(); node.getMatrixAt(i, m); transforms.push(node.matrixWorld.clone().multiply(m).toArray());
-      if (node.instanceColor) { const c = new THREE.Color(); node.getColorAt(i, c); colors.push(c.toArray()); }
-    }
-  } else transforms.push(node.matrixWorld.toArray());
-  meshes.push({ geometry: geo.uuid, material: mat.uuid, transforms, colors, shadow: node.castShadow, name: node.name });
-});
-fs.writeFileSync(path.join(root, 'assets/data/world.json'), JSON.stringify({ geometries, materials, meshes, signs, obstacles: world.obstacles }));
 const zombies = fs.readFileSync(path.join(source, 'src/game/zombies.ts'), 'utf8');
 const partCode = zombies.slice(zombies.indexOf('const PARTS: Part[] = ') + 'const PARTS: Part[] = '.length, zombies.indexOf('\nconst SHIRTS')).replace(/;\s*$/, '');
 const parts = Function('return ' + partCode)();
@@ -102,7 +79,6 @@ fs.writeFileSync(path.join(root, 'assets/data/provenance.json'), JSON.stringify(
   source: 'Undead-Survivor', version: req('./package.json').version,
   revision: execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
   source_game_sha256: hashes, weapons: WEAPONS.length, enemy_parts: parts.length,
-  world_geometries: Object.keys(geometries).length, world_batches: meshes.length,
 }, null, 2));
 function wav(name, samples, rate = 22050) {
   const b = Buffer.alloc(44 + samples.length * 2); b.write('RIFF'); b.writeUInt32LE(b.length - 8, 4); b.write('WAVEfmt ', 8);

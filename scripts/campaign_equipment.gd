@@ -146,7 +146,7 @@ func before_movement(dt: float) -> void:
 			p.fire_anim = 0.0
 			sim.melee_swings.erase(p.id)
 		var click: bool = input.get("use_self",false) or input.get("use_other",false)
-		var use: bool = input.get("fire",false) or input.get("aim",false)
+		var use: bool = input.get("fire",false)
 		if p.hp <= 0:
 			p.healing = ""
 			p.heal_time = 0.0
@@ -165,7 +165,7 @@ func before_movement(dt: float) -> void:
 					p.heal_time = 0.0
 		elif (click or use and not p.use_latch) and p.interaction == "":
 			if p.slot == 5 and p.medkits > 0:
-				p.healing = heal_target(p,input.get("use_other",false) or input.get("aim",false))
+				p.healing = heal_target(p,input.get("use_other",false))
 				p.heal_hurt = p.hurt_at
 				p.heal_time = 0.0
 				if not p.healing.is_empty(): sim.pawns[p.healing].being_healed = true
