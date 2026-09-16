@@ -226,16 +226,43 @@ func validate_close_combat() -> void:
 	p.shove_gap = 0.0
 	p.shove_cd = 0.0
 	p.shove_count = 0
-	sim.spawn(Vector2(0,68.65),"normal")
+	sim.spawn(Vector2(0,67.1),"normal")
 	sim.spawn(Vector2(0,71.35),"normal")
 	var front: Dictionary = sim.zombies[0]
 	var rear: Dictionary = sim.zombies[1]
+	# Magazine, revolver and shell reloads continue through right-click shove.
+	for gun in [0,3,4]:
+		p.weapon = gun
+		p.primary = gun
+		p.requested = gun
+		p.ammo[gun] = 0
+		p.reserves[gun] = 10
+		p.reloading = true
+		p.reload = .2
+		p.shove_gap = 0.0
+		p.shove_cd = 0.0
+		p.shove_count = 0
+		check(sim.try_shove(p) and p.reloading and p.reload == .2,"Shove preserves active reload gun "+str(gun))
+		sim.update_arsenal(p,{"weapon":gun},.1)
+		check(p.reloading and is_equal_approx(p.reload,.1),"Reload clock advances during shove gun "+str(gun))
+		sim.update_arsenal(p,{"weapon":gun},.11)
+		check(p.ammo[gun] > 0 and p.ammo[gun]+p.reserves[gun] == 10,"Reload transfers rounds exactly once gun "+str(gun))
+	p.primary = saved.primary
+	p.weapon = p.primary
+	p.requested = p.primary
+	p.reloading = false
+	p.shove_gap = 0.0
+	p.shove_cd = 0.0
+	p.shove_count = 0
 	front.attack_time = .2
 	check(sim.try_shove(p),"First shove is accepted")
 	check(front.state == "stunned" and front.attack_time == 0 and rear.state == "ready","Frontal shove interrupts windup without hitting enemies behind")
+	check(is_equal_approx(front.state_time,2.4),"Ordinary shove stuns for 2.4 seconds")
+	sim.hit_enemy(front,1.0,false,p,Vector3(front.pos.x,1,front.pos.y))
+	check(is_equal_approx(front.state_time,2.4),"A subsequent bullet flinch does not shorten shove control")
 	var old = front.pos
-	sim.update_zombie(front,p,.18)
-	check(front.pos.distance_to(old) > 1 and game.arena.clear(old,front.pos),"Shove displacement is clipped through real terrain")
+	sim.update_zombie(front,p,.26)
+	check(front.pos.distance_to(old) > 2.7 and game.arena.clear(old,front.pos),"Shove displacement is clipped through real terrain")
 	check(not sim.try_shove(p),"Shove rejects immediate repeated input")
 	for i in 2:
 		p.shove_gap = 0.0
@@ -304,7 +331,26 @@ func validate_close_combat() -> void:
 	p.pos = Vector2(0,70)
 	sim.update_zombie(attacker,p,.51)
 	check(p.hp == 90 and sim.events.any(func(e): return e.kind == "enemy_impact"),"In-range strike deals damage with an impact cue")
-	for cue in ["enemy-windup","enemy-impact","enemy-miss","shove","shove-hit"]:
+	p.protection = 0.0
+	attacker.pos = p.pos+Vector2(0,1)
+	sim.damage_pawn(p,attacker)
+	check(p.damage_rear and p.damage_hint == 1.8 and p.damage_dir.y > .9,"Rear damage records direction and warning on authority")
+	check(p.protection == .65 and not sim.damage_pawn(p,attacker),"Rear warning includes a reaction window against overlapping hits")
+	p.protection = 0.0
+	attacker.pos = p.pos-Vector2(0,1)
+	sim.damage_pawn(p,attacker)
+	check(not p.damage_rear,"Frontal hit does not falsely report a rear attack")
+	attacker.move_speed = 4.8
+	game.sound.clear_effects()
+	var old_voice: int = game.sound.spatial_index
+	game.sound.sync_enemy_steps([attacker],Vector3(p.pos.x,1,p.pos.y),.1)
+	check(game.sound.spatial_index == old_voice+1,"Moving nearby zombie routes a spatial footstep")
+	game.sound.sync_enemy_steps([attacker],Vector3(p.pos.x,1,p.pos.y),.01)
+	check(game.sound.spatial_index == old_voice+1,"Footstep cadence prevents frame-rate spam")
+	attacker.move_speed = 0.0
+	game.sound.sync_enemy_steps([attacker],Vector3(p.pos.x,1,p.pos.y),1.0)
+	check(game.sound.spatial_index == old_voice+1,"Stationary zombie does not produce walking sounds")
+	for cue in ["enemy-step-0","enemy-step-1","rear-warning","enemy-windup","enemy-impact","enemy-miss","shove","shove-hit"]:
 		check(game.sound.streams.has(cue) and game.sound.streams[cue].get_length() > .15,"Close-combat sound resource exists: "+cue)
 	var middle = InputEventMouseButton.new()
 	middle.button_index = MOUSE_BUTTON_MIDDLE
@@ -346,6 +392,10 @@ func validate_equipment() -> void:
 		var director = sim.campaign
 		var equipment = director.equipment
 		var p: Dictionary = game.local_pawn()
+		game.arena.sync_campaign(director.state)
+		for model in game.arena.scenery.loot_views.values():
+			var bounds: AABB = game.arena.scenery.posed_bounds(model)
+			check(bounds.size.x > .5 and bounds.size.x < 1.12 and bounds.position.y > 1.0,"Wall gun has readable displayed size and is above the supply table")
 		for item in layout.ITEMS:
 			if item.kind != "ammo": continue
 			var guns: Array = director.state.loot.filter(func(g): return g.station == item.id)
@@ -357,6 +407,15 @@ func validate_equipment() -> void:
 		check(equipment.pickup(p,"grenade:night_start") and p.grenades == 1,"Night grenade pickup fills one slot")
 		var remaining: int = director.state.grenade_stations.night_start.remaining
 		check(not equipment.pickup(p,"grenade:night_start") and director.state.grenade_stations.night_start.remaining == remaining,"Full grenade slot cannot consume a second item")
+		if party == 2:
+			var lower: Dictionary = director.state.loot[0]
+			var upper: Dictionary = director.state.loot[2]
+			p.pos = lower.pos+Vector2(0,1.8)
+			p.yaw = 0.0
+			p.grenades = 1
+			for target in [upper,lower]:
+				p.pitch = atan2(target.mount_height-p.height-preload("res://scripts/player_body.gd").eye_height(p),1.8)
+				check(equipment.pickup_target(p).get("id","") == target.id,"Pitch independently selects upper and lower wall guns")
 		var gun: Dictionary = director.state.loot[0]
 		p.pos = gun.pos
 		check(equipment.pickup(p,gun.id) and gun.taken,"Night gun can be replaced through the authority pickup")
@@ -399,8 +458,14 @@ func validate_equipment() -> void:
 		sim.zombies.clear()
 		sim.spawn(Vector2(0,68.7),"normal")
 		equipment.throw_grenade(p)
-		check(p.grenades == 0 and director.state.projectiles[0].fuse == 3.0,"Thrown grenade empties slot and has a three-second fuse")
+		check(p.grenades == 0 and director.state.projectiles[0].fuse == 1.5,"Thrown grenade empties slot and has a 1.5-second fuse")
+		sim.spawn(Vector2(0,59.5),"normal")
 		equipment.explode({"owner":p.id,"pos":Vector3(0,1,69)})
+		check(sim.zombies[1].hp > 0,"Closed safe-room door blocks the expanded blast")
+		director.state.departed = true
+		game.arena.sync_campaign(director.state)
+		equipment.explode({"owner":p.id,"pos":Vector3(0,1,69)})
+		check(sim.zombies[1].hp <= 0,"Expanded blast reaches an unobstructed enemy 9.5 metres away")
 		check(sim.zombies[0].hp <= 0 and p.hp == old_hp,"Close grenade kills ordinary infected without self damage")
 		if party == 2: check(sim.pawns.equipment_peer.hp == 90,"Grenade does not damage teammate")
 	game.return_home()

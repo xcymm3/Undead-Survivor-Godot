@@ -94,8 +94,10 @@ func command(dt: float) -> Dictionary:
 	var fire = false
 	var distance = 14.0 if game.sim.map_id == "graypine_night" else 32.0
 	var enemy_point = Vector2.INF
+	var close_threat = game.sim.zombies.any(func(z): return z.hp > 0 and z.get("guard_awake",true) and z.state != "stunned" and z.pos.distance_to(p.pos) < 4)
 	for z in game.sim.zombies:
 		if z.hp <= 0 or z.pos.distance_to(p.pos) >= distance: continue
+		if close_threat and z.state == "stunned": continue
 		if game.sim.map_id == "graypine_night" and not z.get("guard_awake",true) and z.pos.distance_to(p.pos) > 7: continue
 		var poses: Array = load("res://scripts/enemy_view.gd").transforms(z,game.sim.elapsed,false)
 		var point: Vector3 = poses[0].origin
@@ -116,20 +118,23 @@ func command(dt: float) -> Dictionary:
 			if loot.station == action and not loot.taken:
 				var aim: Vector2 = loot.pos-p.pos
 				yaw = atan2(-aim.x,-aim.y)
-				pitch = -.45
+				pitch = atan2(loot.mount_height-p.height-preload("res://scripts/player_body.gd").eye_height(p),aim.length())
 				break
 	# A threatened bot must keep fighting instead of repeatedly interrupting
 	# its own three-second heal until the whole party goes down.
 	var nearest = 1000.0
+	var active_nearest = 1000.0
 	for z in game.sim.zombies:
-		if z.hp > 0 and z.get("guard_awake",true): nearest = minf(nearest,z.pos.distance_to(p.pos))
+		if z.hp > 0 and z.get("guard_awake",true):
+			nearest = minf(nearest,z.pos.distance_to(p.pos))
+			if z.state != "stunned": active_nearest = minf(active_nearest,z.pos.distance_to(p.pos))
 	var heal: bool = p.hp < 70 and p.medkits > 0 and nearest > 8.0
 	if arrived and action.begins_with("grenade:") and distance >= 6:
 		for item in Layout.ITEMS:
 			if item.id == action.trim_prefix("grenade:"):
 				var aim: Vector2 = item.pos+Vector2(-1,0)-p.pos
 				yaw = atan2(-aim.x,-aim.y)
-				pitch = -.45
+				pitch = atan2(.65-p.height-preload("res://scripts/player_body.gd").eye_height(p),aim.length())
 	if p.grenades > 0 and grenade_cooldown <= 0 and not heal and distance >= 2 and distance <= 14:
 		var clustered = game.sim.zombies.filter(func(z): return z.hp > 0 and z.pos.distance_to(enemy_point) < 4).size()
 		var heavy = game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.pos.distance_to(p.pos) < 12)
@@ -142,15 +147,18 @@ func command(dt: float) -> Dictionary:
 			return {"x":0.0,"y":0.0,"yaw":atan2(-aim.x,-aim.y),"pitch":-1.0 if distance < 6 else -.45,"slot":4,"fire":true,"use_self":true}
 	if not Data.weapons[p.weapon].automatic: fire = fire and fmod(fire_clock,.2) < .1
 	var direction = delta.normalized() if delta.length() > .25 else Vector2.ZERO
-	if distance < 6: interact = false
-	if nearest < 3.5 and enemy_point.is_finite():
+	# Once unlocked, enter and close the shelter instead of clearing the outdoor horde.
+	if action == "finish" and game.sim.zombies.any(func(z): return z.hp > 0 and (Layout.EXIT_ROOM.has_point(z.pos) or Layout.EXIT_DOOR.grow(.4).has_point(z.pos))): interact = false
+	if distance < 6 and action != "finish": interact = false
+	if active_nearest < 3.5 and enemy_point.is_finite() and not (action == "finish" and state.exit_control):
 		var away = (p.pos-enemy_point).normalized()
 		for candidate in [away,away.rotated(PI/2),away.rotated(-PI/2)]:
 			if game.arena.endpoint_link(p.pos,p.pos+candidate*2) and game.sim.can_move(p,p.pos+candidate*.3):
 				direction = candidate
 				interact = false
 				break
-	var shove: bool = not heal and p.get("shove_cd",0.0) <= 0 and p.get("shove_gap",0.0) <= 0 and game.sim.zombies.any(func(z): return z.hp > 0 and z.attack_time >= .25 and z.pos.distance_to(p.pos) < 2.0 and Vector2(-sin(yaw),-cos(yaw)).dot((z.pos-p.pos).normalized()) > .6)
+	var crowd = game.sim.zombies.filter(func(z): return z.hp > 0 and z.state != "stunned" and z.pos.distance_to(p.pos) < 3.0).size()
+	var shove: bool = not heal and p.get("shove_cd",0.0) <= 0 and p.get("shove_gap",0.0) <= 0 and game.sim.zombies.any(func(z): return z.hp > 0 and z.state != "stunned" and z.pos.distance_to(p.pos) < 3.0 and (z.attack_time > 0 or p.reloading or (crowd >= 3 and nearest < 2.8)) and Vector2(-sin(yaw),-cos(yaw)).dot((z.pos-p.pos).normalized()) > .6)
 	# Finish the active axe strike instead of repeatedly cancelling its damage
 	# window with a shove. This policy reads the same weapon animation as a player.
 	if p.slot == 3 and p.fire_anim > float(Data.weapons[p.weapon].fireDuration)*.34: shove = false

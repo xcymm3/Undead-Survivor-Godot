@@ -243,6 +243,7 @@ func _process(dt: float) -> void:
 	if not sim: return
 	var displayed: Dictionary = display_buffer.sample(dt) if Session.playing and not Session.is_host() else {}
 	var visible_zombies: Array = displayed.get("zombies",sim.zombies)
+	sound.sync_enemy_steps(visible_zombies,camera.position,dt)
 	var visible_pawns: Dictionary = displayed.get("pawns",sim.pawns)
 	var visual_time: float = displayed.get("elapsed",sim.elapsed)
 	var p = view_pawn()
@@ -325,7 +326,10 @@ func handle_effects(events: Array) -> void:
 		if not event is Dictionary or not event.has("kind"): continue
 		match event.kind:
 			"shove":
-				sound.play_at("shove-hit" if event.get("hits",0) > 0 else "shove",event.position,-9)
+				if event.player == Session.local_id:
+					sound.play("shove",-3)
+					if event.get("hits",0) > 0: sound.play("shove-hit",-3)
+				else: sound.play_at("shove-hit" if event.get("hits",0) > 0 else "shove",event.position,-5)
 			"enemy_windup", "enemy_impact", "enemy_miss":
 				sound.play_at(event.kind.replace("_","-"),event.position,-12)
 			"explosion":
@@ -361,7 +365,7 @@ func handle_effects(events: Array) -> void:
 			"hurt":
 				if event.player == Session.local_id:
 					ui.hurt_flash = .45
-					sound.play("hurt")
+					sound.play("rear-warning" if event.get("rear",false) else "hurt")
 			"reload":
 				if event.player == Session.local_id: sound.play("reload",-15)
 

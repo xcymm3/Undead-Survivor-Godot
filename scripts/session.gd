@@ -8,7 +8,7 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-7"
+const PROTOCOL = "undead-survivor-godot-8"
 const PORT = 27777
 var map_id = "graypine_night"
 var transport = ""
@@ -427,7 +427,7 @@ func valid_world(value) -> bool:
 	for id in value.pawns:
 		var p = value.pawns[id]
 		if not members.has(id) or not p is Dictionary or not p.has_all(["pos","hp","height","yaw","pitch","weapon","ammo","appearance","fire_anim","switch","reload","reloading","aim","hits","shots","kills","protection","requested","id","name"]): return false
-		for field in ["shove_cd","shove_gap","shove_anim","shove_window"]:
+		for field in ["shove_cd","shove_gap","shove_anim","shove_window","damage_hint"]:
 			if not (p.get(field) is float or p.get(field) is int) or not is_finite(p[field]) or p[field] < 0 or p[field] > 3.5: return false
 		if not p.get("shove_count") is int or p.shove_count < 0 or p.shove_count > 2: return false
 		if value.mode == "campaign":
@@ -447,6 +447,7 @@ func valid_world(value) -> bool:
 			if not p.hint is String or p.hint.length() > 160: return false
 		if not p.get("crouch",0.0) is float and not p.get("crouch",0.0) is int: return false
 		if not is_finite(p.get("crouch",0.0)) or p.get("crouch",0.0) < 0 or p.get("crouch",0.0) > 1: return false
+		if not p.get("damage_dir") is Vector2 or not p.damage_dir.is_finite() or p.damage_dir.length() > 1.01 or not p.get("damage_rear") is bool: return false
 		if not p.pos is Vector2 or not p.pos.is_finite() or not p.ammo is Array or p.ammo.size() != 10 or not p.appearance is Array or p.appearance.size() != 3: return false
 		if not p.appearance[0] is int or int(p.appearance[0]) < 0 or int(p.appearance[0]) >= Data.MODELS.size(): return false
 		for key in ["hp","height","yaw","pitch","weapon","fire_anim","switch","reload","hits","shots","kills","protection","requested"]:
@@ -588,6 +589,7 @@ func valid_campaign_equipment(state: Dictionary) -> bool:
 		if not item is Dictionary or not item.has_all(["id","station","pos","weapon","tier","taken"]): return false
 		if not item.id is String or item.id.length() > 80 or ids.has(item.id) or not item.station is String: return false
 		ids[item.id] = true
+		if not (item.get("mount_height") is float or item.get("mount_height") is int) or not is_finite(item.mount_height) or item.mount_height < 1 or item.mount_height > 3.1: return false
 		if not item.pos is Vector2 or not item.pos.is_finite() or not item.taken is bool: return false
 		if not item.weapon is int or item.weapon not in [0,1,3,4,5,7,8,9]: return false
 		if item.tier not in ["A","B"] or Data.weapons[item.weapon].tier != item.tier: return false
@@ -602,5 +604,5 @@ func valid_campaign_equipment(state: Dictionary) -> bool:
 		if not grenade.id is int or ids.has(grenade.id) or not grenade.owner is String: return false
 		ids[grenade.id] = true
 		if not grenade.pos is Vector3 or not grenade.pos.is_finite() or not grenade.velocity is Vector3 or not grenade.velocity.is_finite(): return false
-		if not grenade.fuse is float or not is_finite(grenade.fuse) or grenade.fuse < 0 or grenade.fuse > 3: return false
+		if not grenade.fuse is float or not is_finite(grenade.fuse) or grenade.fuse < 0 or grenade.fuse > 1.5: return false
 	return true

@@ -8,10 +8,10 @@ var burst_left = 0
 var burst_next = 0.0
 var batch_cursor = 0
 
-func emit_noise(point: Vector3, kind: String) -> void:
+func emit_noise(point: Vector3, kind: String, shot_origin := Vector2.INF) -> void:
 	if not state.departed or state.complete: return
 	sound_serial += 1
-	sound_events.append({"id":sound_serial,"pos":Vector2(point.x,point.z),"kind":kind,"expires":sim.elapsed+1.0})
+	sound_events.append({"id":sound_serial,"pos":Vector2(point.x,point.z),"kind":kind,"shot_origin":shot_origin,"expires":sim.elapsed+1.0})
 
 func investigate_sounds() -> void:
 	for z in sim.zombies:
@@ -19,25 +19,34 @@ func investigate_sounds() -> void:
 		for noise in sound_events:
 			if noise.id <= z.get("heard_id",0): continue
 			z.heard_id = noise.id
-			var radius = 24.0 if noise.kind == "gunshot" else 12.0
+			var radius = 18.0 if noise.kind == "gunshot" else 8.0
 			var delta: Vector2 = noise.pos-z.pos
 			if delta.length() > radius: continue
 			var blocked = not sim.arena.surface_hit(Vector3(z.pos.x,1.2,z.pos.y),Vector3(noise.pos.x,1.2,noise.pos.y)).is_empty()
 			if blocked and delta.length() > radius*.45: continue
 			# Impacts can lie inside walls; investigate a reachable point on this side.
-			var goal: Vector2 = noise.pos
+			var goal: Vector2 = noise.get("shot_origin",Vector2.INF)
+			if not goal.is_finite(): goal = noise.pos
+			elif noise.kind == "gunshot":
+				z["heard_muzzle_until"] = sim.elapsed+1.2
+				z["heard_muzzle_pos"] = goal
+			elif z.get("heard_muzzle_until",0.0) <= sim.elapsed or z.get("heard_muzzle_pos",Vector2.INF).distance_to(goal) > 3:
+				# An impact gives incoming-fire bearing, not the shooter's exact
+				# position through unseen rooms. Move out to investigate that bearing.
+				goal = noise.pos+(goal-noise.pos).limit_length(8.0)
+			var duration = 12.0 # Fresh audible shots renew this; stale evidence must expire.
 			if z.get("investigate_until",0.0) > sim.elapsed and z.get("investigate_pos",Vector2.INF).distance_to(goal) < 3:
-				z.investigate_until = sim.elapsed+10.0
+				z.investigate_until = sim.elapsed+duration
 				continue
 			var found = false
-			for offset in [Vector2.ZERO,-delta.normalized()*1.5,-delta.normalized()*3.0]:
+			for offset in [Vector2.ZERO,(z.pos-goal).normalized()*1.5,(z.pos-goal).normalized()*3.0]:
 				var candidate: Vector2 = goal+offset
 				if sim.arena.clear(candidate,candidate) and not sim.arena.path_to(z.pos,candidate).is_empty():
 					z.investigate_pos = candidate
 					found = true
 					break
 			if found:
-				z.investigate_until = sim.elapsed+10.0
+				z.investigate_until = sim.elapsed+duration
 				z.search_until = 0.0
 				sim.paths.erase(z.id)
 	sound_events.clear()

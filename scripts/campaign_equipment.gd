@@ -4,8 +4,8 @@ var Layout:
 	get: return director.Layout
 const GUNS = [0,1,2,3,4,5,7,8,9]
 const HEAL_SECONDS = 3.0
-const GRENADE_FUSE = 3.0
-const GRENADE_RADIUS = 8.0
+const GRENADE_FUSE = 1.5
+const GRENADE_RADIUS = 11.0
 var director_ref: WeakRef
 var director:
 	get: return director_ref.get_ref()
@@ -50,18 +50,21 @@ func initialize() -> void:
 					var swap = pool[j]
 					pool[j] = pool[k]
 					pool[k] = swap
-			var pos: Vector2 = item.pos+Vector2((i%2)*.8-.4,(i/2)*.45-.65)
-			director.state.loot.append({"id":item.id+"_gun_"+str(i),"station":item.id,"pos":pos,"weapon":pool.pop_front(),"tier":tier,"taken":false})
+			var pos: Vector2 = item.pos+Vector2((i%2)*1.3-.65,-.62)
+			director.state.loot.append({"id":item.id+"_gun_"+str(i),"station":item.id,"pos":pos,"mount_height":1.35+floori(i/2.0)*.55,"weapon":pool.pop_front(),"tier":tier,"taken":false})
 		director.state.grenade_stations[item.id] = {"remaining":director.state.party,"claimed":[]}
 
 func pickup_target(p: Dictionary) -> Dictionary:
 	var best: Dictionary = {}
 	var score = -10.0
 	var forward = Vector2(-sin(p.yaw),-cos(p.yaw))
+	var sight = Vector3(forward.x*cos(p.pitch),sin(p.pitch),forward.y*cos(p.pitch))
+	var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 	for loot in director.state.loot:
 		if (loot.tier == "A" and not director.state.gate_open) or loot.taken or not director.near(p,loot.pos,2.5): continue
 		var delta: Vector2 = loot.pos-p.pos
-		var aim = forward.dot(delta.normalized())
+		var point = Vector3(loot.pos.x,loot.mount_height,loot.pos.y)
+		var aim = sight.dot((point-eye).normalized())
 		if delta.length() > .6 and aim < .35: continue
 		var value = aim-delta.length()*.05
 		if value > score:
@@ -72,8 +75,10 @@ func pickup_target(p: Dictionary) -> Dictionary:
 		var station: Dictionary = director.state.grenade_stations[item.id]
 		if station.remaining > 0 and p.grenades < 1:
 			var delta: Vector2 = item.pos+Vector2(-1,0)-p.pos
-			var value: float = forward.dot(delta.normalized())-delta.length()*.05
-			if value > score and (delta.length() <= .6 or forward.dot(delta.normalized()) > .35):
+			var point = Vector3(item.pos.x-1,.65,item.pos.y)
+			var aim = sight.dot((point-eye).normalized())
+			var value: float = aim-delta.length()*.05
+			if value > score and (delta.length() <= .6 or aim > .35):
 				score = value
 				best = {"id":"grenade:"+item.id,"label":"领取手雷","seconds":.25}
 	return best

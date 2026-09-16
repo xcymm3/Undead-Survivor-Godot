@@ -39,8 +39,9 @@ func block(title: String, pos: Vector3, size: Vector3, color: String, solid := t
 	return item
 
 func sign_at(text: String, pos: Vector3, width := 4.0) -> Label3D:
-	block("Sign",pos,Vector3(width,.55*text.split("\n").size()+.15,.18),"273e36",false)
+	var backing = block("Sign",pos,Vector3(width,.55*text.split("\n").size()+.15,.18),"273e36",false)
 	var label = Label3D.new()
+	label.set_meta("backing",backing)
 	label.text = text
 	label.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
 	label.font_size = 64
@@ -81,16 +82,12 @@ func sync(state: Dictionary) -> void:
 		if not loot_views.has(loot.id):
 			var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[loot.weapon].id)
 			add_child(model)
-			model.position = Vector3(loot.pos.x,0,loot.pos.y+.4)
-			model.scale = Vector3.ONE*.7
-			model.rotation.z = PI/2
-			# Models have different authored pivots. Rest the lowest vertex on the
-			# 0.7 m night supply tabletop instead of burying small guns inside it.
-			var bottom = INF
-			for mesh in model.find_children("*","MeshInstance3D",true,false):
-				var bounds: AABB = mesh.global_transform*mesh.get_aabb()
-				bottom = minf(bottom,bounds.position.y)
-			model.position.y = .72-bottom if is_finite(bottom) else .8
+			# Wall-mounted side profile; normalize authored model pivots and sizes.
+			model.rotation.y = PI/2
+			var bounds = posed_bounds(model)
+			var factor = minf(1.1/maxf(bounds.size.x,.01),.42/maxf(bounds.size.y,.01))
+			model.scale *= factor
+			model.position = Vector3(loot.pos.x,loot.get("mount_height",1.5),loot.pos.y)-bounds.get_center()*factor
 			loot_views[loot.id] = model
 		loot_views[loot.id].visible = not loot.taken
 	for item in Layout.ITEMS:
@@ -128,6 +125,40 @@ func sync(state: Dictionary) -> void:
 		else:
 			if item.kind == "med": supply_labels[item.id].text = "医疗 +"
 			else:
+				supply_labels[item.id].position.y = 2.2+maxi(0,int(state.get("party",1))-1)*.55
+				supply_labels[item.id].get_meta("backing").position.y = supply_labels[item.id].position.y
 				var left = state.get("loot",[]).filter(func(loot): return loot.station == item.id and not loot.taken).size()
 				var grenades: int = state.get("grenade_stations",{}).get(item.id,{}).get("remaining",0)
-				supply_labels[item.id].text = "%s级枪械 %d / 手雷 %d" % [item.tier,left,grenades]
+				supply_labels[item.id].text = "E 换枪 · %s级 %d / 手雷 %d" % [item.tier,left,grenades]
+
+static func posed_bounds(model: Node3D) -> AABB:
+	# Imported skins use a vertical bind pose but a horizontal displayed pose.
+	# Fit the displayed vertices, not the unskinned import bounding box.
+	var result = AABB()
+	var first = true
+	for mesh in model.find_children("*","MeshInstance3D",true,false):
+		var skeleton = mesh.get_node_or_null(mesh.skeleton) as Skeleton3D
+		var transforms: Array[Transform3D] = []
+		if mesh.skin and skeleton:
+			for i in mesh.skin.get_bind_count():
+				var bone: int = mesh.skin.get_bind_bone(i)
+				if bone < 0: bone = skeleton.find_bone(mesh.skin.get_bind_name(i))
+				transforms.append(skeleton.global_transform*skeleton.get_bone_global_pose(bone)*mesh.skin.get_bind_pose(i) if bone >= 0 else mesh.global_transform)
+		for surface in mesh.mesh.get_surface_count():
+			var arrays: Array = mesh.mesh.surface_get_arrays(surface)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var bones = arrays[Mesh.ARRAY_BONES]
+			var weights = arrays[Mesh.ARRAY_WEIGHTS]
+			for i in vertices.size():
+				var point: Vector3 = mesh.global_transform*vertices[i]
+				if not transforms.is_empty() and bones != null and weights != null and weights.size() > 0:
+					point = Vector3.ZERO
+					var count: int = weights.size()/vertices.size()
+					for j in count:
+						var bind: int = bones[i*count+j]
+						if weights[i*count+j] > 0 and bind < transforms.size(): point += (transforms[bind]*vertices[i])*weights[i*count+j]
+				# Reload-only cartridges are parked far below the imported gun.
+				if point.distance_squared_to(model.global_position) > 16: continue
+				result = AABB(point,Vector3.ZERO) if first else result.expand(point)
+				first = false
+	return result

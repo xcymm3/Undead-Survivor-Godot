@@ -87,7 +87,13 @@ func _ready() -> void:
 			block("Understory",Vector3(p.x+.5,.6,p.y+.5),Vector3(2.1,1.2,1.8),"223c31")
 	for item in Layout.ITEMS:
 		supplies[item.id] = block("Supplies",Vector3(item.pos.x,.35,item.pos.y),Vector3(1.6,.7,1.2),"685946",false)
-		supply_labels[item.id] = sign_at("补给",Vector3(item.pos.x,1.7,item.pos.y),2.1)
+		if item.kind == "ammo":
+			block("WeaponRackWall",Vector3(item.pos.x,1.8,item.pos.y-.95),Vector3(3.3,3.6,.2),"344c48")
+			for x in [-1.5,1.5]: block("RackFrame",Vector3(item.pos.x+x,1.8,item.pos.y-.78),Vector3(.08,3.4,.1),"a5bba5",false)
+			for row in 4: block("RackRail",Vector3(item.pos.x,1.15+row*.55,item.pos.y-.77),Vector3(2.9,.055,.08),"a5bba5",false)
+			lamp(Vector3(item.pos.x,3.5,item.pos.y+.35),"c2e7ab",1.3,4)
+			supply_labels[item.id] = sign_at("挂墙武器 · E 更换",Vector3(item.pos.x,3.35,item.pos.y-.7),3.0)
+		else: supply_labels[item.id] = sign_at("补给",Vector3(item.pos.x-.6,1.0,item.pos.y),1.4)
 	block("DoorControl",Vector3(14.4,1,-50),Vector3(.6,2,.5),"a87938",false)
 	var sign_index = get_child_count()
 	holdout_label = sign_at("E 启动门锁 · 坚守 30 秒",Vector3(12,2.7,-53.25),3.0)

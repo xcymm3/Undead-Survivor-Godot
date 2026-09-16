@@ -75,7 +75,7 @@ func add_pawn(id: String, player_name: String, index: int) -> void:
 	for pawn in pawns.values(): available.erase(int(pawn.appearance[0]))
 	if available.is_empty(): available = range(Data.MODELS.size())
 	var model: int = available[random.randi_range(0,available.size()-1)]
-	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"shove_cd":0.0,"shove_gap":0.0,"shove_window":0.0,"shove_count":0,"shoves":0,"shove_hits":0,"shove_anim":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0]}
+	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"damage_dir":Vector2.ZERO,"damage_rear":false,"damage_hint":0.0,"shove_cd":0.0,"shove_gap":0.0,"shove_window":0.0,"shove_count":0,"shoves":0,"shove_hits":0,"shove_anim":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0]}
 
 	pawns[id].height = 0.0
 
@@ -235,6 +235,7 @@ func can_move(p: Dictionary, point: Vector2) -> bool:
 	return true
 
 func update_pawn(p: Dictionary, dt: float) -> void:
+	p.damage_hint = maxf(0,p.get("damage_hint",0.0)-dt)
 	p.shove_cd = maxf(0,p.get("shove_cd",0.0)-dt)
 	p.shove_gap = maxf(0,p.get("shove_gap",0.0)-dt)
 	p.shove_anim = maxf(0,p.get("shove_anim",0.0)-dt)
@@ -293,7 +294,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.aim = false
 		p.trigger = false
 		return
-	if p.get("shove_anim",0.0) > 0:
+	if p.get("shove_anim",0.0) > 0 and not p.reloading:
 		p.aim = false
 		return
 	var w: Dictionary = Data.weapons[p.weapon]
@@ -359,9 +360,13 @@ func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
 	if won or (campaign and not campaign.state.departed) or p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
 	var applied = mini(p.hp,amount)
 	p.hp = maxi(0,p.hp-amount)
-	p.protection = .3
+	# Give the rear-hit cue time to be actionable under overlapping melee attacks.
+	p.protection = .65
 	if campaign: campaign.damage(p,z,applied)
-	events.append({"kind":"hurt","player":p.id})
+	p.damage_dir = (z.pos-p.pos).normalized()
+	p.damage_rear = Vector2(-sin(p.yaw),-cos(p.yaw)).dot(p.damage_dir) < -.3
+	p.damage_hint = 1.8
+	events.append({"kind":"hurt","player":p.id,"rear":p.damage_rear})
 	if p.hp == 0:
 		cause = "zombie"
 		culprit = int(z.id)
@@ -389,27 +394,24 @@ func try_shove(p: Dictionary) -> bool:
 		p.shove_cd = SHOVE_COOLDOWN
 		p.shove_count = 0
 	p.aim = false
-	p.reloading = false
-	p.reload = 0.0
-	p.reload_queued = false
-	p.input.reload = false
+	# Shoving preserves both active reload progress and queued reload input.
 	melee_swings.erase(p.id)
 	var forward = Vector2(-sin(p.yaw),-cos(p.yaw))
 	var hits = 0
 	for z in zombies:
 		if z.hp <= 0: continue
 		var delta: Vector2 = z.pos-p.pos
-		if delta.length() > 2.0 or absf(Data.enemy_ground_height(z.pos,map_id)-p.height) > 1.1: continue
-		if delta.length() > .05 and forward.dot(delta.normalized()) < cos(deg_to_rad(70)): continue
+		if delta.length() > 3.2 or absf(Data.enemy_ground_height(z.pos,map_id)-p.height) > 1.1: continue
+		if delta.length() > .05 and forward.dot(delta.normalized()) < cos(deg_to_rad(80)): continue
 		if not arena.surface_hit(Vector3(p.pos.x,p.height+1.1,p.pos.y),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+1.1,z.pos.y)).is_empty(): continue
 		if z.kind == "football" and z.state in ["charging","windup"]: continue
 		var heavy: bool = z.kind in ["giant","shield","football"]
 		z.guard_awake = true
 		z.attack_time = 0.0
 		z.state = "stunned"
-		z.state_time = .35 if heavy else 1.0
-		z.shove_time = .18
-		z.shove_velocity = (delta.normalized() if delta.length() > .05 else forward)*(2.0 if heavy else 7.2)
+		z.state_time = .7 if heavy else 2.4
+		z.shove_time = .26
+		z.shove_velocity = (delta.normalized() if delta.length() > .05 else forward)*((.9 if heavy else 2.8)/.26)
 		paths.erase(z.id)
 		hits += 1
 	p.shove_hits = p.get("shove_hits",0)+hits
@@ -445,7 +447,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 					if z.get("search_until",0.0) <= 0: z.search_until = elapsed+2.0
 					z.heading += dt*1.3
 					if elapsed >= z.search_until: z.investigate_until = 0.0
-				else: move_zombie(z,goal,float(z.get("chase_speed",4.8))*.5,dt,z.pos.distance_to(goal),.4)
+				else: move_zombie(z,goal,float(z.get("chase_speed",4.8))*.35,dt,z.pos.distance_to(goal),.4)
 				return
 			z.heading = z.get("idle_heading",0.0)+sin(elapsed*.43+z.id)*.3
 			if elapsed > 0 and z.id%4 == 0:
@@ -455,7 +457,10 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 					var idle_goal = home+Vector2(sin(z.id),cos(z.id))*1.1 if phase_time < 4 else home
 					var idle_delta: Vector2 = idle_goal-z.pos
 					var next_idle: Vector2 = z.pos+idle_delta.limit_length(dt*.3)
-					if arena.clear(z.pos,next_idle): z.pos = next_idle
+					if arena.clear(z.pos,next_idle):
+						z.move_speed = z.pos.distance_to(next_idle)/maxf(dt,.001)
+						z.gait += z.pos.distance_to(next_idle)*2.3
+						z.pos = next_idle
 					if idle_delta.length() > .1: z.heading = atan2(idle_delta.x,idle_delta.y)
 			return
 		var sees_player = pawns.values().any(func(p): return p.hp > 0 and p.pos.distance_to(z.pos) < 14 and arena.surface_hit(Vector3(z.pos.x,1.2,z.pos.y),Vector3(p.pos.x,p.height+1.2,p.pos.y)).is_empty())
@@ -594,8 +599,10 @@ func cancel_charge(z: Dictionary) -> void:
 	z.charge_cooldown = .6
 
 func stun(z: Dictionary, duration: float) -> void:
+	# A bullet flinch must never cancel the longer control from a shove.
+	var remaining: float = z.state_time if z.state == "stunned" else 0.0
 	z.state = "stunned"
-	z.state_time = duration
+	z.state_time = maxf(remaining,duration)
 	z.charge_cooldown = 3.2
 	z.attack_time = 0.0
 
@@ -698,7 +705,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 		var origin = Vector3(p.pos.x,p.height+PlayerBody.eye_height(p)-.5,p.pos.y)
 		events.append({"kind":"shot","player":p.id,"weapon":p.weapon,"from":origin,"to":origin})
 		return
-	if campaign: campaign.emit_noise(Vector3(p.pos.x,p.height+1.2,p.pos.y),"gunshot")
+	if campaign: campaign.emit_noise(Vector3(p.pos.x,p.height+1.2,p.pos.y),"gunshot",p.pos)
 	var camera = Transform3D(Basis.from_euler(Vector3(p.pitch,p.yaw,0)),Vector3(p.pos.x,p.height+PlayerBody.eye_height(p),p.pos.y))
 	var forward = -camera.basis.z
 	var reach: float = w.get("range",180.0)
@@ -718,7 +725,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	if not obstruction.is_empty():
 		var blocked_shot = {"kind":"shot","player":p.id,"weapon":p.weapon,"from":camera.origin,"to":obstruction.position}
 		if w.id in ["shotgun", "auto-shotgun"]: blocked_shot.pellet_ends = [obstruction.position]
-		if campaign: campaign.emit_noise(obstruction.position,"impact")
+		if campaign: campaign.emit_noise(obstruction.position,"impact",p.pos)
 		events.append(blocked_shot)
 		return
 	var direction = (target-muzzle).normalized()
@@ -746,9 +753,9 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 			damaged[hit.z.id] = true
 			landed = true
 			hit_enemy(hit.z,w.damage*(w.get("headshotMultiplier",2) if hit.head else 1),hit.armor,p,muzzle+ray*hit.distance)
-			if campaign: campaign.emit_noise(muzzle+ray*hit.distance,"impact")
+			if campaign: campaign.emit_noise(muzzle+ray*hit.distance,"impact",p.pos)
 		if not candidates.is_empty() and not w.get("piercing",false): distance = candidates[0].distance
-		if campaign and not wall.is_empty() and (w.get("piercing",false) or candidates.is_empty()): campaign.emit_noise(wall.position,"impact")
+		if campaign and not wall.is_empty() and (w.get("piercing",false) or candidates.is_empty()): campaign.emit_noise(wall.position,"impact",p.pos)
 		if pellet == 0: target = muzzle+ray*distance
 		if w.id in ["shotgun", "auto-shotgun"]: pellet_ends.append(muzzle+ray*distance)
 	if landed: p.hits += 1

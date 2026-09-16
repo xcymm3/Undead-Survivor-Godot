@@ -28,6 +28,12 @@ test('night route software visual matrix', async ({ page }, info) => {
     await page.waitForFunction(view => JSON.stringify(window.__campaignRendered) === JSON.stringify(view), view);
     await page.screenshot({path:info.outputPath(`holdout-${state.holdout_time}.png`),timeout:60_000});
   }
+  for (const [name,position] of [['start',[-3,74]],['shop',[-14,28]],['van',[-12,-29]]]) {
+    const view = {name:'loot',position,yaw:0,pitch:0,width:1440,height:900,time:3,party:2,rear_hit:name==='start'};
+    await page.evaluate(view => { window.__campaignView = view; }, view);
+    await page.waitForFunction(view => JSON.stringify(window.__campaignRendered) === JSON.stringify(view), view);
+    await page.screenshot({path:info.outputPath(`wall-rack-${name}.png`),timeout:60_000});
+  }
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });
 });

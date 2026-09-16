@@ -412,7 +412,7 @@ func tick(dt: float) -> void:
 	hurt_flash = maxf(0,hurt_flash-dt)
 	native_hud.sync()
 	var pawn: Dictionary = game.view_pawn()
-	var state = [game.running,current,pawn.get("weapon",-1),pawn.get("slot",1),pawn.get("healing",""),pawn.get("aim",false),game.weapon.ads > .8,pawn.get("shove_cd",0.0),pawn.get("shove_gap",0.0),hit_flash,hurt_flash,hud.size]
+	var state = [game.running,current,pawn.get("weapon",-1),pawn.get("slot",1),pawn.get("healing",""),pawn.get("aim",false),game.weapon.ads > .8,pawn.get("shove_cd",0.0),pawn.get("shove_gap",0.0),hit_flash,hurt_flash,pawn.get("damage_hint",0.0),game.yaw,hud.size]
 	if state != overlay_state:
 		overlay_state = state
 		hud.queue_redraw()
@@ -457,6 +457,15 @@ func _draw_hud() -> void:
 		hud.draw_arc(ring,11,-PI/2,-PI/2+TAU*progress,48,Color("f0b46a"),3,true)
 	if hit_flash > 0:
 		for d in [Vector2(-1,-1),Vector2(1,-1),Vector2(-1,1),Vector2(1,1)]: hud.draw_line(center+d*7,center+d*13,Color.WHITE,2)
+	if current.is_empty() and p.get("damage_hint",0.0) > 0:
+		var direction: Vector2 = p.damage_dir.rotated(game.yaw)
+		var angle = direction.angle()
+		var tint = Color(1,.25,.12,minf(1,p.damage_hint))
+		hud.draw_arc(center,66,angle-.35,angle+.35,20,tint,6,true)
+		if p.get("damage_rear",false):
+			var font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
+			var text = "后方遭袭！"
+			hud.draw_string(font,center+Vector2(-font.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,22).x/2,108),text,HORIZONTAL_ALIGNMENT_LEFT,-1,22,tint)
 	if hurt_flash > 0:
 		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.55,.08,.04,hurt_flash*.3),false,20)
 

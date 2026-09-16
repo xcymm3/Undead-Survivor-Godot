@@ -33,6 +33,12 @@ func _process(_dt: float) -> void:
 		if not value is Dictionary or not VIEWS.has(value.get("name","")): return
 		last_request = request
 		var view: Array = VIEWS[value.name]
+		var party = clampi(int(value.get("party",1)),1,2)
+		if game.sim.campaign.state.party != party:
+			game.sim.campaign.state.party = party
+			game.sim.campaign.equipment.initialize()
+			for model in game.arena.scenery.loot_views.values(): model.queue_free()
+			game.arena.scenery.loot_views.clear()
 		var p: Dictionary = game.local_pawn()
 		p.pos = Vector2(value.position[0],value.position[1]) if value.has("position") else view[0]
 		p.height = Data.enemy_ground_height(p.pos,game.sim.map_id)
@@ -53,6 +59,9 @@ func _process(_dt: float) -> void:
 		p.heal_time = 1.4 if not p.healing.is_empty() else 0.0
 		p.being_healed = false
 		p.grenades = 1
+		p.damage_hint = 1.8 if value.get("rear_hit",false) else 0.0
+		p.damage_rear = value.get("rear_hit",false)
+		p.damage_dir = Vector2(sin(p.yaw),cos(p.yaw))
 		p.hp = 60 if value.name.begins_with("heal_") else 100
 		if value.name == "heal_other":
 			var target: Dictionary = p.duplicate(true)

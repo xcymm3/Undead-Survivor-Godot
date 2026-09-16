@@ -184,6 +184,19 @@ func validate_sound_and_holdout() -> void:
 	var before: Vector2 = z.pos
 	sim.update_zombie(z,p,.1)
 	check(z.pos.distance_to(Vector2(0,57)) < before.distance_to(Vector2(0,57)),"Investigation moves toward sound, not distant player")
+	# A remote bullet impact carries the firing position, not a live player tracker.
+	z.pos = Vector2(0,60)
+	director.emit_noise(Vector3(0,1.2,57),"impact",Vector2(0,70))
+	director.investigate_sounds()
+	check(not z.guard_awake and z.investigate_pos.distance_to(Vector2(0,65)) < .1,"Remote impact redirects guards along incoming-fire bearing without revealing exact shooter location")
+	var shot_goal: Vector2 = z.investigate_pos
+	before = z.pos
+	sim.update_zombie(z,p,.1)
+	check(z.pos.y > before.y and z.investigate_pos == shot_goal,"Investigator follows incoming fire without tracking a hidden moving player")
+	director.emit_noise(Vector3(0,1.2,63),"gunshot",Vector2(0,70))
+	director.emit_noise(Vector3(0,1.2,57),"impact",Vector2(0,70))
+	director.investigate_sounds()
+	check(z.investigate_pos.distance_to(Vector2(0,70)) < .1,"Heard muzzle identifies last firing position and later impact does not pull guards back")
 	p.pos = Vector2(0,58)
 	director.step(.05)
 	check(z.guard_awake,"Investigator switches to chase after seeing a nearby player")
@@ -213,6 +226,7 @@ func validate_sound_and_holdout() -> void:
 	director.sound_events.clear()
 	sim.fire(p,weapon)
 	check(director.sound_events.any(func(event): return event.kind == "impact" and event.pos.distance_to(Vector2(0,67)) < 1.2),"Piercing bullet emits sound at hit enemy, not only the distant final wall")
+	check(director.sound_events.all(func(event): return event.shot_origin == p.pos),"Gunshot and all actual impact events retain the firing position")
 	for party in [1,2]:
 		await start(party,71245)
 		sim = game.sim
