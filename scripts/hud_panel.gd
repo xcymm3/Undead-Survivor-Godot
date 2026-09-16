@@ -194,12 +194,12 @@ func sync() -> void:
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "campaign":
 		controls_hint.text = "1 主武器 · 2 副武器 · 3 斧 · 4 手雷 · 5 医疗包 · E 拾取/交互"
-		if not infinite: ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
-		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 补给点换枪"
+		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
+		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 无限备弹" if w.get("infiniteReserve",false) else "R 换弹 · 补给点换枪"
 		if p.slot >= 4:
 			weapon_label.text = "手雷" if p.slot == 4 else "医疗包"
 			ammo_label.text = str(p.grenades if p.slot == 4 else p.medkits)
-			ammo_note.text = "左键投掷 · 3 秒引信" if p.slot == 4 else "左键自己 · 右键队友"
+			ammo_note.text = "左键投掷 · 1.5 秒引信" if p.slot == 4 else "左键自己 · 右键队友"
 
 	arsenal.visible = not (int(p.weapon) == 5 and p.get("slot",1) < 4 and ui.game.weapon.ads > .8)
 	campaign_arsenal.visible = sim.mode == "campaign" and arsenal.visible
@@ -216,7 +216,7 @@ func sync() -> void:
 			item.title.text = str(Data.weapons[index].label) if i < 3 else "手雷" if i == 3 else "医疗包"
 			item.note.visible = i < 3
 			item.note.text = str(Data.weapons[index].tier)+" 级"
-			if i >= 3: item.title.text += "  1 / 1" if available else "  空"
+			if i >= 3: item.title.text += ("  %d / %d" % [p.grenades if i == 3 else p.medkits,3 if i == 3 else 1]) if available else "  空"
 			item.icon.queue_redraw()
 	else:
 		for i in slots.size():

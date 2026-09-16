@@ -19,6 +19,9 @@ var finished = false
 var yaw = 0.0
 var pitch = 0.0
 var requested_slot = 1
+var medical_camera_active = false
+var medical_yaw = 0.0
+var medical_pitch = -.15
 var equipment_prop: Node3D
 var equipment_prop_slot = -1
 var requested_weapon = 0
@@ -201,6 +204,7 @@ func input_state() -> Dictionary:
 	var enabled = running and not paused and focused and not finished
 	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"heal":enabled and Input.is_action_pressed("heal"),"crouch":enabled and Input.is_action_pressed("crouch"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held,"shove":enabled and shove_pending}
 	if sim and sim.mode == "campaign":
+		if not preload("res://scripts/campaign_equipment.gd").slot_available(local_pawn(),requested_slot): requested_slot = int(local_pawn().get("slot",1))
 		command.slot = requested_slot
 		command.use_self = enabled and fire_pending
 		command.use_other = enabled and shove_pending and requested_slot == 5
@@ -255,12 +259,21 @@ func _process(dt: float) -> void:
 	var spectate: bool = p.id != Session.local_id
 	camera.rotation = Vector3(p.pitch,p.yaw,0) if spectate else Vector3(pitch,yaw,0)
 	var medical_view: bool = not p.get("healing","").is_empty() or p.get("being_healed",false)
+	if medical_view and not medical_camera_active:
+		medical_yaw = p.yaw
+		medical_pitch = -.15
+	if not medical_view and medical_camera_active:
+		yaw = p.yaw
+		pitch = p.pitch
+	medical_camera_active = medical_view
 	if medical_view and not finished:
-		var back = Vector3(sin(p.yaw),.3,cos(p.yaw))
-		var camera_target: Vector3 = desired+back*2.6
+		var focus = Vector3(p.pos.x,p.height+.95-.25*p.get("crouch",0.0),p.pos.y)
+		var back = Vector3(sin(medical_yaw)*cos(medical_pitch),-sin(medical_pitch),cos(medical_yaw)*cos(medical_pitch))
+		var camera_target: Vector3 = focus+back*2.6
+		desired = focus
 		var obstruction = arena.surface_hit(desired,camera_target)
 		camera.position = obstruction.position+(desired-obstruction.position).normalized()*.2 if not obstruction.is_empty() else camera_target
-		camera.look_at(Vector3(p.pos.x,p.height+1.1,p.pos.y))
+		camera.look_at(desired)
 	var w: Dictionary = Data.weapons[int(p.weapon)]
 	var magnification: float = 6.0 if w.id == "sniper" else 1.0 if w.get("kind", "gun") in ["melee","flame"] else 1.25
 	var aim_fov = rad_to_deg(2*atan(tan(deg_to_rad(61)/2)/magnification))
@@ -304,6 +317,7 @@ func _process(dt: float) -> void:
 			partner.setup(sim.pawns[id])
 			partners[id] = partner
 		partners[id].sync(visible_pawns.get(id,sim.pawns[id]),dt,not displayed.is_empty())
+		partners[id].label.visible = id != Session.local_id
 		if spectate and id == p.id: partners[id].visible = false
 	for id in partners.keys():
 		if not sim.pawns.has(id):
@@ -510,11 +524,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		var sensitivity: float = Data.settings.sensitivity*tan(deg_to_rad(camera.fov)/2)/tan(deg_to_rad(61)/2)
 		var delta = event.screen_relative
 		var max_delta = minf(180,deg_to_rad(25)/maxf(.000001,sensitivity))
-		if absf(delta.x) <= max_delta: yaw = wrapf(yaw-delta.x*sensitivity,-PI,PI)
-		if absf(delta.y) <= max_delta: pitch = clampf(pitch-delta.y*sensitivity,-deg_to_rad(85),deg_to_rad(85))
+		if medical_camera_active:
+			if absf(delta.x) <= max_delta: medical_yaw = wrapf(medical_yaw-delta.x*sensitivity,-PI,PI)
+			if absf(delta.y) <= max_delta: medical_pitch = clampf(medical_pitch-delta.y*sensitivity,-.65,.25)
+		else:
+			if absf(delta.x) <= max_delta: yaw = wrapf(yaw-delta.x*sensitivity,-PI,PI)
+			if absf(delta.y) <= max_delta: pitch = clampf(pitch-delta.y*sensitivity,-deg_to_rad(85),deg_to_rad(85))
 	if sim.mode == "campaign":
-		if event.is_action_pressed("weapon_previous"): requested_slot = posmod(requested_slot-2,5)+1
-		if event.is_action_pressed("weapon_next"): requested_slot = requested_slot%5+1
+		if event.is_action_pressed("weapon_previous"): cycle_equipment(-1)
+		if event.is_action_pressed("weapon_next"): cycle_equipment(1)
 	else:
 		if event.is_action_pressed("weapon_previous"): requested_weapon = posmod(requested_weapon-1,10)
 		if event.is_action_pressed("weapon_next"): requested_weapon = (requested_weapon+1)%10
@@ -523,8 +541,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	for i in 10:
 		if event.is_action_pressed("weapon_%d" % i):
 			if sim.mode == "campaign":
-				if i < 5: requested_slot = i+1
+				if i < 5 and preload("res://scripts/campaign_equipment.gd").slot_available(local_pawn(),i+1): requested_slot = i+1
 			else: requested_weapon = i
+
+func cycle_equipment(direction: int) -> void:
+	for offset in range(1,6):
+		var slot = posmod(requested_slot-1+direction*offset,5)+1
+		if preload("res://scripts/campaign_equipment.gd").slot_available(local_pawn(),slot):
+			requested_slot = slot
+			return
 
 func _focus_lost() -> void:
 	if "--capture" in OS.get_cmdline_user_args(): return

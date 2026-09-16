@@ -16,6 +16,8 @@ test('real input fires cancels and completes revolver reload', async ({ page }, 
   await page.keyboard.down('w'); await page.keyboard.down('e');
   await page.waitForFunction(() => window.__survivorSnapshot.campaign.departed, null, {timeout:15000});
   await page.keyboard.up('w'); await page.keyboard.up('e');
+  await page.keyboard.press('4');
+  await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 1);
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 3 && window.__survivorSnapshot.player.switch <= 0);
   await page.mouse.click(480, 300);
@@ -23,7 +25,7 @@ test('real input fires cancels and completes revolver reload', async ({ page }, 
   await page.keyboard.press('r');
   await page.waitForFunction(() => window.__survivorSnapshot.player.reloading);
   await page.keyboard.press('1');
-  await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.weapon === 1);
+  await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.weapon === window.__survivorSnapshot.player.primary);
   expect(await page.evaluate(() => window.__survivorSnapshot.player.ammo[3])).toBe(5);
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 3 && window.__survivorSnapshot.player.switch <= 0);

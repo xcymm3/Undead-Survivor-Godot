@@ -56,9 +56,13 @@ func _process(_dt: float) -> void:
 		p.weapon = 6 if value.name == "axe" else p.primary
 		p.requested = p.weapon
 		p.healing = p.id if value.name == "heal_self" else "gallery_target" if value.name == "heal_other" else ""
-		p.heal_time = 1.4 if not p.healing.is_empty() else 0.0
+		p.heal_time = float(value.get("heal_time",1.4)) if not p.healing.is_empty() else 0.0
+		p.crouch = minf(1,p.heal_time*6) if not p.healing.is_empty() and p.heal_time < 2.65 else maxf(0,1-(p.heal_time-2.65)*6) if not p.healing.is_empty() else 0.0
+		game.medical_camera_active = not p.healing.is_empty()
+		game.medical_yaw = p.yaw+float(value.get("orbit",0.0))
+		game.medical_pitch = -.12
 		p.being_healed = false
-		p.grenades = 1
+		p.grenades = int(value.get("grenades",1))
 		p.damage_hint = 1.8 if value.get("rear_hit",false) else 0.0
 		p.damage_rear = value.get("rear_hit",false)
 		p.damage_dir = Vector2(sin(p.yaw),cos(p.yaw))
@@ -101,6 +105,11 @@ func _process(_dt: float) -> void:
 			game.sim.campaign.state.objective = "门已解锁！进入安全屋并按 E 关门" if value.get("unlocked",false) else "守住门前 · 解锁剩余 %d 秒" % ceili(30-value.get("holdout_time",0.0)) if value.get("holdout",false) else "沿绿灯前往安全屋 · 门前启动解锁"
 			game.sim.elapsed = float(value.get("time",2.0))
 		game.arena.sync_campaign(game.sim.campaign.state)
+		if value.has("special"):
+			game.sim.zombies.clear()
+			if value.special in ["cone","bucket","imp","shield","berserker","football"]:
+				game.sim.spawn(p.pos+Vector2(0,-6),value.special)
+				game.sim.zombies[-1].heading = .25
 		if value.has("shotgun"):
 			game.effects.particles.clear()
 			game.effects.step(0)

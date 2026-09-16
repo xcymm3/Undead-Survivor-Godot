@@ -11,6 +11,8 @@ var grenade_cooldown = 0.0
 var grenade_pending = 0.0
 var grenade_count = 0
 var grenade_aim = Vector2.ZERO
+var grenade_pitch = 0.0
+var grenade_scan = 0.0
 var prefer_shotgun = false
 
 func _init(current_game, _yard: bool) -> void:
@@ -27,6 +29,7 @@ func _init(current_game, _yard: bool) -> void:
 func command(dt: float) -> Dictionary:
 	fire_clock += dt
 	grenade_cooldown = maxf(0,grenade_cooldown-dt)
+	grenade_scan = maxf(0,grenade_scan-dt)
 	var p: Dictionary = game.local_pawn()
 	if p.is_empty() or not p.has("primary") or p.hp <= 0: return {}
 	# Release E after any pickup, including a grenade that was selected while
@@ -35,7 +38,7 @@ func command(dt: float) -> Dictionary:
 	if grenade_pending > 0 and p.grenades == grenade_count:
 		grenade_pending -= dt
 		var aim: Vector2 = grenade_aim-p.pos
-		return {"x":0.0,"y":0.0,"yaw":atan2(-aim.x,-aim.y),"pitch":-1.0 if aim.length() < 6 else -.45,"slot":4,"fire":true,"use_self":true}
+		return {"x":0.0,"y":0.0,"yaw":atan2(-aim.x,-aim.y),"pitch":grenade_pitch,"slot":4,"fire":true,"use_self":true}
 	grenade_pending = 0.0
 	var state: Dictionary = game.sim.campaign_state()
 	if state.is_empty() or index >= tasks.size(): return {}
@@ -73,7 +76,8 @@ func command(dt: float) -> Dictionary:
 		elif action == "finish": advance = state.complete
 		elif action.begins_with("grenade:"):
 			var station: Dictionary = state.grenade_stations[action.trim_prefix("grenade:")]
-			advance = station.claimed.has(p.id) or station.remaining <= 0 or p.grenades >= 1
+			var teammates_needing = game.sim.pawns.values().filter(func(other): return other.id != p.id and other.hp > 0 and other.grenades == 0).size()
+			advance = station.remaining <= 0 or p.grenades >= 3 or (p.grenades >= 1 and station.remaining <= teammates_needing)
 		elif state.has(action) and state[action] is bool: advance = state[action]
 		else: advance = state.claimed.get(action,[]).has(p.id) or p.reserve >= int(Data.weapons[p.primary].capacity)*6
 	if advance:
@@ -136,16 +140,19 @@ func command(dt: float) -> Dictionary:
 				var aim: Vector2 = item.pos+Vector2(-1,0)-p.pos
 				yaw = atan2(-aim.x,-aim.y)
 				pitch = atan2(.65-p.height-preload("res://scripts/player_body.gd").eye_height(p),aim.length())
-	if p.grenades > 0 and grenade_cooldown <= 0 and not heal and distance >= 2 and distance <= 14:
-		var clustered = game.sim.zombies.filter(func(z): return z.hp > 0 and z.pos.distance_to(enemy_point) < 4).size()
-		var heavy = game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.pos.distance_to(p.pos) < 12)
-		if clustered >= 4 or heavy:
-			grenade_cooldown = 5.0
-			grenade_pending = 2.0
+	if p.grenades > 0 and grenade_cooldown <= 0 and grenade_scan <= 0 and not heal and p.get("healing","").is_empty():
+		grenade_scan = .3
+		var choice = choose_grenade(p,state)
+		if not choice.is_empty():
+			grenade_cooldown = 2.0
+			grenade_pending = .8
 			grenade_count = p.grenades
-			grenade_aim = enemy_point
-			var aim: Vector2 = enemy_point-p.pos
-			return {"x":0.0,"y":0.0,"yaw":atan2(-aim.x,-aim.y),"pitch":-1.0 if distance < 6 else -.45,"slot":4,"fire":true,"use_self":true}
+			grenade_aim = choice.point
+			var aim: Vector2 = grenade_aim-p.pos
+			var landing_distance: float = choice.distance
+			grenade_pitch = -1.0 if landing_distance < 5 else -.65 if landing_distance < 8 else -.25 if landing_distance < 12 else .05
+			return {"x":0.0,"y":0.0,"yaw":atan2(-aim.x,-aim.y),"pitch":grenade_pitch,"slot":4,"fire":true,"use_self":true}
+
 	if not Data.weapons[p.weapon].automatic: fire = fire and fmod(fire_clock,.2) < .1
 	var direction = delta.normalized() if delta.length() > .25 else Vector2.ZERO
 	# Once unlocked, enter and close the shelter instead of clearing the outdoor horde.
@@ -163,6 +170,38 @@ func command(dt: float) -> Dictionary:
 	# Finish the active axe strike instead of repeatedly cancelling its damage
 	# window with a shove. This policy reads the same weapon animation as a player.
 	if p.slot == 3 and p.fire_anim > float(Data.weapons[p.weapon].fireDuration)*.34: shove = false
-	if game.sim.map_id == "graypine_night" and distance < (3.8 if p.slot == 3 else 2.2) and not heal:
+	if game.sim.map_id == "graypine_night" and distance < (float(Data.weapons[6].range)+.3 if p.slot == 3 else minf(2.2,float(Data.weapons[6].range)-.3)) and not heal:
 		return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":0.0,"slot":3,"shove":shove,"fire":fmod(fire_clock,.3) < .15,"interact":false}
-	return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":pitch,"shove":shove,"weapon":6 if p.reserve == 0 and p.ammo[p.primary] == 0 else p.primary,"fire":heal or (fire and not interact),"reload":(p.ammo[p.weapon] == 0 or (nearest > 8 and p.ammo[p.weapon] < Data.weapons[p.weapon].capacity)) if prefer_shotgun else p.ammo[p.weapon] < 5,"interact":interact,"slot":5 if heal or not p.get("healing","").is_empty() else 1 if p.reserve > 0 or p.ammo[p.primary] > 0 else 2 if p.reserves[p.secondary] > 0 or p.ammo[p.secondary] > 0 else 3,"jump":game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.state == "charging" and z.pos.distance_to(p.pos) < 8)}
+	return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":pitch,"shove":shove,"weapon":6 if p.reserve == 0 and p.ammo[p.primary] == 0 else p.primary,"fire":heal or (fire and not interact),"reload":(p.ammo[p.weapon] == 0 or (nearest > 8 and p.ammo[p.weapon] < Data.weapons[p.weapon].capacity)) if prefer_shotgun else p.ammo[p.weapon] < 5,"interact":interact,"slot":5 if heal or not p.get("healing","").is_empty() else 1 if p.reserve > 0 or p.ammo[p.primary] > 0 else 2 if (not prefer_shotgun and Data.weapons[p.secondary].get("infiniteReserve",false)) or p.reserves[p.secondary] > 0 or p.ammo[p.secondary] > 0 else 3,"jump":game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.state == "charging" and z.pos.distance_to(p.pos) < 8)}
+
+
+func choose_grenade(p: Dictionary, state: Dictionary) -> Dictionary:
+	# No inventory/state mutation: ordinary pickup and throw inputs only.
+	# Reserve two for the boss; spend them early only to escape a close emergency.
+	var best: Dictionary = {}
+	var score = 0.0
+	var eye = Vector3(p.pos.x,p.height+1.4,p.pos.y)
+	var boss_remaining = not state.get("boss_spawned",false) or game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football")
+	for z in game.sim.zombies:
+		if z.hp <= 0 or not z.get("guard_awake",true): continue
+		var distance: float = z.pos.distance_to(p.pos)
+		if distance < 2 or distance > 16: continue
+		if not game.arena.surface_hit(eye,Vector3(z.pos.x,1.0,z.pos.y)).is_empty(): continue
+		var nearby = game.sim.zombies.filter(func(other): return other.hp > 0 and other.pos.distance_to(z.pos) < 5).size()
+		var boss: bool = z.kind == "football"
+		var emergency: bool = distance < 5 and ((nearby >= 4 and p.hp < 40) or (nearby >= 6 and distance < 3.5))
+		if not boss and not emergency:
+			if boss_remaining and p.grenades <= 2: continue
+			if nearby < (4 if state.holdout_started else 7): continue
+		# Do not double-bomb a teammate's still-flying grenade.
+		if state.get("projectiles",[]).any(func(g): return Vector2(g.pos.x,g.pos.z).distance_to(z.pos) < 7): continue
+		var value = float(nearby)+(8.0 if boss else 0.0)
+		if value > score:
+			score = value
+			# Approximate one second of visible approach, not a perfect future-state
+			# simulation. The ordinary pitch input still receives aim error.
+			var toward_player: Vector2 = (p.pos-z.pos).normalized()
+			var forward = Vector2(sin(z.heading),cos(z.heading))
+			var closing = maxf(0,forward.dot(toward_player))*float(z.get("move_speed",0))
+			best = {"point":z.pos,"distance":maxf(2,distance-minf(6,closing))}
+	return best

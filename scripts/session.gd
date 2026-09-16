@@ -8,7 +8,7 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-8"
+const PROTOCOL = "undead-survivor-godot-9"
 const PORT = 27777
 var map_id = "graypine_night"
 var transport = ""
@@ -434,7 +434,7 @@ func valid_world(value) -> bool:
 			if not p.has_all(["reserve","primary","secondary","slot","reserves","grenades","healing","heal_time","being_healed","medkits","downed","dead","bleed","revives","hint"]): return false
 			for field in ["secondary","slot","grenades"]:
 				if not p[field] is int: return false
-			if p.secondary not in [2,3] or p.slot < 1 or p.slot > 5 or p.grenades < 0 or p.grenades > 1: return false
+			if p.secondary not in [2,3] or p.slot < 1 or p.slot > 5 or p.grenades < 0 or p.grenades > 3: return false
 			if not p.healing is String or p.healing.length() > 80 or not p.being_healed is bool: return false
 			if not p.heal_time is float or not is_finite(p.heal_time) or p.heal_time < 0 or p.heal_time > 3: return false
 			if not p.reserves is Array or p.reserves.size() != 10: return false

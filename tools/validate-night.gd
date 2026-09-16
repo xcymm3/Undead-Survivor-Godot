@@ -37,7 +37,8 @@ func run() -> void:
 	await process_frame
 	await start(1,71245)
 	validate_lighting()
-	check(game.sim.zombies.size() >= 180,"Dense baseline population exists before departure")
+	validate_population()
+	check(game.sim.zombies.filter(func(z): return z.kind == "normal").size() >= ceili(Layout.ZONES.reduce(func(total,zone): return total+zone.budget,0)/2.0),"At least half the habitat point budget remains ordinary infected")
 	check(game.sim.zombies.all(func(z): return not z.guard_awake),"Habitats begin idle")
 	check(game.sim.zombies.all(func(z): return game.arena.clear(z.pos,z.pos)),"No infected start inside solid cover")
 	check(is_equal_approx(root.get_node("Data").enemy_ground_height(Vector2(0,-17),Layout.ID),-.05),"Night terrain does not inherit the old outpost river depression")
@@ -46,7 +47,7 @@ func run() -> void:
 		var road: Vector2 = Layout.closest_route(infected.pos)
 		if not game.arena.surface_hit(Vector3(road.x,1.7,road.y),Vector3(infected.pos.x,1.2,infected.pos.y)).is_empty(): hidden += 1
 	print("NIGHT HABITATS: total=",game.sim.zombies.size()," solid_occluded_from_nearest_route=",hidden)
-	check(hidden >= 60,"Many habitats are behind real cover, independent of darkness")
+	check(hidden >= ceili(game.sim.zombies.size()/3.0),"At least one third of point-budget habitats are behind real cover, independent of darkness")
 	var p: Dictionary = game.local_pawn()
 	for slot in [4,5]:
 		var reload_probe: Dictionary = p.duplicate(true)
@@ -115,7 +116,7 @@ func run() -> void:
 			game.sim.submit("solo",driver.command(.05))
 			game.sim.step(.05)
 			if i%100 == 0: await process_frame
-		var result = {"shoves":game.local_pawn().get("shoves",0),"shove_hits":game.local_pawn().get("shove_hits",0),"seed":seed_value,"won":game.sim.won,"failed":game.sim.failed,"seconds":game.sim.elapsed,"kills":game.sim.kills,"task":driver.index,"position":game.local_pawn().pos,"remaining":game.sim.zombies.filter(func(enemy): return enemy.hp > 0).size(),"timings":timings,"diagnostics":game.sim.campaign.diagnostics()}
+		var result = {"boss_remaining":game.sim.zombies.filter(func(enemy): return enemy.kind == "football").map(func(enemy): return {"hp":enemy.hp,"armor":enemy.armor}),"hp":game.local_pawn().hp,"medkits":game.local_pawn().medkits,"grenades":game.local_pawn().grenades,"shoves":game.local_pawn().get("shoves",0),"shove_hits":game.local_pawn().get("shove_hits",0),"seed":seed_value,"won":game.sim.won,"failed":game.sim.failed,"seconds":game.sim.elapsed,"kills":game.sim.kills,"task":driver.index,"position":game.local_pawn().pos,"remaining":game.sim.zombies.filter(func(enemy): return enemy.hp > 0).size(),"timings":timings,"diagnostics":game.sim.campaign.diagnostics()}
 		runs.append(result)
 		print("NIGHT RESULT ",JSON.stringify(result))
 	check(runs.all(func(result): return result.won),"Both fixed limited-input seeds reach the safe room")
@@ -133,6 +134,41 @@ func run() -> void:
 	await create_timer(.15).timeout
 	print("NIGHT VALIDATION: %d checks; %d failures" % [count,failures.size()])
 	quit(0 if failures.is_empty() else 1)
+
+func validate_population() -> void:
+	var population = preload("res://scripts/night_population.gd")
+	var director = game.sim.campaign
+	for zone in director.state.zones.values():
+		check(zone.spent == zone.budget and zone.preplaced == zone.requested,"Habitat spends complete point budget")
+	for kind in population.SPECIALS:
+		check(game.sim.zombies.any(func(z): return z.kind == kind),"Route includes special type "+kind)
+	check(game.sim.zombies.all(func(z): return z.kind not in ["giant","football"]),"Neither giant nor boss in ordinary habitats")
+	var random = RandomNumberGenerator.new()
+	random.seed = 82
+	for budget in [0,1,5,18,22,68]:
+		var roster = population.roster(budget,population.SPECIALS+["giant","football"],random)
+		check(population.points(roster) == budget,"Exact point accounting budget "+str(budget))
+		check(roster.all(func(kind): return kind not in ["giant","football"]),"Unsupported boss/giant excluded from budget pool")
+	# All entries occupied: boss debt survives and bypasses ordinary population cap.
+	var saved = game.sim.zombies.duplicate(true)
+	game.sim.zombies.clear()
+	director.state.boss_queued = true
+	for point in Layout.FINAL_ENTRIES: game.sim.spawn(point,"normal")
+	director.spawn_boss()
+	check(not director.state.boss_spawned,"Unsafe boss remains pending instead of disappearing")
+	game.sim.zombies.clear()
+	game.local_pawn().pos = Layout.HOLDOUT
+	for i in director.cap(): game.sim.spawn(Vector2(0,50),"normal")
+	director.spawn_boss()
+	check(director.state.boss_spawned,"Boss has independent slot even at normal cap")
+	director.spawn_boss()
+	check(game.sim.zombies.filter(func(z): return z.kind == "football").size() == 1,"Retry never duplicates boss")
+	game.sim.zombies = saved
+	game.local_pawn().pos = Layout.START
+	director.state.boss_queued = false
+	director.state.boss_spawned = false
+	for key in ["boss_queued","boss_spawned","boss_holdout_time"]: director.state.milestones.erase(key)
+
 
 func validate_lighting() -> void:
 	var data = root.get_node("Data")
@@ -242,6 +278,7 @@ func validate_sound_and_holdout() -> void:
 		check(not director.state.complete,"Cannot bypass holdout by sending finish interaction")
 		director.perform(p,"holdout")
 		director.holdout_step(1.0)
+		check(not director.state.boss_queued,"Boss is not queued before ten seconds")
 		for pawn in sim.pawns.values(): pawn.pos = Vector2(0,60)
 		director.holdout_step(5.0)
 		check(is_equal_approx(director.state.holdout_time,1.0),"Leaving entrance pauses holdout countdown")
@@ -256,7 +293,11 @@ func validate_sound_and_holdout() -> void:
 		print("HOLDOUT FIXTURE party=",party," waves=",JSON.stringify(waves)," entries=",Layout.FINAL_ENTRIES.map(func(point): return [point,director.safe_point(point)]))
 		check(waves[0].spawn_times.size() >= 3 and waves[0].spawn_times[2]-waves[0].spawn_times[0] < 1.5,"First group enters together instead of slow trickle")
 		check(waves.size() == 3,"Exactly three finite holdout batches queued")
-		check(sim.zombies.size() >= (36 if party == 1 else 44),"Concentrated holdout reinforcement actually enters party "+str(party))
+		check(waves.all(func(batch): return batch.budget == roundi(Layout.HOLDOUT_BUDGET*director.reinforcement_scale()) and batch.spent+preload("res://scripts/night_population.gd").points(batch.roster) == batch.budget),"Holdout spends exact point budgets without losing deferred quota")
+		check(waves.reduce(func(total,batch): return total+batch.spawned,0) >= ceili(waves.reduce(func(total,batch): return total+batch.planned,0)*.5),"At least half the planned holdout population actually enters")
+		check(sim.zombies.filter(func(enemy): return enemy.kind == "football").size() == 1,"Exactly one independent football boss in solo and duo")
+		check(director.state.milestones.get("boss_holdout_time",0) >= 10 and director.state.milestones.get("boss_holdout_time",99) <= 10.1,"Boss appears at ten defended seconds with a safe entry")
+		check(sim.zombies.all(func(enemy): return enemy.kind != "giant"),"No giant in holdout population")
 		check(director.state.exit_control,"Door unlocks after thirty defended seconds")
 		check(game.arena.clear(Vector2(12,-52),Vector2(12,-57)),"Unlocked door immediately updates navigation")
 		var spawned: int = sim.zombies.size()

@@ -247,15 +247,16 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	p.input_age += dt
 	var input: Dictionary = p.input if p.input_age < .5 else {}
 	if p.hp <= 0: return
-	p.yaw = input.get("yaw",p.yaw)
-	p.pitch = input.get("pitch",p.pitch)
 	var locked: bool = campaign != null and (not p.healing.is_empty() or p.being_healed)
+	if not locked:
+		p.yaw = input.get("yaw",p.yaw)
+		p.pitch = input.get("pitch",p.pitch)
 	if locked:
 		input = input.duplicate()
 		for action in ["x","y","jump","fire","aim","reload","shove"]: input[action] = 0
 		p.air = Vector2.ZERO
 	var body = player_body(p)
-	body.update_stance(p,input.get("crouch",false),dt)
+	body.update_stance(p,(p.heal_time < 2.65 if not p.get("healing","").is_empty() else false) if locked else input.get("crouch",false),dt)
 	var movement = Vector2(input.get("x",0),input.get("y",0)).limit_length()
 	if body.grounded: p.air = movement
 	if input.get("jump",false) and body.grounded and p.crouch < .1:
@@ -322,21 +323,21 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 			if w.get("shellReload",false):
 				var loaded = mini(1,p.reserves[p.weapon]) if campaign else 1
 				p.ammo[p.weapon] = mini(int(w.capacity),p.ammo[p.weapon]+loaded)
-				if campaign: p.reserves[p.weapon] -= loaded
+				if campaign and not w.get("infiniteReserve",false): p.reserves[p.weapon] -= loaded
 				p.reload = w.reloadDuration
 				events.append({"kind":"reload","player":p.id})
 				if p.ammo[p.weapon] >= w.capacity or (campaign and p.reserves[p.weapon] <= 0): p.reloading = false
 			else:
-				var loaded = mini(int(w.capacity)-p.ammo[p.weapon],p.reserves[p.weapon]) if campaign else int(w.capacity)-p.ammo[p.weapon]
+				var loaded = mini(int(w.capacity)-p.ammo[p.weapon],p.reserves[p.weapon]) if campaign and not w.get("infiniteReserve",false) else int(w.capacity)-p.ammo[p.weapon]
 				p.ammo[p.weapon] += loaded
-				if campaign: p.reserves[p.weapon] -= loaded
+				if campaign and not w.get("infiniteReserve",false): p.reserves[p.weapon] -= loaded
 				p.reloading = false
 		return
 	if p.requested != p.weapon and p.fire_anim <= 0:
 		p.switch = .4
 		p.aim = false
 		return
-	if input.get("reload",false) and not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < w.capacity and (not campaign or p.reserves[p.weapon] > 0): p.reload_queued = true
+	if input.get("reload",false) and not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < w.capacity and (not campaign or w.get("infiniteReserve",false) or p.reserves[p.weapon] > 0): p.reload_queued = true
 	p.input.reload = false
 	if p.reload_queued and p.fire_anim <= 0:
 		p.reload = w.reloadDuration

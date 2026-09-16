@@ -90,7 +90,8 @@
         -0.09,
         -0.41
       ],
-      "tier": "B"
+      "tier": "B",
+      "infiniteReserve": true
     },
     {
       "id": "shotgun",
@@ -163,7 +164,7 @@
       "fireDuration": 0.56,
       "recoil": 0.55,
       "kind": "melee",
-      "range": 3.5,
+      "range": 2.3333333333333335,
       "infiniteAmmo": true,
       "headshotMultiplier": 1,
       "procedural": true,

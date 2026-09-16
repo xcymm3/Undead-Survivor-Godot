@@ -76,6 +76,8 @@ try {
   if (!/NATIVE COMPONENTS: \d+ checks; 0 failures/.test(native)) throw new Error('Missing native component acceptance marker.');
   const night = await run('night-campaign', engine, [...godotArgs, '--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation'], 900_000);
   if (!/NIGHT VALIDATION: \d+ checks; 0 failures/.test(night)) throw new Error('Missing night campaign acceptance marker.');
+  const balance = await run('balance-solo-duo', engine, [...godotArgs, '--script', 'res://tools/validate-balance.gd', '--', '--silent', '--automation'], 900_000);
+  if (!/BALANCE VALIDATION: 6 checks; 0 failures/.test(balance)) throw new Error('Missing complete solo/duo balance acceptance marker.');
   await run('shotgun-limited', engine, [...godotArgs, '--script', 'res://tools/validate-shotgun.gd', '--', '--silent', '--automation'], 900_000);
   await run('night-full-enet-2', process.execPath, ['tools/validate-campaign-network.mjs', '2'], 960_000);
   await mkdir('build/web', { recursive: true });

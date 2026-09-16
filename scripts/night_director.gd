@@ -1,4 +1,5 @@
 extends "res://scripts/campaign_director.gd"
+const Population = preload("res://scripts/night_population.gd")
 var sense_at = 0.0
 var cue_at = 0.0
 var sound_events: Array = []
@@ -63,16 +64,41 @@ func holdout_step(dt: float) -> void:
 		state.objective = "守住门前 · 解锁剩余 %d 秒" % ceili(30-state.holdout_time)
 		for i in 3:
 			if state.holdout_time >= i*10:
-				queue_batch("night_holdout_"+str(i),18,["normal","normal","normal","cone"])
+				queue_batch("night_holdout_"+str(i),Layout.HOLDOUT_BUDGET,[["imp","cone","bucket"],["shield","cone","imp"],["berserker","bucket","cone"]][i])
+		if state.holdout_time >= 10 and not state.boss_queued:
+			state.boss_queued = true
+			state.milestones.boss_queued = sim.elapsed
 		if state.holdout_time >= 30:
 			state.exit_control = true
 			state.milestones.holdout_complete = sim.elapsed
 			phase("ESCAPE","门已解锁！进入安全屋并按 E 关门")
 			sim.arena.sync_campaign(state)
 
+func spawn_boss() -> void:
+	if not state.boss_queued or state.boss_spawned: return
+	# Separate slot: no threat points, burst quota, credit or ordinary cap used.
+	for point in Layout.FINAL_ENTRIES:
+		if not safe_point(point): continue
+		sim.spawn(point,"football")
+		sim.zombies[-1]["boss"] = true
+		state.boss_spawned = true
+		state.milestones.boss_spawned = sim.elapsed
+		state.milestones.boss_holdout_time = state.holdout_time
+		sim.events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(point.x,1,point.y)})
+		return
+
+func queue_batch(id: String, budget: int, kinds: Array) -> void:
+	if reinforcement_batches.any(func(batch): return batch.id == id): return
+	var requested = roundi(budget*reinforcement_scale())
+	var roster = Population.roster(requested,kinds,sim.random,2.0/3.0 if id.begins_with("night_holdout_") else .4)
+	reinforcement_batches.append({"id":id,"queued_at":sim.elapsed,"roster":roster,"spawned":0,"budget":requested,"spent":0,"planned":roster.size()})
+	var source: Vector2 = Layout.HOLDOUT if id.begins_with("night_holdout_") else standing()[0].pos if not standing().is_empty() else Layout.START
+	sim.events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(source.x,1,source.y)})
+
 func spawn_groups() -> void:
+	spawn_boss()
 	if sim.elapsed >= burst_at and burst_left <= 0:
-		burst_left = 6 if state.party == 1 else 8
+		burst_left = 6 if state.party == 1 else Layout.DUO_BURST_SIZE
 		burst_at = sim.elapsed+5.0
 	if burst_left <= 0 or sim.elapsed < burst_next: return
 	# Round-robin batches prevent a blocked earlier wave starving the finale.
@@ -83,7 +109,7 @@ func spawn_groups() -> void:
 		credit = 1
 		var entries: Array = Layout.FINAL_ENTRIES if batch.id.begins_with("night_holdout_") else Layout.ENTRIES
 		if spawn_one(entries,batch.roster[0]):
-			batch.roster.pop_front()
+			batch.spent += Population.COST[batch.roster.pop_front()]
 			batch.spawned += 1
 			if not batch.has("spawn_times"): batch.spawn_times = []
 			batch.spawn_times.append(sim.elapsed)
@@ -99,10 +125,13 @@ func _init(world) -> void:
 	state.exit_control = false
 	state.holdout_started = false
 	state.holdout_time = 0.0
+	state.boss_queued = false
+	state.boss_spawned = false
 	state.power_ready = true
 	state.objective = "沿绿灯穿过街口与店铺，抵达林边安全屋"
 	sim.arena.sync_campaign(state)
 
+func reinforcement_scale() -> float: return Layout.DUO_REINFORCEMENT_SCALE if state.party == 2 else 1.0
 func multiply() -> float: return [1.0,1.2,1.4,1.6][clampi(state.party-1,0,3)]
 func cap() -> int: return ([48,64,76,88] if state.get("holdout_started",false) and not state.exit_control else [30,42,54,66])[clampi(state.party-1,0,3)]
 
@@ -117,21 +146,25 @@ func populate_route() -> void:
 					if not sim.arena.clear(Layout.closest_route(p),p): concealed.append(p)
 					else: candidates.append(p)
 		var count = 0
-		var wanted = roundi(zone.budget*multiply())
+		var budget = roundi(zone.budget*multiply())
+		var roster = Population.roster(budget,zone.kinds,sim.random)
+		var wanted = roster.size()
+		var spent = 0
 		while (not candidates.is_empty() or not concealed.is_empty()) and count < wanted:
 			var pool: Array = concealed if not concealed.is_empty() and (count%5 != 0 or candidates.is_empty()) else candidates
 			var index = sim.random.randi_range(0,pool.size()-1)
 			var point: Vector2 = pool[index]
 			pool.remove_at(index)
 			if sim.zombies.any(func(z): return z.pos.distance_to(point) < 1.6): continue
-			sim.spawn(point,zone.kinds[count%zone.kinds.size()])
+			sim.spawn(point,roster[count])
+			spent += Population.COST[roster[count]]
 			var z: Dictionary = sim.zombies[-1]
 			z.guard_awake = false
 			z["home"] = point
 			z["idle_heading"] = sim.random.randf_range(-PI,PI)
 			z.heading = z.idle_heading
 			count += 1
-		state.zones[zone.id] = {"preplaced":count,"requested":wanted}
+		state.zones[zone.id] = {"preplaced":count,"requested":wanted,"budget":budget,"spent":spent}
 		if count < wanted: push_warning("Night habitat population shortfall: "+zone.id+" "+str(count)+"/"+str(wanted))
 
 func target(p: Dictionary) -> Dictionary:
@@ -183,9 +216,9 @@ func step(dt: float) -> void:
 	if standing().any(func(p): return p.pos.y < 5) and not state.milestones.has("woods"):
 		state.milestones.woods = sim.elapsed
 		phase("FINAL_APPROACH","穿过林缘，寻找安全屋暖灯")
-		queue_batch("night_woods",12,["normal","normal","cone"])
+		queue_batch("night_woods",Layout.WOODS_BUDGET,["imp","cone","bucket","shield","berserker"])
 	for i in 2:
-		if sim.elapsed >= [65,125][i]: queue_batch("night_timer_"+str(i),10,["normal","normal","cone"])
+		if sim.elapsed >= [65,125][i]: queue_batch("night_timer_"+str(i),Layout.TIMER_BUDGET,["cone","imp","bucket","shield","berserker"])
 	holdout_step(dt)
 	spawn_groups()
 	investigate_sounds()

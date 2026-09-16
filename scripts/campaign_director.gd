@@ -191,7 +191,7 @@ func safe_point(point: Vector2) -> bool:
 	return standing().any(func(p): return not sim.arena.path_to(point,p.pos).is_empty())
 
 func spawn_one(points: Array, kind: String) -> bool:
-	if sim.zombies.filter(func(z): return z.hp > 0 and z.get("guard_awake",true)).size() >= cap() or credit < 1: return false
+	if sim.zombies.filter(func(z): return z.hp > 0 and z.get("guard_awake",true) and not z.get("boss",false)).size() >= cap() or credit < 1: return false
 	var candidates = points.duplicate()
 	# Authority RNG is also used for candidate order; QA can reproduce the seed.
 	for i in candidates.size():

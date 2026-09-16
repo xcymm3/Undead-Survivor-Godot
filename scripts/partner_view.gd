@@ -11,6 +11,8 @@ var weapon_animation: AnimationPlayer
 var axe_pivot: Node3D
 var skeleton: Skeleton3D
 var gun_model: Node3D
+var bandage: Node3D
+var bandage_roll: Node3D
 var flash: MeshInstance3D
 
 static func display_name(value: String) -> String:
@@ -22,6 +24,13 @@ func setup(p: Dictionary) -> void:
 	avatar = preload("res://scripts/survivor_model.gd").new()
 	add_child(avatar)
 	avatar.build(int(appearance[0]))
+	bandage = Node3D.new()
+	add_child(bandage)
+	bandage_roll = Node3D.new()
+	add_child(bandage_roll)
+	for offset in [-.05,0.0,.05]:
+		preload("res://scripts/campaign_props.gd").box(bandage,Vector3(.13,.045,.15),Vector3(0,offset,0),Color("dedbc7"))
+	preload("res://scripts/campaign_props.gd").box(bandage_roll,Vector3(.065,.07,.065),Vector3.ZERO,Color("eee9d8"))
 	label = Label3D.new()
 	label.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
 	label.text = display_name(p.name)
@@ -97,6 +106,8 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	if axe_pivot:
 		preload("res://scripts/weapon_view.gd").sample_axe(axe_pivot,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0)
 	avatar.animate(p,moving,dt)
+	bandage.visible = false
+	bandage_roll.visible = false
 	var medical: bool = not p.get("healing","").is_empty() or p.get("being_healed",false)
 	var item_slot: int = p.get("slot",1)
 	if medical: item_slot = 5
@@ -110,16 +121,27 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	if item_slot >= 4 or medical:
 		held.visible = false
 		flash.visible = false
+		var healing: bool = not p.get("healing","").is_empty()
+		var self_heal: bool = healing and p.healing == p.id
+		var time: float = p.get("heal_time",0.0)
 		if medical_prop:
-			medical_prop.visible = p.hp > 0
-			medical_prop.position = Vector3(0,1.10,-.30)
+			medical_prop.visible = p.hp > 0 and not (medical and not healing)
+			var pack_blend = smoothstep(.15,.5,time)*(1-smoothstep(2.45,2.9,time)) if healing else 0.0
+			medical_prop.position = Vector3(0,1.10-.6*crouch,-.30).lerp(Vector3(.32,.14,-.20),pack_blend)
 		if skeleton and p.hp > 0:
-			var reach = -.55 if p.get("healing","") != "" and p.healing != p.id else -.28
-			var bob = sin(p.get("heal_time",0.0)*12)*.04 if medical else 0.0
-			pose_hand("R",Vector3(.12,1.13+bob,reach))
-			pose_hand("L",Vector3(-.12,1.10-bob,reach))
-			if medical_prop: medical_prop.position.z = reach
-		if medical: label.text = display_name(p.name)+"\n治疗中"
+			if healing:
+				var pose = medical_hands(time,crouch,self_heal)
+				pose_hand("L",pose.left)
+				pose_hand("R",pose.right)
+				bandage.visible = self_heal and time > .75 and time < 2.75
+				bandage.position = pose.left+Vector3(0,.055,0)
+				bandage.rotation = Vector3(0,0,PI/2)
+				bandage_roll.visible = time > .45 and time < 2.7
+				bandage_roll.position = pose.right+Vector3(0,-.025,0)
+			else:
+				pose_hand("R",Vector3(.12,1.13-.6*crouch,-.28))
+				pose_hand("L",Vector3(-.12,1.10-.6*crouch,-.28))
+		if medical: label.text = display_name(p.name)+("\n包扎中" if healing else "\n接受治疗")
 		return
 
 	if skeleton and p.hp > 0 and int(p.weapon) != 6:
@@ -181,3 +203,19 @@ func pose_hand(side: String, target: Vector3) -> void:
 func grip_position() -> Vector3:
 	if weapon_index == 0: return gun_model.to_global(preload("res://scripts/ak_rifle.gd").RIGHT_GRIP)
 	return axe_pivot.to_global(Vector3(0,-.13,0)) if axe_pivot else held.to_global(Vector3(0,-.045,-.04))
+
+
+static func medical_hands(time: float, crouch: float, self_heal: bool) -> Dictionary:
+	var rest_left = Vector3(-.12,1.10-.6*crouch,-.28)
+	var rest_right = Vector3(.12,1.13-.6*crouch,-.28)
+	var wrap_left = Vector3(-.06,.98-.6*crouch,-.32)
+	var wrap_right = wrap_left+Vector3(.06+cos(time*13)*.055,.03+sin(time*13)*.065,-.035)
+	if not self_heal:
+		wrap_left = Vector3(-.12,1.02-.45*crouch,-.55)
+		wrap_right = Vector3(.10,1.04-.45*crouch+sin(time*10)*.055,-.57)
+	var retrieve = Vector3(.25,.34,-.22)
+	if time < .75:
+		var reach = sin(clampf(time/.75,0,1)*PI)
+		return {"left":rest_left.lerp(wrap_left,clampf(time/.75,0,1)),"right":rest_right.lerp(wrap_right,smoothstep(.45,.75,time)).lerp(retrieve,reach)}
+	var finish = smoothstep(2.4,3.0,time)
+	return {"left":wrap_left.lerp(rest_left,finish),"right":wrap_right.lerp(rest_right,finish)}

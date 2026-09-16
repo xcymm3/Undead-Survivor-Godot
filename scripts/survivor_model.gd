@@ -108,7 +108,9 @@ func animate(p: Dictionary, moving: bool, dt: float) -> void:
 	var crouch = float(p.get("crouch",0.0)) if p.hp > 0 else 0.0
 	var hips = skeleton.find_bone("Hips")
 	skeleton.set_bone_pose_position(hips,skeleton.get_bone_rest(hips).origin+Vector3(0,-.6*crouch,0))
-	skeleton.set_bone_pose_rotation(skeleton.find_bone("Chest"),Quaternion(Vector3.RIGHT,.16 if not p.get("healing","").is_empty() else -.12*crouch))
+	skeleton.set_bone_pose_rotation(skeleton.find_bone("Chest"),Quaternion(Vector3.RIGHT,-.28*crouch if not p.get("healing","").is_empty() else -.12*crouch))
+	if not p.get("healing","").is_empty():
+		skeleton.set_bone_pose_rotation(skeleton.find_bone("Head"),Quaternion(Vector3.RIGHT,-.22*crouch))
 	for side in ["R","L"]:
 		var swing = stride*(1 if side == "R" else -1)
 		skeleton.set_bone_pose_rotation(skeleton.find_bone("Thigh."+side),Quaternion(Vector3.RIGHT,swing if grounded else -.35))

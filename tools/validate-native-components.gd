@@ -92,6 +92,7 @@ func run() -> void:
 	game.sound.clear_effects()
 	check(game.sound.spatial_players.all(func(p): return p.stream == null),"World voice resources clear on scene reset")
 	await validate_equipment()
+	await validate_inventory_and_heal()
 	validate_close_combat()
 	validate_revolver()
 	validate_buffer()
@@ -246,7 +247,7 @@ func validate_close_combat() -> void:
 		sim.update_arsenal(p,{"weapon":gun},.1)
 		check(p.reloading and is_equal_approx(p.reload,.1),"Reload clock advances during shove gun "+str(gun))
 		sim.update_arsenal(p,{"weapon":gun},.11)
-		check(p.ammo[gun] > 0 and p.ammo[gun]+p.reserves[gun] == 10,"Reload transfers rounds exactly once gun "+str(gun))
+		check(p.ammo[gun] > 0 and (p.reserves[gun] == 10 if gun == 3 else p.ammo[gun]+p.reserves[gun] == 10),"Reload transfers rounds exactly once gun "+str(gun))
 	p.primary = saved.primary
 	p.weapon = p.primary
 	p.requested = p.primary
@@ -377,6 +378,105 @@ func validate_close_combat() -> void:
 	for key in saved: p[key] = saved[key]
 	sim.zombies = original_zombies
 
+func validate_inventory_and_heal() -> void:
+	game.return_home()
+	game.start_solo("campaign",71245)
+	await physics_frame
+	var sim = game.sim
+	var p: Dictionary = game.local_pawn()
+	var equipment = sim.campaign.equipment
+	check(sim.campaign.state.loot.all(func(g): return g.weapon != 3),"No revolver supply appears on route")
+	p.slot = 2
+	p.weapon = 3
+	p.requested = 3
+	p.ammo[3] = 0
+	p.reserves[3] = 0
+	p.switch = 0.0
+	sim.update_arsenal(p,{"reload":true},.01)
+	check(p.reloading,"Revolver can reload with zero reserve")
+	sim.update_arsenal(p,{},2.0)
+	check(p.ammo[3] == 6 and p.reserves[3] == 0,"Infinite reserve refills six chambers without negative inventory")
+	p.slot = 1
+	p.grenades = 0
+	p.medkits = 0
+	for slot in [4,5]:
+		p.input = {"slot":slot}
+		p.input_age = 0.0
+		equipment.before_movement(.016)
+		check(p.slot == 1,"Authority rejects empty item slot "+str(slot))
+		game.requested_slot = 1
+		var key = InputEventKey.new()
+		key.pressed = true
+		key.physical_keycode = KEY_4 if slot == 4 else KEY_5
+		game._unhandled_input(key)
+		check(game.requested_slot == 1,"Shortcut rejects empty item slot "+str(slot))
+	game.requested_slot = 3
+	game.cycle_equipment(1)
+	check(game.requested_slot == 1,"Wheel skips both empty items")
+	p.pos = preload("res://scripts/night_layout.gd").ITEMS[0].pos+Vector2(-1,0)
+	sim.campaign.state.grenade_stations.night_start.remaining = 4
+	for i in 3: check(equipment.pickup(p,"grenade:night_start") and p.grenades == i+1,"Grenade stacks to "+str(i+1))
+	check(not equipment.pickup(p,"grenade:night_start") and sim.campaign.state.grenade_stations.night_start.remaining == 1,"Fourth grenade is rejected without consuming supply")
+	p.pos = Vector2(0,70)
+	p.yaw = 0.0
+	p.pitch = 0.0
+	p.slot = 5
+	p.medkits = 1
+	p.hp = 40
+	p.interaction = ""
+	p.input_age = 0.0
+	p.input = {"slot":5,"use_self":true,"yaw":2.0,"x":1.0}
+	equipment.before_movement(.016)
+	sim.update_pawn(p,.2)
+	check(p.yaw == 0 and p.crouch > .9 and p.pos.distance_to(Vector2(0,70)) < .01,"Self healing crouches and locks movement and facing")
+	game.yaw = 0
+	game.medical_camera_active = false
+	game._process(.016)
+	var old_camera: Vector3 = game.camera.position
+	for i in 14:
+		var motion = InputEventMouseMotion.new()
+		motion.screen_relative = Vector2(100,0)
+		game._unhandled_input(motion)
+	game._process(.016)
+	check(p.yaw == 0 and game.camera.position.distance_to(old_camera) > 2 and game.camera.position.z < p.pos.y,"Medical mouse orbit reaches character front without rotating pawn")
+	var actor = game.partners[p.id]
+	p.heal_time = 1.4
+	actor.sync(p,.016)
+	check(actor.bandage.visible and actor.bandage_roll.visible and not actor.held.visible,"Healing displays bandage and hides the gun")
+	var previous = actor.medical_hands(0,1.0,true)
+	var continuous = true
+	for i in range(1,301):
+		var hands = actor.medical_hands(i*.01,1.0,true)
+		if hands.left.distance_to(previous.left) > .08 or hands.right.distance_to(previous.right) > .08: continuous = false
+		previous = hands
+	check(continuous,"Bandaging hand targets stay continuous across retrieval and wrapping phases")
+	p.input = {"slot":5}
+	equipment.before_movement(2.0)
+	check(p.medkits == 0 and p.slot == 1,"Last medkit consumption returns to primary slot")
+	# Full real swing: a formerly reachable enemy at 3 m must now survive.
+	sim.campaign.state.departed = true
+	sim.zombies.clear()
+	p.slot = 3
+	p.weapon = 6
+	p.requested = 6
+	p.reloading = false
+	p.crouch = 0
+	p.being_healed = false
+	p.healing = ""
+	for distance in [3.0,1.8]:
+		sim.zombies.clear()
+		sim.spawn(p.pos+Vector2(0,-distance),"normal")
+		var w: Dictionary = root.get_node("Data").weapons[6]
+		p.fire_anim = w.fireDuration
+		sim.fire(p,w)
+		for step in 10:
+			p.fire_anim = maxf(0,p.fire_anim-.056)
+			sim.update_melee_swing(p,w)
+		check((sim.zombies[0].hp > 0) == (distance > 2.5),"Axe reduced reach with unchanged lethal damage at "+str(distance))
+	game.return_home()
+	game.start_solo("campaign",71245)
+	await physics_frame
+
 func validate_equipment() -> void:
 	var layout = load("res://scripts/night_layout.gd")
 	for party in [1,2]:
@@ -405,8 +505,9 @@ func validate_equipment() -> void:
 		p.pos = layout.ITEMS[0].pos+Vector2(-1,0)
 		p.grenades = 0
 		check(equipment.pickup(p,"grenade:night_start") and p.grenades == 1,"Night grenade pickup fills one slot")
+		p.grenades = 3
 		var remaining: int = director.state.grenade_stations.night_start.remaining
-		check(not equipment.pickup(p,"grenade:night_start") and director.state.grenade_stations.night_start.remaining == remaining,"Full grenade slot cannot consume a second item")
+		check(not equipment.pickup(p,"grenade:night_start") and director.state.grenade_stations.night_start.remaining == remaining,"Three-grenade capacity preserves remaining supply")
 		if party == 2:
 			var lower: Dictionary = director.state.loot[0]
 			var upper: Dictionary = director.state.loot[2]

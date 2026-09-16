@@ -2,7 +2,8 @@ extends RefCounted
 ## Authority-only equipment, pickups, healing and ballistic grenades.
 var Layout:
 	get: return director.Layout
-const GUNS = [0,1,2,3,4,5,7,8,9]
+const GUNS = [0,1,2,4,5,7,8,9]
+const MAX_GRENADES = 3
 const HEAL_SECONDS = 3.0
 const GRENADE_FUSE = 1.5
 const GRENADE_RADIUS = 11.0
@@ -73,7 +74,7 @@ func pickup_target(p: Dictionary) -> Dictionary:
 	for item in Layout.ITEMS:
 		if item.kind != "ammo" or not director.near(p,item.pos+Vector2(-1,0),2.0): continue
 		var station: Dictionary = director.state.grenade_stations[item.id]
-		if station.remaining > 0 and p.grenades < 1:
+		if station.remaining > 0 and p.grenades < MAX_GRENADES:
 			var delta: Vector2 = item.pos+Vector2(-1,0)-p.pos
 			var point = Vector3(item.pos.x-1,.65,item.pos.y)
 			var aim = sight.dot((point-eye).normalized())
@@ -90,7 +91,7 @@ func pickup(p: Dictionary, id: String) -> bool:
 		for item in Layout.ITEMS:
 			if item.id != station_id or item.kind != "ammo" or not director.near(p,item.pos+Vector2(-1,0),2.0): continue
 			var station: Dictionary = director.state.grenade_stations[item.id]
-			if station.remaining <= 0 or p.grenades >= 1: return false
+			if station.remaining <= 0 or p.grenades >= MAX_GRENADES: return false
 			station.remaining -= 1
 			if not station.claimed.has(p.id): station.claimed.append(p.id)
 			p.grenades += 1
@@ -122,6 +123,9 @@ func pickup(p: Dictionary, id: String) -> bool:
 		return true
 	return false
 
+static func slot_available(p: Dictionary, slot: int) -> bool:
+	return slot >= 1 and slot <= 5 and (slot != 4 or p.get("grenades",0) > 0) and (slot != 5 or p.get("medkits",0) > 0)
+
 func heal_target(p: Dictionary, other: bool) -> String:
 	if not other: return p.id if p.hp > 0 and p.hp < 100 else ""
 	var result = ""
@@ -140,6 +144,7 @@ func before_movement(dt: float) -> void:
 	for p in sim.pawns.values():
 		var input: Dictionary = p.input if p.input_age < .5 else {}
 		var requested: int = int(input.get("slot",p.slot))
+		if not slot_available(p,requested): requested = p.slot if slot_available(p,p.slot) else 1
 		if requested != p.slot:
 			p.slot = requested
 			p.use_latch = false
@@ -176,6 +181,7 @@ func before_movement(dt: float) -> void:
 				if not p.healing.is_empty(): sim.pawns[p.healing].being_healed = true
 			elif p.slot == 4 and (input.get("use_self",false) or input.get("fire",false)) and director.state.departed and p.grenades > 0:
 				throw_grenade(p)
+		if not slot_available(p,p.slot): p.slot = 1
 		p.use_latch = use
 		p.input["use_self"] = false
 		p.input["use_other"] = false
