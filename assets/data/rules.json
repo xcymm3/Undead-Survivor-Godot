@@ -102,10 +102,10 @@
       "reloadDuration": 0.45,
       "shellReload": true,
       "automatic": false,
-      "damage": 18.666666666666668,
+      "damage": 40,
       "pellets": 15,
-      "spread": 0.045,
-      "spreadVertical": 0.045,
+      "spread": 0.12,
+      "spreadVertical": 0.06,
       "length": 0.9,
       "rotationY": 0,
       "fireDuration": 0.74,
@@ -115,7 +115,12 @@
         -0.07,
         -0.48
       ],
-      "tier": "B"
+      "tier": "B",
+      "falloffStart": 8,
+      "falloffEnd": 24,
+      "falloffMinimum": 0.2,
+      "pelletTargets": 2,
+      "penetrationDamage": 0.65
     },
     {
       "id": "sniper",
@@ -206,10 +211,10 @@
       "interval": 0.36,
       "reloadDuration": 2.2,
       "automatic": true,
-      "damage": 11.294117647058824,
+      "damage": 32,
       "pellets": 17,
-      "spread": 0.055,
-      "spreadVertical": 0.055,
+      "spread": 0.105,
+      "spreadVertical": 0.05,
       "length": 0.92,
       "rotationY": 0,
       "fireDuration": 0.25,
@@ -220,7 +225,12 @@
         -0.07,
         -0.49
       ],
-      "tier": "A"
+      "tier": "A",
+      "falloffStart": 8,
+      "falloffEnd": 24,
+      "falloffMinimum": 0.2,
+      "pelletTargets": 2,
+      "penetrationDamage": 0.65
     },
     {
       "id": "heavy-machine-gun",

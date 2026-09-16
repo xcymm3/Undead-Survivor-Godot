@@ -101,6 +101,30 @@ func _process(_dt: float) -> void:
 			game.sim.campaign.state.objective = "门已解锁！进入安全屋并按 E 关门" if value.get("unlocked",false) else "守住门前 · 解锁剩余 %d 秒" % ceili(30-value.get("holdout_time",0.0)) if value.get("holdout",false) else "沿绿灯前往安全屋 · 门前启动解锁"
 			game.sim.elapsed = float(value.get("time",2.0))
 		game.arena.sync_campaign(game.sim.campaign.state)
+		if value.has("shotgun"):
+			game.effects.particles.clear()
+			game.effects.step(0)
+			game.ui.hit_flash = 0
+			p.fire_anim = 0.0
+			game.sim.kills = 0
+			p.kills = 0
+			var index: int = int(value.shotgun)
+			p.primary = index
+			p.weapon = index
+			p.requested = index
+			p.slot = 1
+			p.ammo[index] = int(Data.weapons[index].capacity)
+			p.reserve = int(Data.weapons[index].capacity)*5
+			p.reserves[index] = p.reserve
+			game.sim.zombies.clear()
+			for row in 2:
+				for column in 3: game.sim.spawn(p.pos+Vector2((column-1)*.65,-5-row*.8),"normal")
+			if value.get("fired",false):
+				game.sim.events.clear()
+				game.sim.fire(p,Data.weapons[index])
+				p.ammo[index] -= 1
+				p.fire_anim = float(Data.weapons[index].fireDuration)*.8
+				game.handle_effects(game.sim.events)
 		pending_frames = 2
 		RenderingServer.render_loop_enabled = true
 	if pending_frames <= 0: return

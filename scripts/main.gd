@@ -330,6 +330,9 @@ func handle_effects(events: Array) -> void:
 					sound.play("shove",-3)
 					if event.get("hits",0) > 0: sound.play("shove-hit",-3)
 				else: sound.play_at("shove-hit" if event.get("hits",0) > 0 else "shove",event.position,-5)
+			"shotgun_impact":
+				sound.play_at("shove-hit",event.position,-7)
+				if event.player == Session.local_id: ui.hit_flash = .2
 			"enemy_windup", "enemy_impact", "enemy_miss":
 				sound.play_at(event.kind.replace("_","-"),event.position,-12)
 			"explosion":

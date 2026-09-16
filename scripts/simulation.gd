@@ -735,6 +735,9 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	var right = direction.cross(Vector3.UP).normalized()
 	var up = right.cross(direction).normalized()
 	var pellet_ends: Array[Vector3] = []
+	var shotgun: bool = w.id in ["shotgun", "auto-shotgun"]
+	var shotgun_hits: Dictionary = {}
+	var impact_point = target
 	for pellet in int(w.pellets):
 		var offset = Data.pellet(w,pellet,p.gun_shots[p.weapon]+1)
 		var ray = (direction+right*offset.x+up*offset.y).normalized()
@@ -747,21 +750,47 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 			var candidate = EnemyView.hit(z,muzzle,ray,distance,elapsed,false)
 			if not candidate.is_empty(): candidates.append(candidate)
 		candidates.sort_custom(func(a,b): return a.distance < b.distance)
-		if not w.get("piercing",false) and candidates.size() > 1: candidates.resize(1)
+		if shotgun:
+			if candidates.size() > int(w.pelletTargets): candidates.resize(int(w.pelletTargets))
+		elif not w.get("piercing",false) and candidates.size() > 1: candidates.resize(1)
+		var penetration = 1.0
 		for hit in candidates:
 			if (w.get("piercing",false) or weapon_kind == "melee") and damaged.has(hit.z.id): continue
 			damaged[hit.z.id] = true
 			landed = true
-			hit_enemy(hit.z,w.damage*(w.get("headshotMultiplier",2) if hit.head else 1),hit.armor,p,muzzle+ray*hit.distance)
+			var amount: float = w.damage*(w.get("headshotMultiplier",2) if hit.head else 1)
+			if shotgun:
+				amount *= shotgun_damage_scale(w,hit.distance)*penetration
+				# Capture armor before damage can break it; the same pellet stays blocked.
+				var blocks: bool = hit.armor and hit.z.armor > 0 and hit.z.kind in ["bucket","shield","football"]
+				impact_point = muzzle+ray*hit.distance
+				shotgun_hits[hit.z.id] = hit.z
+				hit_enemy(hit.z,amount,hit.armor,p,muzzle+ray*hit.distance)
+				distance = hit.distance
+				if campaign: campaign.emit_noise(muzzle+ray*hit.distance,"impact",p.pos)
+				if blocks: break
+				penetration *= float(w.penetrationDamage)
+				continue
+			hit_enemy(hit.z,amount,hit.armor,p,muzzle+ray*hit.distance)
 			if campaign: campaign.emit_noise(muzzle+ray*hit.distance,"impact",p.pos)
-		if not candidates.is_empty() and not w.get("piercing",false): distance = candidates[0].distance
+		if not shotgun and not candidates.is_empty() and not w.get("piercing",false): distance = candidates[0].distance
 		if campaign and not wall.is_empty() and (w.get("piercing",false) or candidates.is_empty()): campaign.emit_noise(wall.position,"impact",p.pos)
 		if pellet == 0: target = muzzle+ray*distance
 		if w.id in ["shotgun", "auto-shotgun"]: pellet_ends.append(muzzle+ray*distance)
+	if shotgun and not shotgun_hits.is_empty():
+		for z in shotgun_hits.values():
+			# One flinch per shot, with a separate cooldown; never alter shove velocity.
+			if z.hp > 0 and z.kind == "normal" and z.pos.distance_to(p.pos) <= 8 and elapsed >= z.get("shotgun_stagger_ready",-1.0):
+				stun(z,.4)
+				z["shotgun_stagger_ready"] = elapsed+1.0
+		events.append({"kind":"shotgun_impact","player":p.id,"position":impact_point,"hits":shotgun_hits.size()})
 	if landed: p.hits += 1
 	var shot_event = {"kind":"shot","player":p.id,"weapon":p.weapon,"from":muzzle,"to":target}
 	if not pellet_ends.is_empty(): shot_event.pellet_ends = pellet_ends
 	events.append(shot_event)
+
+func shotgun_damage_scale(w: Dictionary, distance: float) -> float:
+	return lerpf(1.0,float(w.falloffMinimum),clampf((distance-float(w.falloffStart))/(float(w.falloffEnd)-float(w.falloffStart)),0,1))
 
 func snapshot() -> Dictionary:
 	var players = {}

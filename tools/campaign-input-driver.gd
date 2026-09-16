@@ -11,6 +11,7 @@ var grenade_cooldown = 0.0
 var grenade_pending = 0.0
 var grenade_count = 0
 var grenade_aim = Vector2.ZERO
+var prefer_shotgun = false
 
 func _init(current_game, _yard: bool) -> void:
 	game = current_game
@@ -101,7 +102,7 @@ func command(dt: float) -> Dictionary:
 		if game.sim.map_id == "graypine_night" and not z.get("guard_awake",true) and z.pos.distance_to(p.pos) > 7: continue
 		var poses: Array = load("res://scripts/enemy_view.gd").transforms(z,game.sim.elapsed,false)
 		var point: Vector3 = poses[0].origin
-		for part in Data.parts.size():
+		for part in (0 if prefer_shotgun and Data.weapons[p.primary].id in ["shotgun","auto-shotgun"] else Data.parts.size()):
 			if Data.parts[part].get("head",false):
 				point = poses[part].origin
 				break
@@ -164,4 +165,4 @@ func command(dt: float) -> Dictionary:
 	if p.slot == 3 and p.fire_anim > float(Data.weapons[p.weapon].fireDuration)*.34: shove = false
 	if game.sim.map_id == "graypine_night" and distance < (3.8 if p.slot == 3 else 2.2) and not heal:
 		return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":0.0,"slot":3,"shove":shove,"fire":fmod(fire_clock,.3) < .15,"interact":false}
-	return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":pitch,"shove":shove,"weapon":6 if p.reserve == 0 and p.ammo[p.primary] == 0 else p.primary,"fire":heal or (fire and not interact),"reload":p.ammo[p.weapon] < 5,"interact":interact,"slot":5 if heal or not p.get("healing","").is_empty() else 1 if p.reserve > 0 or p.ammo[p.primary] > 0 else 2 if p.reserves[p.secondary] > 0 or p.ammo[p.secondary] > 0 else 3,"jump":game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.state == "charging" and z.pos.distance_to(p.pos) < 8)}
+	return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":pitch,"shove":shove,"weapon":6 if p.reserve == 0 and p.ammo[p.primary] == 0 else p.primary,"fire":heal or (fire and not interact),"reload":(p.ammo[p.weapon] == 0 or (nearest > 8 and p.ammo[p.weapon] < Data.weapons[p.weapon].capacity)) if prefer_shotgun else p.ammo[p.weapon] < 5,"interact":interact,"slot":5 if heal or not p.get("healing","").is_empty() else 1 if p.reserve > 0 or p.ammo[p.primary] > 0 else 2 if p.reserves[p.secondary] > 0 or p.ammo[p.secondary] > 0 else 3,"jump":game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.state == "charging" and z.pos.distance_to(p.pos) < 8)}

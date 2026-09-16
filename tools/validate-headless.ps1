@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Night')]
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Night', 'Shotgun')]
     [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
@@ -15,6 +15,7 @@ if ($VerboseEngine) { $arguments += '--verbose' }
 switch ($Mode) {
     'Import' { $arguments += @('--editor', '--import', '--quit') }
     'Parse' { $arguments += @('--script', 'res://tools/validate-scripts.gd', '--', '--silent', '--automation', ('--parse-script=' + $Script)) }
+    'Shotgun' { $arguments += @('--script', 'res://tools/validate-shotgun.gd', '--', '--silent', '--automation') }
     'Night' { $arguments += @('--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation') }
     'NativeComponents' { $arguments += @('--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation') }
 }

@@ -34,6 +34,14 @@ test('night route software visual matrix', async ({ page }, info) => {
     await page.waitForFunction(view => JSON.stringify(window.__campaignRendered) === JSON.stringify(view), view);
     await page.screenshot({path:info.outputPath(`wall-rack-${name}.png`),timeout:60_000});
   }
+  for (const shotgun of [4, 8]) {
+    for (const fired of [false, true]) {
+      const view = {name:'night_street',position:[0,60],yaw:0,pitch:-0.1,width:1440,height:900,time:3,party:1,shotgun,fired};
+      await page.evaluate(view => { window.__campaignView = view; }, view);
+      await page.waitForFunction(view => JSON.stringify(window.__campaignRendered) === JSON.stringify(view), view);
+      await page.screenshot({path:info.outputPath(`shotgun-${shotgun}-${fired ? 'impact' : 'ready'}.png`),timeout:60_000});
+    }
+  }
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });
 });
