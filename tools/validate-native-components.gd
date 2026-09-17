@@ -9,6 +9,122 @@ func check(value: bool, message: String) -> void:
 		failures.append(message)
 		push_error(message)
 
+func validate_combat_revision() -> void:
+	game.return_home()
+	game.start_solo("campaign",71245)
+	await physics_frame
+	var sim = game.sim
+	var p: Dictionary = game.local_pawn()
+	var director = sim.campaign
+	for station in director.state.medical_stations.values(): check(station.remaining == 1,"Each solo station guarantees one medical pack")
+	p.pos = Vector2(-2,71)
+	p.medkits = 0
+	check(director.equipment.pickup(p,"medical:night_start"),"Weapon station includes a real medical pickup")
+	p.medkits = 0
+	check(not director.equipment.pickup(p,"medical:night_start"),"Consumed medical stock cannot refill itself")
+	p.hp = 1
+	p.medkits = 1
+	p.slot = 5
+	p.input = {"slot":5,"use_self":true}
+	p.input_age = 0
+	director.equipment.before_movement(.016)
+	director.equipment.before_movement(3)
+	check(p.hp == 100 and p.medkits == 0,"A completed kit restores even one HP to exactly 100")
+	p.being_healed = false
+	director.state.departed = true
+	game.arena.sync_campaign(director.state)
+	p.pos = Vector2(8,60)
+	p.slot = 1
+	p.primary = 4
+	p.weapon = 4
+	p.requested = 4
+	p.switch = 0
+	p.cooldown = 0
+	p.fire_anim = 0
+	p.ammo[4] = 2
+	p.reserves[4] = 10
+	p.reloading = true
+	p.reload = .3
+	var shots: int = p.shots
+	sim.update_arsenal(p,{"fire":true,"slot":1},.016)
+	check(not p.reloading and p.ammo[4] == 1 and p.shots == shots+1 and p.reserves[4] == 10,"Pump fires during reload without granting the unfinished shell")
+	p.ammo[4] = 0
+	p.reloading = true
+	p.reload = .3
+	p.cooldown = 0
+	p.fire_anim = 0
+	sim.update_arsenal(p,{"fire":true,"slot":1},.016)
+	check(p.reloading and p.ammo[4] == 0,"Empty pump must finish loading a shell before firing")
+	for kind in ["normal","cone","bucket","imp","shield","football","berserker"]:
+		sim.zombies.clear()
+		sim.spawn(Vector2(8,57),kind)
+		var z: Dictionary = sim.zombies[0]
+		var initial: Vector2 = z.pos
+		z.shove_time = .4
+		z.shove_velocity = Vector2(0,-5)
+		sim.stun(z,1.5)
+		sim.hit_enemy(z,1,false,p,Vector3(0,1,57))
+		check(z.pos.distance_to(initial) > .15 and z.pos.distance_to(initial) < .25,"Nonlethal damage pushes "+kind)
+		check(z.state_time >= 1.5 and z.shove_time == .4 and z.shove_velocity == Vector2(0,-5),"Weapon hit retains stronger shove control "+kind)
+		initial = z.pos
+		sim.hit_enemy(z,1,false,p,Vector3(0,1,57))
+		check(z.pos == initial,"Same-volley pellets cannot multiply push "+kind)
+	for kind in ["football","berserker"]:
+		sim.zombies.clear()
+		sim.spawn(Vector2(8,57),kind)
+		var z: Dictionary = sim.zombies[0]
+		check(z.hp == (9000 if kind == "football" else 2400),"Double boss health "+kind)
+		if kind == "football":
+			check(z.body == 5000 and z.armor == 4000,"Football doubles body HP and armor independently")
+			check(z.chase_speed == sim.PLAYER_MOVE_SPEED,"Football pursuit equals player walking speed")
+			z.state = "charging"
+		else:
+			z.hp = 1201
+			z.body = 1201
+		sim.hit_enemy(z,2,false,p,Vector3(0,1,57))
+		check(z.pos == Vector2(8,57),"Charge or half-health rage prevents hit displacement "+kind)
+		if kind == "berserker": check(z.rage,"Rage threshold follows doubled maximum health")
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,55),"football")
+	var runner: Dictionary = sim.zombies[0]
+	for armor in [4000,0]:
+		runner.pos = Vector2(8,55)
+		runner.armor = armor
+		runner.state = "ready"
+		runner.charge_cooldown = 99
+		sim.update_zombie(runner,p,.1)
+		check(is_equal_approx(runner.move_speed,sim.PLAYER_MOVE_SPEED),"Actual football pursuit speed equals player with armor "+str(armor))
+	for cue in ["grenade-throw","grenade-fuse","grenade-explosion"]:
+		check(game.sound.streams.has(cue) and game.sound.streams[cue].get_length() > .05,"Grenade cue resource exists: "+cue)
+	sim.events.clear()
+	p.grenades = 1
+	p.yaw = 0
+	p.pitch = 0
+	p.input = {"yaw":PI/2,"pitch":-.7}
+	director.equipment.throw_grenade(p)
+	var velocity: Vector3 = director.state.projectiles[-1].velocity
+	check(velocity.x < -8 and absf(velocity.z) < .01 and velocity.y < 0,"Grenade follows current input aim instead of previous-frame gun aim")
+	check(sim.events.any(func(e): return e.kind == "grenade_throw"),"Throw emits spatial sound event")
+	director.equipment.step_projectiles(.4)
+	check(sim.events.any(func(e): return e.kind == "grenade_fuse"),"Live fuse emits spatial warning event")
+	director.equipment.step_projectiles(1.2)
+	check(sim.events.any(func(e): return e.kind == "explosion") and director.state.projectiles.is_empty(),"Fuse ends in exactly one explosion and removes projectile")
+	sim.zombies.clear()
+	director.state.exit_control = true
+	game.arena.sync_campaign(director.state)
+	p.pickup_latched = false
+	p.pos = Vector2(12,-54.6)
+	var driver = load("res://tools/campaign-unrestricted-driver.gd").new(game,false)
+	driver.tasks = [[Vector2(12,-60),"finish"]]
+	var command: Dictionary = driver.command(.05)
+	check(Vector2(command.get("x",0),command.get("y",0)).length() > .1 and not command.get("interact",false),"Test player clears the doorway before attempting closure")
+	p.pos = Vector2(12,-55.2)
+	command = driver.command(.05)
+	check(command.get("interact",false) and command.x == 0 and command.y == 0,"Test player closes the clear doorway after entering fully")
+	game.return_home()
+	game.start_solo("campaign",71245)
+	await physics_frame
+
 func _initialize() -> void:
 	call_deferred("run")
 
@@ -93,6 +209,7 @@ func run() -> void:
 	check(game.sound.spatial_players.all(func(p): return p.stream == null),"World voice resources clear on scene reset")
 	await validate_equipment()
 	await validate_inventory_and_heal()
+	await validate_combat_revision()
 	validate_close_combat()
 	validate_revolver()
 	validate_buffer()
@@ -497,6 +614,7 @@ func validate_equipment() -> void:
 			var bounds: AABB = game.arena.scenery.posed_bounds(model)
 			check(bounds.size.x > .5 and bounds.size.x < 1.12 and bounds.position.y > 1.0,"Wall gun has readable displayed size and is above the supply table")
 		for item in layout.ITEMS:
+			check(director.state.medical_stations[item.id].remaining == party,"Guaranteed medical stock equals party at "+item.id)
 			if item.kind != "ammo": continue
 			var guns: Array = director.state.loot.filter(func(g): return g.station == item.id)
 			check(guns.size() == party*2,"Night supply gun count is players x2: "+str(party)+" "+item.id)
@@ -521,6 +639,15 @@ func validate_equipment() -> void:
 		p.pos = gun.pos
 		check(equipment.pickup(p,gun.id) and gun.taken,"Night gun can be replaced through the authority pickup")
 		check(not equipment.pickup(p,gun.id),"Consumed gun cannot be picked up again")
+		if party == 2:
+			var peer: Dictionary = sim.pawns.equipment_peer
+			p.pos = layout.ITEMS[0].pos+Vector2(1,0)
+			peer.pos = p.pos
+			p.medkits = 0
+			peer.medkits = 0
+			check(equipment.pickup(p,"medical:night_start") and equipment.pickup(peer,"medical:night_start"),"Both peers collect distinct guaranteed medical packs")
+			p.medkits = 0
+			check(not equipment.pickup(p,"medical:night_start") and director.state.medical_stations.night_start.remaining == 0,"Consumed duo medical stock cannot be duplicated")
 		var med: Dictionary = layout.ITEMS[-1]
 		p.pos = med.pos
 		p.medkits = 1
@@ -528,7 +655,7 @@ func validate_equipment() -> void:
 		check(p.medkits == 1 and not director.state.taken.has(med.id),"Full medical slot preserves the world medical pack")
 		p.medkits = 0
 		director.perform(p,med.id)
-		check(p.medkits == 1 and director.state.taken.has(med.id),"Empty medical slot can collect one medical pack")
+		check(p.medkits == 1 and director.state.medical_stations[med.id].remaining == party-1,"Empty medical slot can collect one medical pack")
 		p.pos = Vector2(0,70)
 		p.hp = 40
 		p.slot = 5
@@ -541,7 +668,7 @@ func validate_equipment() -> void:
 		sim.update_pawn(p,.1)
 		check(p.pos.distance_to(before) < .01,"Healing blocks movement")
 		equipment.before_movement(3.0)
-		check(p.hp == 90 and p.medkits == 0 and p.healing == "","Completed healing consumes one kit")
+		check(p.hp == 100 and p.medkits == 0 and p.healing == "","Completed healing consumes one kit")
 		if party == 2:
 			var q: Dictionary = sim.pawns.equipment_peer
 			q.pos = Vector2(0,68.5)
@@ -552,7 +679,7 @@ func validate_equipment() -> void:
 			equipment.before_movement(.016)
 			check(p.healing == q.id and q.being_healed,"Right medical input selects the nearby teammate")
 			equipment.before_movement(3.0)
-			check(q.hp == 90 and p.medkits == 0,"Teammate healing consumes the healer's single kit")
+			check(q.hp == 100 and p.medkits == 0,"Teammate healing consumes the healer's single kit")
 		p.slot = 1
 		p.grenades = 1
 		var old_hp: int = p.hp
@@ -568,7 +695,7 @@ func validate_equipment() -> void:
 		equipment.explode({"owner":p.id,"pos":Vector3(0,1,69)})
 		check(sim.zombies[1].hp <= 0,"Expanded blast reaches an unobstructed enemy 9.5 metres away")
 		check(sim.zombies[0].hp <= 0 and p.hp == old_hp,"Close grenade kills ordinary infected without self damage")
-		if party == 2: check(sim.pawns.equipment_peer.hp == 90,"Grenade does not damage teammate")
+		if party == 2: check(sim.pawns.equipment_peer.hp == 100,"Grenade does not damage teammate")
 	game.return_home()
 	game.start_solo("campaign",71245)
 	await physics_frame

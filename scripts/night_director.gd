@@ -69,27 +69,37 @@ func holdout_step(dt: float) -> void:
 			state.boss_queued = true
 			state.milestones.boss_queued = sim.elapsed
 		if state.holdout_time >= 30:
+			state.boss2_queued = true
+			state.milestones.boss2_queued = sim.elapsed
 			state.exit_control = true
 			state.milestones.holdout_complete = sim.elapsed
 			phase("ESCAPE","门已解锁！进入安全屋并按 E 关门")
 			sim.arena.sync_campaign(state)
 
 func spawn_boss() -> void:
-	if not state.boss_queued or state.boss_spawned: return
+	var second: bool = state.boss_spawned
+	if (not state.boss2_queued or state.boss2_spawned) if second else not state.boss_queued: return
 	# Separate slot: no threat points, burst quota, credit or ordinary cap used.
 	for point in Layout.FINAL_ENTRIES:
 		if not safe_point(point): continue
 		sim.spawn(point,"football")
 		sim.zombies[-1]["boss"] = true
-		state.boss_spawned = true
-		state.milestones.boss_spawned = sim.elapsed
-		state.milestones.boss_holdout_time = state.holdout_time
+		if second:
+			state.boss2_spawned = true
+			state.milestones.boss2_spawned = sim.elapsed
+			state.milestones.boss2_holdout_time = state.holdout_time
+		else:
+			state.boss_spawned = true
+			state.milestones.boss_spawned = sim.elapsed
+			state.milestones.boss_holdout_time = state.holdout_time
 		sim.events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(point.x,1,point.y)})
 		return
 
 func queue_batch(id: String, budget: int, kinds: Array) -> void:
 	if reinforcement_batches.any(func(batch): return batch.id == id): return
 	var requested = roundi(budget*reinforcement_scale())
+	# Keep finale quotas independent from the increased roaming reinforcements.
+	if state.party == 2 and id.begins_with("night_holdout_"): requested = Layout.HOLDOUT_DUO_BUDGET
 	var roster = Population.roster(requested,kinds,sim.random,2.0/3.0 if id.begins_with("night_holdout_") else .4)
 	reinforcement_batches.append({"id":id,"queued_at":sim.elapsed,"roster":roster,"spawned":0,"budget":requested,"spent":0,"planned":roster.size()})
 	var source: Vector2 = Layout.HOLDOUT if id.begins_with("night_holdout_") else standing()[0].pos if not standing().is_empty() else Layout.START
@@ -99,7 +109,7 @@ func spawn_groups() -> void:
 	spawn_boss()
 	if sim.elapsed >= burst_at and burst_left <= 0:
 		burst_left = 6 if state.party == 1 else Layout.DUO_BURST_SIZE
-		burst_at = sim.elapsed+5.0
+		burst_at = sim.elapsed+2.0
 	if burst_left <= 0 or sim.elapsed < burst_next: return
 	# Round-robin batches prevent a blocked earlier wave starving the finale.
 	for offset in reinforcement_batches.size():
@@ -113,8 +123,10 @@ func spawn_groups() -> void:
 			batch.spawned += 1
 			if not batch.has("spawn_times"): batch.spawn_times = []
 			batch.spawn_times.append(sim.elapsed)
+			if not batch.has("spawn_points"): batch.spawn_points = []
+			batch.spawn_points.append(sim.zombies[-1].pos)
 			burst_left -= 1
-			burst_next = sim.elapsed+.18
+			burst_next = sim.elapsed+.1
 			batch_cursor = (index+1)%reinforcement_batches.size()
 			return
 
@@ -127,13 +139,15 @@ func _init(world) -> void:
 	state.holdout_time = 0.0
 	state.boss_queued = false
 	state.boss_spawned = false
+	state.boss2_queued = false
+	state.boss2_spawned = false
 	state.power_ready = true
 	state.objective = "沿绿灯穿过街口与店铺，抵达林边安全屋"
 	sim.arena.sync_campaign(state)
 
 func reinforcement_scale() -> float: return Layout.DUO_REINFORCEMENT_SCALE if state.party == 2 else 1.0
 func multiply() -> float: return [1.0,1.2,1.4,1.6][clampi(state.party-1,0,3)]
-func cap() -> int: return ([48,64,76,88] if state.get("holdout_started",false) and not state.exit_control else [30,42,54,66])[clampi(state.party-1,0,3)]
+func cap() -> int: return ([64,96] if state.get("holdout_started",false) else [48,72])[clampi(state.party-1,0,1)]
 
 func populate_route() -> void:
 	for zone in Layout.ZONES:
@@ -173,8 +187,6 @@ func target(p: Dictionary) -> Dictionary:
 	if not state.departed and p.pos.distance_to(Layout.START_DOOR.get_center()) < 2.6: return {"id":"depart","label":"开门出发","seconds":.6}
 	if state.departed and not state.holdout_started and near(p,Layout.HOLDOUT,2.6): return {"id":"holdout","label":"启动门锁 · 坚守 30 秒","seconds":.8}
 	if state.departed and Layout.EXIT_ROOM.has_point(p.pos): return {"id":"finish","label":finish_label(),"seconds":.8}
-	for item in Layout.ITEMS:
-		if item.kind == "med" and not state.taken.has(item.id) and p.medkits < 1 and near(p,item.pos): return {"id":item.id,"label":"领取医疗包","seconds":.25}
 	return equipment.pickup_target(p)
 
 func perform(p: Dictionary, id: String) -> void:
@@ -197,7 +209,12 @@ func perform(p: Dictionary, id: String) -> void:
 		phase("COMPLETE","灰松夜路完成 · 安全屋门已关闭")
 		save_diagnostics()
 		sim.arena.sync_campaign(state)
-	else: super(p,id)
+	else:
+		for item in Layout.ITEMS:
+			if item.kind == "med" and item.id == id:
+				equipment.pickup(p,"medical:"+id)
+				return
+		super(p,id)
 
 func guidance(p: Dictionary) -> String:
 	if state.holdout_started and not state.exit_control: return "留在门前 14 米内坚守 · 离开则解锁暂停"

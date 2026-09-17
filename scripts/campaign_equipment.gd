@@ -37,8 +37,10 @@ func initialize() -> void:
 		p.reserves[p.secondary] = 5*int(Data.weapons[p.secondary].capacity)
 	director.state.loot = []
 	director.state.grenade_stations = {}
+	director.state.medical_stations = {}
 	director.state.projectiles = []
 	for item in Layout.ITEMS:
+		director.state.medical_stations[item.id] = {"remaining":director.state.party}
 		if item.kind != "ammo": continue
 		var tier: String = item.tier
 		var source: Array = GUNS.filter(func(index): return Data.weapons[index].tier == tier)
@@ -72,6 +74,14 @@ func pickup_target(p: Dictionary) -> Dictionary:
 			score = value
 			best = {"id":loot.id,"label":"换取 "+loot.tier+" 级 "+Data.weapons[loot.weapon].label+"（替换"+("副武器" if loot.weapon in [2,3] else "主武器")+"）","seconds":.3}
 	for item in Layout.ITEMS:
+		var medical_pos: Vector2 = item.pos+Vector2(1,0) if item.kind == "ammo" else item.pos
+		if p.medkits < 1 and director.state.medical_stations[item.id].remaining > 0 and director.near(p,medical_pos,2.0):
+			var medical_delta: Vector2 = medical_pos-p.pos
+			var medical_aim = sight.dot((Vector3(medical_pos.x,.8,medical_pos.y)-eye).normalized())
+			var medical_score = medical_aim-medical_delta.length()*.05
+			if medical_score > score and (medical_delta.length() <= .6 or medical_aim > .35):
+				score = medical_score
+				best = {"id":"medical:"+item.id,"label":"领取医疗包（恢复至100）","seconds":.25}
 		if item.kind != "ammo" or not director.near(p,item.pos+Vector2(-1,0),2.0): continue
 		var station: Dictionary = director.state.grenade_stations[item.id]
 		if station.remaining > 0 and p.grenades < MAX_GRENADES:
@@ -86,6 +96,17 @@ func pickup_target(p: Dictionary) -> Dictionary:
 
 func pickup(p: Dictionary, id: String) -> bool:
 	# Recheck on completion: two clients cannot consume the same world item.
+	if id.begins_with("medical:"):
+		for item in Layout.ITEMS:
+			if item.id != id.trim_prefix("medical:"): continue
+			var point: Vector2 = item.pos+Vector2(1,0) if item.kind == "ammo" else item.pos
+			var station: Dictionary = director.state.medical_stations[item.id]
+			if p.medkits >= 1 or station.remaining <= 0 or not director.near(p,point,2.0): return false
+			station.remaining -= 1
+			p.medkits += 1
+			if item.kind == "med" and station.remaining == 0: director.state.taken[item.id] = true
+			p.pickup_latched = true
+			return true
 	if id.begins_with("grenade:"):
 		var station_id = id.trim_prefix("grenade:")
 		for item in Layout.ITEMS:
@@ -170,7 +191,7 @@ func before_movement(dt: float) -> void:
 				p.heal_time += dt
 				if p.heal_time >= HEAL_SECONDS:
 					p.medkits -= 1
-					q.hp = mini(100,q.hp+50)
+					q.hp = 100
 					p.healing = ""
 					p.heal_time = 0.0
 		elif (click or use and not p.use_latch) and p.interaction == "":
@@ -188,9 +209,13 @@ func before_movement(dt: float) -> void:
 
 func throw_grenade(p: Dictionary) -> void:
 	p.grenades -= 1
-	var direction = Vector3(-sin(p.yaw)*cos(p.pitch),sin(p.pitch),-cos(p.yaw)*cos(p.pitch))
+	# Equipment is processed before movement commits this input's view direction.
+	var yaw: float = p.input.get("yaw",p.yaw)
+	var pitch: float = p.input.get("pitch",p.pitch)
+	var direction = Vector3(-sin(yaw)*cos(pitch),sin(pitch),-cos(yaw)*cos(pitch))
 	var origin = Vector3(p.pos.x,p.height+1.4,p.pos.y)
-	director.state.projectiles.append({"id":next_grenade,"owner":p.id,"pos":origin,"velocity":direction*12+Vector3.UP*3,"fuse":GRENADE_FUSE})
+	director.state.projectiles.append({"id":next_grenade,"owner":p.id,"pos":origin,"velocity":direction*12+Vector3.UP*3,"fuse":GRENADE_FUSE,"tick_at":1.2})
+	sim.events.append({"kind":"grenade_throw","position":origin})
 	grenade_history.append({"id":next_grenade,"owner":p.id,"thrown_at":sim.elapsed,"origin":origin,"hits":[],"kills":0,"damage":0.0})
 	next_grenade += 1
 
@@ -208,6 +233,9 @@ func step_projectiles(dt: float) -> void:
 				grenade.velocity = grenade.velocity.bounce(hit.normal)*.4
 			else: grenade.pos = next
 		grenade.fuse -= dt
+		if grenade.fuse > 0 and grenade.fuse <= grenade.get("tick_at",1.2):
+			sim.events.append({"kind":"grenade_fuse","position":grenade.pos})
+			grenade.tick_at = grenade.fuse-(.15 if grenade.fuse < .6 else .3)
 		if grenade.fuse <= 0: explode(grenade)
 	director.state.projectiles = director.state.projectiles.filter(func(g): return g.fuse > 0)
 
@@ -230,7 +258,7 @@ func explode(grenade: Dictionary) -> void:
 		if distance > GRENADE_RADIUS or not sim.arena.surface_hit(grenade.pos,target).is_empty(): continue
 		var health_before: float = z.hp
 		var kind_before: String = z.kind
-		sim.hit_enemy(z,lerpf(700,150,distance/GRENADE_RADIUS),true,owner,target)
+		sim.hit_enemy(z,lerpf(700,150,distance/GRENADE_RADIUS),true,owner,target,Vector2(grenade.pos.x,grenade.pos.z))
 		if not record.is_empty():
 			record.hits.append({"id":z.id,"kind":kind_before,"distance":distance,"damage":health_before-z.hp,"killed":z.hp <= 0})
 			record.damage += health_before-z.hp

@@ -28,14 +28,21 @@ func run() -> void:
 	session.world_received.connect(func(_state): snapshots += 1)
 	session.match_started.connect(func():
 		game.set_physics_process(false)
-		driver = load("res://tools/campaign-input-driver.gd").new(game,false))
+		if host:
+			# Initial world fixture only; no state gifts during the route.
+			game.sim.random.seed = 71245
+			game.sim.next_id = 0
+			game.sim.start("campaign")
+			print("CAMPAIGN NETWORK SEED: 71245")
+		driver = load("res://tools/campaign-unrestricted-driver.gd").new(game,false))
 	if host:
 		session.host_lan("战役验收房主")
 		if session.active: print("CAMPAIGN NETWORK READY")
 	else: session.join_lan("127.0.0.1:27777","战役验收队员")
-	Engine.time_scale = 3.0
+	# Run at gameplay speed: accelerated clocks also amplify packet staleness.
+	Engine.time_scale = 1.0
 
-func _process(delta: float) -> bool:
+func _physics_process(delta: float) -> bool:
 	if stopping or not game or not session: return false
 	if host and session.is_host() and session.members.size() == expected and not session.playing: session.begin_match()
 	if driver and game.sim:
@@ -48,7 +55,8 @@ func _process(delta: float) -> bool:
 			game.sim.submit(session.local_id,command)
 			game.sim.step(dt)
 			timer += dt
-			if timer >= .1 or game.sim.won or game.sim.failed:
+			# Match main.gd's 20 Hz snapshots and physics-driven authority.
+			if timer >= .05 or game.sim.won or game.sim.failed:
 				timer = 0
 				session.send_world(game.sim.snapshot(),[])
 		else: session.send_input(command)
@@ -64,7 +72,7 @@ func _process(delta: float) -> bool:
 				call_deferred("finish",good)
 				stopping = true
 	# Wall time is independent of in-game pacing. Two native peers can run
-	# below the requested 3x time scale on a busy CPU; never waive victory.
+	# below real time on a busy CPU; never waive victory.
 	if Time.get_ticks_msec()-began > 900000:
 		print("CAMPAIGN NETWORK TIMEOUT: task=",driver.index if driver else -1," phase=",game.sim.campaign_state() if game.sim else {}," pawn=",game.local_pawn() if game.sim else {})
 		call_deferred("finish",false)

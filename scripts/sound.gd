@@ -24,6 +24,7 @@ func sync_enemy_steps(enemies: Array, listener: Vector3, dt: float) -> void:
 		if step_clock-step_due[id] > 3: step_due.erase(id)
 
 func _ready() -> void:
+	for cue in ["grenade-throw","grenade-fuse"]: streams[cue] = load("res://assets/audio/%s.wav" % cue)
 	for cue in ["enemy-step-0","enemy-step-1","rear-warning","shove","shove-hit","enemy-windup","enemy-impact","enemy-miss","grenade-explosion","campaign-winch","campaign-horde","campaign-gate","music","gun","flame","axe","reload","hurt","failure","death-0","death-1","death-2","cone-false","cone-true","bucket-false","bucket-true","shield-false","shield-true","football-false","football-true"]:
 		streams[cue] = load("res://assets/audio/%s.wav" % cue)
 	for i in range(24):

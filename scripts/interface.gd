@@ -459,13 +459,9 @@ func _draw_hud() -> void:
 		for d in [Vector2(-1,-1),Vector2(1,-1),Vector2(-1,1),Vector2(1,1)]: hud.draw_line(center+d*7,center+d*13,Color.WHITE,2)
 	if current.is_empty() and p.get("damage_hint",0.0) > 0:
 		var direction: Vector2 = p.damage_dir.rotated(game.yaw)
-		var angle = direction.angle()
 		var tint = Color(1,.25,.12,minf(1,p.damage_hint))
-		hud.draw_arc(center,66,angle-.35,angle+.35,20,tint,6,true)
-		if p.get("damage_rear",false):
-			var font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
-			var text = "后方遭袭！"
-			hud.draw_string(font,center+Vector2(-font.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,22).x/2,108),text,HORIZONTAL_ALIGNMENT_LEFT,-1,22,tint)
+		var side = direction.orthogonal()
+		hud.draw_colored_polygon(PackedVector2Array([center+direction*82,center+direction*61+side*9,center+direction*61-side*9]),tint)
 	if hurt_flash > 0:
 		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.55,.08,.04,hurt_flash*.3),false,20)
 

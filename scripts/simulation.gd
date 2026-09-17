@@ -2,6 +2,7 @@ extends RefCounted
 ## The sole authority for movement, ammunition, enemies, damage and score, shared by solo/coop.
 const EnemyView = preload("res://scripts/enemy_view.gd")
 const PlayerBody = preload("res://scripts/player_body.gd")
+const PLAYER_MOVE_SPEED = 4.2
 var player_bodies: Dictionary = {}
 var arena
 var map_id = "graypine_night"
@@ -109,6 +110,7 @@ func spawn(pos: Vector2, kind: String) -> void:
 	var locomotion = RandomNumberGenerator.new()
 	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
 	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":float(def.health),"body":float(def.health-def.armor),"armor":float(def.armor),"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
+	if kind == "football": zombies[-1].chase_speed = PLAYER_MOVE_SPEED
 	next_id += 1
 
 func submit(id: String, input: Dictionary) -> void:
@@ -270,7 +272,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 		var step_time = minf(.01,remaining)
 		remaining -= step_time
 		var wading: bool = body.grounded and is_wading(p.pos,p.height)
-		var next: Vector2 = p.pos+dir*4.2*lerpf(1.0,.55,p.crouch)*(Data.WADE_SPEED if wading else 1.0)*step_time
+		var next: Vector2 = p.pos+dir*PLAYER_MOVE_SPEED*lerpf(1.0,.55,p.crouch)*(Data.WADE_SPEED if wading else 1.0)*step_time
 		next = next.clamp(map_definition.bounds.position+Vector2.ONE*.95,map_definition.bounds.end-Vector2.ONE*.95)
 		if not can_move(p,next):
 			var horizontal = Vector2(next.x,p.pos.y)
@@ -317,6 +319,13 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.switch = maxf(0,p.switch-dt)
 		if before > .2 and p.switch <= .2: p.weapon = p.requested
 		return
+	if p.reloading:
+		if w.id == "shotgun" and input.get("fire",false) and p.ammo[p.weapon] > 0 and p.cooldown <= 0 and p.fire_anim <= 0 and (not campaign or (campaign.state.departed and p.interaction == "")):
+			p.reloading = false
+			p.reload = 0.0
+			p.reload_queued = false
+			input["reload"] = false
+			p.trigger = false
 	if p.reloading:
 		p.reload -= dt
 		if p.reload <= 0:
@@ -478,7 +487,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	if z.kind == "shield": speed = base_speed*.78
 	if z.kind == "giant": speed *= .68
 	if z.kind == "berserker": speed = minf(5.8,base_speed*(2.6 if z.rage else 1.35))
-	if z.kind == "football": speed = base_speed*(.90 if z.armor > 0 else 1.0)
+	if z.kind == "football": speed = PLAYER_MOVE_SPEED
 	var wading: bool = is_water(z.pos)
 	if wading:
 		speed *= Data.WADE_SPEED
@@ -607,9 +616,10 @@ func stun(z: Dictionary, duration: float) -> void:
 	z.charge_cooldown = 3.2
 	z.attack_time = 0.0
 
-func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary, position: Vector3) -> void:
+func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary, position: Vector3, push_origin := Vector2.INF) -> void:
 	z.guard_awake = true
 	if z.hp <= 0: return
+	var charging_on_hit: bool = z.kind == "football" and z.state == "charging"
 	var armor_kind: String = z.kind if z.armor > 0 and armor_contact else ""
 	if not armor_kind.is_empty():
 		var absorbed = minf(z.armor,amount)
@@ -623,7 +633,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		if z.armor <= 0 and z.kind == "football":
 			cancel_charge(z)
 			z.charge_cooldown = 3.2
-	if z.kind == "berserker" and not z.rage and z.hp > 0 and z.hp <= 600:
+	if z.kind == "berserker" and not z.rage and z.hp > 0 and z.hp <= float(Data.enemies.berserker.health)*.5:
 		z.rage = true
 		z.rage_pause = .3
 		z.attack_time = 0.0
@@ -637,6 +647,14 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		paths.erase(z.id)
 		events.append({"kind":"death","player":p.id,"position":position})
 	else:
+		# Small displacement is independent of shove velocity/time and stun duration.
+		# A pellet/flame tick cannot multiply displacement within the same volley.
+		if not charging_on_hit and not (z.kind == "berserker" and z.rage) and elapsed >= z.get("hit_push_at",-1.0):
+			var source: Vector2 = push_origin if push_origin.is_finite() else p.get("pos",Vector2(position.x,position.z))
+			var push: Vector2 = (z.pos-source).normalized()*.22
+			for step in 4:
+				if arena.clear(z.pos,z.pos+push/4): z.pos += push/4
+			z["hit_push_at"] = elapsed+.04
 		if map_id == "graypine_night" and z.kind == "normal" and elapsed >= z.get("stagger_ready",-1.0):
 			stun(z,.18)
 			z["stagger_ready"] = elapsed+.8

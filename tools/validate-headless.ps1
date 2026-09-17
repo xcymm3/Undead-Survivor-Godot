@@ -1,10 +1,11 @@
 param(
-    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Night', 'Shotgun', 'Balance')]
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Night', 'Shotgun', 'Balance', 'AllWeapons', 'ExportWeb')]
     [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
     [switch]$VerboseEngine,
-    [ValidateRange(10, 600)][int]$TimeoutSeconds = 180
+    [switch]$SoloProbe,
+    [ValidateRange(10, 1800)][int]$TimeoutSeconds = 180
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -13,6 +14,11 @@ $Godot = (Resolve-Path -LiteralPath $Godot).Path
 $arguments = @('--headless', '--audio-driver', 'Dummy', '--path', ('"' + $projectRoot + '"'))
 if ($VerboseEngine) { $arguments += '--verbose' }
 switch ($Mode) {
+    'ExportWeb' {
+        New-Item -ItemType Directory -Force -Path (Join-Path $projectRoot 'build/web') | Out-Null
+        $arguments += @('--export-release', '"Web QA"')
+    }
+    'AllWeapons' { $arguments += @('--script', 'res://tools/validate-all-weapons.gd', '--', '--silent', '--automation') }
     'Import' { $arguments += @('--editor', '--import', '--quit') }
     'Parse' { $arguments += @('--script', 'res://tools/validate-scripts.gd', '--', '--silent', '--automation', ('--parse-script=' + $Script)) }
     'Balance' { $arguments += @('--script', 'res://tools/validate-balance.gd', '--', '--silent', '--automation') }
@@ -20,6 +26,7 @@ switch ($Mode) {
     'Night' { $arguments += @('--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation') }
     'NativeComponents' { $arguments += @('--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation') }
 }
+if ($SoloProbe -and $Mode -eq 'Balance') { $arguments += '--solo-probe' }
 # Headless prevents graphics windows; CreateNoWindow prevents console flashes.
 $startInfo = New-Object System.Diagnostics.ProcessStartInfo
 $startInfo.FileName = $Godot

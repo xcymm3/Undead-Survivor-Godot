@@ -8,7 +8,7 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-9"
+const PROTOCOL = "undead-survivor-godot-10"
 const PORT = 27777
 var map_id = "graypine_night"
 var transport = ""

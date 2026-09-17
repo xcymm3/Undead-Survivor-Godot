@@ -291,7 +291,7 @@
     },
     "berserker": {
       "label": "狂暴僵尸",
-      "health": 1200,
+      "health": 2400,
       "armor": 0,
       "tier": 3
     },
@@ -303,8 +303,8 @@
     },
     "football": {
       "label": "橄榄球僵尸",
-      "health": 4500,
-      "armor": 2000,
+      "health": 9000,
+      "armor": 4000,
       "tier": 4
     }
   },
@@ -328,9 +328,9 @@
       "exposeDuration": 0.45
     },
     "berserker": {
-      "health": 1200,
+      "health": 2400,
       "speed": 1.35,
-      "rageAt": 600,
+      "rageAt": 1200,
       "ragePause": 0.3,
       "rageSpeed": 2.6,
       "speedCap": 5.8,
@@ -349,9 +349,9 @@
       "slamRadius": 2.4
     },
     "football": {
-      "speed": 1.25,
-      "brokenSpeed": 1.05,
-      "speedCap": 3.3,
+      "speed": 1.0,
+      "brokenSpeed": 1.0,
+      "speedCap": 4.2,
       "scale": 1.1,
       "contactRadius": 1.35,
       "windup": 0.2,

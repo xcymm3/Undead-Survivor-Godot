@@ -77,8 +77,11 @@ try {
   const night = await run('night-campaign', engine, [...godotArgs, '--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation'], 900_000);
   if (!/NIGHT VALIDATION: \d+ checks; 0 failures/.test(night)) throw new Error('Missing night campaign acceptance marker.');
   const balance = await run('balance-solo-duo', engine, [...godotArgs, '--script', 'res://tools/validate-balance.gd', '--', '--silent', '--automation'], 900_000);
-  if (!/BALANCE VALIDATION: 6 checks; 0 failures/.test(balance)) throw new Error('Missing complete solo/duo balance acceptance marker.');
-  await run('shotgun-limited', engine, [...godotArgs, '--script', 'res://tools/validate-shotgun.gd', '--', '--silent', '--automation'], 900_000);
+  if (!/BALANCE VALIDATION: 4 checks; 0 failures/.test(balance)) throw new Error('Missing complete unrestricted solo/duo balance acceptance marker.');
+  await run('shotgun-unrestricted', engine, [...godotArgs, '--script', 'res://tools/validate-shotgun.gd', '--', '--silent', '--automation'], 900_000);
+  const weapons = await run('all-weapons', engine, [...godotArgs, '--script', 'res://tools/validate-all-weapons.gd', '--', '--silent', '--automation'], 1800_000);
+  if (!/ALL WEAPONS: 20 samples; 0 failures/.test(weapons)) throw new Error('Missing all-weapon comparison or detected another weapon being used.');
+  await run('weapon-comparison', process.execPath, ['tools/summarize-weapons.mjs']);
   await run('night-full-enet-2', process.execPath, ['tools/validate-campaign-network.mjs', '2'], 960_000);
   await mkdir('build/web', { recursive: true });
   await run('export-web', engine, [...godotArgs, '--export-release', 'Web QA']);

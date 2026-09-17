@@ -1,5 +1,5 @@
 extends SceneTree
-## Shotgun-only supply fixture. Traversal uses limited inputs and normal authority.
+## Shotgun-only supply fixture. Traversal uses unrestricted inputs and normal authority.
 class Perspective extends RefCounted:
 	var sim
 	var arena
@@ -64,8 +64,9 @@ func run() -> void:
 				p.ammo[pump] = int(data.weapons[pump].capacity)
 				p.reserve = int(data.weapons[pump].capacity)*5
 				p.reserves[pump] = p.reserve
-				var driver = load("res://tools/campaign-limited-driver.gd").new(Perspective.new(game,p.id),false)
+				var driver = load("res://tools/campaign-unrestricted-driver.gd").new(Perspective.new(game,p.id),false)
 				driver.prefer_shotgun = true
+				driver.shotgun_only = true
 				drivers[p.id] = driver
 			await physics_frame
 			var timings: Array = []
@@ -85,13 +86,15 @@ func run() -> void:
 			var players: Array = []
 			for p in game.sim.pawns.values():
 				for index in [0,1,2,3,5,7,9]: check(p.gun_shots[index] == 0,"No non-shotgun firearm used")
-				players.append({"id":p.id,"hp":p.hp,"shots":p.gun_shots,"kills":p.kills,"primary":p.primary,"ammo":p.ammo[p.primary],"reserve":p.reserve,"task":drivers[p.id].index})
+				players.append({"id":p.id,"hp":p.hp,"position":p.pos,"slot":p.slot,"healing":p.healing,"interaction":p.interaction,"interact_time":p.interact_time,"input":p.input,"shots":p.gun_shots,"kills":p.kills,"primary":p.primary,"ammo":p.ammo[p.primary],"reserve":p.reserve,"task":drivers[p.id].index})
 			var result = {"party":party,"seed":seed_value,"won":game.sim.won,"failed":game.sim.failed,"seconds":game.sim.elapsed,"kills":game.sim.kills,"players":players,"timings":timings,"multi_kill_steps_including_grenades":multi_kill_steps,"diagnostics":game.sim.campaign.diagnostics()}
+			result["finish_hint"] = game.sim.campaign.finish_label()
+			result["blocking_enemies"] = game.sim.zombies.filter(func(z): return z.hp > 0 and (preload("res://scripts/night_layout.gd").EXIT_ROOM.has_point(z.pos) or preload("res://scripts/night_layout.gd").EXIT_DOOR.grow(.4).has_point(z.pos))).map(func(z): return {"kind":z.kind,"hp":z.hp,"pos":z.pos,"state":z.state})
 			runs.append(result)
 			print("SHOTGUN RESULT ",JSON.stringify(result))
 			# Survival is an observation, never discard a death or loosen input limits.
 			check(game.sim.won or game.sim.failed,"Sample resolves within eight minutes")
-	var report = {"checks":checks,"failures":failures,"all_samples_won":runs.all(func(result): return result.won),"runs":runs,"boundary":"Limited synthetic solo/duo shared-authority samples; not human or Steam verification. All A/B supplies are shotguns only in this fixture. Axe and grenades remain available; no non-shotgun firearm ammunition."}
+	var report = {"checks":checks,"failures":failures,"all_samples_won":runs.all(func(result): return result.won),"runs":runs,"boundary":"Unrestricted synthetic solo/duo shared-authority samples; not human or Steam verification. All A/B supplies are shotguns only in this fixture. Axe and grenades remain available; no non-shotgun firearm ammunition."}
 	var f = FileAccess.open("res://artifacts/shotgun-acceptance.json",FileAccess.WRITE)
 	f.store_string(JSON.stringify(report,"  "))
 	f.close()

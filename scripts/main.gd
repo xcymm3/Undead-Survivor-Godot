@@ -353,6 +353,8 @@ func handle_effects(events: Array) -> void:
 			"explosion":
 				effects.explosion(event.position)
 				sound.play_at("grenade-explosion",event.position,-6)
+			"grenade_throw", "grenade_fuse":
+				sound.play_at(event.kind.replace("_","-"),event.position,-5)
 			"campaign_cue":
 				sound.play_at("campaign-"+event.get("cue","horde"),event.position,-8)
 			"shot":
