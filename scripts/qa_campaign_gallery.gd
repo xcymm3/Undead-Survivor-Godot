@@ -49,9 +49,14 @@ func _process(_dt: float) -> void:
 		Data.settings.shadows = int(value.get("shadows",3))
 		game.apply_graphics()
 		# Explicit software-gallery controls for isolating light/depth artifacts.
-		if value.has("flash_shadow"): game.flashlight.shadow_enabled = value.flash_shadow
+		if value.has("flash_shadow"):
+			game.flashlight.shadow_enabled = value.flash_shadow
+			# Reproduce the v1.15 projection for the visual regression negative control.
+			game.flashlight.shadow_bias = .12
+			game.flashlight.shadow_normal_bias = 1.5
 		for light in game.arena.scenery.find_children("*","OmniLight3D",true,false):
 			if value.has("lamp_shadow"): light.shadow_enabled = value.lamp_shadow
+			light.shadow_reverse_cull_face = bool(value.get("lamp_reverse_cull",true))
 		p.slot = 3 if value.name == "axe" else 4 if value.name == "grenade" else 5 if value.name in ["medkit","heal_self","heal_other"] else 1
 		p.weapon = 6 if value.name == "axe" else p.primary
 		p.requested = p.weapon

@@ -19,6 +19,9 @@ func lamp(pos: Vector3, color: String, energy := 2.0, radius := 10.0) -> void:
 	light.shadow_enabled = true
 	light.shadow_bias = .12
 	light.shadow_normal_bias = 1.5
+	# Closed solid scenery casts from its back faces, avoiding surface self-shadow
+	# stripes without moving the whole shadow away with a large depth bias.
+	light.shadow_reverse_cull_face = true
 	add_child(light)
 
 func van(pos: Vector2, color: String) -> void:

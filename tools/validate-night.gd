@@ -173,14 +173,15 @@ func validate_population() -> void:
 func validate_lighting() -> void:
 	var data = root.get_node("Data")
 	var saved_shadows = data.settings.shadows
-	for level in [0,3]:
+	for level in [0,1,2,3,4]:
 		data.settings.shadows = level
 		game.apply_graphics()
 		var lights = game.arena.find_children("*","Light3D",true,false)
 		check(lights.size() > 2,"Night shadow setting includes local lamps and sun")
 		check(lights.all(func(light): return light.shadow_enabled == (level > 0)),"Shadow setting reaches every night world light at level "+str(level))
-		check(game.flashlight.shadow_enabled == (level > 0),"Shadow setting reaches the flashlight at level "+str(level))
+		check(not game.flashlight.shadow_enabled,"Camera beam avoids self-shadow banding at level "+str(level))
 	check(game.flashlight.position == Vector3.ZERO,"Flashlight shadow camera stays at the viewpoint, inside wall clearance")
+	check(game.arena.scenery.find_children("*","OmniLight3D",true,false).all(func(light): return light.shadow_reverse_cull_face),"Night lamps use closed-mesh back faces to avoid floor shadow acne")
 	var p: Dictionary = game.local_pawn()
 	var saved = p.duplicate(true)
 	var old_yaw = game.yaw

@@ -55,16 +55,17 @@ func _ready() -> void:
 	add_child(camera)
 	camera.current = true
 	flashlight = SpotLight3D.new()
-	# Keep the shadow camera inside the player's clearance, including at oblique walls.
+	# The beam shares the viewpoint, including when standing against a wall.
 	flashlight.position = Vector3.ZERO
 	flashlight.spot_range = 23
 	flashlight.spot_angle = 38
 	flashlight.spot_angle_attenuation = 1.2
 	flashlight.light_color = Color("e4e8cd")
 	flashlight.light_energy = 3.2
-	flashlight.shadow_enabled = true
-	flashlight.shadow_bias = .12
-	flashlight.shadow_normal_bias = 1.5
+	# A camera-coincident beam lights camera-visible surfaces directly. Its shadow
+	# depth map self-shadows distant flat faces into moving bands in Compatibility.
+	# Keep occluder shadows on the world lights, not this camera-mounted fill light.
+	flashlight.shadow_enabled = false
 	camera.add_child(flashlight)
 	weapon = preload("res://scripts/weapon_view.gd").new()
 	camera.add_child(weapon)
@@ -462,7 +463,7 @@ func request_draw() -> void:
 
 func apply_graphics() -> void:
 	flashlight.visible = arena.map_id == "graypine_night"
-	flashlight.shadow_enabled = Data.settings.shadows > 0
+	flashlight.shadow_enabled = false
 	for light in arena.find_children("*","Light3D",true,false):
 		light.shadow_enabled = Data.settings.shadows > 0
 	arena.sun.directional_shadow_max_distance = [0,25,45,65,90][int(Data.settings.shadows)]
