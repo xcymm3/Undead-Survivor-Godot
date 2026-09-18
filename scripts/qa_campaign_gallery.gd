@@ -138,10 +138,14 @@ func _process(_dt: float) -> void:
 				game.sim.spawn(p.pos+Vector2(0,-6),value.special)
 				if value.special == "crawler":
 					var crawler: Dictionary = game.sim.zombies[-1]
+					crawler.outfit = 0 # Keep staged animation comparisons visually stable.
 					crawler.heading = float(value.get("crawler_heading",0))
 					crawler.move_speed = 4.0 if value.get("crawler_moving",false) else 0.0
 					crawler.gait = float(value.get("crawler_gait",0))
 					crawler.attack_time = float(value.get("crawler_attack",0))
+					if value.has("crawler_down"):
+						crawler.hp = 0.0
+						crawler.down = float(value.crawler_down)
 				else: game.sim.zombies[-1].heading = .25
 		if value.has("shotgun"):
 			game.effects.particles.clear()

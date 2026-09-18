@@ -285,6 +285,30 @@ func validate_crawler() -> void:
 	check(view.hit(z,Vector3(8,ground+1.7,64),Vector3.FORWARD,8,0,false).is_empty(),"Standing head line passes above crawler")
 	var head = view.hit(z,Vector3(8,ground+.53,64),Vector3.FORWARD,8,0,false)
 	check(not head.is_empty() and head.head,"Lowered aim hits crawler head")
+	var death_heads: Array = []
+	var death_hands: Array = []
+	z.hp = 0.0
+	z.move_speed = 0.0
+	for down in [.85,.55,.25]:
+		z.down = down
+		var death_poses: Array = view.transforms(z,sim.elapsed,false)
+		death_heads.append(death_poses[3].origin)
+		death_hands.append([death_poses[18].origin,death_poses[19].origin])
+		var death_low = INF
+		var death_high = -INF
+		for j in data.parts.size():
+			if data.parts[j].has("kind") or data.parts[j].get("armor",false): continue
+			for x in [-.5,.5]:
+				for y in [-.5,.5]:
+					for depth in [-.5,.5]:
+						var point: Vector3 = death_poses[j]*Vector3(x,y,depth)
+						death_low = minf(death_low,point.y-ground)
+						death_high = maxf(death_high,point.y-ground)
+		check(death_low >= -.05 and death_high < .95,"Crawler death stage stays above ground and prone %s low=%.3f high=%.3f" % [str(down),death_low,death_high])
+	check(death_heads[2].y < death_heads[0].y-.18 and death_heads[2].y-ground < .35,"Crawler death lowers the face to the ground")
+	check(death_hands[2][0].z > death_hands[0][0].z+.15 and death_hands[2][1].z > death_hands[0][1].z+.15,"Crawler death extends both hands into a collapsed pose")
+	z.hp = float(data.enemies.crawler.health)
+	z.down = 0.0
 	game.enemies.sync(sim.zombies,sim.elapsed,false)
 	var state = view.pose_state(z,sim.elapsed,false)
 	var actor: Dictionary = game.enemies.actors[z.id]

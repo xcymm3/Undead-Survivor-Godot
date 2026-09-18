@@ -140,8 +140,8 @@ static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 	var phase: float = z.get("gait",elapsed*5+z.id)
 	var stride = sin(phase) if moving else 0.0
 	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_night"))
-	var root = Transform3D(Basis(Vector3.UP,z.heading),Vector3(z.pos.x,ground+.36+absf(stride)*.015,z.pos.y))
-	if z.hp <= 0: root.origin.y = ground+.25
+	var death: float = smoothstep(0.0,1.0,clampf((.85-float(z.get("down",.85)))/.6,0,1)) if z.hp <= 0 else 0.0
+	var root = Transform3D(Basis(Vector3.UP,z.heading),Vector3(z.pos.x,ground+lerpf(.36,.27,death)+absf(stride)*.015,z.pos.y))
 	var flat = Basis(Vector3.RIGHT,PI/2)
 	var bones: Array[Transform3D] = [Transform3D(flat,-(flat*Vector3(0,1.18,0)))]
 	for side in [1.0,-1.0]:
@@ -149,16 +149,18 @@ static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 		var pivot = Vector3(-side*.19,.83,0)
 		bones.append(Transform3D(rotation,Vector3(-side*.19,0,-.35)-rotation*pivot))
 	for side in [1.0,-1.0]:
-		var pull = stride*side
+		var pull = stride*side*(1.0-death)
 		var reach = sin(clampf(z.attack_time/Data.attack(z.kind).y,0,1)*PI) if z.hp > 0 and z.attack_time > 0 else 0.0
-		var rotation = Basis(Vector3.UP,pull*.2)
+		var rotation = Basis(Vector3.UP,pull*.2+side*death*.08)
 		var pivot = Vector3(-side*.43,1.3,.2)
-		var target = Vector3(-side*.43,-.13+maxf(0,pull)*.04,.25+pull*.16+reach*.28)
+		var target = Vector3(-side*lerpf(.43,.46,death),lerpf(-.13,0,death)+maxf(0,pull)*.04,lerpf(.25,.48,death)+pull*.16+reach*.28)
 		bones.append(Transform3D(rotation,target-rotation*pivot))
 	bones.append(Transform3D.IDENTITY)
-	# Lift the face toward the player while the torso and legs remain prone.
-	var head = Basis(Vector3.RIGHT,-.12)
-	bones.append(Transform3D(head,Vector3(0,.17,.65)-head*Vector3(0,1.79,0)))
+	# The living crawler lifts its face; on death both hands lose support and
+	# extend forward while the head lowers face-first until it touches ground.
+	var head = Basis(Vector3.RIGHT,lerpf(-.12,PI/2,death))
+	var head_target = Vector3(0,lerpf(.17,.04,death),lerpf(.65,.53,death))
+	bones.append(Transform3D(head,head_target-head*Vector3(0,1.79,0)))
 	return {"root":root,"bones":bones}
 
 static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array:
