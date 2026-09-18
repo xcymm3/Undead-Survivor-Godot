@@ -8,6 +8,13 @@ var burst_at = 0.0
 var burst_left = 0
 var burst_next = 0.0
 var batch_cursor = 0
+var ordinary_slots = 0
+
+func population_kind(kind: String) -> String:
+	# Count successful ordinary spawns across habitats and delayed batches.
+	if kind != "normal": return kind
+	ordinary_slots += 1
+	return "crawler" if ordinary_slots%5 == 0 else "normal"
 
 func emit_noise(point: Vector3, kind: String, shot_origin := Vector2.INF) -> void:
 	if not state.departed or state.complete: return
@@ -54,6 +61,7 @@ func investigate_sounds() -> void:
 
 func finish_label() -> String:
 	if not state.exit_control: return "先启动门锁并坚守 30 秒"
+	if survivors().any(func(p): return Rect2(10.1,-57.5,3.8,4).has_point(p.pos)): return "请退离门扇转动区域"
 	return super()
 
 func holdout_step(dt: float) -> void:
@@ -72,6 +80,8 @@ func holdout_step(dt: float) -> void:
 			state.boss2_queued = true
 			state.milestones.boss2_queued = sim.elapsed
 			state.exit_control = true
+			state.exit_passable = false
+			state.exit_motion = 0.0
 			state.milestones.holdout_complete = sim.elapsed
 			phase("ESCAPE","门已解锁！进入安全屋并按 E 关门")
 			sim.arena.sync_campaign(state)
@@ -170,7 +180,7 @@ func populate_route() -> void:
 			var point: Vector2 = pool[index]
 			pool.remove_at(index)
 			if sim.zombies.any(func(z): return z.pos.distance_to(point) < 1.6): continue
-			sim.spawn(point,roster[count])
+			sim.spawn(point,population_kind(roster[count]))
 			spent += Population.COST[roster[count]]
 			var z: Dictionary = sim.zombies[-1]
 			z.guard_awake = false
@@ -184,31 +194,38 @@ func populate_route() -> void:
 func target(p: Dictionary) -> Dictionary:
 	for other in sim.pawns.values():
 		if other.id != p.id and other.get("downed",false) and near(p,other.pos): return {"id":"revive:"+other.id,"label":"救起 "+other.name,"seconds":4.0}
-	if not state.departed and p.pos.distance_to(Layout.START_DOOR.get_center()) < 2.6: return {"id":"depart","label":"开门出发","seconds":.6}
-	if state.departed and not state.holdout_started and near(p,Layout.HOLDOUT,2.6): return {"id":"holdout","label":"启动门锁 · 坚守 30 秒","seconds":.8}
-	if state.departed and Layout.EXIT_ROOM.has_point(p.pos): return {"id":"finish","label":finish_label(),"seconds":.8}
+	if not state.departed and p.pos.distance_to(Layout.START_DOOR.get_center()) < 2.6:
+		return {} if state.get("start_opening",false) else {"id":"depart","label":"推开安全屋门" if state.get("bar_removed",false) else "拆除横向门闩","seconds":0.0}
+	if state.departed and not state.holdout_started and near(p,Layout.HOLDOUT,2.6): return {"id":"holdout","label":"拉下开关 · 坚守 30 秒","seconds":0.0}
+	if state.departed and Layout.EXIT_ROOM.has_point(p.pos): return {} if state.get("exit_closing",false) else {"id":"finish","label":finish_label(),"seconds":0.0}
 	return equipment.pickup_target(p)
 
 func perform(p: Dictionary, id: String) -> void:
 	if id == "depart":
 		if state.departed or not start_room_ready() or p.pos.distance_to(Layout.START_DOOR.get_center()) >= 2.6: return
-		state.departed = true
-		sim.elapsed = 0.0
-		phase("STREET","穿过堵车街口，沿绿灯进入店铺")
-		sim.arena.sync_campaign(state)
+		if state.get("start_opening",false): return
+		p.pickup_latched = true
+		if not state.get("bar_removed",false):
+			state.bar_removed = true
+			state.bar_time = 0.0
+			state.objective = "门闩已拆除 · 再按 E 推开门"
+		else: state.start_opening = true
+		sim.events.append({"kind":"campaign_cue","cue":"gate","position":Vector3(0,1.9,65)})
 	elif id == "holdout":
 		if not state.departed or state.holdout_started or not near(p,Layout.HOLDOUT,2.6): return
 		state.holdout_started = true
+		p.pickup_latched = true
+		sim.events.append({"kind":"campaign_cue","cue":"winch","position":Vector3(14.4,1.5,-50)})
 		state.milestones.holdout_started = sim.elapsed
 		phase("HOLDOUT","守住门前 30 秒，等待安全屋解锁")
 		burst_at = sim.elapsed
 		burst_left = 0
 	elif id == "finish":
+		if not state.get("exit_passable",false) or state.get("exit_closing",false): return
 		if finish_label() != "关闭安全屋门，完成本关": return
-		state.complete = true
-		phase("COMPLETE","灰松夜路完成 · 安全屋门已关闭")
-		save_diagnostics()
-		sim.arena.sync_campaign(state)
+		state.exit_closing = true
+		p.pickup_latched = true
+		sim.events.append({"kind":"campaign_cue","cue":"gate","position":Vector3(12,2,-54)})
 	else:
 		for item in Layout.ITEMS:
 			if item.kind == "med" and item.id == id:
@@ -220,6 +237,34 @@ func guidance(p: Dictionary) -> String:
 	if state.holdout_started and not state.exit_control: return "留在门前 14 米内坚守 · 离开则解锁暂停"
 	return "沿绿灯推进 · 门前按 E 启动解锁，坚守 30 秒后进屋关门"
 
+func step_props(dt: float) -> void:
+	state.prop_clock = state.get("prop_clock",0.0)+dt
+	for p in sim.pawns.values(): p.pickup_remaining = maxf(0,p.get("pickup_until",0.0)-state.prop_clock)
+	for motion in state.get("pickup_motion",[]):
+		var owner: Dictionary = sim.pawns.get(motion.owner,{})
+		if not owner.is_empty() and state.prop_clock-motion.at < .65:
+			motion.to = equipment.grab_point(owner)
+			motion.pitch = owner.pitch
+	if state.get("bar_removed",false): state.bar_time = minf(2,state.get("bar_time",0.0)+dt)
+	if state.get("start_opening",false) and not state.departed:
+		state.start_motion = minf(1,state.get("start_motion",0.0)+dt/1.1)
+		if state.start_motion >= 1:
+			state.departed = true
+			sim.elapsed = 0.0
+			phase("STREET","穿过堵车街口，沿绿灯进入店铺")
+			sim.arena.sync_campaign(state)
+	if state.exit_control:
+		var previous: bool = state.get("exit_passable",false)
+		if state.get("exit_closing",false) and finish_label() != "关闭安全屋门，完成本关":
+			state.exit_closing = false # Reopen rather than crush a player or lock enemies inside.
+		state.exit_motion = move_toward(state.get("exit_motion",0.0),0.0 if state.get("exit_closing",false) else 1.0,dt/1.1)
+		state.exit_passable = state.exit_motion >= .999
+		if state.get("exit_closing",false) and state.exit_motion <= 0:
+			state.complete = true
+			phase("COMPLETE","灰松夜路完成 · 安全屋门已关闭")
+			save_diagnostics()
+		if previous != state.exit_passable or state.complete: sim.arena.sync_campaign(state)
+
 func safe_point(point: Vector2) -> bool:
 	if not super(point): return false
 	# Dark does not authorize visible pop-in, including beside a player's peripheral view.
@@ -227,7 +272,9 @@ func safe_point(point: Vector2) -> bool:
 
 func step(dt: float) -> void:
 	if state.complete or sim.failed: return
+	step_props(dt)
 	interactions(dt)
+	sim.arena.scenery.sync(state)
 	if not state.departed or state.complete: return
 	for p in standing(): p.route_hint = guidance(p)
 	if standing().any(func(p): return p.pos.y < 5) and not state.milestones.has("woods"):

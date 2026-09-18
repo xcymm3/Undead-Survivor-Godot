@@ -1,10 +1,70 @@
 extends "res://scripts/campaign_world.gd"
 var holdout_label: Label3D
 
+var door_blockers: Dictionary = {}
+var bar: Node3D
+var lever: Node3D
+var lock_bolts: Array = []
+var pickup_animation: Node3D
+
+func hinged_door(id: String, r: Rect2) -> void:
+	var hinge = Node3D.new()
+	hinge.position = Vector3(r.position.x,0,r.get_center().y)
+	hinge.set_meta("hinged",true)
+	add_child(hinge)
+	doors[id] = hinge
+	var leaf = block(id+"Leaf",Vector3(r.get_center().x,2,r.get_center().y),Vector3(3,4,.18),"414b43",true,false)
+	leaf.get_child(0).visible = false
+	leaf.reparent(hinge,true)
+	var steelwork = preload("res://scripts/safe_room_door.gd")
+	steelwork.leaf(hinge)
+	var frame = Node3D.new()
+	frame.position = hinge.position+Vector3(0,0,.20)
+	add_child(frame)
+	steelwork.frame(frame)
+	for y in [.55,2.0,3.45]: cylinder(Vector3(r.position.x,y,r.get_center().y),.10,.36,"535d53")
+	var blocker = StaticBody3D.new()
+	var collision = CollisionShape3D.new()
+	var shape = BoxShape3D.new()
+	shape.size = Vector3(3,4,.18)
+	collision.shape = shape
+	blocker.add_child(collision)
+	blocker.position = Vector3(r.get_center().x,2,r.get_center().y)
+	add_child(blocker)
+	door_blockers[id] = blocker
+	if id == "start":
+		bar = block("RemovableIronBar",Vector3(0,1.9,r.get_center().y+.3),Vector3(3.5,.14,.14),"4e5851",false)
+		for x in [-1.65,1.65]: block("BarBracket",Vector3(x,1.86,r.get_center().y+.25),Vector3(.15,.3,.28),"454e50",false)
+	else:
+		for y in [1.1,2.7]: lock_bolts.append(block("LockBolt",Vector3(r.end.x, y,r.get_center().y+.15),Vector3(.55,.16,.18),"9eaaa3",false))
+
 func sync(state: Dictionary) -> void:
 	super(state)
+	if not is_instance_valid(pickup_animation):
+		pickup_animation = preload("res://scripts/interaction_motion.gd").new()
+		add_child(pickup_animation)
+	pickup_animation.sync(state)
+	if not doors.has("start"): return
+	var start: float = state.get("start_motion",1.0 if state.get("departed",false) else 0.0)
+	var finish: float = state.get("exit_motion",1.0 if state.get("exit_control",false) and not state.get("complete",false) else 0.0)
+	doors.start.rotation.y = smoothstep(0,1,start)*PI/2
+	doors.exit.rotation.y = smoothstep(0,1,finish)*PI/2
+	for hinge in doors.values():
+		for child in hinge.get_children():
+			if child is StaticBody3D: child.force_update_transform()
+	door_blockers.start.collision_layer = 0 if start >= .999 else 1
+	door_blockers.exit.collision_layer = 0 if finish >= .999 else 1
+	if is_instance_valid(bar):
+		var t: float = state.get("bar_time",0.0) if state.get("bar_removed",false) else 0.0
+		bar.position = Vector3(0,maxf(.13,1.9-4.9*t*t),65.3+minf(t,.65)*.6)
+		bar.rotation = Vector3(minf(t,.65)*2.0,0,sin(minf(t,.65)*PI)*.15)
+		if t > .65: bar.position.y = .13+absf(sin((t-.65)*14))*maxf(0,.16-(t-.65)*.5)
+	if is_instance_valid(lever):
+		lever.rotation.x = .9*smoothstep(0,.5,float(state.get("holdout_time",0.0)))
+	for bolt in lock_bolts: bolt.position.x = Layout.EXIT_DOOR.end.x+clampf(float(state.get("holdout_time",0))/30,0,1)*.5
 	if is_instance_valid(holdout_label):
-		holdout_label.text = "门已解锁 · 进屋关门" if state.get("exit_control",false) else "坚守 %d 秒" % ceili(30-state.get("holdout_time",0.0)) if state.get("holdout_started",false) else "E 启动门锁 · 坚守 30 秒"
+		holdout_label.text = "已解锁" if state.get("exit_control",false) else "解锁剩余 %d 秒" % ceili(30-state.get("holdout_time",0.0)) if state.get("holdout_started",false) else "E 拉下开关"
+		holdout_label.pixel_size = .0008
 
 func _init() -> void:
 	Layout = preload("res://scripts/night_layout.gd")
@@ -44,7 +104,7 @@ func _ready() -> void:
 	room(Layout.EXIT,Vector2(10,12),"Exit",true)
 	for entry in [["start",Layout.START_DOOR],["exit",Layout.EXIT_DOOR]]:
 		var r: Rect2 = entry[1]
-		doors[entry[0]] = block(entry[0],Vector3(r.get_center().x,2,r.get_center().y),Vector3(r.size.x,4,r.size.y),"9c6336",true,false)
+		hinged_door(entry[0],r)
 	# Buildings and deep returns occlude the route; openings remain physically passable.
 	for b in [[-19,46,38,10],[20,33,32,7],[-24,-1,12,24],[25,-42,15,16],[-24,-55,15,13]]:
 		block("BrickBuilding",Vector3(b[0],3,b[1]),Vector3(b[2],6,b[3]),"414b50")
@@ -98,15 +158,16 @@ func _ready() -> void:
 			supply_labels[item.id] = sign_at("挂墙武器 · E 更换",Vector3(item.pos.x,3.35,item.pos.y-.7),3.0)
 		else: supply_labels[item.id] = sign_at("补给",Vector3(item.pos.x-.6,1.0,item.pos.y),1.4)
 	block("DoorControl",Vector3(14.4,1,-50),Vector3(.6,2,.5),"a87938",false)
+	lever = Node3D.new()
+	lever.position = Vector3(14.4,1.6,-49.7)
+	add_child(lever)
+	preload("res://scripts/campaign_props.gd").box(lever,Vector3(.08,.45,.08),Vector3(0,.2,0),Color("818c8e"))
+	preload("res://scripts/campaign_props.gd").box(lever,Vector3(.3,.1,.1),Vector3(0,.43,0),Color("b84733"))
 	# Left approach hides new reinforcement entries behind real navigable cover.
 	block("LeftServiceWall",Vector3(0,1.7,-55),Vector3(8,3.4,1),"414b50")
-	var sign_index = get_child_count()
-	holdout_label = sign_at("E 启动门锁 · 坚守 30 秒",Vector3(12,2.7,-53.25),3.0)
-	# Both backing and text sit outside the closed door and rise with it.
-	var sign_back = get_child(sign_index)
-	sign_back.reparent(doors.exit,true)
-	holdout_label.reparent(doors.exit,true)
-	for info in [["E 开门 · 沿绿灯前往安全屋",Vector3(0,2.8,65.2),3.0],["林边诊所 ↑",Vector3(8,2.6,39),3.0],["穿过店内 ↑",Vector3(-9,3.1,29.4),3.8],["安全屋 →",Vector3(-8,2.4,3),2.8],["安全屋 ←",Vector3(19,2.4,-24),2.8]]:
+	holdout_label = sign_at("E 启动门锁",Vector3(14.4,1.15,-49.7),1.5)
+	holdout_label.get_meta("backing").scale = Vector3(.4,.4,1)
+	for info in [["林边诊所 ↑",Vector3(8,2.6,39),3.0],["穿过店内 ↑",Vector3(-9,3.1,29.4),3.8],["安全屋 →",Vector3(-8,2.4,3),2.8],["安全屋 ←",Vector3(19,2.4,-24),2.8]]:
 		sign_at(info[0],info[1],info[2])
 	for p in [Vector3(0,3.6,70),Vector3(-9,3.8,24),Vector3(-14,3.8,11),Vector3(-12,3,-32),Vector3(12,3.7,-60),Vector3(12,3.6,-52)]: lamp(p,"ffcb85",2.6,11)
 	for p in [Vector3(8,3.5,51),Vector3(-9,3.5,32),Vector3(16,3,-9),Vector3(7,3,-25),Vector3(-6,3,-43)]:

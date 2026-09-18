@@ -1,6 +1,6 @@
 extends RefCounted
 ## Threat points replace ordinary bodies, never add elites on top of the budget.
-const COST = {"normal":1,"cone":2,"bucket":4,"imp":4,"shield":8,"berserker":12}
+const COST = {"normal":1,"crawler":1,"cone":2,"bucket":4,"imp":4,"shield":8,"berserker":12}
 const SPECIALS = ["cone","bucket","imp","shield","berserker"]
 
 static func points(roster: Array) -> int:
@@ -13,7 +13,7 @@ static func roster(budget: int, kinds: Array, random: RandomNumberGenerator, fra
 	var allowance = floori(budget*clampf(fraction,0,1))
 	var pool: Array = []
 	for kind in kinds:
-		if kind != "normal" and COST.has(kind) and not pool.has(kind): pool.append(kind)
+		if kind in SPECIALS and not pool.has(kind): pool.append(kind)
 	# One of each affordable eligible type before repeats. Route-level coverage
 	# is verified across habitats; a single habitat need not afford every type.
 	while not pool.is_empty():

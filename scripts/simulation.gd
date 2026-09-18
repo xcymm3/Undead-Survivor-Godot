@@ -111,6 +111,12 @@ func spawn(pos: Vector2, kind: String) -> void:
 	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
 	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":float(def.health),"body":float(def.health-def.armor),"armor":float(def.armor),"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
 	if kind == "football": zombies[-1].chase_speed = PLAYER_MOVE_SPEED
+	if kind == "crawler": zombies[-1].chase_speed *= .85
+	if kind in ["normal","crawler","cone","bucket"]:
+		# Cosmetic RNG never advances encounter, movement or combat randomness.
+		var wardrobe = RandomNumberGenerator.new()
+		wardrobe.seed = int(random.seed) ^ (next_id*15485863+32452843)
+		zombies[-1].outfit = wardrobe.randi_range(0,4)
 	next_id += 1
 
 func submit(id: String, input: Dictionary) -> void:
@@ -655,7 +661,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 			for step in 4:
 				if arena.clear(z.pos,z.pos+push/4): z.pos += push/4
 			z["hit_push_at"] = elapsed+.04
-		if map_id == "graypine_night" and z.kind == "normal" and elapsed >= z.get("stagger_ready",-1.0):
+		if map_id == "graypine_night" and z.kind in ["normal","crawler"] and elapsed >= z.get("stagger_ready",-1.0):
 			stun(z,.18)
 			z["stagger_ready"] = elapsed+.8
 		events.append({"kind":"blood","player":p.id,"position":position})
@@ -757,8 +763,15 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	var shotgun: bool = w.id in ["shotgun", "auto-shotgun"]
 	var shotgun_hits: Dictionary = {}
 	var impact_point = target
-	for pellet in int(w.pellets):
-		var offset = Data.pellet(w,pellet,p.gun_shots[p.weapon]+1)
+	# Sample the visible plume, sharing the hit set so overlapping rays never
+	# multiply damage or knockback. Every ray independently respects cover.
+	var flame: bool = weapon_kind == "flame"
+	for pellet in (13 if flame else int(w.pellets)):
+		var offset = Data.pellet(w,pellet,p.gun_shots[p.weapon]+1,p.aim)
+		if flame:
+			var angle = TAU*float((pellet-1)%6)/6.0
+			var radius = .028 if pellet <= 6 else .055
+			offset = Vector2.ZERO if pellet == 0 else Vector2(cos(angle),sin(angle))*radius
 		var ray = (direction+right*offset.x+up*offset.y).normalized()
 		var end = muzzle+ray*reach
 		var wall: Dictionary = arena.surface_hit(muzzle,end)
@@ -772,6 +785,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 		if shotgun:
 			if candidates.size() > int(w.pelletTargets): candidates.resize(int(w.pelletTargets))
 		elif not w.get("piercing",false) and candidates.size() > 1: candidates.resize(1)
+		elif w.has("penetrationTargets") and candidates.size() > int(w.penetrationTargets): candidates.resize(int(w.penetrationTargets))
 		var penetration = 1.0
 		for hit in candidates:
 			if (w.get("piercing",false) or weapon_kind == "melee") and damaged.has(hit.z.id): continue
@@ -790,7 +804,8 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 				if blocks: break
 				penetration *= float(w.penetrationDamage)
 				continue
-			hit_enemy(hit.z,amount,hit.armor,p,muzzle+ray*hit.distance)
+			hit_enemy(hit.z,amount*penetration,hit.armor,p,muzzle+ray*hit.distance)
+			if w.has("penetrationTargets"): penetration *= float(w.penetrationDamage)
 			if campaign: campaign.emit_noise(muzzle+ray*hit.distance,"impact",p.pos)
 		if not shotgun and not candidates.is_empty() and not w.get("piercing",false): distance = candidates[0].distance
 		if campaign and not wall.is_empty() and (w.get("piercing",false) or candidates.is_empty()): campaign.emit_noise(wall.position,"impact",p.pos)
@@ -799,7 +814,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	if shotgun and not shotgun_hits.is_empty():
 		for z in shotgun_hits.values():
 			# One flinch per shot, with a separate cooldown; never alter shove velocity.
-			if z.hp > 0 and z.kind == "normal" and z.pos.distance_to(p.pos) <= 8 and elapsed >= z.get("shotgun_stagger_ready",-1.0):
+			if z.hp > 0 and z.kind in ["normal","crawler"] and z.pos.distance_to(p.pos) <= 8 and elapsed >= z.get("shotgun_stagger_ready",-1.0):
 				stun(z,.4)
 				z["shotgun_stagger_ready"] = elapsed+1.0
 		events.append({"kind":"shotgun_impact","player":p.id,"position":impact_point,"hits":shotgun_hits.size()})

@@ -4,17 +4,19 @@ var meshes: Dictionary = {}
 var actors: Dictionary = {}
 var skin: Skin
 var material: StandardMaterial3D
-var kinds = ["normal","cone","bucket","imp","shield","berserker","giant","football"]
+var kinds = ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football"]
+const Wardrobe = preload("res://scripts/zombie_outfits.gd")
 
 func _ready() -> void:
 	skin = Skin.new()
-	for part in 6: skin.add_bind(part,Transform3D.IDENTITY)
+	for part in 7: skin.add_bind(part,Transform3D.IDENTITY)
 	material = StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 1.0
 
-func mesh_for(kind: String, palette: int, rage: bool, armor: bool) -> ArrayMesh:
-	var key = kind+str(palette)+str(rage)+str(armor)
+func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1) -> ArrayMesh:
+	var dressed = outfit >= 0 and kind in ["normal","crawler","cone","bucket"]
+	var key = kind+str(outfit if dressed else palette)+str(rage)+str(armor)+str(dressed)
 	if meshes.has(key): return meshes[key]
 	var cube = BoxMesh.new().get_mesh_arrays()
 	var surface = SurfaceTool.new()
@@ -22,16 +24,26 @@ func mesh_for(kind: String, palette: int, rage: bool, armor: bool) -> ArrayMesh:
 	for j in Data.parts.size():
 		var part: Dictionary = Data.parts[j]
 		if (part.has("kind") and part.kind != kind) or (part.get("armor",false) and not armor): continue
+		if dressed and j in [1,2]: continue # Replace old shirt patches with outfit details.
 		var color = Data.rgb(int(part.color))
 		if part.get("shirt",false):
 			color = [Color(.349,.392,.314),Color(.424,.345,.353),Color(.329,.408,.467),Color(.510,.443,.341)][palette]
 			color = {"imp":Color(.341,.251,.373),"shield":Color(.275,.365,.396),"berserker":Color(.714,.231,.173) if rage else Color(.494,.220,.184),"giant":Color(.443,.349,.263),"football":Color(.561,.157,.188)}.get(kind,color)
+		if dressed: color = Wardrobe.part_color(outfit,part,color)
 		for index in cube[Mesh.ARRAY_INDEX]:
 			surface.set_normal(cube[Mesh.ARRAY_NORMAL][index])
 			surface.set_color(color)
 			surface.set_bones(PackedInt32Array([bone_for(part),0,0,0]))
 			surface.set_weights(PackedFloat32Array([1,0,0,0]))
 			surface.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*Data.v3(part.size)+Data.v3(part.position))
+	if dressed:
+		for patch in Wardrobe.patches(outfit):
+			for index in cube[Mesh.ARRAY_INDEX]:
+				surface.set_normal(cube[Mesh.ARRAY_NORMAL][index])
+				surface.set_color(patch.color)
+				surface.set_bones(PackedInt32Array([0,0,0,0]))
+				surface.set_weights(PackedFloat32Array([1,0,0,0]))
+				surface.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*patch.size+patch.position)
 	surface.index()
 	meshes[key] = surface.commit()
 	return meshes[key]
@@ -42,7 +54,7 @@ func create_actor(z: Dictionary) -> Dictionary:
 	var skeleton = Skeleton3D.new()
 	skeleton.name = "Pose"
 	body.add_child(skeleton)
-	for j in 6:
+	for j in 7:
 		skeleton.add_bone("part_"+str(j))
 		skeleton.set_bone_rest(j,Transform3D.IDENTITY)
 	var view = MeshInstance3D.new()
@@ -86,6 +98,7 @@ static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stri
 	return transform
 
 static func bone_for(part: Dictionary) -> int:
+	if part.get("head",false): return 6
 	if part.get("shield",false): return 5
 	var limb: float = part.get("limb",0.0)
 	if absf(limb) >= 1: return 1 if limb > 0 else 2
@@ -93,6 +106,7 @@ static func bone_for(part: Dictionary) -> int:
 	return 0
 
 static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
+	if z.kind == "crawler": return crawl_pose(z,elapsed,stationary)
 	var moving: bool = not stationary and z.get("move_speed",0.0) > .05 and z.hp > 0 and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
 	var stride = sin(z.get("gait",(elapsed-z.born)*5+z.id*2)) if moving else 0.0
 	var idle: bool = z.hp > 0 and not z.get("guard_awake",true) and z.get("move_speed",0.0) <= .05 and z.get("map_id","") == "graypine_night"
@@ -116,7 +130,34 @@ static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 		var rotation = Basis(Vector3.RIGHT,angle)
 		bones.append(Transform3D(rotation,pivot-rotation*pivot))
 	bones.append(Transform3D(Basis.IDENTITY,Vector3(0,-.85,-.18)) if z.attack_time > 0 and z.attack_time < .45 else Transform3D.IDENTITY)
+	bones.append(Transform3D.IDENTITY)
 	return {"root":root_transform(z,elapsed,stationary,stride),"bones":bones}
+
+static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
+	var moving: bool = z.hp > 0 and not stationary and z.get("move_speed",0.0) > .05 and z.state != "stunned"
+	var phase: float = z.get("gait",elapsed*5+z.id)
+	var stride = sin(phase) if moving else 0.0
+	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_night"))
+	var root = Transform3D(Basis(Vector3.UP,z.heading),Vector3(z.pos.x,ground+.36+absf(stride)*.015,z.pos.y))
+	if z.hp <= 0: root.origin.y = ground+.25
+	var flat = Basis(Vector3.RIGHT,PI/2)
+	var bones: Array[Transform3D] = [Transform3D(flat,-(flat*Vector3(0,1.18,0)))]
+	for side in [1.0,-1.0]:
+		var rotation = Basis(Vector3.UP,stride*side*.12)*flat
+		var pivot = Vector3(-side*.19,.83,0)
+		bones.append(Transform3D(rotation,Vector3(-side*.19,0,-.35)-rotation*pivot))
+	for side in [1.0,-1.0]:
+		var pull = stride*side
+		var reach = sin(clampf(z.attack_time/Data.attack(z.kind).y,0,1)*PI) if z.hp > 0 and z.attack_time > 0 else 0.0
+		var rotation = Basis(Vector3.UP,pull*.2)
+		var pivot = Vector3(-side*.43,1.3,.2)
+		var target = Vector3(-side*.43,-.13+maxf(0,pull)*.04,.25+pull*.16+reach*.28)
+		bones.append(Transform3D(rotation,target-rotation*pivot))
+	bones.append(Transform3D.IDENTITY)
+	# Lift the face toward the player while the torso and legs remain prone.
+	var head = Basis(Vector3.RIGHT,-.12)
+	bones.append(Transform3D(head,Vector3(0,.17,.65)-head*Vector3(0,1.79,0)))
+	return {"root":root,"bones":bones}
 
 static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array:
 	var state = pose_state(z,elapsed,stationary)
@@ -137,8 +178,8 @@ func sync(zombies: Array, elapsed: float, stationary: bool) -> void:
 		actor.kind = z.kind
 		var state = pose_state(z,elapsed,stationary)
 		actor.body.transform = state.root
-		actor.view.mesh = mesh_for(z.kind,int(z.id)%4,z.rage,z.armor > 0)
-		for j in range(1,6): actor.skeleton.set_bone_pose(j,state.bones[j])
+		actor.view.mesh = mesh_for(z.kind,int(z.id)%4,z.rage,z.armor > 0,int(z.get("outfit",-1)))
+		for j in 7: actor.skeleton.set_bone_pose(j,state.bones[j])
 		actor.skeleton.force_update_all_bone_transforms()
 	for id in actors.keys():
 		if not present.has(id):

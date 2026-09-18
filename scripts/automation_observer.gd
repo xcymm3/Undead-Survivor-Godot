@@ -64,7 +64,11 @@ func native_smoke() -> void:
 	game.start_solo("campaign")
 	Input.action_press("forward")
 	Input.action_press("interact")
-	await get_tree().create_timer(2.4).timeout
+	await get_tree().create_timer(1.2).timeout
+	Input.action_release("interact")
+	await get_tree().create_timer(.12).timeout
+	Input.action_press("interact")
+	await get_tree().create_timer(1.4).timeout
 	Input.action_release("forward")
 	Input.action_release("interact")
 	await get_tree().create_timer(.25).timeout
@@ -85,7 +89,11 @@ func native_smoke() -> void:
 	await get_tree().create_timer(.2).timeout
 	Input.action_press("forward")
 	Input.action_press("interact")
-	await get_tree().create_timer(2.4).timeout
+	await get_tree().create_timer(1.2).timeout
+	Input.action_release("interact")
+	await get_tree().create_timer(.12).timeout
+	Input.action_press("interact")
+	await get_tree().create_timer(1.4).timeout
 	Input.action_release("forward")
 	Input.action_release("interact")
 	passed = passed and game.sim.mode == "campaign" and game.sim.campaign.state.departed and game.local_pawn().get("primary",-1) == 1 and game.local_pawn().get("reserve",-1) == 225

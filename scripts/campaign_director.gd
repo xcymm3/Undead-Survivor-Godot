@@ -190,6 +190,9 @@ func safe_point(point: Vector2) -> bool:
 	if sim.zombies.any(func(z): return z.hp > 0 and z.pos.distance_to(point) < 1.5): return false
 	return standing().any(func(p): return not sim.arena.path_to(point,p.pos).is_empty())
 
+func population_kind(kind: String) -> String:
+	return kind
+
 func spawn_one(points: Array, kind: String) -> bool:
 	if sim.zombies.filter(func(z): return z.hp > 0 and z.get("guard_awake",true) and not z.get("boss",false)).size() >= cap() or credit < 1: return false
 	var candidates = points.duplicate()
@@ -201,7 +204,7 @@ func spawn_one(points: Array, kind: String) -> bool:
 		candidates[other] = swap
 	for point in candidates:
 		if safe_point(point):
-			sim.spawn(point,kind)
+			sim.spawn(point,population_kind(kind))
 			credit = 0.0
 			return true
 	return false

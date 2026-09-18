@@ -9,9 +9,9 @@
       "interval": 0.12,
       "reloadDuration": 1.6,
       "automatic": true,
-      "damage": 60,
+      "damage": 120,
       "pellets": 1,
-      "spread": 0,
+      "spread": 0.016,
       "length": 0.9,
       "rotationY": 0,
       "fireDuration": 0.12,
@@ -21,7 +21,8 @@
         -0.075,
         -0.46
       ],
-      "tier": "A"
+      "tier": "A",
+      "adsSpread": 0.006
     },
     {
       "id": "p90",
@@ -32,9 +33,9 @@
       "interval": 0.09,
       "reloadDuration": 1.5,
       "automatic": true,
-      "damage": 30,
+      "damage": 40,
       "pellets": 1,
-      "spread": 0,
+      "spread": 0.03,
       "length": 0.65,
       "rotationY": 0,
       "fireDuration": 0.09,
@@ -44,7 +45,8 @@
         -0.08,
         -0.44
       ],
-      "tier": "B"
+      "tier": "B",
+      "adsSpread": 0.01
     },
     {
       "id": "pistol",
@@ -80,7 +82,7 @@
       "automatic": false,
       "damage": 150,
       "pellets": 1,
-      "spread": 0,
+      "spread": 0.012,
       "length": 0.55,
       "rotationY": 0,
       "fireDuration": 0.36,
@@ -91,7 +93,8 @@
         -0.41
       ],
       "tier": "B",
-      "infiniteReserve": true
+      "infiniteReserve": true,
+      "adsSpread": 0.004
     },
     {
       "id": "shotgun",
@@ -128,16 +131,16 @@
       "label": "栓动狙击枪",
       "short": "SNIPER",
       "model": "SniperRifle",
-      "capacity": 5,
-      "interval": 0.85,
+      "capacity": 15,
+      "interval": 0.3,
       "reloadDuration": 1.8,
       "automatic": false,
       "damage": 280,
       "pellets": 1,
-      "spread": 0,
+      "spread": 0.006,
       "length": 1.02,
       "rotationY": 0,
-      "fireDuration": 0.78,
+      "fireDuration": 0.28,
       "recoil": 1,
       "ads": [
         0,
@@ -145,7 +148,11 @@
         -0.52
       ],
       "tier": "B",
-      "headshotMultiplier": 3
+      "headshotMultiplier": 3,
+      "piercing": true,
+      "penetrationTargets": 3,
+      "penetrationDamage": 0.8,
+      "adsSpread": 0.0015
     },
     {
       "id": "axe",
@@ -208,11 +215,11 @@
       "label": "自动霰弹枪",
       "short": "AUTO SG",
       "model": "AutoShotgun",
-      "capacity": 12,
-      "interval": 0.36,
+      "capacity": 20,
+      "interval": 0.24,
       "reloadDuration": 2.2,
       "automatic": true,
-      "damage": 32,
+      "damage": 48,
       "pellets": 17,
       "spread": 0.105,
       "spreadVertical": 0.05,
@@ -244,7 +251,7 @@
       "automatic": true,
       "damage": 45,
       "pellets": 1,
-      "spread": 0.014,
+      "spread": 0.045,
       "length": 1.06,
       "rotationY": 0,
       "fireDuration": 0.09,
@@ -255,7 +262,8 @@
         -0.055,
         -0.54
       ],
-      "tier": "A"
+      "tier": "A",
+      "adsSpread": 0.018
     }
   ],
   "enemies": {
@@ -306,6 +314,12 @@
       "health": 9000,
       "armor": 4000,
       "tier": 4
+    },
+    "crawler": {
+      "label": "爬行僵尸",
+      "health": 100,
+      "armor": 0,
+      "tier": 1
     }
   },
   "enemy_rules": {
@@ -349,8 +363,8 @@
       "slamRadius": 2.4
     },
     "football": {
-      "speed": 1.0,
-      "brokenSpeed": 1.0,
+      "speed": 1,
+      "brokenSpeed": 1,
       "speedCap": 4.2,
       "scale": 1.1,
       "contactRadius": 1.35,

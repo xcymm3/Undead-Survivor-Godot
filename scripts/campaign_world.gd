@@ -126,6 +126,7 @@ func sync(state: Dictionary) -> void:
 			projectile_views[id].queue_free()
 			projectile_views.erase(id)
 	for id in doors:
+		if doors[id].has_meta("hinged"): continue
 		var opened: bool = state.get("departed",false) if id == "start" else state.get("gate_open",false) if id == "gate" else state.get("shop_open",false) if id == "street" else state.get("exit_control",false) and not state.get("complete",false)
 		var progress: float = float(state.get("bridge_time",0))/90.0 if id == "gate" and not opened else 0.0
 		doors[id].position.y = 6.5 if opened else 2+minf(.8,progress)*1.0

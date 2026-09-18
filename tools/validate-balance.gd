@@ -43,7 +43,7 @@ func run() -> void:
 			progress.close()
 			check(result.won,"Fixed solo/duo seed reaches safe room: "+str(party)+"/"+str(seed_value))
 	var f = FileAccess.open("res://artifacts/balance-acceptance.json",FileAccess.WRITE)
-	f.store_string(JSON.stringify({"checks":count,"failures":failures,"runs":runs,"profile":{"turn_limit":false,"aim_error_degrees":0,"fire_wait":0,"observation":0,"grenade_strategy":"reserve-close-boss-and-exit-v4"},"budget":{"duo_burst_size":Layout.DUO_BURST_SIZE,"duo_reinforcement_scale":Layout.DUO_REINFORCEMENT_SCALE,"zones":Layout.ZONES,"woods":Layout.WOODS_BUDGET,"timer":Layout.TIMER_BUDGET,"holdout":Layout.HOLDOUT_BUDGET,"holdout_duo":Layout.HOLDOUT_DUO_BUDGET},"boundary":"Synthetic inputs; duo shared authority is separate from ENet/Steam. All failures retained."},"  "))
+	f.store_string(JSON.stringify({"checks":count,"failures":failures,"runs":runs,"profile":{"turn_limit":false,"aim_error_degrees":0,"fire_wait":0,"observation":0,"grenade_strategy":"emergency-before-boss-reserve-v5"},"budget":{"duo_burst_size":Layout.DUO_BURST_SIZE,"duo_reinforcement_scale":Layout.DUO_REINFORCEMENT_SCALE,"zones":Layout.ZONES,"woods":Layout.WOODS_BUDGET,"timer":Layout.TIMER_BUDGET,"holdout":Layout.HOLDOUT_BUDGET,"holdout_duo":Layout.HOLDOUT_DUO_BUDGET},"boundary":"Synthetic inputs; duo shared authority is separate from ENet/Steam. All failures retained."},"  "))
 	f.close()
 	game.return_home()
 	game.queue_free()

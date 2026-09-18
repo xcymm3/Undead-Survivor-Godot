@@ -14,6 +14,10 @@ test('real input fires cancels and completes revolver reload', async ({ page }, 
   }
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'campaign');
   await page.keyboard.down('w'); await page.keyboard.down('e');
+  await page.waitForFunction(() => window.__survivorSnapshot.campaign.bar_removed);
+  await page.keyboard.up('e');
+  await page.waitForTimeout(100);
+  await page.keyboard.down('e');
   await page.waitForFunction(() => window.__survivorSnapshot.campaign.departed, null, {timeout:15000});
   await page.keyboard.up('w'); await page.keyboard.up('e');
   await page.keyboard.press('4');

@@ -149,7 +149,7 @@ static func v3(a: Array) -> Vector3:
 static func rgb(hex: int) -> Color:
 	return Color.hex((hex << 8) | 255)
 
-static func pellet(w: Dictionary, index: int, shot: int) -> Vector2:
+static func pellet(w: Dictionary, index: int, shot: int, aiming := false) -> Vector2:
 	if w.id in ["shotgun", "auto-shotgun"]:
 		# Stratified disk, rotated and jittered per shot; no fixed center pellet or rows.
 		# A local seed keeps spread reproducible without consuming spawn/enemy randomness.
@@ -160,7 +160,8 @@ static func pellet(w: Dictionary, index: int, shot: int) -> Vector2:
 		return Vector2(cos(angle) * w.spread, sin(angle) * w.spreadVertical) * radius
 	if w.pellets == 1 and w.spread > 0:
 		var angle = (shot + 1) * 2.399963229728653
-		var radius: float = w.spread * sqrt(fmod((shot + 1) * .7548776662466927, 1))
+		var spread: float = w.get("adsSpread",w.spread) if aiming else w.spread
+		var radius: float = spread * sqrt(fmod((shot + 1) * .7548776662466927, 1))
 		return Vector2(cos(angle), sin(angle)) * radius
 	if index == 0: return Vector2.ZERO
 	if not w.has("spreadVertical"):

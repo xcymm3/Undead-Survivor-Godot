@@ -74,6 +74,7 @@ func _ready() -> void:
 	add_child(sound)
 	effects = preload("res://scripts/effects.gd").new()
 	add_child(effects)
+	effects.collision_query = arena.surface_hit
 	var post = CanvasLayer.new()
 	post.layer = 0
 	add_child(post)
@@ -174,7 +175,7 @@ func reset_game() -> void:
 	queued_effects.clear()
 	for partner in partners.values(): partner.queue_free()
 	partners.clear()
-	effects.particles.clear()
+	effects.clear()
 	enemies.clear()
 	weapon.visible = true
 	snapshot_timer = 0
@@ -370,7 +371,11 @@ func handle_effects(events: Array) -> void:
 					visual_origin = weapon.muzzle_position()
 				elif partners.has(event.player):
 					visual_origin = partners[event.player].muzzle_position()
-				if kind == "flame": effects.flame(visual_origin,event.to)
+				if kind == "flame":
+					# The first-person mesh can extend past a nearby wall; never emit
+					# from that cosmetic muzzle on the far side of authoritative cover.
+					if not arena.surface_hit(event.from,visual_origin).is_empty(): visual_origin = event.from
+					effects.flame(visual_origin,event.to)
 				elif kind == "gun":
 					if event.has("pellet_ends"): effects.shotgun(visual_origin,event.pellet_ends)
 					else: effects.tracer(visual_origin,event.to,w.id != "revolver")

@@ -21,7 +21,12 @@ test('campaign can be selected and departed using real keyboard input', async ({
   }
   await page.keyboard.down('w');
   await page.keyboard.down('e');
+  await page.waitForFunction(() => window.__survivorSnapshot.campaign.bar_removed);
+  await page.keyboard.up('e');
+  await page.waitForTimeout(100);
+  await page.keyboard.down('e');
   await page.waitForFunction(() => window.__survivorSnapshot?.campaign?.departed, null, { timeout: 15_000 });
+  await page.waitForFunction(() => window.__survivorSnapshot.player.z < 64, null, { timeout: 10_000 });
   await page.keyboard.up('w');
   await page.keyboard.up('e');
   expect(await page.evaluate(() => window.__survivorSnapshot.campaign.gate_open)).toBe(true);

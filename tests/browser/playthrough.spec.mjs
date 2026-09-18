@@ -79,6 +79,10 @@ test('夜路真实输入完成菜单、移动、暂停与重开', async ({ page 
   await until(page, () => !window.__survivorSnapshot.player.grounded);
   await until(page, () => window.__survivorSnapshot.player.grounded);
   await page.keyboard.down('w'); await page.keyboard.down('e');
+  await page.waitForFunction(() => window.__survivorSnapshot.campaign.bar_removed);
+  await page.keyboard.up('e');
+  await page.waitForTimeout(100);
+  await page.keyboard.down('e');
   await until(page, () => window.__survivorSnapshot.campaign.departed);
   await page.keyboard.up('w'); await page.keyboard.up('e');
   await imageEvidence(page,info,'02-night-departed');

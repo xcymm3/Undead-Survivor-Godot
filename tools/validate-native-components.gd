@@ -120,10 +120,243 @@ func validate_combat_revision() -> void:
 	check(Vector2(command.get("x",0),command.get("y",0)).length() > .1 and not command.get("interact",false),"Test player clears the doorway before attempting closure")
 	p.pos = Vector2(12,-55.2)
 	command = driver.command(.05)
+	check(Vector2(command.get("x",0),command.get("y",0)).length() > .1 and not command.get("interact",false),"Test player clears the swinging door leaf, not just its closed threshold")
+	p.pos = Vector2(12,-60)
+	command = driver.command(.05)
 	check(command.get("interact",false) and command.x == 0 and command.y == 0,"Test player closes the clear doorway after entering fully")
+	director.state.departed = true
+	game.arena.sync_campaign(director.state)
+	p.pos = Vector2(0,60)
+	p.primary = 9
+	p.weapon = 9
+	p.requested = 9
+	p.slot = 1
+	p.ammo[9] = int(root.get_node("Data").weapons[9].capacity)
+	p.reserves[9] = int(root.get_node("Data").weapons[9].capacity)*5
+	p.reserve = p.reserves[9]
+	sim.spawn(Vector2(0,58.7),"crawler")
+	driver.tasks = [[Vector2(0,50),""]]
+	driver.test_weapon = 9
+	command = driver.command(.05)
+	check(command.get("weapon",-1) == 9 and command.get("slot",0) == 1 and command.get("fire",false) and command.get("pitch",0) < -.2,"Fixed gun comparison keeps downward aim on a close crawler instead of an axe command")
 	game.return_home()
 	game.start_solo("campaign",71245)
 	await physics_frame
+
+func validate_flame() -> void:
+	var fx = game.effects
+	fx.clear()
+	var original_query: Callable = fx.collision_query
+	fx.collision_query = Callable()
+	fx.flame(Vector3(0,2,0),Vector3(0,2,-12))
+	for i in 24: fx.step(1.0/60)
+	check(not fx.flame_particles.is_empty(),"Flame remains visible during its forward flight")
+	check(fx.flame_particles.all(func(p): return p.pos.y > 1.55 and p.pos.z < -5),"Horizontal flame keeps forward momentum instead of falling under debris gravity")
+	fx.step(1)
+	check(fx.flame_particles.is_empty() and fx.flame_light.light_energy == 0 and not fx.flame_light.visible,"Released flame and local light fully expire and release the light slot")
+	fx.collision_query = func(_from: Vector3,to: Vector3): return {"position":to} if to.z < -2 else {}
+	fx.flame(Vector3(0,2,0),Vector3(0,2,-12))
+	for i in 12: fx.step(1.0/60)
+	check(fx.flame_particles.is_empty(),"Flame packets cannot cross a blocking surface")
+	fx.collision_query = original_query
+	game.return_home()
+	game.start_solo("campaign",71245)
+	await physics_frame
+	var sim = game.sim
+	var p: Dictionary = game.local_pawn()
+	p.pos = Vector2(8,60)
+	p.yaw = 0
+	p.pitch = 0
+	p.weapon = 7
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,54),"normal")
+	var z: Dictionary = sim.zombies[0]
+	var before: float = z.hp
+	sim.fire(p,root.get_node("Data").weapons[7])
+	check(is_equal_approx(before-z.hp,36),"Overlapping flame rays apply damage only once per tick")
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,52),"normal")
+	sim.spawn(Vector2(8.65,50),"normal")
+	var initial_hp: Array = sim.zombies.map(func(enemy): return enemy.hp)
+	sim.fire(p,root.get_node("Data").weapons[7])
+	check(sim.zombies[0].hp < initial_hp[0] and sim.zombies[1].hp < initial_hp[1],"Flame covers off-axis enemies and penetrates the front row")
+	p.pos = Vector2(0,70)
+	p.yaw = -PI/2
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,70),"normal")
+	before = sim.zombies[0].hp
+	sim.fire(p,root.get_node("Data").weapons[7])
+	check(sim.zombies[0].hp == before,"Widened flame cannot damage enemies through the safe-room wall")
+	fx.clear()
+
+func validate_sniper_penetration() -> void:
+	game.return_home()
+	game.start_solo("campaign",71245)
+	await physics_frame
+	var sim = game.sim
+	var p: Dictionary = game.local_pawn()
+	var w: Dictionary = root.get_node("Data").weapons[5].duplicate(true)
+	# Isolate penetration from the standing pose's head/body intersection.
+	w.headshotMultiplier = 1
+	p.pos = Vector2(8,60)
+	p.yaw = 0
+	p.pitch = 0
+	p.weapon = 5
+	sim.zombies.clear()
+	for depth in [54,52,50,48]:
+		sim.spawn(Vector2(8,depth),"normal")
+		sim.zombies[-1].hp = 2000
+		sim.zombies[-1].body = 2000
+	sim.fire(p,w)
+	for index in 4:
+		var expected: float = 280*pow(.8,index) if index < 3 else 0.0
+		check(is_equal_approx(2000-sim.zombies[index].hp,expected),"Sniper front-to-back attenuation and three-target limit "+str(index))
+	p.pos = Vector2(0,70)
+	p.yaw = -PI/2
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,70),"normal")
+	var health: float = sim.zombies[0].hp
+	sim.fire(p,w)
+	check(sim.zombies[0].hp == health,"Sniper cannot penetrate the safe-room wall")
+
+func validate_crawler() -> void:
+	game.return_home()
+	game.start_solo("campaign",71245)
+	await physics_frame
+	var sim = game.sim
+	var data = root.get_node("Data")
+	var director = sim.campaign
+	var ordinary = sim.zombies.filter(func(z): return z.original in ["normal","crawler"])
+	check(ordinary.filter(func(z): return z.original == "crawler").size() == ordinary.size()/5,"Preplaced ordinary slots use four normal per crawler")
+	var before: int = director.ordinary_slots
+	check(not director.spawn_one([game.local_pawn().pos],"normal") and before == director.ordinary_slots,"Blocked reinforcement does not advance crawler ratio")
+	for i in 10:
+		var expected = "crawler" if (before+i+1)%5 == 0 else "normal"
+		check(director.population_kind("normal") == expected,"Crawler ratio carries across batches "+str(i))
+	check(director.population_kind("football") == "football" and director.ordinary_slots == before+10,"Boss does not consume ordinary ratio")
+	check(preload("res://scripts/night_population.gd").COST.crawler == 1,"Crawler costs one threat point")
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,60),"crawler")
+	var z: Dictionary = sim.zombies[-1]
+	check(z.hp == root.get_node("Data").enemies.normal.health and z.armor == 0,"Crawler matches normal health and armor")
+	check(z.chase_speed >= 4.6*.85 and z.chase_speed <= 5.2*.85,"Crawler chase speed is 85 percent of ordinary range")
+	var view = load("res://scripts/enemy_view.gd")
+	var ground = data.enemy_ground_height(z.pos)
+	for phase in [0.0,PI/2,PI,PI*1.5]:
+		z.gait = phase
+		z.move_speed = 4.0
+		for attack in [0.0,.25,.5,.8]:
+			z.attack_time = attack
+			var poses = view.transforms(z,sim.elapsed,false)
+			var low = INF
+			var high = -INF
+			for j in data.parts.size():
+				if data.parts[j].has("kind") or data.parts[j].get("armor",false): continue
+				for x in [-.5,.5]:
+					for y in [-.5,.5]:
+						for depth in [-.5,.5]:
+							var point: Vector3 = poses[j]*Vector3(x,y,depth)
+							low = minf(low,point.y-ground)
+							high = maxf(high,point.y-ground)
+			check(low >= -.05 and high < .95,"Crawl/attack pose stays low without sinking")
+	z.attack_time = 0
+	check(view.hit(z,Vector3(8,ground+1.7,64),Vector3.FORWARD,8,0,false).is_empty(),"Standing head line passes above crawler")
+	var head = view.hit(z,Vector3(8,ground+.53,64),Vector3.FORWARD,8,0,false)
+	check(not head.is_empty() and head.head,"Lowered aim hits crawler head")
+	game.enemies.sync(sim.zombies,sim.elapsed,false)
+	var state = view.pose_state(z,sim.elapsed,false)
+	var actor: Dictionary = game.enemies.actors[z.id]
+	for bone in 7: check(actor.skeleton.get_bone_pose(bone).is_equal_approx(state.bones[bone]),"Crawler rendered and CPU bone match "+str(bone))
+
+func validate_outfits() -> void:
+	game.return_home()
+	game.start_solo("campaign",71245)
+	await physics_frame
+	var sim = game.sim
+	var counts = [0,0,0,0,0]
+	var rng_before: int = sim.random.state
+	sim.zombies.clear()
+	for kind in ["normal","crawler","cone","bucket"]:
+		for i in 100:
+			sim.spawn(Vector2(8,60),kind)
+			var z: Dictionary = sim.zombies[-1]
+			check(z.outfit >= 0 and z.outfit < 5,"Eligible infected has valid outfit")
+			counts[z.outfit] += 1
+		check(sim.zombies.slice(-100).map(func(z): return z.outfit).any(func(style): return style != sim.zombies[-1].outfit),"Kind receives varied outfits "+kind)
+	check(sim.random.state == rng_before,"Clothing RNG never changes encounter random state")
+	check(counts.all(func(amount): return amount > 40 and amount < 120),"Five clothing variants all represented without deterministic cycling")
+	var snapshot: Dictionary = bytes_to_var(var_to_bytes(sim.snapshot()))
+	check(snapshot.zombies.map(func(z): return z.outfit) == sim.zombies.map(func(z): return z.outfit),"Outfit survives network snapshot serialization")
+	var p: Dictionary = game.local_pawn()
+	for kind in ["cone","bucket"]:
+		sim.spawn(Vector2(8,60),kind)
+		var z: Dictionary = sim.zombies[-1]
+		var style: int = z.outfit
+		sim.hit_enemy(z,z.armor,true,p,Vector3(8,1.5,60))
+		check(z.kind == "normal" and z.outfit == style,"Armor break retains clothing "+kind)
+		sim.hit_enemy(z,10000,false,p,Vector3(8,1,60))
+		check(z.hp == 0 and z.outfit == style,"Death retains clothing "+kind)
+	for kind in ["imp","shield","berserker","football"]:
+		sim.spawn(Vector2(8,60),kind)
+		check(not sim.zombies[-1].has("outfit"),"Special silhouette remains unchanged "+kind)
+	for kind in ["normal","crawler","cone","bucket"]:
+		var variants: Array = []
+		for style in 5:
+			var mesh = game.enemies.mesh_for(kind,0,false,kind in ["cone","bucket"],style)
+			check(not variants.has(mesh),"Separate cached clothing mesh "+kind+str(style))
+			variants.append(mesh)
+			check(mesh == game.enemies.mesh_for(kind,3,false,kind in ["cone","bucket"],style),"Outfit cache independent of old palette")
+	sim.zombies.clear()
+
+func validate_interaction_motion() -> void:
+	game.return_home()
+	game.start_solo("campaign",71245)
+	await physics_frame
+	var sim = game.sim
+	var d = sim.campaign
+	var p: Dictionary = game.local_pawn()
+	p.pos = Vector2(0,66.5)
+	p.input = {"interact":true}
+	p.input_age = 0
+	d.interactions(.05)
+	check(d.state.get("bar_removed",false) and not d.state.departed,"First E removes the bar without opening the door")
+	d.interactions(1)
+	check(not d.state.get("start_opening",false),"Holding E cannot trigger the second door action")
+	p.input = {}
+	d.interactions(.05)
+	p.input = {"interact":true}
+	d.interactions(.05)
+	d.step_props(.55)
+	game.arena.scenery.sync(d.state)
+	check(not d.state.departed and absf(game.arena.scenery.doors.start.rotation.y) > .1,"Door rotates visibly before departure is permitted")
+	check(not game.arena.clear(Vector2(0,67),Vector2(0,63)),"Partially open door remains blocked to navigation")
+	d.step_props(.6)
+	check(d.state.departed and game.arena.scenery.door_blockers.start.collision_layer == 0,"Fully opened door releases the threshold")
+	var gun: Dictionary = d.state.loot[0]
+	p.pos = gun.pos
+	var old: int = p.primary
+	check(d.equipment.pickup(p,gun.id),"Animated gun exchange consumes one rack gun")
+	var motion: Dictionary = d.state.pickup_motion[-1]
+	check(motion.old == old and motion.weapon == gun.weapon and p.switch >= .65,"Gun exchange records both models and blocks immediate shooting")
+	var copy: Dictionary = bytes_to_var(var_to_bytes(sim.snapshot()))
+	check(copy.campaign.pickup_motion[-1].id == motion.id,"Pickup animation identity survives network snapshot serialization")
+	d.step_props(.7)
+	check(p.pickup_remaining == 0,"Pickup animation completes on authority clock")
+	sim.zombies.clear()
+	p.pos = Vector2(12,-60)
+	d.state.exit_control = true
+	d.step_props(1.2)
+	d.perform(p,"finish")
+	d.step_props(.4)
+	check(not d.state.complete and d.state.exit_motion > 0 and d.state.exit_motion < 1,"Closing door does not complete the level midway")
+	p.pos = Vector2(12,-56)
+	d.step_props(.1)
+	check(not d.state.exit_closing and not d.state.complete,"Door reopens when a survivor enters its swing area")
+	p.pos = Vector2(12,-60)
+	d.step_props(1.2)
+	d.perform(p,"finish")
+	d.step_props(1.2)
+	check(d.state.complete and d.state.exit_motion == 0,"Victory waits for the door to close fully")
 
 func _initialize() -> void:
 	call_deferred("run")
@@ -210,6 +443,11 @@ func run() -> void:
 	await validate_equipment()
 	await validate_inventory_and_heal()
 	await validate_combat_revision()
+	await validate_outfits()
+	await validate_interaction_motion()
+	await validate_crawler()
+	await validate_flame()
+	await validate_sniper_penetration()
 	validate_close_combat()
 	validate_revolver()
 	validate_buffer()

@@ -15,6 +15,24 @@ var sim:
 var next_grenade = 0
 var grenade_history: Array = []
 
+func grab_point(p: Dictionary) -> Vector3:
+	var forward = Vector3(-sin(p.yaw)*cos(p.pitch),sin(p.pitch),-cos(p.yaw)*cos(p.pitch))
+	var right = Vector3(cos(p.yaw),0,-sin(p.yaw))
+	return Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p)-.13,p.pos.y)+forward*.55+right*.19
+
+func pickup_motion(p: Dictionary, point: Vector3, weapon := -1, slot := 0, old := -1) -> void:
+	if not director.state.has("pickup_motion"): director.state.pickup_motion = []
+	var serial: int = director.state.get("pickup_serial",0)+1
+	director.state.pickup_serial = serial
+	director.state.pickup_motion.append({"id":serial,"owner":p.id,"at":director.state.get("prop_clock",0.0),"from":point,"to":Vector3(p.pos.x,p.height+1.3,p.pos.y),"yaw":p.yaw,"weapon":weapon,"slot":slot,"old":old})
+	director.state.pickup_motion[-1].drop = grab_point(p)
+	director.state.pickup_motion[-1].to = grab_point(p)
+	director.state.pickup_motion[-1].pitch = p.pitch
+	while director.state.pickup_motion.size() > 24: director.state.pickup_motion.pop_front()
+	if weapon >= 0:
+		p.pickup_until = director.state.get("prop_clock",0.0)+.65
+		p.pickup_remaining = .65
+
 func _init(director_node) -> void:
 	director_ref = weakref(director_node)
 
@@ -104,6 +122,7 @@ func pickup(p: Dictionary, id: String) -> bool:
 			if p.medkits >= 1 or station.remaining <= 0 or not director.near(p,point,2.0): return false
 			station.remaining -= 1
 			p.medkits += 1
+			pickup_motion(p,Vector3(point.x,.83,point.y),-1,5)
 			if item.kind == "med" and station.remaining == 0: director.state.taken[item.id] = true
 			p.pickup_latched = true
 			return true
@@ -116,6 +135,7 @@ func pickup(p: Dictionary, id: String) -> bool:
 			station.remaining -= 1
 			if not station.claimed.has(p.id): station.claimed.append(p.id)
 			p.grenades += 1
+			pickup_motion(p,Vector3(item.pos.x-1,.85,item.pos.y),-1,4)
 			p.pickup_latched = true
 			return true
 	for loot in director.state.loot:
@@ -126,6 +146,7 @@ func pickup(p: Dictionary, id: String) -> bool:
 		if not director.state.claimed[loot.station].has(p.id): director.state.claimed[loot.station].append(p.id)
 		var key = "secondary" if loot.weapon in [2,3] else "primary"
 		var old: int = p[key]
+		pickup_motion(p,Vector3(loot.pos.x,loot.mount_height,loot.pos.y),loot.weapon,0,old)
 		p.ammo[old] = 0
 		p.reserves[old] = 0
 		p[key] = loot.weapon
@@ -135,7 +156,7 @@ func pickup(p: Dictionary, id: String) -> bool:
 		p.slot = 2 if key == "secondary" else 1
 		p.weapon = loot.weapon
 		p.requested = loot.weapon
-		p.switch = .4
+		p.switch = .65
 		p.reloading = false
 		p.reload_queued = false
 		p.reload = 0.0

@@ -189,7 +189,9 @@ func command(dt: float) -> Dictionary:
 	# Once unlocked, enter and close the shelter instead of clearing the outdoor horde.
 	if action == "finish" and game.sim.zombies.any(func(z): return z.hp > 0 and (Layout.EXIT_ROOM.has_point(z.pos) or Layout.EXIT_DOOR.grow(.4).has_point(z.pos))): interact = false
 	if distance < 6 and action != "finish": interact = false
-	if active_nearest < 3.5 and enemy_point.is_finite() and not (action == "finish" and state.exit_control):
+	# Crossing the threshold is not safety while infected are inside the room.
+	var room_contested: bool = game.sim.zombies.any(func(z): return z.hp > 0 and (Layout.EXIT_ROOM.has_point(z.pos) or Layout.EXIT_DOOR.grow(.4).has_point(z.pos)))
+	if active_nearest < 3.5 and enemy_point.is_finite() and not (action == "finish" and state.exit_control and not room_contested):
 		var away = (p.pos-enemy_point).normalized()
 		for candidate in [away,away.rotated(PI/2),away.rotated(-PI/2)]:
 			if game.arena.endpoint_link(p.pos,p.pos+candidate*2) and game.sim.can_move(p,p.pos+candidate*.3):
@@ -205,7 +207,9 @@ func command(dt: float) -> Dictionary:
 	# With a teammate, retain an automatic primary with ammunition for sustained cover.
 	# Repeated axe/gun switches otherwise consume the entire close-range window.
 	var keep_primary: bool = unrestricted and game.sim.pawns.size() == 2 and p.primary in [0,8,9] and p.ammo[p.primary]+p.reserves[p.primary] > 0
-	if not keep_primary and (not unrestricted or melee_target) and game.sim.map_id == "graypine_night" and distance < (float(Data.weapons[6].range)+.3 if p.slot == 3 else minf(2.2,float(Data.weapons[6].range)-.3)) and not heal:
+	# Fixed-weapon comparisons must keep their gun aim/trigger, including against
+	# prone targets. An axe command resets pitch before the outer slot override.
+	if test_weapon < 0 and not keep_primary and (not unrestricted or melee_target) and game.sim.map_id == "graypine_night" and distance < (float(Data.weapons[6].range)+.3 if p.slot == 3 else minf(2.2,float(Data.weapons[6].range)-.3)) and not heal:
 		return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":0.0,"slot":3,"shove":shove,"fire":not p.trigger if unrestricted else fmod(fire_clock,.3) < .15,"interact":false}
 	return {"x":direction.x*cos(yaw)-direction.y*sin(yaw),"y":direction.x*sin(yaw)+direction.y*cos(yaw),"yaw":yaw,"pitch":pitch,"shove":shove,"weapon":equipped,"fire":heal or (fire and not interact),"reload":(p.ammo[p.weapon] == 0 or (nearest > 8 and p.ammo[p.weapon] < Data.weapons[p.weapon].capacity)) if prefer_shotgun else p.ammo[p.weapon] < 5,"interact":interact,"slot":5 if heal or not p.get("healing","").is_empty() else 1 if p.reserve > 0 or p.ammo[p.primary] > 0 else 2 if Data.weapons[p.secondary].get("infiniteReserve",false) or p.reserves[p.secondary] > 0 or p.ammo[p.secondary] > 0 else 3,"jump":game.sim.zombies.any(func(z): return z.hp > 0 and z.kind == "football" and z.state == "charging" and z.pos.distance_to(p.pos) < 8)}
 
@@ -224,10 +228,11 @@ func choose_grenade(p: Dictionary, state: Dictionary) -> Dictionary:
 		if not game.arena.surface_hit(eye,Vector3(z.pos.x,1.0,z.pos.y)).is_empty(): continue
 		var nearby = game.sim.zombies.filter(func(other): return other.hp > 0 and other.pos.distance_to(z.pos) < 5).size()
 		var boss: bool = z.kind == "football"
-		if unrestricted and boss_remaining:
-			if not boss and p.grenades <= 2: continue
-			if boss and (distance > 7 or (p.grenades == 1 and state.get("holdout_time",0) < 30 and (state.party == 1 or p.hp > 40))): continue
 		var emergency: bool = distance < 5 and ((nearby >= 4 and p.hp < 40) or (nearby >= 6 and distance < 3.5))
+		if unrestricted and boss_remaining:
+			# Immediate survival takes priority over saving grenades for a later boss.
+			if not boss and p.grenades <= 2 and not emergency: continue
+			if boss and (distance > 7 or (p.grenades == 1 and state.get("holdout_time",0) < 30 and (state.party == 1 or p.hp > 40))): continue
 		if not boss and not emergency:
 			if boss_remaining and p.grenades <= 2: continue
 			if nearby < (4 if state.holdout_started else 7): continue

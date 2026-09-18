@@ -17,6 +17,15 @@ func command(dt: float) -> Dictionary:
 	if result.is_empty(): return result
 	var p: Dictionary = game.local_pawn()
 	var state: Dictionary = game.sim.campaign_state()
+	# Enforce comparison equipment before rescue/finish branches can return.
+	if shotgun_only and result.get("slot",1) == 2:
+		result.slot = 3
+		result.weapon = 6
+	if test_weapon >= 0 and result.get("slot",1) < 4:
+		result.slot = 3 if test_weapon == 6 else 2 if test_weapon in [2,3] else 1
+		result.weapon = test_weapon
+		if test_weapon == 6: result.fire = not p.trigger
+		result.reload = p.ammo[test_weapon] == 0 and not Data.weapons[test_weapon].get("infiniteAmmo",false)
 	# Rescue through the same held interaction as a human, only after making space.
 	for other in game.sim.pawns.values():
 		if not other.get("downed",false) or p.pos.distance_to(other.pos) > 12 or result.get("slot",1) == 5: continue
@@ -34,22 +43,14 @@ func command(dt: float) -> Dictionary:
 			result.x = move.x*cos(result.yaw)-move.y*sin(result.yaw)
 			result.y = move.x*sin(result.yaw)+move.y*cos(result.yaw)
 			return result
-	if index < tasks.size() and tasks[index][1] == "finish" and state.exit_control and game.sim.pawns.values().all(func(q): return q.get("dead",false) or (not q.get("downed",false) and Layout.EXIT_ROOM.grow(-.5).has_point(q.pos))) and not game.sim.pawns.values().any(func(q): return not q.get("dead",false) and Layout.EXIT_DOOR.grow(.4).has_point(q.pos)) and not game.sim.zombies.any(func(z): return z.hp > 0 and (Layout.EXIT_ROOM.has_point(z.pos) or Layout.EXIT_DOOR.grow(.4).has_point(z.pos))):
+	if index < tasks.size() and tasks[index][1] == "finish" and state.exit_control and game.sim.pawns.values().all(func(q): return q.get("dead",false) or (not q.get("downed",false) and Layout.EXIT_ROOM.grow(-.5).has_point(q.pos))) and not game.sim.pawns.values().any(func(q): return not q.get("dead",false) and (Layout.EXIT_DOOR.grow(.4).has_point(q.pos) or Rect2(10.1,-57.5,3.8,4).has_point(q.pos))) and not game.sim.zombies.any(func(z): return z.hp > 0 and (Layout.EXIT_ROOM.has_point(z.pos) or Layout.EXIT_DOOR.grow(.4).has_point(z.pos))):
 		result.interact = true
 		result.fire = false
 		result.x = 0
 		result.y = 0
 		result.jump = false
 		return result
-	if shotgun_only and result.get("slot",1) == 2:
-		result.slot = 3
-		result.weapon = 6
-	if test_weapon >= 0 and result.get("slot",1) < 4:
-		result.slot = 3 if test_weapon == 6 else 2 if test_weapon in [2,3] else 1
-		result.weapon = test_weapon
-		if test_weapon == 6: result.fire = not p.trigger
-		result.reload = p.ammo[test_weapon] == 0 and not Data.weapons[test_weapon].get("infiniteAmmo",false)
-	elif result.get("slot",1) < 4:
+	if test_weapon < 0 and result.get("slot",1) < 4:
 		result.reload = p.ammo[p.weapon] == 0 or (not result.get("fire",false) and p.ammo[p.weapon] < Data.weapons[p.weapon].capacity)
 	# Circle physical cover rather than trying to outrun a faster boss in open space.
 	if index < tasks.size() and tasks[index][1] == "defend" and result.get("slot",1) != 5:

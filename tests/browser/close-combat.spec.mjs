@@ -16,6 +16,10 @@ test('right shove cooldown ring and middle toggle use real input', async ({ page
   await page.mouse.down({ button: 'middle' }); await page.mouse.up({ button: 'middle' });
   await page.waitForFunction(() => !window.__survivorSnapshot.player.aim);
   await page.keyboard.down('w'); await page.keyboard.down('e');
+  await page.waitForFunction(() => window.__survivorSnapshot.campaign.bar_removed);
+  await page.keyboard.up('e');
+  await page.waitForTimeout(100);
+  await page.keyboard.down('e');
   await page.waitForFunction(() => window.__survivorSnapshot.campaign.departed, null, {timeout:15000});
   await page.keyboard.up('w'); await page.keyboard.up('e');
   for (let count = 1; count <= 3; count++) {

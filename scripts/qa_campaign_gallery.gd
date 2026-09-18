@@ -3,6 +3,9 @@ extends Node
 var game
 var last_request = ""
 var pending_frames = 0
+var flame_side_view = false
+var flame_preview = false
+var inspect_drop = false
 var VIEWS = {"start":[Vector2(0,70),0.0,0.0],"loot":[Vector2(-3,74),0.0,-.3],"grenade":[Vector2(0,70),0.0,0.0],"medkit":[Vector2(0,70),0.0,0.0],"heal_self":[Vector2(0,70),0.0,0.0],"heal_other":[Vector2(0,70),0.0,0.0],"axe":[Vector2(0,70),0.0,0.0]}
 
 func _ready() -> void:
@@ -32,6 +35,9 @@ func _process(_dt: float) -> void:
 		var value = JSON.parse_string(request)
 		if not value is Dictionary or not VIEWS.has(value.get("name","")): return
 		last_request = request
+		flame_side_view = value.get("flame_side",false)
+		flame_preview = value.has("flame_time")
+		inspect_drop = value.get("inspect_drop",false)
 		var view: Array = VIEWS[value.name]
 		var party = clampi(int(value.get("party",1)),1,2)
 		if game.sim.campaign.state.party != party:
@@ -109,12 +115,34 @@ func _process(_dt: float) -> void:
 			game.sim.campaign.state.phase = "ESCAPE" if value.get("unlocked",false) else "HOLDOUT" if value.get("holdout",false) else "STREET"
 			game.sim.campaign.state.objective = "门已解锁！进入安全屋并按 E 关门" if value.get("unlocked",false) else "守住门前 · 解锁剩余 %d 秒" % ceili(30-value.get("holdout_time",0.0)) if value.get("holdout",false) else "沿绿灯前往安全屋 · 门前启动解锁"
 			game.sim.elapsed = float(value.get("time",2.0))
+		if value.has("interaction_pose"):
+			var state: Dictionary = game.sim.campaign.state
+			state.merge(value.interaction_pose,true)
+			state.pickup_motion = []
+			p.pickup_remaining = 0.0
+			if value.has("pickup_time"):
+				p.primary = 1
+				p.weapon = 1
+				p.requested = 1
+				var gun: Dictionary = state.loot[1]
+				gun.taken = false
+				state.prop_clock = 0.0
+				if not game.sim.campaign.equipment.pickup(p,gun.id): push_error("Gallery pickup must be in interaction range")
+				state.prop_clock = float(value.pickup_time)
+				p.pickup_remaining = maxf(0,.65-state.prop_clock)
 		game.arena.sync_campaign(game.sim.campaign.state)
+		if not game.effects.flame_particles.is_empty(): game.effects.clear()
 		if value.has("special"):
 			game.sim.zombies.clear()
-			if value.special in ["cone","bucket","imp","shield","berserker","football"]:
+			if value.special in ["crawler","cone","bucket","imp","shield","berserker","football"]:
 				game.sim.spawn(p.pos+Vector2(0,-6),value.special)
-				game.sim.zombies[-1].heading = .25
+				if value.special == "crawler":
+					var crawler: Dictionary = game.sim.zombies[-1]
+					crawler.heading = float(value.get("crawler_heading",0))
+					crawler.move_speed = 4.0 if value.get("crawler_moving",false) else 0.0
+					crawler.gait = float(value.get("crawler_gait",0))
+					crawler.attack_time = float(value.get("crawler_attack",0))
+				else: game.sim.zombies[-1].heading = .25
 		if value.has("shotgun"):
 			game.effects.particles.clear()
 			game.effects.step(0)
@@ -139,8 +167,54 @@ func _process(_dt: float) -> void:
 				p.ammo[index] -= 1
 				p.fire_anim = float(Data.weapons[index].fireDuration)*.8
 				game.handle_effects(game.sim.events)
-		pending_frames = 2
+		if value.get("outfits","") in ["normal","crawler","cone","bucket"]:
+			game.sim.zombies.clear()
+			for style in 5:
+				game.sim.spawn(p.pos+Vector2((style-2)*1.4,-7),value.outfits)
+				var dressed: Dictionary = game.sim.zombies[-1]
+				dressed.outfit = style
+				dressed.heading = float(value.get("outfit_heading",0))
+				dressed.move_speed = 4.0 if value.get("outfit_moving",false) else 0.0
+				dressed.gait = float(value.get("outfit_gait",0))
+				dressed.attack_time = float(value.get("outfit_attack",0))
+		if value.has("flame_time"):
+			game.effects.clear()
+			p.primary = 7
+			p.weapon = 7
+			p.requested = 7
+			p.slot = 1
+			p.ammo[7] = 100
+			p.reserves[7] = 500
+			p.reserve = 500
+			game.sim.zombies.clear()
+			game._process(0)
+			seed(8521)
+			var frames = int(float(value.flame_time)*60)
+			var release = float(value.get("release_time",0))
+			for frame in frames:
+				if frame%5 == 0 and float(frame)/60 < float(value.flame_time)-release:
+					game.sim.events.clear()
+					game.sim.fire(p,Data.weapons[7])
+					game.handle_effects(game.sim.events)
+				game.effects.step(1.0/60)
+			p.fire_anim = 0 if release > 0 else .05
+			JavaScriptBridge.eval("window.__flameState="+JSON.stringify({"particles":game.effects.flame_particles.size(),"light":game.effects.flame_light.light_energy}),true)
+			JavaScriptBridge.eval("window.__flameDebug="+JSON.stringify(game.effects.flame_particles.map(func(particle): return {"age":particle.age,"travel":particle.travel,"position":str(particle.pos)})),true)
+		# Allow the software renderer to upload every MultiMesh buffer before capture.
+		# Freeze staged flame time while waiting; capture latency must not age the plume.
+		pending_frames = 8 if flame_preview else 2
 		RenderingServer.render_loop_enabled = true
 	if pending_frames <= 0: return
-	game._process(1.0/60)
+	game._process(0.0 if flame_preview else 1.0/60)
+	if flame_side_view:
+		var pawn: Dictionary = game.local_pawn()
+		var origin = Vector3(pawn.pos.x,1.5,pawn.pos.y)
+		game.camera.position = origin+Vector3(9,1.5,-6)
+		game.camera.look_at(origin+Vector3(0,0,-6))
+		game.weapon.visible = false
+	if inspect_drop:
+		var pawn: Dictionary = game.local_pawn()
+		game.camera.position = Vector3(pawn.pos.x+1.5,2,pawn.pos.y+1)
+		game.camera.look_at(Vector3(pawn.pos.x+.75,.15,pawn.pos.y-.25))
+		game.weapon.visible = false
 	JavaScriptBridge.eval("window.__lightingState="+JSON.stringify({"flash_shadow":game.flashlight.shadow_enabled,"energy":game.flashlight.light_energy,"world_shadows":game.arena.find_children("*","Light3D",true,false).map(func(light): return light.shadow_enabled)}),true)

@@ -142,7 +142,8 @@ func ballistics() -> void:
 	game.sim.fire(p,w)
 	check(game.sim.zombies[0].hp < float(data.enemies.football.health) and game.sim.zombies[1].hp == 100,"Football armor stops penetration")
 	game.sim.zombies.clear()
-	game.sim.spawn(Vector2(0,65),"normal")
+	# Put the target beyond the door, not intersecting its plane/hit volume.
+	game.sim.spawn(Vector2(0,62),"normal")
 	p.pos = Vector2(0,70)
 	game.sim.campaign.state.departed = false
 	game.arena.sync_campaign(game.sim.campaign.state)

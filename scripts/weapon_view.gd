@@ -49,7 +49,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	var w: Dictionary = Data.weapons[active]
 	ads = move_toward(ads,1.0 if p.aim else 0.0,dt*7)
 	var hide_scope: bool = w.id == "sniper" and ads > .8
-	for i in models.size(): models[i].visible = i == active and not hide_scope
+	for i in models.size(): models[i].visible = i == active and not hide_scope and p.get("pickup_remaining",0.0) <= .08
 	if active != 3: models[3].reset_motion()
 	var hip = Vector3(.19,-.085 if w.length < .6 else -.10,-.46)
 	if w.id == "rifle": hip = Vector3(.22,-.10,-.50)
@@ -66,7 +66,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	if w.id != "revolver": position.y += sin(elapsed*1.6)*.003
 	var visual_target = aim_target.normalized()*maxf(6,aim_target.length())
 	quaternion = Quaternion(Vector3.FORWARD,(visual_target-position).normalized())
-	if p.switch > 0: position.y -= sin((1-p.switch/.4)*PI)*.5
+	if p.switch > 0 and p.get("pickup_remaining",0.0) <= 0: position.y -= sin(clampf(1-p.switch/.4,0,1)*PI)*.5
 	if p.reloading and w.id != "revolver":
 		var reload_pulse = sin(clampf(1-p.reload/maxf(.1,w.reloadDuration),0,1)*PI)
 		position.y -= reload_pulse*.07
@@ -105,7 +105,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		position.z -= push*.22
 		rotation.x += push*.2
 	muzzle.global_position = muzzle_position()
-	muzzle.visible = not hide_scope and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") != "melee"
+	muzzle.visible = not hide_scope and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") not in ["melee","flame"]
 	muzzle.scale = Vector3.ONE*(2.3 if w.get("kind") == "flame" else 1.0)
 
 static func sample_axe(pivot: Node3D, progress: float) -> void:

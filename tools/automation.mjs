@@ -82,6 +82,9 @@ try {
   const weapons = await run('all-weapons', engine, [...godotArgs, '--script', 'res://tools/validate-all-weapons.gd', '--', '--silent', '--automation'], 1800_000);
   if (!/ALL WEAPONS: 20 samples; 0 failures/.test(weapons)) throw new Error('Missing all-weapon comparison or detected another weapon being used.');
   await run('weapon-comparison', process.execPath, ['tools/summarize-weapons.mjs']);
+  await run('target-weapons', engine, [...godotArgs, '--script', 'res://tools/validate-target-weapons.gd', '--', '--silent', '--automation'], 900_000);
+  await run('spread-ballistics', engine, [...godotArgs, '--script', 'res://tools/validate-spread-ballistics.gd', '--', '--silent', '--automation'], 300_000);
+  await run('spread-weapons', engine, [...godotArgs, '--script', 'res://tools/validate-spread-weapons.gd', '--', '--silent', '--automation'], 1200_000);
   await run('night-full-enet-2', process.execPath, ['tools/validate-campaign-network.mjs', '2'], 960_000);
   await mkdir('build/web', { recursive: true });
   await run('export-web', engine, [...godotArgs, '--export-release', 'Web QA']);

@@ -29,11 +29,17 @@ for (const name of ['geometry', 'terrain', 'terrainView', 'world', 'config', 'we
 const { WEAPONS } = await import(pathToFileURL(path.join(cache, 'weapons.mjs')));
 // Godot gameplay adjustments must survive rebuilding assets from the original project.
 for (const weapon of WEAPONS) {
+  const spreads = { rifle: [.016, .006], p90: [.03, .01], sniper: [.006, .0015], revolver: [.012, .004], 'heavy-machine-gun': [.045, .018] };
+  if (spreads[weapon.id]) [weapon.spread, weapon.adsSpread] = spreads[weapon.id];
+  if (weapon.id === 'p90') weapon.damage = 40;
   if (weapon.id === 'axe') weapon.range = 3.5;
   if (weapon.id === 'shotgun') Object.assign(weapon, { spread: .045, spreadVertical: .045 });
-  if (weapon.id === 'auto-shotgun') Object.assign(weapon, { spread: .055, spreadVertical: .055 });
+  if (weapon.id === 'auto-shotgun') Object.assign(weapon, { spread: .055, spreadVertical: .055, capacity: 20, interval: .24, damage: 48 });
+  if (weapon.id === 'rifle') weapon.damage = 120;
+  if (weapon.id === 'sniper') Object.assign(weapon, { capacity: 15, interval: .3, fireDuration: .28, piercing: true, penetrationTargets: 3, penetrationDamage: .8 });
 }
 const config = await import(pathToFileURL(path.join(cache, 'config.mjs')));
+config.ZOMBIE_TYPES.crawler = { ...config.ZOMBIE_TYPES.normal, label: '爬行僵尸' };
 const { prepareWeapon, prepareProceduralWeapon } = await import(pathToFileURL(path.join(cache, 'weapon.mjs')));
 const audio = await import(pathToFileURL(path.join(cache, 'soundSynthesis.mjs')));
 const zombies = fs.readFileSync(path.join(source, 'src/game/zombies.ts'), 'utf8');
