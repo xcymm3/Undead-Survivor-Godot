@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('real input fires cancels and completes revolver reload', async ({ page }, info) => {
+test('real input fires cancels and completes revolver reload', { tag: '@core' }, async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('/');

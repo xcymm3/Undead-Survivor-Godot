@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createHash } from 'node:crypto';
 
-test('right shove cooldown ring and middle toggle use real input', async ({ page }, info) => {
+test('right shove cooldown ring and middle toggle use real input', { tag: '@core' }, async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', msg => { if (/^(SCRIPT ERROR|ERROR):/.test(msg.text())) errors.push(msg.text()); });

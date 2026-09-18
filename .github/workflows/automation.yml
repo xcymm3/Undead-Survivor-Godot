@@ -6,6 +6,11 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      full:
+        description: 执行完整回归（包含武器比较和软件截图矩阵，超过10分钟）
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -40,8 +45,12 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: 安装无界面浏览器
         run: npx playwright install chromium --only-shell
-      - name: 执行完整验收并导出 Windows 包
-        run: npm run verify:release
+      - name: 执行验收并导出 Windows 包
+        env:
+          FULL_QA: ${{ inputs.full }}
+        run: |
+          if ($env:FULL_QA -eq 'true') { npm run verify:release:full }
+          else { npm run verify:release }
       - name: 写入验收摘要
         if: always()
         shell: pwsh
@@ -110,13 +119,13 @@ jobs:
             exit 0
           }
           @"
-          夜路表现与武器调整：重做带钢栅、红漆护板和警示条的安全屋铁门，增加拆闩、旋转开关门、换枪飞入与旧枪落地动画；增加爬行僵尸和五种随机服饰；改进喷火器火焰，调整步枪、狙击枪、自动霰弹枪与五种武器散布。测试角色修复紧急投雷、屋内避敌和双人避开门扇后关门的决策。包含正常单人/双人、十武器比较、指定武器与散布专项；比较报告中的死亡或超时不计作通关。
+          夜路表现与武器调整：重做带钢栅、红漆护板和警示条的安全屋铁门，增加拆闩、旋转开关门、换枪飞入与旧枪落地动画；增加爬行僵尸和五种随机服饰；改进喷火器火焰，调整步枪、狙击枪、自动霰弹枪与五种武器散布。测试角色修复紧急投雷、屋内避敌和双人避开门扇后关门的决策。
           推荐直接下载 **Undead-Survivor-Godot.exe**，双击即可启动，无需另下 DLL 或 appid。
           EXE 内置游戏和 Steam 依赖，运行时自动解压到临时目录，退出后清理；Steam 合作仍需登录 Steam。
           ZIP 内也包含相同的单文件 EXE。启动器使用 Windows 自带的 .NET Framework 4.x。
 
           源码提交：$env:RELEASE_COMMIT
-          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：规则检查、内部输入整关试玩、灰松夜路真实 ENet 双人整关合作、浏览器真实输入的左轮射击/取消/完成换弹、动作截图与连续展示录像、成品 EXE 及单文件隔离启动无窗口检查全部通过。
+          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：原生规则、单人内部输入整关、弹道、灰松夜路 ENet 双人整关、浏览器四项真实输入（菜单/移动/交互/推击/开镜/左轮换弹）、成品 EXE 及单文件隔离启动检查通过。默认使用核心回归；武器比较、额外平衡样本与完整软件截图矩阵属于可选完整回归，是否执行以本次报告的 profile 和 excluded 为准，未运行项目不计为通过。
           Steam 跨账号联机、原生 GPU 画面与实际音效听感不属于此次自动验收范围。约三分钟首次真人通关、趣味性与难度仍待验收；自动输入测试包含成功与失败样本，功能检查通过不代表平衡达标。
           "@ | Set-Content -Encoding utf8 release-notes.md
           if (-not $exists) {

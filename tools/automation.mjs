@@ -8,6 +8,9 @@ import { createServer } from 'node:net';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(root);
 const release = process.argv.includes('--release');
+const full = process.argv.includes('--full');
+const profile = full ? 'full' : 'core';
+const excluded = full ? [] : ['balance-solo-duo', 'shotgun-unrestricted', 'all-weapons', 'weapon-comparison', 'target-weapons', 'spread-weapons', 'browser-visual-matrix'];
 const children = new Set();
 function stop(child) {
   if (!child.pid || child.exitCode !== null) return;
@@ -29,7 +32,7 @@ if (process.argv.includes('--check-report')) {
   if (report.status !== 'passed' || report.sourceDigest !== await fingerprint()) {
     throw new Error('Acceptance report failed or is stale. Run npm run verify again before submitting.');
   }
-  console.log('Acceptance gate: PASS, exact current source tree verified.');
+  console.log(`Acceptance gate: PASS (${report.profile ?? 'legacy-full'}), exact current source tree verified.`);
   process.exit(0);
 }
 await import('./postinstall.mjs');
@@ -76,15 +79,17 @@ try {
   if (!/NATIVE COMPONENTS: \d+ checks; 0 failures/.test(native)) throw new Error('Missing native component acceptance marker.');
   const night = await run('night-campaign', engine, [...godotArgs, '--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation'], 900_000);
   if (!/NIGHT VALIDATION: \d+ checks; 0 failures/.test(night)) throw new Error('Missing night campaign acceptance marker.');
-  const balance = await run('balance-solo-duo', engine, [...godotArgs, '--script', 'res://tools/validate-balance.gd', '--', '--silent', '--automation'], 900_000);
-  if (!/BALANCE VALIDATION: 4 checks; 0 failures/.test(balance)) throw new Error('Missing complete unrestricted solo/duo balance acceptance marker.');
-  await run('shotgun-unrestricted', engine, [...godotArgs, '--script', 'res://tools/validate-shotgun.gd', '--', '--silent', '--automation'], 900_000);
-  const weapons = await run('all-weapons', engine, [...godotArgs, '--script', 'res://tools/validate-all-weapons.gd', '--', '--silent', '--automation'], 1800_000);
-  if (!/ALL WEAPONS: 20 samples; 0 failures/.test(weapons)) throw new Error('Missing all-weapon comparison or detected another weapon being used.');
-  await run('weapon-comparison', process.execPath, ['tools/summarize-weapons.mjs']);
-  await run('target-weapons', engine, [...godotArgs, '--script', 'res://tools/validate-target-weapons.gd', '--', '--silent', '--automation'], 900_000);
+  if (full) {
+    const balance = await run('balance-solo-duo', engine, [...godotArgs, '--script', 'res://tools/validate-balance.gd', '--', '--silent', '--automation'], 900_000);
+    if (!/BALANCE VALIDATION: 4 checks; 0 failures/.test(balance)) throw new Error('Missing complete unrestricted solo/duo balance acceptance marker.');
+    await run('shotgun-unrestricted', engine, [...godotArgs, '--script', 'res://tools/validate-shotgun.gd', '--', '--silent', '--automation'], 900_000);
+    const weapons = await run('all-weapons', engine, [...godotArgs, '--script', 'res://tools/validate-all-weapons.gd', '--', '--silent', '--automation'], 1800_000);
+    if (!/ALL WEAPONS: 20 samples; 0 failures/.test(weapons)) throw new Error('Missing all-weapon comparison or detected another weapon being used.');
+    await run('weapon-comparison', process.execPath, ['tools/summarize-weapons.mjs']);
+    await run('target-weapons', engine, [...godotArgs, '--script', 'res://tools/validate-target-weapons.gd', '--', '--silent', '--automation'], 900_000);
+    await run('spread-weapons', engine, [...godotArgs, '--script', 'res://tools/validate-spread-weapons.gd', '--', '--silent', '--automation'], 1200_000);
+  }
   await run('spread-ballistics', engine, [...godotArgs, '--script', 'res://tools/validate-spread-ballistics.gd', '--', '--silent', '--automation'], 300_000);
-  await run('spread-weapons', engine, [...godotArgs, '--script', 'res://tools/validate-spread-weapons.gd', '--', '--silent', '--automation'], 1200_000);
   await run('night-full-enet-2', process.execPath, ['tools/validate-campaign-network.mjs', '2'], 960_000);
   await mkdir('build/web', { recursive: true });
   await run('export-web', engine, [...godotArgs, '--export-release', 'Web QA']);
@@ -97,8 +102,13 @@ try {
       server.close(error => error ? reject(error) : resolve(port));
     });
   });
-  // Full-quality shadow matrices and adjacent-angle video add software rasterization work.
-  await run('browser-playthrough', process.execPath, ['node_modules/@playwright/test/cli.js', 'test'], 900_000);
+  // Core keeps real input coverage; the expensive visual matrix remains opt-in.
+  await run('browser-playthrough', process.execPath,
+    ['node_modules/@playwright/test/cli.js', 'test', ...(full ? [] : ['--grep', '@core'])], full ? 1800_000 : 300_000);
+  const browser = JSON.parse(await readFile('artifacts/browser-results.json', 'utf8'));
+  if (browser.stats.unexpected || browser.stats.flaky || browser.stats.skipped || browser.errors?.length ||
+      (!full && browser.stats.expected !== 4) || !browser.stats.expected)
+    throw new Error('Browser suite must complete all selected tests without failures, skips, or retries. Core requires four tests.');
   if (release) {
     await powershell('export-windows', 'tools/export-windows.ps1', [], 900_000);
     // Never launch the EXE graphically: the package itself runs its smoke check headless.
@@ -115,9 +125,10 @@ try {
 } finally {
   for (const child of children) stop(child);
   const report = { status: failure ? 'failed' : 'passed', startedAt, finishedAt: new Date().toISOString(),
-    commit: git(['rev-parse', 'HEAD']), sourceDigest, release, stages, failure,
-    boundaries: ['仅保留灰松夜路；验收范围为夜路单人内部输入整关、真实 ENet 双人整关、相关规则和浏览器检查，不再运行其他地图或三人/四人测试。', '本机 ENet 双人验证不代表 Steam 双账号验证。灰松夜路真人约三分钟节奏、趣味性与原生 GPU 质量待验收。', '网页使用独立无界面 Chromium、实际键鼠输入及只读遥测；截图不能证明主观手感或原版地图视觉一致性。', release ? '本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。' : '本次为 npm run verify 全量验收，不包含 verify:release 的 Windows EXE 导出与打包。'] };
+    commit: git(['rev-parse', 'HEAD']), sourceDigest, release, profile, excluded, stages, failure,
+    boundaries: [full ? '本次为完整回归，包含武器比较、平衡样本和完整软件截图矩阵。' : '本次为核心回归：原生组件、夜路单人整关、弹道、ENet 双人和四项浏览器真实输入。未运行的扩展项不计为通过。', '仅验证灰松夜路，不运行其他地图或三人/四人测试。', '本机 ENet 双人验证不代表 Steam 双账号验证。真人节奏、趣味性与原生 GPU 质量待验收。', '网页使用独立无界面 Chromium、实际键鼠输入及只读遥测；截图不能证明主观手感或原版地图视觉一致性。', release ? '本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。' : '本次不包含 Windows EXE 导出与打包。'] };
+  report.seconds = (Date.parse(report.finishedAt) - Date.parse(startedAt)) / 1000;
   await writeFile('artifacts/acceptance.json', JSON.stringify(report, null, 2));
-  await writeFile('artifacts/acceptance.md', `# 自动验收：${report.status}\n\n提交：${report.commit}\n\n源码 SHA-256：${sourceDigest ?? '未完成导入'}\n\n| 阶段 | 结果 | 耗时 |\n| --- | --- | --- |\n${stages.map(s => `| ${s.name} | ${s.passed ? '通过' : '失败'} | ${s.seconds.toFixed(1)}s |`).join('\n')}\n\n${report.boundaries.map(b => '- ' + b).join('\n')}\n${failure ? '\n```text\n' + failure + '\n```\n' : ''}`);
+  await writeFile('artifacts/acceptance.md', `# 自动验收：${report.status}\n\n配置：${profile}；总耗时：${report.seconds.toFixed(1)}s\n\n提交：${report.commit}\n\n源码 SHA-256：${sourceDigest ?? '未完成导入'}\n\n| 阶段 | 结果 | 耗时 |\n| --- | --- | --- |\n${stages.map(s => `| ${s.name} | ${s.passed ? '通过' : '失败'} | ${s.seconds.toFixed(1)}s |`).join('\n')}\n\n${report.boundaries.map(b => '- ' + b).join('\n')}\n\n本配置未运行：${excluded.join(', ') || '无'}\n${failure ? '\n```text\n' + failure + '\n```\n' : ''}`);
   process.exitCode = failure ? 1 : 0;
 }

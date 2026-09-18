@@ -54,7 +54,7 @@ async function imageEvidence(page, info, name) {
   await info.attach(name, { body: buffer, contentType: 'image/png' });
 }
 
-test('夜路真实输入完成菜单、移动、暂停与重开', async ({ page }, info) => {
+test('夜路真实输入完成菜单、移动、暂停与重开', { tag: '@core' }, async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
   await page.goto('/');

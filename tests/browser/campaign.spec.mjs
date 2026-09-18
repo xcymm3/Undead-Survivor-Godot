@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('campaign can be selected and departed using real keyboard input', async ({ page }, info) => {
+test('campaign can be selected and departed using real keyboard input', { tag: '@core' }, async ({ page }, info) => {
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   for (const text of ['单人模式']) {

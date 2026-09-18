@@ -38,8 +38,11 @@ Steam 合作需登录 Steam；开发 App ID 为 480。局域网加入地址为�
 
 本项目是独立 Godot 4 原生工程，运行时不依赖 React、Three.js 或浏览器。双击 start-game.cmd 启动，open-editor.cmd 打开编辑器，start-steam.cmd 启动 Steam 版本。固定引擎为 Godot 4.5.2，发布使用匹配的 GodotSteam 模板。
 
-- npm run verify：夜路规则与原生组件、单人内部输入整关、真实 ENet 双人整关、独立 headless Chromium 输入和软件截图。
+- npm run verify：核心回归，保留原生组件、夜路单人整关、弹道、真实 ENet 双人整关与四项 headless Chromium 真实输入。
 - npm run verify:release：追加 Windows 导出、成品 EXE 无窗口冒烟、单文件隔离启动检查和 ZIP 打包。
+- npm run verify:full / npm run verify:release:full：额外执行平衡样本、全武器比较和完整软件截图矩阵，耗时较长。
+
+默认发布流程以缓存就绪时 10 分钟内为目标；首次下载、机器负载和 GitHub 排队可能增加耗时，实际时间记录在验收报告中。核心回归未运行项目会明确列出，不视为完整视觉或武器平衡验收通过。
 - 不再运行旧地图或三人、四人测试。所有本机自动检查均无窗口，不捕获鼠标或干扰桌面。
 - Actions 全绿后发布单 EXE、ZIP、版本和校验和；当前源码摘要门禁须通过后才提交。
 
