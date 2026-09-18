@@ -14,7 +14,7 @@ func population_kind(kind: String) -> String:
 	# Count successful ordinary spawns across habitats and delayed batches.
 	if kind != "normal": return kind
 	ordinary_slots += 1
-	return "crawler" if ordinary_slots%5 == 0 else "normal"
+	return "crawler" if ordinary_slots%10 == 0 else "normal"
 
 func emit_noise(point: Vector3, kind: String, shot_origin := Vector2.INF) -> void:
 	if not state.departed or state.complete: return

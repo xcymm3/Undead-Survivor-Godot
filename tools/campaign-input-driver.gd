@@ -163,7 +163,7 @@ func command(dt: float) -> Dictionary:
 		if z.hp > 0 and z.get("guard_awake",true):
 			nearest = minf(nearest,z.pos.distance_to(p.pos))
 			if z.state != "stunned": active_nearest = minf(active_nearest,z.pos.distance_to(p.pos))
-	var heal: bool = p.hp < (100 if unrestricted and action == "holdout" else 70) and p.medkits > 0 and nearest > (16.0 if unrestricted else 8.0) and action != "finish"
+	var heal: bool = p.hp < (100 if unrestricted and action == "holdout" else 90 if unrestricted else 70) and p.medkits > 0 and nearest > (6.0 if unrestricted else 8.0) and action != "finish"
 	if arrived and action.begins_with("grenade:") and distance >= 6:
 		for item in Layout.ITEMS:
 			if item.id == action.trim_prefix("grenade:"):

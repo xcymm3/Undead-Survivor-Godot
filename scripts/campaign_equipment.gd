@@ -7,6 +7,7 @@ const MAX_GRENADES = 3
 const HEAL_SECONDS = 3.0
 const GRENADE_FUSE = 1.5
 const GRENADE_RADIUS = 11.0
+const GRENADE_THROW_INTERVAL = 1.0
 var director_ref: WeakRef
 var director:
 	get: return director_ref.get_ref()
@@ -41,6 +42,7 @@ func initialize() -> void:
 		p.secondary = 3
 		p.slot = 1
 		p.grenades = 0
+		p.grenade_ready_at = 0.0
 		p.healing = ""
 		p.heal_time = 0.0
 		p.being_healed = false
@@ -228,8 +230,10 @@ func before_movement(dt: float) -> void:
 		p.input["use_self"] = false
 		p.input["use_other"] = false
 
-func throw_grenade(p: Dictionary) -> void:
+func throw_grenade(p: Dictionary) -> bool:
+	if p.grenades <= 0 or sim.elapsed < float(p.get("grenade_ready_at",0.0)): return false
 	p.grenades -= 1
+	p.grenade_ready_at = sim.elapsed+GRENADE_THROW_INTERVAL
 	# Equipment is processed before movement commits this input's view direction.
 	var yaw: float = p.input.get("yaw",p.yaw)
 	var pitch: float = p.input.get("pitch",p.pitch)
@@ -239,6 +243,7 @@ func throw_grenade(p: Dictionary) -> void:
 	sim.events.append({"kind":"grenade_throw","position":origin})
 	grenade_history.append({"id":next_grenade,"owner":p.id,"thrown_at":sim.elapsed,"origin":origin,"hits":[],"kills":0,"damage":0.0})
 	next_grenade += 1
+	return true
 
 func step_projectiles(dt: float) -> void:
 	for grenade in director.state.projectiles:

@@ -293,8 +293,8 @@
     },
     "shield": {
       "label": "持盾僵尸",
-      "health": 700,
-      "armor": 500,
+      "health": 1200,
+      "armor": 1000,
       "tier": 2
     },
     "berserker": {

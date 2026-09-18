@@ -35,6 +35,9 @@ const SHOVE_INTERVAL = .65
 const SHOVE_COOLDOWN = 3.5
 const SHOVE_WINDOW = 3.0
 const SHOVE_LIMIT = 3
+const SHOVE_RANGE = 4.16
+const SHOVE_STUN = 3.12
+const SHOVE_HEAVY_STUN = .91
 const MELEE_START = .22
 const MELEE_END = .66
 const MELEE_HALF_WIDTH = 20.0
@@ -420,15 +423,15 @@ func try_shove(p: Dictionary) -> bool:
 	for z in zombies:
 		if z.hp <= 0: continue
 		var delta: Vector2 = z.pos-p.pos
-		if delta.length() > 3.2 or absf(Data.enemy_ground_height(z.pos,map_id)-p.height) > 1.1: continue
+		if delta.length() > SHOVE_RANGE or absf(Data.enemy_ground_height(z.pos,map_id)-p.height) > 1.1: continue
 		if delta.length() > .05 and forward.dot(delta.normalized()) < cos(deg_to_rad(80)): continue
 		if not arena.surface_hit(Vector3(p.pos.x,p.height+1.1,p.pos.y),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+1.1,z.pos.y)).is_empty(): continue
-		if z.kind == "football" and z.state in ["charging","windup"]: continue
-		var heavy: bool = z.kind in ["giant","shield","football"]
+		if z.kind in ["shield","football"]: continue
+		var heavy: bool = z.kind == "giant"
 		z.guard_awake = true
 		z.attack_time = 0.0
 		z.state = "stunned"
-		z.state_time = .7 if heavy else 2.4
+		z.state_time = SHOVE_HEAVY_STUN if heavy else SHOVE_STUN
 		z.shove_time = .26
 		z.shove_velocity = (delta.normalized() if delta.length() > .05 else forward)*((.9 if heavy else 2.8)/.26)
 		paths.erase(z.id)

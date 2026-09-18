@@ -40,6 +40,7 @@ for (const weapon of WEAPONS) {
 }
 const config = await import(pathToFileURL(path.join(cache, 'config.mjs')));
 config.ZOMBIE_TYPES.crawler = { ...config.ZOMBIE_TYPES.normal, label: '爬行僵尸' };
+config.ZOMBIE_TYPES.shield = { ...config.ZOMBIE_TYPES.shield, health: 1200, armor: 1000 };
 const { prepareWeapon, prepareProceduralWeapon } = await import(pathToFileURL(path.join(cache, 'weapon.mjs')));
 const audio = await import(pathToFileURL(path.join(cache, 'soundSynthesis.mjs')));
 const zombies = fs.readFileSync(path.join(source, 'src/game/zombies.ts'), 'utf8');

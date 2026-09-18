@@ -59,6 +59,7 @@ func validate_combat_revision() -> void:
 		sim.zombies.clear()
 		sim.spawn(Vector2(8,57),kind)
 		var z: Dictionary = sim.zombies[0]
+		if kind == "shield": check(z.hp == 1200 and z.body == 200 and z.armor == 1000,"Shield armor doubles without changing body health")
 		var initial: Vector2 = z.pos
 		z.shove_time = .4
 		z.shove_velocity = Vector2(0,-5)
@@ -119,18 +120,28 @@ func validate_combat_revision() -> void:
 	for cue in ["grenade-throw","grenade-fuse","grenade-explosion"]:
 		check(game.sound.streams.has(cue) and game.sound.streams[cue].get_length() > .05,"Grenade cue resource exists: "+cue)
 	sim.events.clear()
-	p.grenades = 1
+	p.grenades = 3
 	p.yaw = 0
 	p.pitch = 0
 	p.input = {"yaw":PI/2,"pitch":-.7}
-	director.equipment.throw_grenade(p)
+	var grenade_time: float = sim.elapsed
+	p.grenade_ready_at = grenade_time
+	check(director.equipment.throw_grenade(p),"First grenade throw is accepted")
 	var velocity: Vector3 = director.state.projectiles[-1].velocity
 	check(velocity.x < -8 and absf(velocity.z) < .01 and velocity.y < 0,"Grenade follows current input aim instead of previous-frame gun aim")
 	check(sim.events.any(func(e): return e.kind == "grenade_throw"),"Throw emits spatial sound event")
+	var throws_before: int = director.state.projectiles.size()
+	var events_before: int = sim.events.size()
+	check(not director.equipment.throw_grenade(p) and p.grenades == 2 and director.state.projectiles.size() == throws_before and sim.events.size() == events_before,"Repeated grenade input is ignored during the one-second interval")
+	sim.elapsed = grenade_time+.99
+	check(not director.equipment.throw_grenade(p) and p.grenades == 2,"Grenade remains locked just before one second")
+	sim.elapsed = grenade_time+1.0
+	check(director.equipment.throw_grenade(p) and p.grenades == 1 and director.state.projectiles.size() == throws_before+1,"Grenade unlocks at exactly one second")
 	director.equipment.step_projectiles(.4)
 	check(sim.events.any(func(e): return e.kind == "grenade_fuse"),"Live fuse emits spatial warning event")
 	director.equipment.step_projectiles(1.2)
-	check(sim.events.any(func(e): return e.kind == "explosion") and director.state.projectiles.is_empty(),"Fuse ends in exactly one explosion and removes projectile")
+	check(sim.events.any(func(e): return e.kind == "explosion") and director.state.projectiles.is_empty(),"Fuse ends and removes every thrown projectile")
+	sim.elapsed = grenade_time
 	sim.zombies.clear()
 	director.state.exit_control = true
 	game.arena.sync_campaign(director.state)
@@ -249,13 +260,13 @@ func validate_crawler() -> void:
 	var data = root.get_node("Data")
 	var director = sim.campaign
 	var ordinary = sim.zombies.filter(func(z): return z.original in ["normal","crawler"])
-	check(ordinary.filter(func(z): return z.original == "crawler").size() == ordinary.size()/5,"Preplaced ordinary slots use four normal per crawler")
+	check(ordinary.filter(func(z): return z.original == "crawler").size() == ordinary.size()/10,"Preplaced ordinary slots use nine normal per crawler")
 	var before: int = director.ordinary_slots
 	check(not director.spawn_one([game.local_pawn().pos],"normal") and before == director.ordinary_slots,"Blocked reinforcement does not advance crawler ratio")
-	for i in 10:
-		var expected = "crawler" if (before+i+1)%5 == 0 else "normal"
+	for i in 20:
+		var expected = "crawler" if (before+i+1)%10 == 0 else "normal"
 		check(director.population_kind("normal") == expected,"Crawler ratio carries across batches "+str(i))
-	check(director.population_kind("football") == "football" and director.ordinary_slots == before+10,"Boss does not consume ordinary ratio")
+	check(director.population_kind("football") == "football" and director.ordinary_slots == before+20,"Boss does not consume ordinary ratio")
 	check(preload("res://scripts/night_population.gd").COST.crawler == 1,"Crawler costs one threat point")
 	sim.zombies.clear()
 	sim.spawn(Vector2(8,60),"crawler")
@@ -659,9 +670,9 @@ func validate_close_combat() -> void:
 	front.attack_time = .2
 	check(sim.try_shove(p),"First shove is accepted")
 	check(front.state == "stunned" and front.attack_time == 0 and rear.state == "ready","Frontal shove interrupts windup without hitting enemies behind")
-	check(is_equal_approx(front.state_time,2.4),"Ordinary shove stuns for 2.4 seconds")
+	check(is_equal_approx(front.state_time,sim.SHOVE_STUN),"Ordinary shove control duration increases by 30 percent")
 	sim.hit_enemy(front,1.0,false,p,Vector3(front.pos.x,1,front.pos.y))
-	check(is_equal_approx(front.state_time,2.4),"A subsequent bullet flinch does not shorten shove control")
+	check(is_equal_approx(front.state_time,sim.SHOVE_STUN),"A subsequent bullet flinch does not shorten shove control")
 	var old = front.pos
 	sim.update_zombie(front,p,.26)
 	check(front.pos.distance_to(old) > 2.7 and game.arena.clear(old,front.pos),"Shove displacement is clipped through real terrain")
@@ -675,12 +686,45 @@ func validate_close_combat() -> void:
 	check(p.shove_cd == 0 and p.shove_count == 0 and sim.try_shove(p),"Cooldown expires and restores shove")
 	p.shove_gap = 0.0
 	p.shove_cd = 0.0
+	p.shove_count = 0
+	sim.zombies.clear()
+	sim.spawn(Vector2(0,66),"normal")
+	var extended: Dictionary = sim.zombies[0]
+	check(sim.try_shove(p) and extended.state == "stunned","Shove reaches a target four metres away after the 30-percent range increase")
+	p.shove_gap = 0.0
+	p.shove_cd = 0.0
+	p.shove_count = 0
+	sim.zombies.clear()
+	sim.spawn(Vector2(0,65.83),"normal")
+	var beyond: Dictionary = sim.zombies[0]
+	check(sim.try_shove(p) and beyond.state == "ready","Shove still rejects a target beyond 4.16 metres")
+	for kind in ["shield","football"]:
+		p.shove_gap = 0.0
+		p.shove_cd = 0.0
+		p.shove_count = 0
+		sim.zombies.clear()
+		sim.spawn(Vector2(0,68.65),kind)
+		var immune: Dictionary = sim.zombies[0]
+		immune.attack_time = .2
+		var immune_pos: Vector2 = immune.pos
+		var hit_count: int = p.shove_hits
+		check(sim.try_shove(p) and immune.state == "ready" and immune.attack_time == .2 and immune.shove_time == 0 and immune.pos == immune_pos and p.shove_hits == hit_count,"Shove does not knock back or stun "+kind)
+	p.shove_gap = 0.0
+	p.shove_cd = 0.0
+	p.shove_count = 0
+	sim.zombies.clear()
+	sim.spawn(Vector2(0,68.65),"giant")
+	var giant: Dictionary = sim.zombies[0]
+	check(sim.try_shove(p) and giant.state == "stunned" and is_equal_approx(giant.state_time,sim.SHOVE_HEAVY_STUN),"Giant shove control duration increases by 30 percent")
+	p.shove_gap = 0.0
+	p.shove_cd = 0.0
+	p.shove_count = 0
 	sim.zombies.clear()
 	sim.spawn(Vector2(0,68.65),"football")
 	var football: Dictionary = sim.zombies[0]
 	football.state = "charging"
 	sim.try_shove(p)
-	check(football.state == "charging" and football.shove_time == 0,"Shove cannot cancel football charge")
+	check(football.state == "charging" and football.shove_time == 0,"Shove immunity also preserves football charge")
 	# Use an existing native collider: the pushed body must stop at its clearance.
 	var wall_checked = false
 	for obstacle in game.arena.obstacles:
