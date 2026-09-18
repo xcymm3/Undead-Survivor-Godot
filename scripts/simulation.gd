@@ -42,6 +42,10 @@ const CHARGE_DURATION = 4.0
 const CHARGE_DAMAGE = 30
 const CHARGE_KNOCKBACK = .65
 const CHARGE_WALL_STUN = 2.0
+const ATTACK_TURN_SPEED = 2.09439510239 # 120 degrees per second
+const IMP_SPEED_MULTIPLIER = 1.296 # Existing 1.08 speed increased by 20 percent.
+const BERSERKER_RAGE_SPEED = 7.2
+const FOOTBALL_CHARGE_SPEED = 12.0
 
 func _init(world = null) -> void:
 	arena = world
@@ -110,7 +114,6 @@ func spawn(pos: Vector2, kind: String) -> void:
 	var locomotion = RandomNumberGenerator.new()
 	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
 	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":float(def.health),"body":float(def.health-def.armor),"armor":float(def.armor),"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
-	if kind == "football": zombies[-1].chase_speed = PLAYER_MOVE_SPEED
 	if kind == "crawler": zombies[-1].chase_speed *= .85
 	if kind in ["normal","crawler","cone","bucket"]:
 		# Cosmetic RNG never advances encounter, movement or combat randomness.
@@ -489,11 +492,10 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	var speed: float = base_speed
 	z.rage_pause = maxf(0,z.rage_pause-dt)
 	z.charge_cooldown = maxf(0,z.charge_cooldown-dt)
-	if z.kind == "imp": speed = base_speed*1.08
+	if z.kind == "imp": speed = base_speed*IMP_SPEED_MULTIPLIER
 	if z.kind == "shield": speed = base_speed*.78
 	if z.kind == "giant": speed *= .68
-	if z.kind == "berserker": speed = minf(5.8,base_speed*(2.6 if z.rage else 1.35))
-	if z.kind == "football": speed = PLAYER_MOVE_SPEED
+	if z.kind == "berserker": speed = BERSERKER_RAGE_SPEED if z.rage else base_speed
 	var wading: bool = is_water(z.pos)
 	if wading:
 		speed *= Data.WADE_SPEED
@@ -516,7 +518,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			else: z.state = "ready"
 		if z.state == "windup" and not arena.clear(z.pos,z.charge_target): cancel_charge(z)
 		if z.state in ["windup","stunned"]: return
-	if z.kind == "football" and not wading and z.state == "ready" and z.armor > 0 and z.charge_cooldown <= 0 and distance >= 5 and distance <= minf(16,minf(10,base_speed*4.2)*CHARGE_DURATION+contact) and arena.clear(z.pos,target.pos):
+	if z.kind == "football" and not wading and z.state == "ready" and z.armor > 0 and z.charge_cooldown <= 0 and distance >= 5 and distance <= minf(16,FOOTBALL_CHARGE_SPEED*CHARGE_DURATION+contact) and arena.clear(z.pos,target.pos):
 		z.state = "windup"
 		z.state_time = .35
 		z.charge_direction = Vector2.ZERO
@@ -525,7 +527,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		z.attack_time = 0.0
 		return
 	if z.state == "charging":
-		var next: Vector2 = z.pos+z.charge_direction*minf(10,base_speed*4.2)*dt
+		var next: Vector2 = z.pos+z.charge_direction*FOOTBALL_CHARGE_SPEED*dt
 		if not arena.clear(z.pos,next):
 			if arena.clear(z.pos,next,true): cancel_charge(z)
 			else: stun(z,CHARGE_WALL_STUN)
@@ -550,6 +552,10 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			z.target = target.id
 			z.heading = atan2(delta.x,delta.y)
 			events.append({"kind":"enemy_windup","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
+		var locked_target: Dictionary = pawns.get(z.target,{})
+		var windup_motion: float = minf(dt,maxf(0,profile.x-z.attack_time))
+		if windup_motion > 0 and not locked_target.is_empty() and locked_target.hp > 0:
+			advance_attack(z,locked_target,speed,windup_motion,contact)
 		var before: float = z.attack_time
 		z.attack_time += dt
 		if before < profile.x and z.attack_time >= profile.x:
@@ -566,6 +572,25 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		return
 	var goal = approach_goal(z,target)
 	move_zombie(z,goal,speed,dt,distance,contact)
+
+func advance_attack(z: Dictionary, target: Dictionary, speed: float, dt: float, contact: float) -> void:
+	var offset: Vector2 = target.pos-z.pos
+	if dt <= 0 or offset.length_squared() <= .0001: return
+	var desired_heading: float = atan2(offset.x,offset.y)
+	z.heading = rotate_toward(z.heading,desired_heading,ATTACK_TURN_SPEED*dt)
+	var direction = Vector2(sin(z.heading),cos(z.heading))
+	var travel: float = minf(speed*dt,maxf(0,offset.length()-contact*.88))
+	if travel <= 0: return
+	var old_position: Vector2 = z.pos
+	var next: Vector2 = z.pos+direction*travel
+	if arena.clear(z.pos,next): z.pos = next
+	else:
+		var x = Vector2(next.x,z.pos.y)
+		if arena.clear(z.pos,x): z.pos = x
+		var y = Vector2(z.pos.x,next.y)
+		if arena.clear(z.pos,y): z.pos = y
+	z.gait = z.get("gait",0.0)+z.pos.distance_to(old_position)*2.3
+	z.move_speed = z.pos.distance_to(old_position)/maxf(dt,.001)
 
 func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance: float, contact: float) -> void:
 	var direction = (goal-z.pos).normalized()

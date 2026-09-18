@@ -88,7 +88,8 @@ static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stri
 	if z.hp <= 0:
 		transform.basis *= Basis(Vector3.RIGHT,-clampf((.85-z.down)/.65,0,1)*PI/2)
 		transform.origin.y = ground-.15
-	if z.get("move_speed",0.0) > 3.5 and z.attack_time <= 0: transform.basis *= Basis(Vector3.RIGHT,.12)
+	var attack_advancing: bool = z.attack_time > 0 and z.attack_time < Data.attack(z.kind,z.rage).x
+	if z.get("move_speed",0.0) > 3.5 and (z.attack_time <= 0 or attack_advancing): transform.basis *= Basis(Vector3.RIGHT,.12)
 	if z.attack_time > 0:
 		var strike = sin(clampf(z.attack_time/Data.attack(z.kind,z.rage).x,0,1)*PI/2)
 		transform.basis *= Basis(Vector3.RIGHT,strike*.10)
@@ -107,7 +108,8 @@ static func bone_for(part: Dictionary) -> int:
 
 static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
 	if z.kind == "crawler": return crawl_pose(z,elapsed,stationary)
-	var moving: bool = not stationary and z.get("move_speed",0.0) > .05 and z.hp > 0 and z.attack_time <= 0 and z.state not in ["windup","stunned"] and z.rage_pause <= 0
+	var attack_advancing: bool = z.attack_time > 0 and z.attack_time < Data.attack(z.kind,z.rage).x
+	var moving: bool = not stationary and z.get("move_speed",0.0) > .05 and z.hp > 0 and (z.attack_time <= 0 or attack_advancing) and z.state not in ["windup","stunned"] and z.rage_pause <= 0
 	var stride = sin(z.get("gait",(elapsed-z.born)*5+z.id*2)) if moving else 0.0
 	var idle: bool = z.hp > 0 and not z.get("guard_awake",true) and z.get("move_speed",0.0) <= .05 and z.get("map_id","") == "graypine_night"
 	if idle: stride = sin(elapsed*1.4+z.id*2.17)*.08

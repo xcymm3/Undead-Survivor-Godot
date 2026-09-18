@@ -76,7 +76,7 @@ func validate_combat_revision() -> void:
 		check(z.hp == (9000 if kind == "football" else 2400),"Double boss health "+kind)
 		if kind == "football":
 			check(z.body == 5000 and z.armor == 4000,"Football doubles body HP and armor independently")
-			check(z.chase_speed == sim.PLAYER_MOVE_SPEED,"Football pursuit equals player walking speed")
+			check(z.chase_speed >= 4.6 and z.chase_speed <= 5.2,"Football pursuit uses the ordinary random speed range")
 			z.state = "charging"
 		else:
 			z.hp = 1201
@@ -93,7 +93,29 @@ func validate_combat_revision() -> void:
 		runner.state = "ready"
 		runner.charge_cooldown = 99
 		sim.update_zombie(runner,p,.1)
-		check(is_equal_approx(runner.move_speed,sim.PLAYER_MOVE_SPEED),"Actual football pursuit speed equals player with armor "+str(armor))
+		check(is_equal_approx(runner.move_speed,runner.chase_speed),"Actual football pursuit uses its sampled speed with armor "+str(armor))
+	runner.pos = Vector2(8,55)
+	runner.state = "charging"
+	runner.state_time = 1.0
+	runner.charge_direction = Vector2(0,1)
+	sim.update_zombie(runner,p,.1)
+	check(is_equal_approx(runner.move_speed,sim.FOOTBALL_CHARGE_SPEED),"Football charge moves at 12 meters per second")
+	var saved_speed_position: Vector2 = p.pos
+	p.pos = Vector2(8,58)
+	for kind in ["imp","berserker"]:
+		sim.zombies.clear()
+		sim.spawn(Vector2(8,55),kind)
+		var speed_enemy: Dictionary = sim.zombies[0]
+		speed_enemy.chase_speed = 5.0
+		speed_enemy.charge_cooldown = 99
+		sim.update_zombie(speed_enemy,p,.1)
+		check(is_equal_approx(speed_enemy.move_speed,5.0*sim.IMP_SPEED_MULTIPLIER if kind == "imp" else 5.0),"Updated calm pursuit speed "+kind)
+		if kind == "berserker":
+			speed_enemy.pos = Vector2(8,55)
+			speed_enemy.rage = true
+			sim.update_zombie(speed_enemy,p,.1)
+			check(is_equal_approx(speed_enemy.move_speed,sim.BERSERKER_RAGE_SPEED),"Berserker rage pursuit is fixed at 7.2 meters per second")
+	p.pos = saved_speed_position
 	for cue in ["grenade-throw","grenade-fuse","grenade-explosion"]:
 		check(game.sound.streams.has(cue) and game.sound.streams[cue].get_length() > .05,"Grenade cue resource exists: "+cue)
 	sim.events.clear()
@@ -680,13 +702,19 @@ func validate_close_combat() -> void:
 	sim.events.clear()
 	sim.update_zombie(attacker,p,.1)
 	check(p.hp == 100 and attacker.attack_time > 0 and sim.events.any(func(e): return e.kind == "enemy_windup"),"Attack announces a windup before dealing damage")
-	p.pos = Vector2(0,72)
+	p.pos = Vector2(4,70)
 	sim.update_zombie(attacker,p,.45)
-	check(p.hp == 100 and sim.events.any(func(e): return e.kind == "enemy_miss"),"Leaving attack range produces a miss instead of guaranteed contact damage")
+	check(p.hp == 100 and sim.events.any(func(e): return e.kind == "enemy_miss"),"Lateral movement can evade the limited-turn attack advance")
 	attacker.attack_time = 0.0
 	p.pos = Vector2(0,70)
-	sim.update_zombie(attacker,p,.51)
-	check(p.hp == 90 and sim.events.any(func(e): return e.kind == "enemy_impact"),"In-range strike deals damage with an impact cue")
+	attacker.pos = Vector2(0,68.8)
+	attacker.chase_speed = 4.8
+	sim.events.clear()
+	sim.update_zombie(attacker,p,.01)
+	for i in 5:
+		p.pos.y += sim.PLAYER_MOVE_SPEED*.1
+		sim.update_zombie(attacker,p,.1)
+	check(p.hp == 90 and sim.events.any(func(e): return e.kind == "enemy_impact"),"A faster enemy advances through windup and hits a continuously retreating player")
 	p.protection = 0.0
 	attacker.pos = p.pos+Vector2(0,1)
 	sim.damage_pawn(p,attacker)

@@ -68,7 +68,7 @@ func command(dt: float) -> Dictionary:
 	# Dodge across a committed charge rather than retreating along its path.
 	for z in game.sim.zombies:
 		if z.hp <= 0 or z.kind != "football" or z.state != "charging" or z.pos.distance_to(p.pos) > 12: continue
-		var end: Vector2 = z.pos+z.charge_direction*10*maxf(z.state_time,0)
+		var end: Vector2 = z.pos+z.charge_direction*12*maxf(z.state_time,0)
 		if p.pos.distance_to(Geometry2D.get_closest_point_to_segment(p.pos,z.pos,end)) > 2.5: continue
 		var side: Vector2 = z.charge_direction.orthogonal()
 		var best = -INF
