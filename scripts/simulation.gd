@@ -58,6 +58,7 @@ const DEFENSE_FALL_DAMAGE = 10
 const DEFENSE_HEALTH_FACTOR = {"normal":1.0,"cone":.75,"bucket":.7,"imp":.55,"shield":.35,"berserker":.28,"giant":.16,"football":.12}
 const DEFENSE_CRYSTAL_DAMAGE_FACTOR = .05
 const DEFENSE_PLAYER_DAMAGE_FACTOR = .25
+const CRAWLER_VARIANT_CHANCE = .1
 
 func _init(world = null) -> void:
 	arena = world
@@ -118,7 +119,11 @@ func prepare_wave() -> void:
 	var odds = [[.6,.27,.13],[.6,.4],[.75,.25],[1.0]]
 	for i in Data.wave_settings(wave).count:
 		var tier = weighted(weights)
-		roster.append(pools[tier][weighted(odds[tier])])
+		var kind: String = pools[tier][weighted(odds[tier])]
+		# Crawlers are a normal-zombie body variant, not an extra roster slot.
+		# This preserves the wave size and every other archetype's weighting.
+		if kind == "normal" and random.randf() < CRAWLER_VARIANT_CHANCE: kind = "crawler"
+		roster.append(kind)
 	if wave in [7,8] and not roster.has("football"): roster[-1] = "football"
 
 func weighted(weights: Array) -> int:

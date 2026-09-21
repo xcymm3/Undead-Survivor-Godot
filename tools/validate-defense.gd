@@ -130,6 +130,23 @@ func run() -> void:
 			if not game.arena.clear(z.pos,z.pos): crowd_safe = false
 	check(crowd_safe,"Crowd separation cannot push zombies off the bridge or around the ramp")
 
+	# A crawler replaces one tenth of selected normal zombies without changing
+	# the number of enemies assigned to a wave.
+	sim.wave = 1
+	sim.random.seed = 481516
+	var normal_family = 0
+	var crawlers = 0
+	var planned = 0
+	for sample in 200:
+		sim.prepare_wave()
+		planned += sim.roster.size()
+		for kind in sim.roster:
+			if kind in ["normal","crawler"]: normal_family += 1
+			if kind == "crawler": crawlers += 1
+	var crawler_ratio: float = crawlers/float(normal_family)
+	check(planned == 200*data.wave_settings(1).count,"Crawler variants do not increase the wave population")
+	check(crawlers > 0 and absf(crawler_ratio-sim.CRAWLER_VARIANT_CHANCE) < .03,"Ten percent of selected normal zombies become crawlers")
+
 	sim.zombies.clear()
 	sim.wave = 1
 	sim.spawn(Vector2(0,-70),"normal")
