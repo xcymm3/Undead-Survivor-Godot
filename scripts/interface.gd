@@ -405,7 +405,7 @@ func show_result() -> void:
 	var sim = game.sim
 	if sim.mode == "defense":
 		var state: Dictionary = sim.defense_state()
-		var result = panel("水晶防守成功" if sim.won else "水晶防线失守","断崖水晶防线",640)
+		var result = panel("水晶防守成功" if sim.won else "水晶防线失守","保卫水晶",640)
 		current = "result"
 		result.add_child(label("完成 %d / 10 波 · %d 击杀 · %s" % [sim.cleared,sim.kills,time_text(sim.elapsed)],32))
 		paragraph(result,"十波尸潮已被全部击退。" if sim.won else ("水晶被摧毁。" if sim.cause == "crystal" else "守卫者已失去行动能力。")+" 水晶剩余 %d / %d。" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)])

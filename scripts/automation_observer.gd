@@ -18,6 +18,10 @@ func _ready() -> void:
 		var gallery = preload("res://scripts/qa_pose_gallery.gd").new()
 		gallery.game = game
 		add_child(gallery)
+	if "--qa-defense-overview" in OS.get_cmdline_user_args() and OS.has_feature("web"):
+		var overview = preload("res://scripts/qa_defense_overview.gd").new()
+		overview.game = game
+		add_child(overview)
 	if "--qa-autoaim" in OS.get_cmdline_user_args():
 		aim_assist = preload("res://scripts/qa_aim_assist.gd").new()
 		aim_assist.game = game
