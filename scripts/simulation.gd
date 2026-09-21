@@ -3,6 +3,7 @@ extends RefCounted
 const EnemyView = preload("res://scripts/enemy_view.gd")
 const PlayerBody = preload("res://scripts/player_body.gd")
 const DefensePopulation = preload("res://scripts/defense_population.gd")
+const NightPopulation = preload("res://scripts/night_population.gd")
 const PLAYER_MOVE_SPEED = 4.2
 var player_bodies: Dictionary = {}
 var arena
@@ -26,6 +27,7 @@ var rest = 0.0
 var credit = 0.0
 var roster: Array = []
 var wave_total = 0
+var defense_ordinary_slots = 0
 var next_id = 0
 var failed = false
 var cause = "zombie"
@@ -57,8 +59,6 @@ const DEFENSE_REGEN_DELAY = 5.0
 const DEFENSE_REGEN_RATE = 1.0
 const DEFENSE_FALL_HEIGHT = -3.5
 const DEFENSE_FALL_DAMAGE = 10
-const DEFENSE_CRYSTAL_DAMAGE_FACTOR = .05
-const DEFENSE_PLAYER_DAMAGE_FACTOR = .25
 const CRAWLER_VARIANT_CHANCE = .1
 
 func _init(world = null) -> void:
@@ -109,6 +109,7 @@ func start(game_mode: String) -> void:
 		paths.clear()
 		roster.clear()
 		wave_total = 0
+		defense_ordinary_slots = 0
 		wave = 1
 		defense = {"started":false,"crystal_hp":Data.Maps.Defense.CRYSTAL_MAX_HP,"crystal_max_hp":Data.Maps.Defense.CRYSTAL_MAX_HP,"wave":1,"objective":"前往水晶旁拉下拉杆，准备第一波进攻"}
 		arena.sync_campaign(defense)
@@ -138,6 +139,11 @@ func weighted(weights: Array) -> int:
 		roll -= weights[i]
 		if roll < 0: return i
 	return weights.size()-1
+
+func defense_population_kind(kind: String) -> String:
+	if kind != "normal": return kind
+	defense_ordinary_slots += 1
+	return NightPopulation.population_kind(kind,defense_ordinary_slots)
 
 func spawn(pos: Vector2, kind: String) -> void:
 	var def: Dictionary = Data.enemies[kind]
@@ -276,7 +282,7 @@ func step(dt: float) -> void:
 			if delta.length() < 8: safe = false
 		if not safe or not arena.clear(point,point): continue
 		if zombies.any(func(z): return z.hp > 0 and point.distance_to(z.pos) < 2.0): continue
-		spawn(point,roster[0])
+		spawn(point,defense_population_kind(roster[0]) if mode == "defense" else roster[0])
 		roster.remove_at(0)
 		spawned += 1
 		credit = 0
@@ -328,9 +334,6 @@ func update_defense_interactions() -> void:
 		p.input.interact = false
 	if changed: arena.sync_campaign(defense)
 
-func defense_enemy_damage(z: Dictionary) -> int:
-	return {"imp":8,"normal":12,"crawler":10,"cone":14,"bucket":16,"shield":18,"berserker":22,"giant":34,"football":28}.get(z.kind,12)
-
 func damage_crystal(z: Dictionary, amount: int) -> bool:
 	if mode != "defense" or defense.get("crystal_hp",0) <= 0: return false
 	defense.crystal_hp = maxi(0,int(defense.crystal_hp)-amount)
@@ -343,8 +346,8 @@ func damage_crystal(z: Dictionary, amount: int) -> bool:
 
 func damage_target(target: Dictionary, z: Dictionary, amount: int) -> bool:
 	if target.get("is_crystal",false):
-		return damage_crystal(z,maxi(1,roundi(amount*DEFENSE_CRYSTAL_DAMAGE_FACTOR)))
-	return damage_pawn(target,z,maxi(1,roundi(amount*DEFENSE_PLAYER_DAMAGE_FACTOR))) if mode == "defense" else damage_pawn(target,z,amount)
+		return damage_crystal(z,amount)
+	return damage_pawn(target,z,amount)
 
 func can_move(p: Dictionary, point: Vector2) -> bool:
 	if not map_definition.bounds.grow(-.95).has_point(point): return false
@@ -696,8 +699,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		if mode == "defense" and defense.get("crystal_hp",0) > 0: charge_targets.append(crystal_target())
 		for victim in charge_targets:
 			if victim.hp > 0 and z.pos.distance_to(victim.pos) <= contact and victim.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
-				var amount: int = maxi(CHARGE_DAMAGE,defense_enemy_damage(z)) if mode == "defense" else CHARGE_DAMAGE
-				if damage_target(victim,z,amount) and not victim.get("is_crystal",false): charge_knockback(victim,z.charge_direction)
+				if damage_target(victim,z,CHARGE_DAMAGE) and not victim.get("is_crystal",false): charge_knockback(victim,z.charge_direction)
 				z.state = "ready"
 				z.charge_cooldown = 3.2
 				break
@@ -725,8 +727,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 				if victim.hp <= 0 or offset.length() > (2.4 if z.kind == "giant" else contact+.15): continue
 				if Vector2(sin(z.heading),cos(z.heading)).dot(offset.normalized()) < .4: continue
 				if not arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(victim.pos.x,victim.height+1.1,victim.pos.y)).is_empty(): continue
-				var amount: int = defense_enemy_damage(z) if mode == "defense" else 10
-				hit = damage_target(victim,z,amount) or hit
+				hit = damage_target(victim,z,10) or hit
 			events.append({"kind":"enemy_impact" if hit else "enemy_miss","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
 		if z.attack_time >= profile.y: z.attack_time = 0.0
 		return
@@ -846,7 +847,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 			for step in 4:
 				if arena.clear(z.pos,z.pos+push/4): z.pos += push/4
 			z["hit_push_at"] = elapsed+.04
-		if map_id == "graypine_night" and z.kind in ["normal","crawler"] and elapsed >= z.get("stagger_ready",-1.0):
+		if map_id in ["graypine_night","graypine_defense"] and z.kind in ["normal","crawler"] and elapsed >= z.get("stagger_ready",-1.0):
 			stun(z,.18)
 			z["stagger_ready"] = elapsed+.8
 		events.append({"kind":"blood","player":p.id,"position":position})

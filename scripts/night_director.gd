@@ -14,7 +14,7 @@ func population_kind(kind: String) -> String:
 	# Count successful ordinary spawns across habitats and delayed batches.
 	if kind != "normal": return kind
 	ordinary_slots += 1
-	return "crawler" if ordinary_slots%10 == 0 else "normal"
+	return Population.population_kind(kind,ordinary_slots)
 
 func emit_noise(point: Vector3, kind: String, shot_origin := Vector2.INF) -> void:
 	if not state.departed or state.complete: return
@@ -89,7 +89,7 @@ func holdout_step(dt: float) -> void:
 func spawn_boss() -> void:
 	var second: bool = state.boss_spawned
 	if (not state.boss2_queued or state.boss2_spawned) if second else not state.boss_queued: return
-	# Separate slot: no threat points, burst quota, credit or ordinary cap used.
+	# Separate slot: no threat points, burst quota or credit used.
 	for point in Layout.FINAL_ENTRIES:
 		if not safe_point(point): continue
 		sim.spawn(point,"football")
@@ -156,8 +156,7 @@ func _init(world) -> void:
 	sim.arena.sync_campaign(state)
 
 func reinforcement_scale() -> float: return Layout.DUO_REINFORCEMENT_SCALE if state.party == 2 else 1.0
-func multiply() -> float: return [1.0,1.2,1.4,1.6][clampi(state.party-1,0,3)]
-func cap() -> int: return ([64,96] if state.get("holdout_started",false) else [48,72])[clampi(state.party-1,0,1)]
+func multiply() -> float: return Population.party_multiplier(state.party)
 
 func populate_route() -> void:
 	for zone in Layout.ZONES:

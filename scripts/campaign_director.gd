@@ -59,9 +59,6 @@ func phase(value: String, objective: String) -> void:
 func multiply() -> float:
 	return [1.0,1.5,1.9,2.3][clampi(state.party-1,0,3)]
 
-func cap() -> int:
-	return ([18,28,36,44] if state.late_stage else [10,16,22,28])[clampi(state.party-1,0,3)]
-
 func start_room_ready() -> bool:
 	return survivors().all(func(p): return Layout.START_ROOM.has_point(p.pos))
 
@@ -194,7 +191,7 @@ func population_kind(kind: String) -> String:
 	return kind
 
 func spawn_one(points: Array, kind: String) -> bool:
-	if sim.zombies.filter(func(z): return z.hp > 0 and z.get("guard_awake",true) and not z.get("boss",false)).size() >= cap() or credit < 1: return false
+	if credit < 1: return false
 	var candidates = points.duplicate()
 	# Authority RNG is also used for candidate order; QA can reproduce the seed.
 	for i in candidates.size():

@@ -144,11 +144,15 @@ func validate_population() -> void:
 	check(game.sim.zombies.all(func(z): return z.kind not in ["giant","football"]),"Neither giant nor boss in ordinary habitats")
 	var random = RandomNumberGenerator.new()
 	random.seed = 82
-	for budget in [0,1,5,18,22,68]:
+	var giant_supported = false
+	for budget in [0,1,5,18,22,68,120]:
 		var roster = population.roster(budget,population.SPECIALS+["giant","football"],random)
 		check(population.points(roster) == budget,"Exact point accounting budget "+str(budget))
-		check(roster.all(func(kind): return kind not in ["giant","football"]),"Unsupported boss/giant excluded from budget pool")
-	# All entries occupied: boss debt survives and bypasses ordinary population cap.
+		check(roster.all(func(kind): return kind != "football"),"Budget pool excludes the point-free football boss")
+		giant_supported = giant_supported or "giant" in roster
+	check(giant_supported and population.COST.giant == 12,"Shared point rules support a twelve-point giant when a map requests it")
+	check(not director.has_method("cap"),"Night reinforcements have no active-enemy cap")
+	# All entries occupied: boss debt survives until a safe entry is available.
 	var saved = game.sim.zombies.duplicate(true)
 	game.sim.zombies.clear()
 	director.state.boss_queued = true
@@ -157,9 +161,9 @@ func validate_population() -> void:
 	check(not director.state.boss_spawned,"Unsafe boss remains pending instead of disappearing")
 	game.sim.zombies.clear()
 	game.local_pawn().pos = Layout.HOLDOUT
-	for i in director.cap(): game.sim.spawn(Vector2(0,50),"normal")
+	for i in 100: game.sim.spawn(Vector2(0,50),"normal")
 	director.spawn_boss()
-	check(director.state.boss_spawned,"Boss has independent slot even at normal cap")
+	check(director.state.boss_spawned,"A large active horde does not block the independent boss")
 	director.spawn_boss()
 	check(game.sim.zombies.filter(func(z): return z.kind == "football").size() == 1,"Retry never duplicates boss")
 	game.sim.zombies = saved
