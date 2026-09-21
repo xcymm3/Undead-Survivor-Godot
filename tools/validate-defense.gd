@@ -130,31 +130,50 @@ func run() -> void:
 			if not game.arena.clear(z.pos,z.pos): crowd_safe = false
 	check(crowd_safe,"Crowd separation cannot push zombies off the bridge or around the ramp")
 
-	# A crawler replaces one tenth of selected normal zombies without changing
-	# the number of enemies assigned to a wave.
+	# Exact point budgets replace fixed body counts. A crawler remains a
+	# one-point normal-body variant, so its conversion never changes spending.
+	var population = preload("res://scripts/defense_population.gd")
 	sim.wave = 1
 	sim.random.seed = 481516
 	var normal_family = 0
 	var crawlers = 0
-	var planned = 0
+	var exact_sample_budgets = true
 	for sample in 200:
 		sim.prepare_wave()
-		planned += sim.roster.size()
+		exact_sample_budgets = exact_sample_budgets and population.points(sim.roster) == population.budget(1,1)
 		for kind in sim.roster:
 			if kind in ["normal","crawler"]: normal_family += 1
 			if kind == "crawler": crawlers += 1
 	var crawler_ratio: float = crawlers/float(normal_family)
-	check(planned == 200*data.wave_settings(1).count,"Crawler variants do not increase the wave population")
-	check(crawlers > 0 and absf(crawler_ratio-sim.CRAWLER_VARIANT_CHANCE) < .03,"Ten percent of selected normal zombies become crawlers")
+	check(exact_sample_budgets,"Crawler conversion preserves the exact point budget")
+	check(crawlers > 0 and absf(crawler_ratio-population.CRAWLER_CHANCE) < .03,"Ten percent of selected normal zombies become crawlers")
+	var exact_wave_budgets = true
+	var exact_football_counts = true
+	for current_wave in range(1,11):
+		sim.wave = current_wave
+		sim.prepare_wave()
+		exact_wave_budgets = exact_wave_budgets and population.points(sim.roster) == population.budget(current_wave,1)
+		exact_football_counts = exact_football_counts and sim.roster.count("football") == population.footballs(current_wave)
+	check(exact_wave_budgets,"All ten waves spend their exact point budgets")
+	check(exact_football_counts,"Waves seven and eight have one football; waves nine and ten have two")
+	var solo_budget: int = population.budget(10,1)
+	check(population.budget(10,2) > solo_budget and population.budget(10,4) > population.budget(10,2),"Co-op raises only the wave point budget")
 
-	sim.zombies.clear()
-	sim.wave = 1
-	sim.spawn(Vector2(0,-70),"normal")
-	var wave_one_hp: float = sim.zombies[-1].hp
-	sim.zombies.clear()
-	sim.wave = 10
-	sim.spawn(Vector2(0,-70),"normal")
-	check(sim.zombies[-1].hp > wave_one_hp*2,"Wave ten zombies receive the configured health growth")
+	var fixed_health = true
+	var fixed_damage = true
+	for kind in data.enemies:
+		sim.zombies.clear()
+		sim.wave = 1
+		sim.spawn(Vector2(0,-70),kind)
+		var wave_one_hp: float = sim.zombies[-1].hp
+		var wave_one_damage: int = sim.defense_enemy_damage(sim.zombies[-1])
+		sim.zombies.clear()
+		sim.wave = 10
+		sim.spawn(Vector2(0,-70),kind)
+		fixed_health = fixed_health and is_equal_approx(wave_one_hp,float(data.enemies[kind].health)) and is_equal_approx(sim.zombies[-1].hp,wave_one_hp)
+		fixed_damage = fixed_damage and sim.defense_enemy_damage(sim.zombies[-1]) == wave_one_damage
+	check(fixed_health,"Every enemy keeps its resource health through wave ten")
+	check(fixed_damage,"Every enemy keeps fixed attack damage through wave ten")
 	sim.zombies.clear()
 	sim.roster.clear()
 	sim.cleared = 9

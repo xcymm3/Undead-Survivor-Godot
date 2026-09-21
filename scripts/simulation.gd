@@ -2,6 +2,7 @@ extends RefCounted
 ## The sole authority for movement, ammunition, enemies, damage and score, shared by solo/coop.
 const EnemyView = preload("res://scripts/enemy_view.gd")
 const PlayerBody = preload("res://scripts/player_body.gd")
+const DefensePopulation = preload("res://scripts/defense_population.gd")
 const PLAYER_MOVE_SPEED = 4.2
 var player_bodies: Dictionary = {}
 var arena
@@ -24,6 +25,7 @@ var kills = 0
 var rest = 0.0
 var credit = 0.0
 var roster: Array = []
+var wave_total = 0
 var next_id = 0
 var failed = false
 var cause = "zombie"
@@ -55,7 +57,6 @@ const DEFENSE_REGEN_DELAY = 5.0
 const DEFENSE_REGEN_RATE = 1.0
 const DEFENSE_FALL_HEIGHT = -3.5
 const DEFENSE_FALL_DAMAGE = 10
-const DEFENSE_HEALTH_FACTOR = {"normal":1.0,"cone":.75,"bucket":.7,"imp":.55,"shield":.35,"berserker":.28,"giant":.16,"football":.12}
 const DEFENSE_CRYSTAL_DAMAGE_FACTOR = .05
 const DEFENSE_PLAYER_DAMAGE_FACTOR = .25
 const CRAWLER_VARIANT_CHANCE = .1
@@ -107,12 +108,18 @@ func start(game_mode: String) -> void:
 		zombies.clear()
 		paths.clear()
 		roster.clear()
+		wave_total = 0
 		wave = 1
 		defense = {"started":false,"crystal_hp":Data.Maps.Defense.CRYSTAL_MAX_HP,"crystal_max_hp":Data.Maps.Defense.CRYSTAL_MAX_HP,"wave":1,"objective":"前往水晶旁拉下拉杆，准备第一波进攻"}
 		arena.sync_campaign(defense)
 	else: prepare_wave()
 
 func prepare_wave() -> void:
+	if mode == "defense":
+		roster = DefensePopulation.roster(wave,pawns.size(),random)
+		wave_total = roster.size()
+		defense["wave_budget"] = DefensePopulation.budget(wave,pawns.size())
+		return
 	roster.clear()
 	var weights: Array = [1,0,0,0] if wave <= 2 else [.8,.2,0,0] if wave <= 4 else [.64,.26,.1,0] if wave <= 6 else [.5,.28,.17,.05] if wave <= 8 else [.38,.3,.24,.08] if wave <= 10 else [.32,.3,.28,.1]
 	var pools = [["normal","cone","bucket"],["imp","shield"],["berserker","giant"],["football"]]
@@ -120,11 +127,10 @@ func prepare_wave() -> void:
 	for i in Data.wave_settings(wave).count:
 		var tier = weighted(weights)
 		var kind: String = pools[tier][weighted(odds[tier])]
-		# Crawlers are a normal-zombie body variant, not an extra roster slot.
-		# This preserves the wave size and every other archetype's weighting.
 		if kind == "normal" and random.randf() < CRAWLER_VARIANT_CHANCE: kind = "crawler"
 		roster.append(kind)
 	if wave in [7,8] and not roster.has("football"): roster[-1] = "football"
+	wave_total = roster.size()
 
 func weighted(weights: Array) -> int:
 	var roll = random.randf()
@@ -135,10 +141,8 @@ func weighted(weights: Array) -> int:
 
 func spawn(pos: Vector2, kind: String) -> void:
 	var def: Dictionary = Data.enemies[kind]
-	var health_scale: float = 1.0+(wave-1)*.12 if mode == "defense" else 1.0
-	var defense_factor: float = float(DEFENSE_HEALTH_FACTOR.get(kind,1.0)) if mode == "defense" else 1.0
-	var armor: float = float(def.armor)*(1.0+(wave-1)*.06)*defense_factor if mode == "defense" else float(def.armor)
-	var body: float = maxf(1.0,float(def.health-def.armor)*health_scale*defense_factor)
+	var armor: float = float(def.armor)
+	var body: float = float(def.health-def.armor)
 	var health: float = body+armor
 	var locomotion = RandomNumberGenerator.new()
 	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
@@ -325,8 +329,7 @@ func update_defense_interactions() -> void:
 	if changed: arena.sync_campaign(defense)
 
 func defense_enemy_damage(z: Dictionary) -> int:
-	var base: int = {"imp":8,"normal":12,"crawler":10,"cone":14,"bucket":16,"shield":18,"berserker":22,"giant":34,"football":28}.get(z.kind,12)
-	return roundi(base*(1.0+(wave-1)*.08))
+	return {"imp":8,"normal":12,"crawler":10,"cone":14,"bucket":16,"shield":18,"berserker":22,"giant":34,"football":28}.get(z.kind,12)
 
 func damage_crystal(z: Dictionary, amount: int) -> bool:
 	if mode != "defense" or defense.get("crystal_hp",0) <= 0: return false
@@ -1016,7 +1019,7 @@ func snapshot() -> Dictionary:
 	for id in pawns:
 		players[id] = pawns[id].duplicate(true)
 		players[id].erase("input")
-	return {"campaign":campaign_state(),"defense":defense_state(),"won":won,"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":Data.wave_settings(wave).count,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
+	return {"campaign":campaign_state(),"defense":defense_state(),"won":won,"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":wave_total if mode == "defense" else Data.wave_settings(wave).count,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
 
 func apply_snapshot(state: Dictionary) -> void:
 	pawns = state.pawns
@@ -1030,6 +1033,7 @@ func apply_snapshot(state: Dictionary) -> void:
 	wave = state.wave
 	cleared = state.cleared
 	spawned = state.spawned
+	wave_total = int(state.get("total",Data.wave_settings(wave).count))
 	kills = state.kills
 	rest = state.rest
 	failed = state.failed
