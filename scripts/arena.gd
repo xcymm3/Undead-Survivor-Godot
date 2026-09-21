@@ -34,6 +34,10 @@ func _ready() -> void:
 		environment.environment.ambient_light_color = Color("839caf")
 		environment.environment.ambient_light_energy = .24
 		environment.environment.fog_density = .018
+	elif map_id == "graypine_defense":
+		environment.environment.ambient_light_color = Color("b9d5c5")
+		environment.environment.ambient_light_energy = .52
+		environment.environment.fog_density = .006
 	add_child(environment)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52,-35,0)
@@ -43,6 +47,9 @@ func _ready() -> void:
 		sun.light_energy = .24
 		sun.shadow_bias = .12
 		sun.shadow_normal_bias = 2.0
+	elif map_id == "graypine_defense":
+		sun.light_energy = 1.05
+		sun.rotation_degrees = Vector3(-48,-18,0)
 	sun.shadow_enabled = Data.settings.quality > 0
 	sun.directional_shadow_max_distance = 65
 	add_child(sun)
@@ -106,10 +113,9 @@ func endpoint_link(a: Vector2, b: Vector2) -> bool:
 	if not bounds.has_point(a) or not bounds.has_point(b): return false
 	for obstacle in obstacles:
 		if segment_rect(a,b,Rect2(obstacle.minX,obstacle.minZ,obstacle.maxX-obstacle.minX,obstacle.maxZ-obstacle.minZ)): return false
-	var gates = [["departed",Maps.Night.START_DOOR]]
-	if map_id == "graypine_night" and (not campaign_state.get("exit_control",false) or campaign_state.get("complete",false)) and segment_rect(a,b,Maps.Night.EXIT_DOOR): return false
-	for gate in gates:
-		if not campaign_state.get(gate[0],false) and segment_rect(a,b,gate[1]): return false
+	if map_id == "graypine_night":
+		if (not campaign_state.get("exit_control",false) or campaign_state.get("complete",false)) and segment_rect(a,b,Maps.Night.EXIT_DOOR): return false
+		if not campaign_state.get("departed",false) and segment_rect(a,b,Maps.Night.START_DOOR): return false
 	return true
 
 func nearest_cell(p: Vector2) -> Vector2i:

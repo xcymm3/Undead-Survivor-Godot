@@ -6,7 +6,7 @@ var enemies: Dictionary = rules.enemies
 var parts: Array = rules.parts
 const Maps = preload("res://scripts/map_catalog.gd")
 signal settings_changed
-var settings = {"sensitivity": 0.0022, "volume": 1.0, "muted": false, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 3, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_night"}
+var settings = {"sensitivity": 0.0022, "volume": 1.0, "muted": false, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 3, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_defense"}
 const GRAPHICS_PRESETS = [
     {"resolution":.5,"aa":0,"shadows":0,"effects":0,"distance":0,"frame_limit":60,"pixelated":true},
     {"resolution":.67,"aa":1,"shadows":1,"effects":0,"distance":1,"frame_limit":60,"pixelated":false},
@@ -43,7 +43,7 @@ func _ready() -> void:
 			if loaded.get("scores") is Array:
 				for entry in loaded.scores:
 					if valid_score(entry): scores.append(entry)
-	if not Maps.valid(settings.map_id): settings.map_id = "graypine_night"
+	if not Maps.valid(settings.map_id): settings.map_id = "graypine_defense"
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--map=") and Maps.valid(arg.trim_prefix("--map=")): settings.map_id = arg.trim_prefix("--map=")
 	settings.sensitivity = clampf(settings.sensitivity, .00022, .0044)
@@ -125,8 +125,8 @@ static func riverbed_height(p: Vector2) -> float:
 	var offset = absf(p.y-river_center(p.x))
 	return lerpf(RIVER_BED_Y,RIVER_GROUND_Y,clampf((offset-RIVER_BED_HALF)/(RIVER_BANK_HALF-RIVER_BED_HALF),0,1))
 
-static func enemy_ground_height(p: Vector2, _map_id := "graypine_night") -> float:
-	return Maps.Night.height(p)
+static func enemy_ground_height(p: Vector2, map_id := "graypine_night") -> float:
+	return Maps.Defense.height(p) if map_id == Maps.Defense.ID else Maps.Night.height(p)
 
 static func wading(p: Vector2, feet: float) -> bool:
 	return water(p) and feet < RIVER_WATER_Y+.08

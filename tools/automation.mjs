@@ -79,6 +79,8 @@ try {
   if (!/NATIVE COMPONENTS: \d+ checks; 0 failures/.test(native)) throw new Error('Missing native component acceptance marker.');
   const night = await run('night-campaign', engine, [...godotArgs, '--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation'], 900_000);
   if (!/NIGHT VALIDATION: \d+ checks; 0 failures/.test(night)) throw new Error('Missing night campaign acceptance marker.');
+  const defense = await run('crystal-defense', engine, [...godotArgs, '--script', 'res://tools/validate-defense.gd', '--', '--silent', '--automation'], 300_000);
+  if (!/DEFENSE VALIDATION: \d+ checks; 0 failures/.test(defense)) throw new Error('Missing crystal defense acceptance marker.');
   if (full) {
     const balance = await run('balance-solo-duo', engine, [...godotArgs, '--script', 'res://tools/validate-balance.gd', '--', '--silent', '--automation'], 900_000);
     if (!/BALANCE VALIDATION: 4 checks; 0 failures/.test(balance)) throw new Error('Missing complete unrestricted solo/duo balance acceptance marker.');
@@ -107,8 +109,8 @@ try {
     ['node_modules/@playwright/test/cli.js', 'test', ...(full ? [] : ['--grep', '@core'])], full ? 1800_000 : 300_000);
   const browser = JSON.parse(await readFile('artifacts/browser-results.json', 'utf8'));
   if (browser.stats.unexpected || browser.stats.flaky || browser.stats.skipped || browser.errors?.length ||
-      (!full && browser.stats.expected !== 4) || !browser.stats.expected)
-    throw new Error('Browser suite must complete all selected tests without failures, skips, or retries. Core requires four tests.');
+      (!full && browser.stats.expected !== 5) || !browser.stats.expected)
+    throw new Error('Browser suite must complete all selected tests without failures, skips, or retries. Core requires five tests.');
   if (release) {
     await powershell('export-windows', 'tools/export-windows.ps1', [], 900_000);
     // Never launch the EXE graphically: the package itself runs its smoke check headless.
@@ -126,7 +128,7 @@ try {
   for (const child of children) stop(child);
   const report = { status: failure ? 'failed' : 'passed', startedAt, finishedAt: new Date().toISOString(),
     commit: git(['rev-parse', 'HEAD']), sourceDigest, release, profile, excluded, stages, failure,
-    boundaries: [full ? '本次为完整回归，包含武器比较、平衡样本和完整软件截图矩阵。' : '本次为核心回归：原生组件、夜路单人整关、弹道、ENet 双人和四项浏览器真实输入。未运行的扩展项不计为通过。', '仅验证灰松夜路，不运行其他地图或三人/四人测试。', '本机 ENet 双人验证不代表 Steam 双账号验证。真人节奏、趣味性与原生 GPU 质量待验收。', '网页使用独立无界面 Chromium、实际键鼠输入及只读遥测；截图不能证明主观手感或原版地图视觉一致性。', release ? '本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。' : '本次不包含 Windows EXE 导出与打包。'] };
+    boundaries: [full ? '本次为完整回归，包含武器比较、平衡样本和完整软件截图矩阵。' : '本次为核心回归：原生组件、夜路单人整关、水晶防守专项、弹道、ENet 双人和五项浏览器真实输入。未运行的扩展项不计为通过。', '水晶防守验证覆盖单人地图、拉杆、换装区、目标选择、十波胜负；联机整关仍只覆盖灰松夜路双人。', '本机 ENet 双人验证不代表 Steam 双账号验证。真人节奏、趣味性与原生 GPU 质量待验收。', '网页使用独立无界面 Chromium、实际键鼠输入及只读遥测；截图不能证明主观手感或原版地图视觉一致性。', release ? '本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。' : '本次不包含 Windows EXE 导出与打包。'] };
   report.seconds = (Date.parse(report.finishedAt) - Date.parse(startedAt)) / 1000;
   await writeFile('artifacts/acceptance.json', JSON.stringify(report, null, 2));
   await writeFile('artifacts/acceptance.md', `# 自动验收：${report.status}\n\n配置：${profile}；总耗时：${report.seconds.toFixed(1)}s\n\n提交：${report.commit}\n\n源码 SHA-256：${sourceDigest ?? '未完成导入'}\n\n| 阶段 | 结果 | 耗时 |\n| --- | --- | --- |\n${stages.map(s => `| ${s.name} | ${s.passed ? '通过' : '失败'} | ${s.seconds.toFixed(1)}s |`).join('\n')}\n\n${report.boundaries.map(b => '- ' + b).join('\n')}\n\n本配置未运行：${excluded.join(', ') || '无'}\n${failure ? '\n```text\n' + failure + '\n```\n' : ''}`);

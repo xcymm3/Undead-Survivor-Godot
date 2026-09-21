@@ -112,6 +112,9 @@ func _ready() -> void:
 	# Explicit command-line launch modes also support silent local integration validation.
 	var args = OS.get_cmdline_user_args()
 	if "--survival" in args: start_solo("survival")
+	if "--defense" in args:
+		Data.settings.map_id = "graypine_defense"
+		start_solo("defense")
 	if "--campaign" in args:
 		Data.settings.map_id = "graypine_night"
 		start_solo("campaign")
@@ -145,7 +148,7 @@ func start_coop() -> void:
 	for id in Session.members:
 		sim.add_pawn(id,Session.members[id],i)
 		i += 1
-	if Session.is_host(): sim.start("survival")
+	if Session.is_host(): sim.start(str(arena.definition.get("mode","survival")))
 	resume_game()
 
 func prepare_coop() -> void:
@@ -351,6 +354,8 @@ func handle_effects(events: Array) -> void:
 				if event.player == Session.local_id: ui.hit_flash = .2
 			"enemy_windup", "enemy_impact", "enemy_miss":
 				sound.play_at(event.kind.replace("_","-"),event.position,-12)
+			"crystal_hit":
+				sound.play_at("enemy-impact",event.position,-7)
 			"explosion":
 				effects.explosion(event.position)
 				sound.play_at("grenade-explosion",event.position,-6)

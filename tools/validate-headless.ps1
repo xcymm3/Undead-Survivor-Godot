@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Night', 'Shotgun', 'Balance', 'AllWeapons', 'TargetWeapons', 'SpreadWeapons', 'SpreadBallistics', 'ExportWeb')]
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Night', 'Defense', 'Shotgun', 'Balance', 'AllWeapons', 'TargetWeapons', 'SpreadWeapons', 'SpreadBallistics', 'ExportWeb')]
     [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
@@ -29,6 +29,7 @@ switch ($Mode) {
     'Balance' { $arguments += @('--script', 'res://tools/validate-balance.gd', '--', '--silent', '--automation') }
     'Shotgun' { $arguments += @('--script', 'res://tools/validate-shotgun.gd', '--', '--silent', '--automation') }
     'Night' { $arguments += @('--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation') }
+    'Defense' { $arguments += @('--script', 'res://tools/validate-defense.gd', '--', '--silent', '--automation') }
     'NativeComponents' { $arguments += @('--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation') }
 }
 if ($SpreadProbe -and $Mode -eq 'SpreadWeapons') { $arguments += '--spread-probe' }

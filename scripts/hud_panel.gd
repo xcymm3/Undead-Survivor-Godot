@@ -4,6 +4,8 @@ var controls_hint: Label
 var wave_label: Label
 var count_label: Label
 var time_label: Label
+var crystal_label: Label
+var crystal_bar: ProgressBar
 var weapon_label: Label
 var ammo_label: Label
 var ammo_note: Label
@@ -41,6 +43,11 @@ func setup(owner_ui) -> void:
 	wave_label = text(column,24)
 	count_label = text(column)
 	time_label = text(column,14)
+	crystal_label = text(column,15)
+	crystal_bar = ProgressBar.new()
+	crystal_bar.show_percentage = false
+	crystal_bar.custom_minimum_size.y = 9
+	column.add_child(crystal_bar)
 	var weapon_card = card(content,Vector2(226,0))
 	weapon_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	weapon_card.offset_left = -254
@@ -183,6 +190,16 @@ func sync() -> void:
 	count_label.text = "击杀 %d  ·  场上 %d" % [sim.kills,sim.alive_count()]
 	time_label.text = ui.time_text(sim.elapsed)
 	var campaign: Dictionary = sim.campaign_state()
+	var defense: Dictionary = sim.defense_state()
+	crystal_label.visible = sim.mode == "defense"
+	crystal_bar.visible = sim.mode == "defense"
+	if sim.mode == "defense":
+		wave_label.text = "等待拉杆" if not defense.get("started",false) else "第 %02d / 10 波" % sim.wave
+		count_label.text = "击杀 %d · 场上 %d" % [sim.kills,sim.alive_count()]
+		crystal_label.text = "水晶  %d / %d" % [defense.get("crystal_hp",0),defense.get("crystal_max_hp",0)]
+		crystal_bar.max_value = defense.get("crystal_max_hp",1)
+		crystal_bar.value = defense.get("crystal_hp",0)
+		crystal_bar.modulate = Color("7fe7ef") if crystal_bar.value > crystal_bar.max_value*.3 else Color("ee6658")
 	if sim.mode == "campaign":
 		wave_label.text = "灰松夜路" if sim.map_id == "graypine_night" else "灰松渡口"
 		count_label.text = "击杀 %d · 医疗包 %d" % [sim.kills,p.get("medkits",0)]
@@ -192,6 +209,7 @@ func sync() -> void:
 	ammo_label.text = "∞  近战" if infinite else "%02d / ∞" % p.ammo[int(p.weapon)]
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
+	if sim.mode == "defense": controls_hint.text = "ESC 暂停 · R 换弹 · E 拉杆 · 安全区内按 1—0 换主武器"
 	if sim.mode == "campaign":
 		controls_hint.text = "1 主武器 · 2 副武器 · 3 斧 · 4 手雷 · 5 医疗包 · E 拾取/交互"
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
@@ -242,6 +260,12 @@ func sync() -> void:
 		if ui.portraits.has(key): item.portrait.texture = ui.portraits[key].get_texture()
 	rest_label.visible = sim.rest > 0
 	if rest_label.visible: rest_label.text = "整波清除 · 全员恢复   %.1f 秒后继续" % sim.rest
+	if sim.mode == "defense":
+		rest_label.visible = true
+		rest_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rest_label.add_theme_stylebox_override("normal",style(Color(.04,.055,.05,.8),8))
+		rest_label.text = str(defense.get("objective",""))+"\n"+str(p.get("hint",""))
+		if sim.rest > 0: rest_label.text += "\n下一波倒计时 %.1f 秒" % sim.rest
 	if sim.mode == "campaign":
 		rest_label.visible = true
 		rest_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

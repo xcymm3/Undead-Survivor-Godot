@@ -1,7 +1,15 @@
-# 灰松夜路
+# 地图与模式
 
-游戏仅保留灰松夜路（`graypine_night`）。旧存档中的地图选择自动回到夜路，菜单和房间不再提供地图切换，联机校验拒绝旧地图编号。
+## 断崖水晶防线（`graypine_defense`）
 
-场景入口为 `scenes/graypine_night.tscn`；布局与碰撞见 `scripts/night_layout.gd`、`scripts/night_world.gd`，导演见 `scripts/night_director.gd`。
+默认入口为十波水晶防守。僵尸从断崖对岸刷新，依次穿过吊桥、爬上缓坡并进入水晶前的开阔高地。玩家进入后可在水晶后方的绿色安全区用 `1—0` 任意更换主武器；只有在水晶旁按 `E` 拉下拉杆后，计时和第一波刷新才会开始。
 
-`npm run verify` 仅检验夜路单人、双人，包括内部输入整关、真实 ENet 双人、装备与移动规则、浏览器输入和软件截图。不再检验其他地图或三/四人，现有房间人数上限未改变。历史设计文档保留用于追溯。
+每个僵尸持续比较玩家和水晶的距离，攻击最近的有效目标。波次越高，敌人种类、数量、生命和伤害越强。水晶拥有固定 1500 点耐久，波间不恢复；水晶被摧毁或全队失去行动能力时失败，清除第十波时胜利。
+
+场景入口为 `scenes/graypine_defense.tscn`，布局与高度见 `scripts/defense_layout.gd`，程序化场景见 `scripts/defense_world.gd`，权威规则位于 `scripts/simulation.gd`。`tools/validate-defense.gd` 无窗口验证地图物理、拉杆门禁、安全区换装、最近目标选择、强度成长及胜负条件。
+
+## 灰松夜路（`graypine_night`）
+
+原紧凑战役继续保留，可从首页切换。场景入口为 `scenes/graypine_night.tscn`；布局与碰撞见 `scripts/night_layout.gd`、`scripts/night_world.gd`，导演见 `scripts/night_director.gd`。
+
+`npm run verify` 的核心配置同时运行水晶防守专项与软件浏览器真实输入，并保留夜路单人整关、真实 ENet 双人和弹道回归。水晶防守的多人整关、三/四人、原生 GPU 和真人节奏仍需单独验收。

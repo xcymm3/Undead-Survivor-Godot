@@ -147,8 +147,16 @@ func show_home() -> void:
 	map_panel.position = Vector2(86,120)
 	map_panel.add_theme_constant_override("separation",12)
 	menu.add_child(map_panel)
-	map_panel.add_child(label("灰松夜路",26,Color("fff7e8")))
+	map_panel.add_child(label("战场 · "+game.arena.definition.title,26,Color("fff7e8")))
 	map_panel.add_child(label(game.arena.definition.subtitle,16,Color("c8c5b8")))
+	var map_switches = HBoxContainer.new()
+	map_switches.add_theme_constant_override("separation",8)
+	map_panel.add_child(map_switches)
+	for map_id in Data.Maps.PLAYABLE:
+		var definition: Dictionary = Data.Maps.definition(map_id)
+		var map_button = button(map_switches,("● " if map_id == Data.settings.map_id else "")+definition.title,game.select_map.bind(map_id))
+		map_button.custom_minimum_size.y = 38
+		map_button.add_theme_font_size_override("font_size",15)
 	var title_block = VBoxContainer.new()
 	title_block.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	title_block.offset_left = 86
@@ -159,7 +167,7 @@ func show_home() -> void:
 	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
 	title.add_theme_constant_override("line_spacing",-12)
 	title_block.add_child(title)
-	title_block.add_child(label("穿过灰松夜路，抵达门前，坚守 30 秒后进入安全屋。" if Data.settings.map_id == "graypine_night" else "守住每一波，活到下一刻。",19,Color("d8dfce")))
+	title_block.add_child(label("拉下拉杆，守住水晶，击退逐渐增强的十波尸潮。" if Data.settings.map_id == "graypine_defense" else "穿过灰松夜路，抵达门前，坚守 30 秒后进入安全屋。",19,Color("d8dfce")))
 	var actions = VBoxContainer.new()
 	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	actions.offset_left = -450
@@ -167,7 +175,7 @@ func show_home() -> void:
 	actions.custom_minimum_size.x = 340
 	actions.add_theme_constant_override("separation",14)
 	menu.add_child(actions)
-	for item in [["单人模式",func(): game.start_solo("campaign")],["多人模式",show_multiplayer]]:
+	for item in [["单人防守" if Data.settings.map_id == "graypine_defense" else "单人模式",func(): game.start_solo(str(game.arena.definition.get("mode","campaign")))],["多人模式",show_multiplayer]]:
 		var option = button(actions,item[0],item[1])
 		option.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		option.custom_minimum_size.y = 76
@@ -395,6 +403,15 @@ func show_multiplayer() -> void:
 
 func show_result() -> void:
 	var sim = game.sim
+	if sim.mode == "defense":
+		var state: Dictionary = sim.defense_state()
+		var result = panel("水晶防守成功" if sim.won else "水晶防线失守","断崖水晶防线",640)
+		current = "result"
+		result.add_child(label("完成 %d / 10 波 · %d 击杀 · %s" % [sim.cleared,sim.kills,time_text(sim.elapsed)],32))
+		paragraph(result,"十波尸潮已被全部击退。" if sim.won else ("水晶被摧毁。" if sim.cause == "crystal" else "守卫者已失去行动能力。")+" 水晶剩余 %d / %d。" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)])
+		if not Session.playing: button(result,"重新防守",func(): game.start_solo("defense"),true)
+		button(result,"返回主菜单",func(): game.return_home())
+		return
 	if sim.mode == "campaign":
 		var result = panel("抵达安全屋" if sim.won else "夜路行动失败","灰松夜路",640)
 		current = "result"

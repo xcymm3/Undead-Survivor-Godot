@@ -428,7 +428,7 @@ func run() -> void:
 	game.set_process(false)
 	game.set_physics_process(false)
 	var maps = load("res://scripts/map_catalog.gd")
-	check(maps.IDS == ["graypine_night"] and game.arena.map_id == "graypine_night","Night is the only registered and default map")
+	check(maps.IDS == ["graypine_defense","graypine_night"] and game.arena.map_id == "graypine_night","Defense and campaign maps are registered; automation keeps the campaign fixture")
 	for retired in ["outpost","dust","graypine_ferry"]: check(not maps.valid(retired),"Retired map rejected: "+retired)
 	check(not game.arena.obstacles.is_empty(),"Native scene retains navigation footprints")
 	var ray = game.arena.surface_hit(Vector3(0,5,9),Vector3(0,-2,9))

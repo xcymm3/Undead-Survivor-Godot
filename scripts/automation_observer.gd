@@ -42,6 +42,7 @@ func snapshot() -> Dictionary:
 	if game.sim:
 		result.mode = game.sim.mode
 		result.campaign = game.sim.campaign_state()
+		result.defense = game.sim.defense_state()
 		result.won = game.sim.won
 		result.elapsed = game.sim.elapsed
 		result.wave = game.sim.wave

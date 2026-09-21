@@ -8,9 +8,9 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-10"
+const PROTOCOL = "undead-survivor-godot-11"
 const PORT = 27777
-var map_id = "graypine_night"
+var map_id = "graypine_defense"
 var transport = ""
 var local_id = "solo"
 var host_id = ""
@@ -408,7 +408,16 @@ func valid_world(value) -> bool:
 	if not value is Dictionary or value.get("map_id") != map_id: return false
 	if not value is Dictionary or not value.has_all(["pawns","zombies","mode","elapsed","wave","cleared","spawned","kills","rest","failed","cause","culprit"]): return false
 	if not value.pawns is Dictionary or value.pawns.size() > 4 or not value.zombies is Array: return false
-	if value.mode not in ["survival","campaign"] or not value.get("won",false) is bool: return false
+	if value.mode not in ["survival","campaign","defense"] or not value.get("won",false) is bool: return false
+	if value.mode == "defense":
+		if map_id != "graypine_defense" or not value.get("defense") is Dictionary: return false
+		var defense_state: Dictionary = value.defense
+		if not defense_state.has_all(["started","crystal_hp","crystal_max_hp","wave","objective"]): return false
+		if not defense_state.started is bool or not defense_state.objective is String or defense_state.objective.length() > 160: return false
+		for key in ["crystal_hp","crystal_max_hp","wave"]:
+			if not (defense_state[key] is int or defense_state[key] is float) or not is_finite(defense_state[key]): return false
+		if defense_state.crystal_hp < 0 or defense_state.crystal_hp > defense_state.crystal_max_hp or defense_state.crystal_max_hp != Data.Maps.Defense.CRYSTAL_MAX_HP: return false
+		if defense_state.wave < 1 or defense_state.wave > Data.Maps.Defense.MAX_WAVES: return false
 	if value.mode == "campaign":
 		if map_id != "graypine_night" or not value.get("campaign") is Dictionary: return false
 		var campaign_state: Dictionary = value.campaign

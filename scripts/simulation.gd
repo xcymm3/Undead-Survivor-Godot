@@ -13,6 +13,8 @@ var events: Array = []
 var mode = "survival"
 var campaign
 var campaign_replica: Dictionary = {}
+var defense: Dictionary = {}
+var defense_replica: Dictionary = {}
 var won = false
 var elapsed = 0.0
 var wave = 1
@@ -83,16 +85,23 @@ func add_pawn(id: String, player_name: String, index: int) -> void:
 	for pawn in pawns.values(): available.erase(int(pawn.appearance[0]))
 	if available.is_empty(): available = range(Data.MODELS.size())
 	var model: int = available[random.randi_range(0,available.size()-1)]
-	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"damage_dir":Vector2.ZERO,"damage_rear":false,"damage_hint":0.0,"shove_cd":0.0,"shove_gap":0.0,"shove_window":0.0,"shove_count":0,"shoves":0,"shove_hits":0,"shove_anim":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0]}
+	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"damage_dir":Vector2.ZERO,"damage_rear":false,"damage_hint":0.0,"shove_cd":0.0,"shove_gap":0.0,"shove_window":0.0,"shove_count":0,"shoves":0,"shove_hits":0,"shove_anim":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0],"hint":""}
 
-	pawns[id].height = 0.0
+	pawns[id].height = Data.enemy_ground_height(pawns[id].pos,map_id)
 
-func start(_game_mode: String) -> void:
-	mode = "campaign"
+func start(game_mode: String) -> void:
+	mode = str(map_definition.get("mode",game_mode))
 	if mode == "campaign":
 		zombies.clear()
 		paths.clear()
 		campaign = preload("res://scripts/night_director.gd").new(self)
+	elif mode == "defense":
+		zombies.clear()
+		paths.clear()
+		roster.clear()
+		wave = 1
+		defense = {"started":false,"crystal_hp":Data.Maps.Defense.CRYSTAL_MAX_HP,"crystal_max_hp":Data.Maps.Defense.CRYSTAL_MAX_HP,"wave":1,"objective":"前往水晶旁拉下拉杆，准备第一波进攻"}
+		arena.sync_campaign(defense)
 	else: prepare_wave()
 
 func prepare_wave() -> void:
@@ -114,9 +123,13 @@ func weighted(weights: Array) -> int:
 
 func spawn(pos: Vector2, kind: String) -> void:
 	var def: Dictionary = Data.enemies[kind]
+	var health_scale: float = 1.0+(wave-1)*.12 if mode == "defense" else 1.0
+	var health: float = float(def.health)*health_scale
+	var armor: float = float(def.armor)*(1.0+(wave-1)*.06) if mode == "defense" else float(def.armor)
+	var body: float = maxf(1.0,float(def.health-def.armor)*health_scale)
 	var locomotion = RandomNumberGenerator.new()
 	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
-	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":float(def.health),"body":float(def.health-def.armor),"armor":float(def.armor),"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
+	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
 	if kind == "crawler": zombies[-1].chase_speed *= .85
 	if kind in ["normal","crawler","cone","bucket"]:
 		# Cosmetic RNG never advances encounter, movement or combat randomness.
@@ -159,10 +172,13 @@ func step(dt: float) -> void:
 			player_bodies.erase(id)
 	for id in melee_swings.keys():
 		if not pawns.has(id) or pawns[id].hp <= 0: melee_swings.erase(id)
-	if not campaign or campaign.state.departed: elapsed += dt
+	if (campaign and campaign.state.departed) or (mode == "defense" and defense.get("started",false)) or (not campaign and mode != "defense"): elapsed += dt
 	if campaign: campaign.equipment.before_movement(dt)
 	for p in pawns.values(): update_pawn(p,dt)
 	if campaign: campaign.equipment.step_projectiles(dt)
+	if mode == "defense":
+		update_defense_interactions()
+		if not defense.get("started",false): return
 	crowd_buckets.clear()
 	for z in zombies:
 		if z.hp <= 0: continue
@@ -180,11 +196,19 @@ func step(dt: float) -> void:
 		if z.hp <= 0:
 			z.down -= dt
 			continue
-		var target: Dictionary = living[0]
-		for p in living:
-			if z.pos.distance_squared_to(p.pos) < z.pos.distance_squared_to(target.pos): target = p
+		var targets: Array = living.duplicate()
+		if mode == "defense" and defense.get("crystal_hp",0) > 0: targets.append(crystal_target())
+		var target: Dictionary = targets[0]
+		for candidate in targets:
+			if z.pos.distance_squared_to(candidate.pos) < z.pos.distance_squared_to(target.pos): target = candidate
 		update_zombie(z,target,dt)
 	zombies = zombies.filter(func(z): return z.hp > 0 or z.down > 0)
+	if mode == "defense" and defense.get("crystal_hp",0) <= 0:
+		failed = true
+		cause = "crystal"
+		defense.objective = "水晶已被摧毁"
+		arena.sync_campaign(defense)
+		return
 	if pawns.values().all(func(p): return p.hp <= 0):
 		failed = true
 		if campaign:
@@ -202,17 +226,30 @@ func step(dt: float) -> void:
 			spawned = 0
 			credit = 0
 			prepare_wave()
+			if mode == "defense":
+				defense.wave = wave
+				defense.objective = "第 %d 波正在逼近" % wave
+				arena.sync_campaign(defense)
 		return
 	if roster.is_empty() and alive_count() == 0:
 		cleared = wave
-		rest = 3
+		if mode == "defense" and wave >= Data.Maps.Defense.MAX_WAVES:
+			won = true
+			defense.objective = "十波进攻已全部击退，水晶守卫成功"
+			arena.sync_campaign(defense)
+			return
+		rest = 6 if mode == "defense" else 3
+		if mode == "defense":
+			defense.objective = "第 %d 波已清除 · 下一波即将到来" % wave
+			arena.sync_campaign(defense)
 		for p in pawns.values():
 			if p.hp <= 0:
 				p.pos = safe_spawn()
-				p.height = 0.0
+				p.height = Data.enemy_ground_height(p.pos,map_id)
 				p.velocity = 0.0
-			p.hp = 100
-			p.protection = 0.0
+			if mode != "defense":
+				p.hp = 100
+				p.protection = 0.0
 		return
 	if roster.is_empty(): return
 	credit = minf(1,credit+dt*Data.wave_settings(wave).rate)
@@ -239,6 +276,49 @@ func safe_spawn() -> Vector2:
 
 func alive_count() -> int:
 	return zombies.filter(func(z): return z.hp > 0).size()
+
+func crystal_target() -> Dictionary:
+	return {"id":"crystal","pos":Data.Maps.Defense.CRYSTAL,"height":Data.Maps.Defense.height(Data.Maps.Defense.CRYSTAL),"hp":defense.get("crystal_hp",0),"is_crystal":true}
+
+func target_by_id(id: String) -> Dictionary:
+	if mode == "defense" and id == "crystal" and defense.get("crystal_hp",0) > 0: return crystal_target()
+	return pawns.get(id,{})
+
+func update_defense_interactions() -> void:
+	var changed = false
+	for p in pawns.values():
+		var safe: bool = Data.Maps.Defense.in_safe_zone(p.pos)
+		if not defense.get("started",false):
+			p.hint = "安全换装区：按 1—0 选择主武器" if safe else "前往水晶后方整备，随后在水晶旁按 E 拉下拉杆"
+			if p.pos.distance_to(Data.Maps.Defense.LEVER) <= 2.7:
+				p.hint = "按 E 拉下拉杆，开始第一波进攻"
+				if p.input.get("interact",false):
+					defense.started = true
+					defense.objective = "第 1 波正在逼近"
+					prepare_wave()
+					events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(p.pos.x,p.height+1,p.pos.y)})
+					changed = true
+		else:
+			p.hint = "安全换装区：按 1—0 更换主武器" if safe else "保护水晶；僵尸会攻击距离最近的目标"
+		p.input.interact = false
+	if changed: arena.sync_campaign(defense)
+
+func defense_enemy_damage(z: Dictionary) -> int:
+	var base: int = {"imp":8,"normal":12,"crawler":10,"cone":14,"bucket":16,"shield":18,"berserker":22,"giant":34,"football":28}.get(z.kind,12)
+	return roundi(base*(1.0+(wave-1)*.08))
+
+func damage_crystal(z: Dictionary, amount: int) -> bool:
+	if mode != "defense" or defense.get("crystal_hp",0) <= 0: return false
+	defense.crystal_hp = maxi(0,int(defense.crystal_hp)-amount)
+	defense.objective = "水晶遭到攻击 · 剩余 %d / %d" % [defense.crystal_hp,defense.crystal_max_hp]
+	defense.wave = wave
+	arena.sync_campaign(defense)
+	events.append({"kind":"crystal_hit","position":Vector3(Data.Maps.Defense.CRYSTAL.x,5.0,Data.Maps.Defense.CRYSTAL.y)})
+	if defense.crystal_hp <= 0: culprit = int(z.id)
+	return true
+
+func damage_target(target: Dictionary, z: Dictionary, amount: int) -> bool:
+	return damage_crystal(z,amount) if target.get("is_crystal",false) else damage_pawn(target,z,amount)
 
 func can_move(p: Dictionary, point: Vector2) -> bool:
 	if not map_definition.bounds.grow(-.95).has_point(point): return false
@@ -316,6 +396,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	update_melee_swing(p,w)
 	var requested: int = input.get("weapon",p.weapon)
 	if campaign: requested = campaign.choose_weapon(p,requested)
+	if mode == "defense" and not Data.Maps.Defense.in_safe_zone(p.pos): requested = p.weapon
 	if requested != p.requested:
 		p.requested = requested
 		p.reload_queued = false
@@ -541,9 +622,12 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		if is_water(next):
 			cancel_charge(z)
 			return
-		for p in pawns.values():
-			if p.hp > 0 and z.pos.distance_to(p.pos) <= contact and p.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
-				if damage_pawn(p,z,CHARGE_DAMAGE): charge_knockback(p,z.charge_direction)
+		var charge_targets: Array = pawns.values()
+		if mode == "defense" and defense.get("crystal_hp",0) > 0: charge_targets.append(crystal_target())
+		for victim in charge_targets:
+			if victim.hp > 0 and z.pos.distance_to(victim.pos) <= contact and victim.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
+				var amount: int = maxi(CHARGE_DAMAGE,defense_enemy_damage(z)) if mode == "defense" else CHARGE_DAMAGE
+				if damage_target(victim,z,amount) and not victim.get("is_crystal",false): charge_knockback(victim,z.charge_direction)
 				z.state = "ready"
 				z.charge_cooldown = 3.2
 				break
@@ -555,7 +639,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			z.target = target.id
 			z.heading = atan2(delta.x,delta.y)
 			events.append({"kind":"enemy_windup","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
-		var locked_target: Dictionary = pawns.get(z.target,{})
+		var locked_target: Dictionary = target_by_id(z.target)
 		var windup_motion: float = minf(dt,maxf(0,profile.x-z.attack_time))
 		if windup_motion > 0 and not locked_target.is_empty() and locked_target.hp > 0:
 			advance_attack(z,locked_target,speed,windup_motion,contact)
@@ -563,13 +647,16 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		z.attack_time += dt
 		if before < profile.x and z.attack_time >= profile.x:
 			var hit = false
-			for victim in pawns.values():
+			var victims: Array = pawns.values()
+			if mode == "defense" and defense.get("crystal_hp",0) > 0: victims.append(crystal_target())
+			for victim in victims:
 				if z.kind != "giant" and victim.id != z.target: continue
 				var offset: Vector2 = victim.pos-z.pos
 				if victim.hp <= 0 or offset.length() > (2.4 if z.kind == "giant" else contact+.15): continue
 				if Vector2(sin(z.heading),cos(z.heading)).dot(offset.normalized()) < .4: continue
 				if not arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(victim.pos.x,victim.height+1.1,victim.pos.y)).is_empty(): continue
-				hit = damage_pawn(victim,z) or hit
+				var amount: int = defense_enemy_damage(z) if mode == "defense" else 10
+				hit = damage_target(victim,z,amount) or hit
 			events.append({"kind":"enemy_impact" if hit else "enemy_miss","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
 		if z.attack_time >= profile.y: z.attack_time = 0.0
 		return
@@ -859,13 +946,14 @@ func snapshot() -> Dictionary:
 	for id in pawns:
 		players[id] = pawns[id].duplicate(true)
 		players[id].erase("input")
-	return {"campaign":campaign_state(),"won":won,"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":Data.wave_settings(wave).count,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
+	return {"campaign":campaign_state(),"defense":defense_state(),"won":won,"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":Data.wave_settings(wave).count,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
 
 func apply_snapshot(state: Dictionary) -> void:
 	pawns = state.pawns
 	won = state.get("won",false)
 	campaign_replica = state.get("campaign",{})
-	arena.sync_campaign(campaign_replica)
+	defense_replica = state.get("defense",{})
+	arena.sync_campaign(defense_replica if state.get("mode") == "defense" else campaign_replica)
 	zombies = state.zombies
 	mode = state.mode
 	elapsed = state.elapsed
@@ -886,3 +974,6 @@ func is_wading(p: Vector2, height: float) -> bool:
 
 func campaign_state() -> Dictionary:
 	return campaign.snapshot() if campaign else campaign_replica
+
+func defense_state() -> Dictionary:
+	return defense.duplicate(true) if mode == "defense" and not defense.is_empty() else defense_replica
