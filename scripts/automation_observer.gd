@@ -40,6 +40,8 @@ func snapshot() -> Dictionary:
 		result.campaign = game.sim.campaign_state()
 		result.defense = game.sim.defense_state()
 		result.won = game.sim.won
+		result.failed = game.sim.failed
+		result.cause = game.sim.cause
 		result.elapsed = game.sim.elapsed
 		result.wave = game.sim.wave
 		result.cleared = game.sim.cleared
@@ -53,7 +55,7 @@ func snapshot() -> Dictionary:
 		if not p.is_empty():
 			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "wading":p.get("wading",false), "hp": p.hp,
 				"crouch": p.get("crouch",0.0), "eye_height": preload("res://scripts/player_body.gd").eye_height(p), "slot":p.get("slot",0), "primary":p.get("primary",0), "secondary":p.get("secondary",2), "grenades":p.get("grenades",0), "healing":p.get("healing",""), "heal_time":p.get("heal_time",0.0), "weapon": p.weapon, "ammo": p.ammo, "shots": p.shots, "hits": p.hits,
-				"shove_cd":p.get("shove_cd",0.0),"shove_gap":p.get("shove_gap",0.0),"shove_count":p.get("shove_count",0),"shove_anim":p.get("shove_anim",0.0),"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
+				"combat_timer":p.get("combat_timer",0.0),"regen_credit":p.get("regen_credit",0.0),"shove_cd":p.get("shove_cd",0.0),"shove_gap":p.get("shove_gap",0.0),"shove_count":p.get("shove_count",0),"shove_anim":p.get("shove_anim",0.0),"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
 	return result
 
 func native_smoke() -> void:

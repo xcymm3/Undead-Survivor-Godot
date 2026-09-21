@@ -61,6 +61,10 @@ func make_crystal() -> void:
 func make_bridge() -> void:
 	# 连续碰撞板负责角色行走；独立木板、桥塔和垂索塑造吊桥轮廓。
 	block("BridgeCollision",Vector3(0,-.22,-45),Vector3(8,.44,34),"493a2d",true,false)
+	# Continuous waist-high rails are physical, unlike the decorative suspension
+	# cables, and keep both walking and knockback safely on the bridge deck.
+	for x in [-3.86,3.86]:
+		block("BridgeGuardRail",Vector3(x,.72,-45),Vector3(.28,1.45,34),"4b5049",true,false)
 	for z in range(-61,-27,2):
 		block("BridgePlank",Vector3(0,.045,z),Vector3(7.7,.16,1.7),"76583b",false)
 	for z in [-62,-28]:
@@ -80,6 +84,10 @@ func make_bridge() -> void:
 		beam_between("Handrail",Vector3(x,1.15,-62),Vector3(x,1.15,-28),.07,"70634f")
 
 func make_ramp() -> void:
+	# Low shelves catch a sideways step at the ramp. Their upper edge remains
+	# three metres below the plateau, leaving the central ramp as the only route.
+	block("RampShelfLeft",Vector3(-18.75,-.22,-19),Vector3(26.5,.44,18),"475048",true,false)
+	block("RampShelfRight",Vector3(18.75,-.22,-19),Vector3(26.5,.44,18),"475048",true,false)
 	var angle = -atan2(3.0,18.0)
 	var ramp = block("StoneRamp",Vector3(0,1.3,-19),Vector3(10,.5,18.25),"59605b",true,false)
 	ramp.rotation.x = angle
@@ -109,9 +117,15 @@ func _ready() -> void:
 	for z in range(-8,47,9):
 		block("RoadChevronLeft",Vector3(-3.2,3.09,z),Vector3(2.2,.06,.22),"d1b873",false).rotation.y = -.42
 		block("RoadChevronRight",Vector3(3.2,3.09,z),Vector3(2.2,.06,.22),"d1b873",false).rotation.y = .42
-	# 二维寻路必须把深谷视为不可走区域，物理层仍允许看见低处河床。
+	# 二维寻路必须把深谷视为不可走区域。缓坡侧平台是玩家的防坠
+	# 落脚点，但也设为导航禁区，保证所有敌人仍只能经中央缓坡靠近水晶。
 	obstacles.append({"minX":-32.0,"maxX":-4.0,"minZ":-62.0,"maxZ":-28.0})
 	obstacles.append({"minX":4.0,"maxX":32.0,"minZ":-62.0,"maxZ":-28.0})
+	obstacles.append({"minX":-32.0,"maxX":-5.5,"minZ":-28.0,"maxZ":-10.0})
+	obstacles.append({"minX":5.5,"maxX":32.0,"minZ":-28.0,"maxZ":-10.0})
+	# The rear loadout zone is a true enemy-safe fallback. A retreating player
+	# crosses this line, making the crystal both closer and reachable to the horde.
+	obstacles.append({"minX":-32.0,"maxX":32.0,"minZ":52.0,"maxZ":72.0})
 	make_bridge()
 	make_ramp()
 	make_safe_zone()

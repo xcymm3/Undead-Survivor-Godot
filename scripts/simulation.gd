@@ -51,6 +51,13 @@ const ATTACK_TURN_SPEED = 2.09439510239 # 120 degrees per second
 const IMP_SPEED_MULTIPLIER = 1.296 # Existing 1.08 speed increased by 20 percent.
 const BERSERKER_RAGE_SPEED = 7.2
 const FOOTBALL_CHARGE_SPEED = 12.0
+const DEFENSE_REGEN_DELAY = 5.0
+const DEFENSE_REGEN_RATE = 1.0
+const DEFENSE_FALL_HEIGHT = -3.5
+const DEFENSE_FALL_DAMAGE = 10
+const DEFENSE_HEALTH_FACTOR = {"normal":1.0,"cone":.75,"bucket":.7,"imp":.55,"shield":.35,"berserker":.28,"giant":.16,"football":.12}
+const DEFENSE_CRYSTAL_DAMAGE_FACTOR = .05
+const DEFENSE_PLAYER_DAMAGE_FACTOR = .25
 
 func _init(world = null) -> void:
 	arena = world
@@ -85,7 +92,7 @@ func add_pawn(id: String, player_name: String, index: int) -> void:
 	for pawn in pawns.values(): available.erase(int(pawn.appearance[0]))
 	if available.is_empty(): available = range(Data.MODELS.size())
 	var model: int = available[random.randi_range(0,available.size()-1)]
-	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"damage_dir":Vector2.ZERO,"damage_rear":false,"damage_hint":0.0,"shove_cd":0.0,"shove_gap":0.0,"shove_window":0.0,"shove_count":0,"shoves":0,"shove_hits":0,"shove_anim":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0],"hint":""}
+	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"damage_dir":Vector2.ZERO,"damage_rear":false,"damage_hint":0.0,"combat_timer":0.0,"regen_credit":0.0,"shove_cd":0.0,"shove_gap":0.0,"shove_window":0.0,"shove_count":0,"shoves":0,"shove_hits":0,"shove_anim":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0],"hint":""}
 
 	pawns[id].height = Data.enemy_ground_height(pawns[id].pos,map_id)
 
@@ -124,9 +131,10 @@ func weighted(weights: Array) -> int:
 func spawn(pos: Vector2, kind: String) -> void:
 	var def: Dictionary = Data.enemies[kind]
 	var health_scale: float = 1.0+(wave-1)*.12 if mode == "defense" else 1.0
-	var health: float = float(def.health)*health_scale
-	var armor: float = float(def.armor)*(1.0+(wave-1)*.06) if mode == "defense" else float(def.armor)
-	var body: float = maxf(1.0,float(def.health-def.armor)*health_scale)
+	var defense_factor: float = float(DEFENSE_HEALTH_FACTOR.get(kind,1.0)) if mode == "defense" else 1.0
+	var armor: float = float(def.armor)*(1.0+(wave-1)*.06)*defense_factor if mode == "defense" else float(def.armor)
+	var body: float = maxf(1.0,float(def.health-def.armor)*health_scale*defense_factor)
+	var health: float = body+armor
 	var locomotion = RandomNumberGenerator.new()
 	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
 	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
@@ -196,11 +204,7 @@ func step(dt: float) -> void:
 		if z.hp <= 0:
 			z.down -= dt
 			continue
-		var targets: Array = living.duplicate()
-		if mode == "defense" and defense.get("crystal_hp",0) > 0: targets.append(crystal_target())
-		var target: Dictionary = targets[0]
-		for candidate in targets:
-			if z.pos.distance_squared_to(candidate.pos) < z.pos.distance_squared_to(target.pos): target = candidate
+		var target: Dictionary = choose_zombie_target(z,living)
 		update_zombie(z,target,dt)
 	zombies = zombies.filter(func(z): return z.hp > 0 or z.down > 0)
 	if mode == "defense" and defense.get("crystal_hp",0) <= 0:
@@ -280,6 +284,18 @@ func alive_count() -> int:
 func crystal_target() -> Dictionary:
 	return {"id":"crystal","pos":Data.Maps.Defense.CRYSTAL,"height":Data.Maps.Defense.height(Data.Maps.Defense.CRYSTAL),"hp":defense.get("crystal_hp",0),"is_crystal":true}
 
+func choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
+	# Imps are dedicated crystal runners in defense mode and never acquire a
+	# player, even when one body-blocks them at point-blank range.
+	if mode == "defense" and z.kind == "imp" and defense.get("crystal_hp",0) > 0:
+		return crystal_target()
+	var targets: Array = living.duplicate()
+	if mode == "defense" and defense.get("crystal_hp",0) > 0: targets.append(crystal_target())
+	var target: Dictionary = targets[0]
+	for candidate in targets:
+		if z.pos.distance_squared_to(candidate.pos) < z.pos.distance_squared_to(target.pos): target = candidate
+	return target
+
 func target_by_id(id: String) -> Dictionary:
 	if mode == "defense" and id == "crystal" and defense.get("crystal_hp",0) > 0: return crystal_target()
 	return pawns.get(id,{})
@@ -318,7 +334,9 @@ func damage_crystal(z: Dictionary, amount: int) -> bool:
 	return true
 
 func damage_target(target: Dictionary, z: Dictionary, amount: int) -> bool:
-	return damage_crystal(z,amount) if target.get("is_crystal",false) else damage_pawn(target,z,amount)
+	if target.get("is_crystal",false):
+		return damage_crystal(z,maxi(1,roundi(amount*DEFENSE_CRYSTAL_DAMAGE_FACTOR)))
+	return damage_pawn(target,z,maxi(1,roundi(amount*DEFENSE_PLAYER_DAMAGE_FACTOR))) if mode == "defense" else damage_pawn(target,z,amount)
 
 func can_move(p: Dictionary, point: Vector2) -> bool:
 	if not map_definition.bounds.grow(-.95).has_point(point): return false
@@ -372,12 +390,53 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 			next = horizontal if can_move(p,horizontal) else vertical if can_move(p,vertical) else p.pos
 		body.advance((next-p.pos)/step_time,step_time)
 		body.sync_to(p)
+	if mode == "defense" and p.height < DEFENSE_FALL_HEIGHT:
+		recover_defense_fall(p,body)
 	p.wading = body.grounded and is_wading(p.pos,p.height)
 	p.input.jump = false
 	if input.get("shove",false): try_shove(p)
 	p.input.shove = false
 	update_arsenal(p,input,dt)
+	update_defense_regen(p,dt)
 	if campaign: p.reserve = p.reserves[p.primary]
+
+func recover_defense_fall(p: Dictionary, body) -> void:
+	var return_position: Vector2 = Data.Maps.Defense.FALL_RETURN
+	p.pos = return_position
+	p.height = Data.Maps.Defense.height(return_position)
+	p.velocity = 0.0
+	p.air = Vector2.ZERO
+	body.position = Vector3(return_position.x,p.height,return_position.y)
+	body.velocity = Vector3.ZERO
+	body.grounded = false
+	p.hp = maxi(0,p.hp-DEFENSE_FALL_DAMAGE)
+	p.protection = .65
+	p.damage_dir = Vector2.ZERO
+	p.damage_rear = false
+	p.damage_hint = 1.8
+	p.combat_timer = DEFENSE_REGEN_DELAY
+	p.regen_credit = 0.0
+	events.append({"kind":"hurt","player":p.id,"rear":false})
+	if p.hp == 0:
+		cause = "fall"
+		culprit = -1
+
+func update_defense_regen(p: Dictionary, dt: float) -> void:
+	if mode != "defense" or p.hp <= 0:
+		return
+	var cooldown: float = float(p.get("combat_timer",0.0))
+	var healing_time: float = dt
+	if cooldown > 0:
+		healing_time = maxf(0,dt-cooldown)
+		p.combat_timer = maxf(0,cooldown-dt)
+	if p.hp >= 100 or healing_time <= 0:
+		if p.hp >= 100: p.regen_credit = 0.0
+		return
+	p.regen_credit = float(p.get("regen_credit",0.0))+healing_time*DEFENSE_REGEN_RATE
+	var healed: int = floori(p.regen_credit)
+	if healed <= 0: return
+	p.hp = mini(100,p.hp+healed)
+	p.regen_credit -= healed
 
 func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	if campaign and (p.slot >= 4 or not p.healing.is_empty() or p.being_healed):
@@ -465,6 +524,9 @@ func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
 	p.hp = maxi(0,p.hp-amount)
 	# Give the rear-hit cue time to be actionable under overlapping melee attacks.
 	p.protection = .65
+	if mode == "defense":
+		p.combat_timer = DEFENSE_REGEN_DELAY
+		p.regen_credit = 0.0
 	if campaign: campaign.damage(p,z,applied)
 	p.damage_dir = (z.pos-p.pos).normalized()
 	p.damage_rear = Vector2(-sin(p.yaw),-cos(p.yaw)).dot(p.damage_dir) < -.3
@@ -840,6 +902,9 @@ func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 	if progress >= MELEE_END: melee_swings.erase(p.id)
 
 func fire(p: Dictionary, w: Dictionary) -> void:
+	if mode == "defense":
+		p.combat_timer = DEFENSE_REGEN_DELAY
+		p.regen_credit = 0.0
 	if w.get("kind","gun") == "melee":
 		melee_swings[p.id] = {"weapon":p.weapon,"progress":0.0,"damaged":{},"landed":false}
 		var origin = Vector3(p.pos.x,p.height+PlayerBody.eye_height(p)-.5,p.pos.y)

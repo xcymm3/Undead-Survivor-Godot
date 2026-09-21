@@ -122,10 +122,10 @@ try {
         server.close(error => error ? reject(error) : resolve(port));
       });
     });
-    await run('browser-playthrough', process.execPath, ['node_modules/@playwright/test/cli.js', 'test'], 600_000);
+    await run('browser-playthrough', process.execPath, ['node_modules/@playwright/test/cli.js', 'test'], 900_000);
     const browser = JSON.parse(await readFile('artifacts/browser-results.json', 'utf8'));
-    if (browser.stats.unexpected || browser.stats.flaky || browser.stats.skipped || browser.errors?.length || browser.stats.expected !== 6) {
-      throw new Error('Browser suite must complete all six retained tests without failures, skips, or retries.');
+    if (browser.stats.unexpected || browser.stats.flaky || browser.stats.skipped || browser.errors?.length || browser.stats.expected !== 7) {
+      throw new Error('Browser suite must complete all seven retained tests without failures, skips, or retries.');
     }
   }
 

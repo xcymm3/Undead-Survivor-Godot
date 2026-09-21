@@ -16,6 +16,7 @@ func _process(dt: float) -> void:
 	var previous_target = target_id
 	target_id = -1
 	if not game.running or game.paused or game.finished or not game.sim: return
+	if game.sim.mode == "defense" and not game.sim.defense.get("started",false): return
 	var p: Dictionary = game.local_pawn()
 	if p.is_empty() or p.hp <= 0: return
 	var origin = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)

@@ -5,6 +5,7 @@ const BOUNDS = Rect2(-32,-78,64,150)
 const SPAWN = Vector2(0,61)
 const CRYSTAL = Vector2(0,46)
 const LEVER = Vector2(6,49)
+const FALL_RETURN = Vector2(-6,49)
 const SAFE_ZONE = Rect2(-13,52,26,17)
 const ENTRIES = [Vector2(-2,-71),Vector2(0,-73),Vector2(2,-70)]
 const BRIDGE = Rect2(-4,-62,8,34)
@@ -14,7 +15,10 @@ const CRYSTAL_MAX_HP = 1500
 
 static func height(p: Vector2) -> float:
 	if p.y <= RAMP.position.y: return 0.0
-	if p.y < RAMP.end.y: return 3.0*(p.y-RAMP.position.y)/RAMP.size.y
+	# The side shelves stay at the foot of the cliff. Only the central ramp reaches
+	# the raised crystal plateau, so stepping onto a shelf cannot bypass the lane.
+	if p.y < RAMP.end.y:
+		return 3.0*(p.y-RAMP.position.y)/RAMP.size.y if p.x >= RAMP.position.x and p.x <= RAMP.end.x else 0.0
 	return 3.0
 
 static func in_safe_zone(p: Vector2) -> bool:
