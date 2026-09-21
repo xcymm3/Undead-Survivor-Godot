@@ -1,6 +1,6 @@
 extends RefCounted
-## Crystal Defense spends one exact threat-point budget per wave. Enemy stats
-## remain fixed; later waves are harder only because this budget grows.
+## Crystal Defense spends one exact ordinary-enemy budget per wave. Authored
+## football bosses are added afterward and never consume this budget.
 const COST = {
 	"normal":1,
 	"crawler":1,
@@ -35,6 +35,12 @@ static func points(result: Array) -> int:
 	for kind in result: total += int(COST.get(kind,0))
 	return total
 
+static func budget_points(result: Array) -> int:
+	var total = 0
+	for kind in result:
+		if kind != "football": total += int(COST.get(kind,0))
+	return total
+
 static func pick(pool: Array, table: Dictionary, random: RandomNumberGenerator) -> String:
 	var total = 0.0
 	for kind in pool: total += float(table[kind])
@@ -53,7 +59,7 @@ static func shuffle(result: Array, random: RandomNumberGenerator) -> void:
 
 static func roster(wave: int, party_size: int, random: RandomNumberGenerator) -> Array:
 	var required_footballs := footballs(wave)
-	var remaining := budget(wave,party_size)-required_footballs*COST.football
+	var remaining := budget(wave,party_size)
 	var table := weights(wave)
 	var result: Array = []
 	while remaining > 0:

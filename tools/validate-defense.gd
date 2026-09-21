@@ -140,7 +140,7 @@ func run() -> void:
 	var exact_sample_budgets = true
 	for sample in 200:
 		sim.prepare_wave()
-		exact_sample_budgets = exact_sample_budgets and population.points(sim.roster) == population.budget(1,1)
+		exact_sample_budgets = exact_sample_budgets and population.budget_points(sim.roster) == population.budget(1,1)
 		for kind in sim.roster:
 			if kind in ["normal","crawler"]: normal_family += 1
 			if kind == "crawler": crawlers += 1
@@ -152,10 +152,13 @@ func run() -> void:
 	for current_wave in range(1,11):
 		sim.wave = current_wave
 		sim.prepare_wave()
-		exact_wave_budgets = exact_wave_budgets and population.points(sim.roster) == population.budget(current_wave,1)
+		exact_wave_budgets = exact_wave_budgets and population.budget_points(sim.roster) == population.budget(current_wave,1)
 		exact_football_counts = exact_football_counts and sim.roster.count("football") == population.footballs(current_wave)
 	check(exact_wave_budgets,"All ten waves spend their exact point budgets")
 	check(exact_football_counts,"Waves seven and eight have one football; waves nine and ten have two")
+	sim.wave = 10
+	sim.prepare_wave()
+	check(population.points(sim.roster) == population.budget(10,1)+population.footballs(10)*population.COST.football,"Authored football zombies are added without consuming the ordinary-enemy budget")
 	var solo_budget: int = population.budget(10,1)
 	check(population.budget(10,2) > solo_budget and population.budget(10,4) > population.budget(10,2),"Co-op raises only the wave point budget")
 
