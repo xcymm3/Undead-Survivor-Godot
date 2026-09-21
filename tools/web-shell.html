@@ -25,9 +25,6 @@
     const engine = new Engine($GODOT_CONFIG);
     const qaArgs = ['--', '--automation', '--silent'];
     if (new URLSearchParams(location.search).get('autoaim') === '1') qaArgs.push('--qa-autoaim');
-    if (new URLSearchParams(location.search).get('poses') === '1') qaArgs.push('--qa-poses');
-    if (new URLSearchParams(location.search).get('campaignGallery') === '1') qaArgs.push('--qa-campaign-gallery');
-    if (new URLSearchParams(location.search).get('nightGallery') === '1') qaArgs.push('--qa-campaign-gallery', '--qa-night-gallery');
     if (new URLSearchParams(location.search).get('defenseOverview') === '1') qaArgs.push('--qa-defense-overview');
     engine.startGame({canvas: document.getElementById('canvas'), args: qaArgs,
       onPrintError: (...args) => console.error(...args)

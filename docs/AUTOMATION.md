@@ -1,91 +1,41 @@
-# 自动修改与验收流程
+# 自动测试与打包
 
-仓库：https://github.com/xcymm3/Undead-Survivor-Godot
+## 日常开发
 
-## 每次修改
-
-1. AI 根据需求修改代码，补充相关规则或浏览器回归场景。
-2. 运行 `npm run verify` 核心回归：准备固定引擎和 Web 模板、导入、原生组件、夜路单人整关、弹道、双人 ENet、导出 Web、四项无界面 Chromium 真实输入。
-3. 查看 `artifacts/acceptance.md` 与浏览器截图、日志、trace。任何失败都修复重跑；报告记录源码 SHA-256，修改源码后旧报告失效。
-4. 确认报告后运行 `node tools/automation.mjs --check-report`，只提交本次相关文件并推送。当前会话用户已授权提交推送；如后续明确要求人工确认，则在推送前等待确认。
-5. GitHub Actions 对 main 推送、PR、版本标签或手动触发重新验收，通过后导出 Windows、运行成品 EXE 的无窗口冒烟检查、打包 ZIP，上传构建产物。
-
-本流程由当前 AI 会话执行修改与修复，Actions 负责确定性验证和打包；没有配置可自行接受自然语言需求或调用付费模型的云端 AI 服务。
-
-## 首次准备（Windows / Node.js 22 / PowerShell 7）
+日常修改默认只运行：
 
 ```powershell
-npm ci
-npx playwright install chromium --only-shell
 npm run verify
 ```
 
-下载地址和校验值锁定在 `tools/setup-runtime.ps1` 与 `tools/setup-web-templates.ps1`，首次需下载较大的官方模板包。后续使用本机缓存；Actions 缓存所需引擎与 Web 模板。Node 依赖由 package-lock.json 锁定。
+基础检查包含版本一致性、Godot 资源导入和原生组件断言。根据改动范围，可额外运行一个专项：
 
-完整流程显式使用 `pwsh.exe`，避免从 PowerShell 7 启动旧版 Windows PowerShell 时继承不兼容的模块搜索路径；GitHub 的 windows-2022 环境自带 PowerShell 7。
+```powershell
+./tools/validate-headless.ps1 -Mode Defense
+./tools/validate-headless.ps1 -Mode Night
+./tools/validate-headless.ps1 -Mode SpreadBallistics
+```
 
-本机也可完整打包，仍不打开可见窗口：
+提交前执行 `node tools/automation.mjs --check-report`，确认报告与当前源码摘要一致。基础检查通过只说明所列快速项目通过，不代表整关、联网、浏览器、视觉或发布验收通过。
+
+## 全量测试
+
+只有用户明确要求验收或全量测试时运行：
+
+```powershell
+npm run verify:full
+```
+
+全量测试在基础检查之外运行灰松夜路整关、保卫水晶专项、弹道、ENet 双人、Web 导出，以及保留的浏览器真实输入与地图斜俯视检查。
+
+## Windows EXE
+
+准备导出或打包 EXE 时运行：
 
 ```powershell
 npm run verify:release
 ```
 
-按显式文件清单提交的示例（先根据本次改动填写文件）：
+发布命令会自动先执行全量测试，再进行 Windows 导出、成品 EXE 无窗口冒烟、单文件隔离检查和 ZIP 打包，不需要额外的 release-full 命令。GitHub Actions 也使用这条路径。
 
-```powershell
-./tools/submit.ps1 -Message 'fix: 修复换弹期间的武器切换' -Files scripts/simulation.gd,tools/validate-native-components.gd
-```
-
-## 浏览器实际验证什么
-
-- 菜单、移动、蹲起、跳跃、暂停/继续、返回主菜单和重新开局。
-- 两次 E 拆闩开门、实际穿过门口、装备栏切换及空道具栏拦截。
-- 中键开镜、右键推击、连续推击冷却与恢复。
-- 左轮射击、取消换弹及完整换弹；检查弹药和真实输入后的状态。
-- 保存真实 WebGL 渲染截图，检查不是空白画面；保存浏览器错误、交互 trace 和只读游戏状态。
-- 鼠标锁和全屏 API 被拒绝并计数：即使调用未成功，也使验收失败。测试不得使用可见浏览器、`--headed` 或用户现有浏览器会话。
-
-`scripts/automation_observer.gd` 仅在 `--automation` 启用时发布只读状态，没有向网页提供传送、修改血量或代替输入的接口。自动化模式不读取或写入玩家存档，静音，不启用鼠标锁/全屏；鼠标移动经同一灵敏度与视角计算路径处理。
-
-Web QA 是测试导出，使用同一场景、规则、资源和输入代码。其专用 HTML 传入自动化参数并禁用桌面干扰操作。Windows 普通启动继续使用正常玩家模式。
-
-## 核心与完整回归
-
-按用户2026-09-18要求，默认发布目标是缓存就绪时10分钟内。保留原生组件全部断言、夜路单人关卡、弹道规则、真实ENet双人整关和上述四项浏览器真实输入；发布继续检查导出EXE、独立单文件启动及ZIP。没有降低这些项目的断言，也没有用跳过或重试筛选结果。首次下载、机器负载、排队及上传耗时不能保证固定上限，报告记录实际总秒数。
-
-耗时的常规单/双人额外平衡样本、霰弹整关专项、十武器20样本、指定武器/散布实战与完整软件截图矩阵移入可选完整回归。文件全部保留：`npm run verify:full` 或 `npm run verify:release:full`；Actions手动运行时勾选 `full`。完整浏览器套件总时限30分钟，核心套件5分钟，单项超时与零重试规则不变。核心套件必须恰好完成4项，零失败、零跳过。
-
-`artifacts/acceptance.json` 和 Markdown 显示 `profile`（core/full）、`excluded` 和总耗时。源码SHA-256门禁保留；核心全绿只证明所列核心项目通过，不证明扩展比较或全矩阵视觉验收。涉及画面修改仍按 VISUAL_QA.md 进行必要的专项审查。
-
-## 下载与失败定位
-
-**玩家下载入口：[GitHub Releases](https://github.com/xcymm3/Undead-Survivor-Godot/releases/latest)。** main 分支推送或手动运行验收成功后，从已验收 ZIP 的 `VERSION` 读取版本，发布为 `v<版本号>`，例如 `v1.7.7`。`v*` 标签触发时必须与包内版本一致。PR 仅验证，不发布。发布任务只在前置验收成功后运行，校验下载包哈希，先上传草稿附件再公开，避免出现空 Release。
-
-版本以根目录 `VERSION` 为准。后续发布前运行 `node tools/version.mjs 1.7.8`（替换为本次版本），会同步 Godot 项目版本和 EXE 的文件/产品版本 `1.7.8.0`。流水线会检查三处一致，打包时也读取成品 EXE 版本核验。同一版本已公开时不会覆盖附件或移动标签；未升版本的提交继续测试和保存 Artifacts，但不重复发布。旧 `build-2` 保留为历史构建。
-
-Release 提供可直接启动的单文件 EXE、包含相同 EXE 的 ZIP、校验和与许可文件。只下载 `Undead-Survivor-Godot.exe` 即可，无需另外下载 DLL 或 appid。构建报告仍位于以下 Actions 入口。
-
-仓库 **Actions → Godot 自动验收与 Windows 打包 → 对应运行 → Artifacts**：
-
-- `acceptance-<commit>`：每阶段日志、验收 JSON/Markdown、浏览器截图、HTML 报告和 trace；失败也上传。
-- `Undead-Survivor-Godot-Windows-x64-<commit>`：仅全部成功后上传，含 ZIP 和 SHA256SUMS.txt。解压内层 ZIP 后运行 EXE，或直接使用 Release 的单文件 EXE。
-
-HTML 报告不会自动打开。需要查看时由用户主动打开；自动流程不启动报告网页。
-
-## 验收边界
-
-完整交付的测试计划必须包含[视觉质量验收](VISUAL_QA.md)：原生 GPU 场景矩阵、逐图审查、缺陷修复复查，以及真实浏览器流程截图审查。功能验收全绿仅表示自动化检查通过；未做视觉审查时必须单列“视觉质量待验收”，不能称为完整视觉验收通过。GPU 执行仍须符合本次用户授权与桌面保护约定。
-
-- 截图和规则检查不能证明与原版主观手感完全一致，仍保留人工体验验收。
-- Chromium 运行真实 WebGL，但采用软件渲染；Web 自动化模式将 3D 分辨率降至 50%、关闭阴影/MSAA、逻辑主循环限制 20 FPS、战斗画面每秒提交两次，物理仍为 60 Hz、玩法数值不变。窗口尺寸为 960×600，不代表玩家显卡帧率、高画质效果或流畅度验收。
-- Windows EXE 验证的是成品内资源、主场景、逻辑与输入路径；不启动 Windows 图形窗口，因此不声称验证了原生 GPU 显示效果。
-- ENet 测试不代表双账号 Steam 房间/P2P 验收；Steam 登录与跨电脑联网仍需专门环境。
-- 推送门禁由本地工具与工作约定执行；Actions 验证失败会阻止本次下载包产生。仓库分支保护并未由此自动开启。
-
-## 单文件 Windows 发布
-
-`tools/export-windows.ps1` 先把 GodotSteam 原生游戏导出到 `build/payload/`，然后调用 `tools/build-single-exe.ps1`，将游戏、Steam DLL、appid、版本和许可文件压缩嵌入无控制台启动器。最终下载文件为 `build/Undead-Survivor-Godot.exe`；后续 `npm run verify:release` 与 Actions 均自动生成这一格式。直接使用 Godot 导出预设只生成内部 payload，发布必须走上述脚本。
-
-启动器使用 Windows 10/11 自带的 .NET Framework 4.x，不需要额外下载 .NET Desktop Runtime。每次启动在 `%TEMP%/Undead-Survivor-Godot/<随机标识>/` 解压，设置该目录为游戏工作目录，原样转发参数、输出和退出码，等待游戏退出后清理。首次及后续启动均有解压耗时，需要临时磁盘空间；强制结束启动器或断电可能留下该次临时目录。多个实例使用不同目录，游戏存档仍使用原有 Godot `user://` 路径。Steam 功能保持原样，仍需 Steam 客户端和账号。
-
-发布验收除检查内部游戏 EXE，还会把最终 EXE 单独复制到含中文和空格的空目录，使用独立临时路径，同时运行两个严格 headless 冒烟实例，检查输出、退出码、下载目录没有额外依赖、退出后临时文件清理。ZIP 不再携带外置 Steam DLL；SHA256SUMS 同时记录 ZIP 和单文件 EXE 的哈希。
+所有本机检查必须保持无窗口，不捕获鼠标、不切换全屏、不操作用户已有的 Godot 或浏览器窗口。日志与报告写入忽略版本控制的 `artifacts/`；单项 PowerShell 检查只在失败时于根目录保留诊断日志。

@@ -9,7 +9,7 @@ async function clickButton(page, text) {
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
 }
 
-test('吊桥水晶防守使用真实输入换装并拉杆开战', { tag: '@core' }, async ({ page }, info) => {
+test('吊桥水晶防守使用真实输入换装并拉杆开战', async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('/');

@@ -10,14 +10,6 @@ func _ready() -> void:
 		queue_free()
 		return
 	if "--qa-native-smoke" in OS.get_cmdline_user_args(): call_deferred("native_smoke")
-	if "--qa-campaign-gallery" in OS.get_cmdline_user_args() and OS.has_feature("web"):
-		var gallery = preload("res://scripts/qa_campaign_gallery.gd").new()
-		gallery.game = game
-		add_child(gallery)
-	if "--qa-poses" in OS.get_cmdline_user_args() and OS.has_feature("web"):
-		var gallery = preload("res://scripts/qa_pose_gallery.gd").new()
-		gallery.game = game
-		add_child(gallery)
 	if "--qa-defense-overview" in OS.get_cmdline_user_args() and OS.has_feature("web"):
 		var overview = preload("res://scripts/qa_defense_overview.gd").new()
 		overview.game = game

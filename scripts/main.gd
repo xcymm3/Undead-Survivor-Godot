@@ -457,7 +457,7 @@ func return_home() -> void:
 	if ui: ui.show_home()
 
 func software_qa() -> bool:
-	return Data.automation and OS.has_feature("web") and "--capture" not in OS.get_cmdline_user_args() and "--qa-poses" not in OS.get_cmdline_user_args()
+	return Data.automation and OS.has_feature("web") and "--capture" not in OS.get_cmdline_user_args()
 
 func qa_draw(dt: float) -> void:
 	if not software_qa(): return

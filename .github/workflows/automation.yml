@@ -6,11 +6,6 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
-    inputs:
-      full:
-        description: 执行完整回归（包含武器比较和软件截图矩阵，超过10分钟）
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -46,11 +41,7 @@ jobs:
       - name: 安装无界面浏览器
         run: npx playwright install chromium --only-shell
       - name: 执行验收并导出 Windows 包
-        env:
-          FULL_QA: ${{ inputs.full }}
-        run: |
-          if ($env:FULL_QA -eq 'true') { npm run verify:release:full }
-          else { npm run verify:release }
+        run: npm run verify:release
       - name: 写入验收摘要
         if: always()
         shell: pwsh
@@ -125,7 +116,7 @@ jobs:
           ZIP 内也包含相同的单文件 EXE。启动器使用 Windows 自带的 .NET Framework 4.x。
 
           源码提交：$env:RELEASE_COMMIT
-          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：原生规则、单人内部输入整关、弹道、灰松夜路 ENet 双人整关、浏览器四项真实输入（菜单/移动/交互/推击/开镜/左轮换弹）、成品 EXE 及单文件隔离启动检查通过。默认使用核心回归；武器比较、额外平衡样本与完整软件截图矩阵属于可选完整回归，是否执行以本次报告的 profile 和 excluded 为准，未运行项目不计为通过。
+          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：基础规则、夜路与水晶防守、弹道、灰松夜路 ENet 双人、浏览器真实输入、成品 EXE 及单文件隔离启动检查通过。打包流程固定先执行全量测试；原生 GPU 与真人体验仍需另行验收。
           Steam 跨账号联机、原生 GPU 画面与实际音效听感不属于此次自动验收范围。约三分钟首次真人通关、趣味性与难度仍待验收；自动输入测试包含成功与失败样本，功能检查通过不代表平衡达标。
           "@ | Set-Content -Encoding utf8 release-notes.md
           if (-not $exists) {

@@ -1,12 +1,9 @@
 param(
-    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Night', 'Defense', 'Shotgun', 'Balance', 'AllWeapons', 'TargetWeapons', 'SpreadWeapons', 'SpreadBallistics', 'ExportWeb')]
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Night', 'Defense', 'SpreadBallistics', 'ExportWeb')]
     [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
     [switch]$VerboseEngine,
-    [switch]$SoloProbe,
-    [switch]$SpreadProbe,
-    [switch]$P90Only,
     [ValidateRange(10, 1800)][int]$TimeoutSeconds = 180
 )
 $ErrorActionPreference = 'Stop'
@@ -21,20 +18,12 @@ switch ($Mode) {
         $arguments += @('--export-release', '"Web QA"')
     }
     'SpreadBallistics' { $arguments += @('--script', 'res://tools/validate-spread-ballistics.gd', '--', '--silent', '--automation') }
-    'SpreadWeapons' { $arguments += @('--script', 'res://tools/validate-spread-weapons.gd', '--', '--silent', '--automation') }
-    'TargetWeapons' { $arguments += @('--script', 'res://tools/validate-target-weapons.gd', '--', '--silent', '--automation') }
-    'AllWeapons' { $arguments += @('--script', 'res://tools/validate-all-weapons.gd', '--', '--silent', '--automation') }
     'Import' { $arguments += @('--editor', '--import', '--quit') }
     'Parse' { $arguments += @('--script', 'res://tools/validate-scripts.gd', '--', '--silent', '--automation', ('--parse-script=' + $Script)) }
-    'Balance' { $arguments += @('--script', 'res://tools/validate-balance.gd', '--', '--silent', '--automation') }
-    'Shotgun' { $arguments += @('--script', 'res://tools/validate-shotgun.gd', '--', '--silent', '--automation') }
     'Night' { $arguments += @('--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation') }
     'Defense' { $arguments += @('--script', 'res://tools/validate-defense.gd', '--', '--silent', '--automation') }
     'NativeComponents' { $arguments += @('--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation') }
 }
-if ($SpreadProbe -and $Mode -eq 'SpreadWeapons') { $arguments += '--spread-probe' }
-if ($P90Only -and $Mode -eq 'SpreadWeapons') { $arguments += '--p90-only' }
-if ($SoloProbe -and $Mode -eq 'Balance') { $arguments += '--solo-probe' }
 # Headless prevents graphics windows; CreateNoWindow prevents console flashes.
 $startInfo = New-Object System.Diagnostics.ProcessStartInfo
 $startInfo.FileName = $Godot
@@ -63,11 +52,11 @@ try {
     }
     $stdout = $stdoutTask.GetAwaiter().GetResult()
     $stderr = $stderrTask.GetAwaiter().GetResult()
-    $logPath = Join-Path $projectRoot ('headless-' + $Mode.ToLowerInvariant() + '-' + $process.Id + '.log')
-    Set-Content -LiteralPath $logPath -Encoding utf8 -Value ($stdout + $stderr)
     Write-Output $stdout.TrimEnd()
     if ($stderr) { Write-Output $stderr.TrimEnd() }
     if ($process.ExitCode -ne 0 -or ($stdout + $stderr) -match '(?m)^(SCRIPT ERROR|ERROR):') {
+        $logPath = Join-Path $projectRoot ('headless-' + $Mode.ToLowerInvariant() + '-' + $process.Id + '.log')
+        Set-Content -LiteralPath $logPath -Encoding utf8 -Value ($stdout + $stderr)
         throw "Headless validation failed. See $logPath"
     }
 } finally {

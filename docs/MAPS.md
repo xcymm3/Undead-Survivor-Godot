@@ -12,4 +12,4 @@
 
 原紧凑战役继续保留，可从首页切换。场景入口为 `scenes/graypine_night.tscn`；布局与碰撞见 `scripts/night_layout.gd`、`scripts/night_world.gd`，导演见 `scripts/night_director.gd`。
 
-`npm run verify` 的核心配置同时运行水晶防守专项与软件浏览器真实输入，并保留夜路单人整关、真实 ENet 双人和弹道回归。水晶防守的多人整关、三/四人、原生 GPU 和真人节奏仍需单独验收。
+日常 `npm run verify` 只执行基础检查；修改本地图时可运行 `./tools/validate-headless.ps1 -Mode Defense`。用户明确要求全量验收或准备打包 EXE 时，才由全量流程运行水晶防守专项、夜路整关、ENet、Web 与浏览器检查。水晶防守的多人整关、原生 GPU 和真人节奏仍需单独验收。
