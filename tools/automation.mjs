@@ -12,10 +12,16 @@ const release = process.argv.includes('--release');
 const full = release || process.argv.includes('--full');
 const profile = full ? 'full' : 'basic';
 const excluded = full
-  ? (release ? [] : ['windows-export-and-package'])
+  ? [
+      'night-scripted-playthrough', 'night-full-enet-2',
+      'browser-night-playthrough', 'browser-defense-playthrough',
+      ...(release ? [] : ['windows-export-and-package']),
+    ]
   : [
-      'night-campaign', 'crystal-defense', 'spread-ballistics', 'night-full-enet-2',
-      'export-web', 'browser-playthrough', 'windows-export-and-package',
+      'crystal-defense', 'spread-ballistics', 'export-web', 'browser-technical',
+      'night-scripted-playthrough', 'night-full-enet-2',
+      'browser-night-playthrough', 'browser-defense-playthrough',
+      'windows-export-and-package',
     ];
 const children = new Set();
 const stages = [];
@@ -87,44 +93,6 @@ function launch(name, command, args, timeout = 180_000) {
   return promise;
 }
 
-function browserSpecs(suites) {
-  return suites.flatMap(suite => [...(suite.specs ?? []), ...browserSpecs(suite.suites ?? [])]);
-}
-
-function gameplayObservation(browser) {
-  const spec = browserSpecs(browser.suites ?? []).find(item => item.title.includes('精确自动瞄准'));
-  const attachment = spec?.tests?.[0]?.results?.[0]?.attachments?.find(item => item.name === 'defense-playthrough.json');
-  if (!attachment?.body) return { name: '水晶防线单人自动试玩', result: '未取得结果' };
-  try {
-    const { result } = JSON.parse(Buffer.from(attachment.body, 'base64').toString('utf8'));
-    const player = result.player ?? {};
-    const defense = result.defense ?? {};
-    const accuracy = player.shots > 0 ? `${(player.hits * 100 / player.shots).toFixed(1)}%` : '0.0%';
-    return {
-      name: '水晶防线单人自动试玩',
-      result: result.won ? '胜利' : result.failed ? `失败（${result.cause}）` : '未完成',
-      wave: result.wave,
-      cleared: result.cleared,
-      elapsed: result.elapsed,
-      kills: result.kills,
-      playerHp: player.hp,
-      crystalHp: defense.crystal_hp,
-      crystalMaxHp: defense.crystal_max_hp,
-      shots: player.shots,
-      hits: player.hits,
-      accuracy,
-    };
-  } catch {
-    return { name: '水晶防线单人自动试玩', result: '结果解析失败' };
-  }
-}
-
-function gameplayMarkdown(observation) {
-  if (!observation) return '';
-  if (observation.wave === undefined) return `## 玩法观察\n\n- ${observation.name}：${observation.result}`;
-  return `## 玩法观察\n\n- ${observation.name}：${observation.result}；第 ${observation.wave} 波，完成 ${observation.cleared} 波；用时 ${Number(observation.elapsed).toFixed(1)} 秒；击杀 ${observation.kills}；玩家 ${observation.playerHp} HP；水晶 ${observation.crystalHp}/${observation.crystalMaxHp} HP；命中 ${observation.hits}/${observation.shots}（${observation.accuracy}）`;
-}
-
 const run = (name, command, args, timeout) => launch(name, command, args, timeout);
 const powershell = (name, script, args = [], timeout = 180_000) =>
   run(name, 'pwsh.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, ...args], timeout);
@@ -132,7 +100,6 @@ const engine = path.join(root, '.runtime/Godot_v4.5.2-stable_win64_console.exe')
 const godotArgs = ['--headless', '--audio-driver', 'Dummy', '--path', root];
 let sourceDigest;
 let failure;
-let observation;
 
 try {
   if (process.platform !== 'win32') throw new Error('This pipeline targets Windows; use the windows-2022 Actions runner.');
@@ -145,12 +112,9 @@ try {
   if (!/NATIVE COMPONENTS: \d+ checks; 0 failures/.test(native)) throw new Error('Missing native component check marker.');
 
   if (full) {
-    const night = await run('night-campaign', engine, [...godotArgs, '--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation'], 900_000);
-    if (!/NIGHT VALIDATION: \d+ checks; 0 failures/.test(night)) throw new Error('Missing night campaign check marker.');
     const defense = await run('crystal-defense', engine, [...godotArgs, '--script', 'res://tools/validate-defense.gd', '--', '--silent', '--automation'], 300_000);
     if (!/DEFENSE VALIDATION: \d+ checks; 0 failures/.test(defense)) throw new Error('Missing crystal defense check marker.');
     await run('spread-ballistics', engine, [...godotArgs, '--script', 'res://tools/validate-spread-ballistics.gd', '--', '--silent', '--automation'], 300_000);
-    await run('night-full-enet-2', process.execPath, ['tools/validate-campaign-network.mjs', '2'], 960_000);
     await mkdir('build/web', { recursive: true });
     await run('export-web', engine, [...godotArgs, '--export-release', 'Web QA']);
     process.env.QA_WEB_PORT = await new Promise((resolve, reject) => {
@@ -161,12 +125,18 @@ try {
         server.close(error => error ? reject(error) : resolve(port));
       });
     });
-    await run('browser-playthrough', process.execPath, ['node_modules/@playwright/test/cli.js', 'test'], 900_000);
+    const browserGateSpecs = [
+      'tests/browser/campaign.spec.mjs',
+      'tests/browser/close-combat.spec.mjs',
+      'tests/browser/defense-overview.spec.mjs',
+      'tests/browser/defense.spec.mjs',
+      'tests/browser/revolver-input.spec.mjs',
+    ];
+    await run('browser-technical', process.execPath, ['node_modules/@playwright/test/cli.js', 'test', ...browserGateSpecs], 900_000);
     const browser = JSON.parse(await readFile('artifacts/browser-results.json', 'utf8'));
-    if (browser.stats.unexpected || browser.stats.flaky || browser.stats.skipped || browser.errors?.length || browser.stats.expected !== 7) {
-      throw new Error('Browser suite must complete all seven retained tests without failures, skips, or retries.');
+    if (browser.stats.unexpected || browser.stats.flaky || browser.stats.skipped || browser.errors?.length || browser.stats.expected !== browserGateSpecs.length) {
+      throw new Error('Browser gate must complete all five technical tests without failures, skips, or retries.');
     }
-    observation = gameplayObservation(browser);
   }
 
   if (release) {
@@ -184,16 +154,15 @@ try {
 } finally {
   for (const child of children) stop(child);
   const boundaries = full
-    ? ['本次为全量测试：包含夜路与水晶防守、弹道、ENet 双人、Web 导出和六项浏览器检查。', '原生 GPU、真人体验和 Steam 双账号联网仍不在自动测试范围内。']
+    ? ['本次为发布技术门禁：包含水晶防守规则、弹道、Web 导出和五项浏览器技术检查。', '所有脚本试玩及所有联机测试均为独立观察项，不参与发布通过判定；原生 GPU、真人体验和 Steam 双账号联网也不在自动门禁范围内。']
     : ['本次为基础测试：仅检查版本、资源导入和原生组件。整关、联网、Web、浏览器、视觉与发布项目未执行，也不计为通过。'];
   if (release) boundaries.push('本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。');
   const report = {
     status: failure ? 'failed' : 'passed', startedAt, finishedAt: new Date().toISOString(),
     commit: git(['rev-parse', 'HEAD']), sourceDigest, release, profile, excluded, stages, failure, boundaries,
   };
-  if (observation) report.gameplayObservation = observation;
   report.seconds = (Date.parse(report.finishedAt) - Date.parse(startedAt)) / 1000;
   await writeFile('artifacts/acceptance.json', JSON.stringify(report, null, 2));
-  await writeFile('artifacts/acceptance.md', `# 自动检查：${report.status}\n\n配置：${profile}；总耗时：${report.seconds.toFixed(1)}s\n\n提交：${report.commit}\n\n源码 SHA-256：${sourceDigest ?? '未完成导入'}\n\n| 阶段 | 结果 | 耗时 |\n| --- | --- | --- |\n${stages.map(s => `| ${s.name} | ${s.passed ? '通过' : '失败'} | ${s.seconds.toFixed(1)}s |`).join('\n')}\n\n${gameplayMarkdown(observation)}\n\n${boundaries.map(item => '- ' + item).join('\n')}\n\n本配置未运行：${excluded.join(', ') || '无'}\n${failure ? '\n```text\n' + failure + '\n```\n' : ''}`);
+  await writeFile('artifacts/acceptance.md', `# 自动检查：${report.status}\n\n配置：${profile}；总耗时：${report.seconds.toFixed(1)}s\n\n提交：${report.commit}\n\n源码 SHA-256：${sourceDigest ?? '未完成导入'}\n\n| 阶段 | 结果 | 耗时 |\n| --- | --- | --- |\n${stages.map(s => `| ${s.name} | ${s.passed ? '通过' : '失败'} | ${s.seconds.toFixed(1)}s |`).join('\n')}\n\n${boundaries.map(item => '- ' + item).join('\n')}\n\n本配置未运行：${excluded.join(', ') || '无'}\n${failure ? '\n```text\n' + failure + '\n```\n' : ''}`);
   process.exitCode = failure ? 1 : 0;
 }

@@ -7,7 +7,8 @@
     "test:web": "playwright test",
     "verify": "node tools/automation.mjs",
     "verify:release": "node tools/automation.mjs --release",
-    "verify:full": "node tools/automation.mjs --full"
+    "verify:full": "node tools/automation.mjs --full",
+    "verify:playtests": "node tools/playtests.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

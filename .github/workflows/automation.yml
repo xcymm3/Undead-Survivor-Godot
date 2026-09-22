@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   verify-and-package:
-    name: 测试 → 无界面试玩 → EXE 验收 → 打包
+    name: 技术门禁 → EXE 验收 → 打包
     runs-on: windows-2022
     timeout-minutes: 60
     steps:
@@ -116,8 +116,8 @@ jobs:
           ZIP 内也包含相同的单文件 EXE。启动器使用 Windows 自带的 .NET Framework 4.x。
 
           源码提交：$env:RELEASE_COMMIT
-          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：基础规则、夜路与水晶防守、弹道、灰松夜路 ENet 双人、浏览器真实输入、成品 EXE 及单文件隔离启动检查通过。打包流程固定先执行全量测试；原生 GPU 与真人体验仍需另行验收。
-          Steam 跨账号联机、原生 GPU 画面与实际音效听感不属于此次自动验收范围。约三分钟首次真人通关、趣味性与难度仍待验收；自动输入测试包含成功与失败样本，功能检查通过不代表平衡达标。
+          [自动验收记录](https://github.com/$env:GH_REPO/actions/runs/$env:RELEASE_RUN_ID)：基础规则、水晶防守专项、弹道、浏览器技术检查、成品 EXE 及单文件隔离启动检查通过。打包流程固定先执行发布技术门禁；脚本试玩和全部联机测试均作为独立观察项，不参与发布通过判定。
+          Steam 跨账号联机、脚本通关、原生 GPU 画面、实际音效听感与真人体验不属于此次自动发布门禁。趣味性与难度仍需真人验收，技术检查通过不代表平衡达标。
           "@ | Set-Content -Encoding utf8 release-notes.md
           if (-not $exists) {
             & gh release create $tag --target $env:RELEASE_COMMIT --title "Undead Survivor $tag" --notes-file release-notes.md --draft
