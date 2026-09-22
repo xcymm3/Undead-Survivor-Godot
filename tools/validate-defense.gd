@@ -44,6 +44,15 @@ func run() -> void:
 	check(not ramp_hit.is_empty() and ramp_hit.position.y > 1 and ramp_hit.position.y < 2,"Approach includes a physical rising ramp")
 	check(not shelf_hit.is_empty() and absf(shelf_hit.position.y) < .1,"Ramp sides provide low physical fall-catching shelves")
 	check(not plateau_hit.is_empty() and absf(plateau_hit.position.y-3) < .1,"Crystal stands at the end of the raised flat ground")
+	var environment_features = game.arena.scenery.find_children("*","Node3D",true,false)
+	var boulder_count = environment_features.filter(func(node): return node.get_meta("environment_feature","") == "boulder").size()
+	var vegetation_count = environment_features.filter(func(node): return node.get_meta("environment_feature","") == "vegetation").size()
+	var perimeter_count = environment_features.filter(func(node): return node.get_meta("environment_feature","") == "perimeter_wall").size()
+	check(boulder_count >= 10,"Defense field has authored natural rock cover")
+	check(vegetation_count >= 20,"Defense terrain has distributed vegetation detail")
+	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
+	check(game.arena.clear(Vector2(0,-70),Vector2(0,44)),"Environmental cover preserves the central bridge, ramp and field lane")
+	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == data.weapons.size(),"Safe zone displays every selectable weapon on the physical wall")
 
 	game.start_solo("defense")
 	await physics_frame

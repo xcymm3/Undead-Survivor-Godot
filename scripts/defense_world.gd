@@ -1,5 +1,6 @@
 extends "res://scripts/campaign_world.gd"
 const DefenseLayout = preload("res://scripts/defense_layout.gd")
+const DefenseEnvironment = preload("res://scripts/defense_environment.gd")
 var lever: Node3D
 var crystal: Node3D
 var crystal_core: MeshInstance3D
@@ -102,21 +103,45 @@ func make_safe_zone() -> void:
 	block("SafeZoneFloor",Vector3(0,3.035,60.5),Vector3(26,.06,17),"314c45",false)
 	for x in [-13.0,13.0]: block("SafeLine",Vector3(x,3.075,60.5),Vector3(.12,.08,17),"7bd8aa",false)
 	for z in [52.0,69.0]: block("SafeLine",Vector3(0,3.075,z),Vector3(26,.08,.12),"7bd8aa",false)
-	for x in [-8.5,-4.25,0.0,4.25,8.5]:
+	var rack_columns = [-8.5,-4.25,0.0,4.25,8.5]
+	for x in rack_columns:
 		block("WeaponRack",Vector3(x,4.5,67.8),Vector3(3.2,2.8,.35),"293a38",true,false)
 		for row in 3: block("RackRail",Vector3(x,3.8+row*.65,67.58),Vector3(2.7,.07,.08),"a7bbb0",false)
-	sign_at("安全换装区 · 1—0 更换主武器",Vector3(0,6.5,67.45),9.0)
+	# Ten real weapon models turn the loadout rule into a readable physical wall:
+	# odd slots sit on the lower rail, even slots on the upper rail.
+	for index in Data.weapons.size():
+		var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[index].id)
+		add_child(model)
+		model.name = "WeaponDisplay%02d" % (index+1)
+		model.set_meta("weapon_display_index",index)
+		model.rotation.y = PI/2
+		var bounds = posed_bounds(model)
+		var factor = minf(2.35/maxf(bounds.size.x,.01),.48/maxf(bounds.size.y,.01))
+		model.scale *= factor
+		var column: int = index/2
+		var mount = Vector3(rack_columns[column],4.05+(index%2)*1.02,67.32)
+		model.position = mount-bounds.get_center()*factor
+	for column in rack_columns.size():
+		var first: int = column*2
+		var caption = "%d %s\n%s %s" % [first+1,Data.weapons[first].label,"0" if first+2 == 10 else str(first+2),Data.weapons[first+1].label]
+		var rack_label = sign_at(caption,Vector3(rack_columns[column],6.18,67.42),3.15)
+		rack_label.rotation.y = PI
+		rack_label.position.z -= .22
+	for x in [-10.5,10.5]:
+		var light = OmniLight3D.new()
+		light.position = Vector3(x,6.3,65.8)
+		light.light_color = Color("d8ebd0")
+		light.light_energy = 4.0
+		light.omni_range = 10.0
+		light.shadow_enabled = true
+		add_child(light)
+	var zone_label = sign_at("安全换装区 · 1—0 更换主武器",Vector3(0,7.15,67.45),10.0)
+	zone_label.rotation.y = PI
+	zone_label.position.z -= .22
 
 func _ready() -> void:
-	# 深谷底部让桥的高度关系清楚可见，导航障碍只留下八米宽的桥面通路。
-	block("RiverBed",Vector3(0,-8.5,-45),Vector3(64,1,34),"17282d",true,false)
-	block("Water",Vector3(0,-7.92,-45),Vector3(64,.08,34),"245d68",false)
-	block("FarCliff",Vector3(0,-.5,-70),Vector3(64,1,16),"4d5146",true,false)
-	block("DefensePlateau",Vector3(0,1.5,31),Vector3(64,3,82),"3d4b3e",true,false)
-	block("ApproachRoad",Vector3(0,3.035,18),Vector3(11,.07,56),"756c55",false)
-	for z in range(-8,47,9):
-		block("RoadChevronLeft",Vector3(-3.2,3.09,z),Vector3(2.2,.06,.22),"d1b873",false).rotation.y = -.42
-		block("RoadChevronRight",Vector3(3.2,3.09,z),Vector3(2.2,.06,.22),"d1b873",false).rotation.y = .42
+	# 深谷、坡地与高地保持原有玩法尺寸，环境模块只提升表面与边界表现。
+	DefenseEnvironment.build(self)
 	# 二维寻路必须把深谷视为不可走区域。缓坡侧平台是玩家的防坠
 	# 落脚点，但也设为导航禁区，保证所有敌人仍只能经中央缓坡靠近水晶。
 	obstacles.append({"minX":-32.0,"maxX":-4.0,"minZ":-62.0,"maxZ":-28.0})
@@ -130,14 +155,8 @@ func _ready() -> void:
 	make_ramp()
 	make_safe_zone()
 	make_crystal()
-	# 断崖边界、平原围栏和稀疏掩体既限制出界，也保留开阔射界。
-	for x in [-31.5,31.5]: block("BoundaryWall",Vector3(x,4.5,5),Vector3(1,3,134),"26352f")
-	for z in [-77.5,71.5]: block("BoundaryWall",Vector3(0,3,z),Vector3(64,6,1),"26352f")
-	for x in [-19.0,19.0]:
-		block("CliffPillar",Vector3(x,-1.5,-28),Vector3(18,9,2),"343a35",true,false)
-		block("CliffPillar",Vector3(x,-1.5,-62),Vector3(18,9,2),"343a35",true,false)
-	for p in [Vector2(-18,7),Vector2(17,13),Vector2(-20,28),Vector2(19,34)]:
-		block("LowRock",Vector3(p.x,3.7,p.y),Vector3(3.2,1.4,2.5),"50594f")
+	# 有碰撞的自然掩体避开中央进攻通道；峡谷段保留无围墙的断崖轮廓。
+	DefenseEnvironment.decorate(self)
 	for p in [Vector2(-12,43),Vector2(13,42)]:
 		block("CrystalGuard",Vector3(p.x,4.0,p.y),Vector3(3.5,2,1.2),"46534a")
 	lever = Node3D.new()
