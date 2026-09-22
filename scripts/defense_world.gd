@@ -104,47 +104,44 @@ func make_safe_zone() -> void:
 	block("SafeZoneFloor",Vector3(0,3.035,60.5),Vector3(26,.06,17),"314c45",false)
 	for x in [-13.0,13.0]: block("SafeLine",Vector3(x,3.075,60.5),Vector3(.12,.08,17),"7bd8aa",false)
 	for z in [52.0,69.0]: block("SafeLine",Vector3(0,3.075,z),Vector3(26,.08,.12),"7bd8aa",false)
-	# Positive world X appears on the player's left while facing the wall.
-	var rack_columns = [8.5,4.25,0.0,-4.25,-8.5]
-	var shop_wall = block("WeaponShopWall",Vector3(0,5.0,67.85),Vector3(25.5,4.4,.65),"493a2d",true,false)
+	var shop_wall = block("WeaponShopWall",Vector3(0,7.2,67.85),Vector3(25.5,8.8,.65),"493a2d",true,false)
 	shop_wall.set_meta("environment_feature","weapon_shop_wall")
-	for row in 3:
-		block("ShopRail%d" % row,Vector3(0,3.78+row*.7,67.48),Vector3(23.8,.08,.1),"a7bbb0",false)
+	for row in 2:
+		block("ShopRail%d" % row,Vector3(0,4.34+row*.64,67.48),Vector3(23.8,.08,.1),"a7bbb0",false)
 	# Narrow trim breaks up the wood surface while preserving one continuous wall.
 	for column in range(6):
 		var x = -10.625+column*4.25
-		block("ShopFrame%d" % column,Vector3(x,5.0,67.47),Vector3(.12,3.75,.1),"5d4934",false)
-	block("ShopFrameTop",Vector3(0,6.98,67.47),Vector3(25.5,.18,.18),"5d4934",false)
+		block("ShopFrame%d" % column,Vector3(x,7.2,67.47),Vector3(.12,8.15,.1),"5d4934",false)
+	block("ShopFrameTop",Vector3(0,11.52,67.47),Vector3(25.5,.18,.18),"5d4934",false)
 	block("ShopFrameBottom",Vector3(0,3.08,67.47),Vector3(25.5,.18,.18),"5d4934",false)
-	# Ten real weapon models turn the loadout rule into a readable physical wall:
-	# odd slots sit on the lower rail, even slots on the upper rail.
+	# Keep every weapon on one eye-level band. The tall upper wall is deliberately
+	# left open so the display stays reachable and readable instead of evenly filled.
 	for index in Data.weapons.size():
 		var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[index].id)
 		add_child(model)
 		model.name = "WeaponDisplay%02d" % (index+1)
 		model.set_meta("weapon_display_index",index)
+		model.set_meta("mount_height",4.65)
+		model.set_meta("mount_x",10.8-index*2.4)
 		model.rotation.y = PI/2
 		var bounds = posed_bounds(model)
-		var factor = minf(2.35/maxf(bounds.size.x,.01),.48/maxf(bounds.size.y,.01))
+		var factor = minf(1.8/maxf(bounds.size.x,.01),.46/maxf(bounds.size.y,.01))
 		model.scale *= factor
-		var column: int = index/2
-		var mount = Vector3(rack_columns[column],4.05+(index%2)*1.02,67.32)
+		var mount = Vector3(float(model.get_meta("mount_x")),float(model.get_meta("mount_height")),67.32)
 		model.position = mount-bounds.get_center()*factor
-	for column in rack_columns.size():
-		var first: int = column*2
-		var caption = "%d %s\n%s %s" % [first+1,Data.weapons[first].label,"0" if first+2 == 10 else str(first+2),Data.weapons[first+1].label]
-		var rack_label = sign_at(caption,Vector3(rack_columns[column],6.18,67.42),3.15)
+		var key = "0" if index == 9 else str(index+1)
+		var rack_label = sign_at("%s %s" % [key,Data.weapons[index].label],Vector3(mount.x,5.58,67.42),2.05)
 		rack_label.rotation.y = PI
 		rack_label.position.z -= .22
-	for x in [-10.5,10.5]:
+	for x in [-9.0,-3.0,3.0,9.0]:
 		var light = OmniLight3D.new()
-		light.position = Vector3(x,6.3,65.8)
+		light.position = Vector3(x,6.4,65.8)
 		light.light_color = Color("d8ebd0")
 		light.light_energy = 4.0
 		light.omni_range = 10.0
 		light.shadow_enabled = true
 		add_child(light)
-	var zone_label = sign_at("安全换装区 · 1—0 更换主武器",Vector3(0,7.15,67.45),10.0)
+	var zone_label = sign_at("水晶防线军械库 · 1—0 更换主武器",Vector3(0,10.25,67.45),12.0)
 	zone_label.rotation.y = PI
 	zone_label.position.z -= .22
 

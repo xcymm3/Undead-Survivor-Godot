@@ -56,8 +56,19 @@ func run() -> void:
 	check(vegetation_count >= 20,"Defense terrain has distributed vegetation detail")
 	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,44)),"Environmental cover preserves the central bridge, ramp and field lane")
-	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == data.weapons.size(),"Safe zone displays every selectable weapon on the physical wall")
-	check(game.arena.scenery.find_children("WeaponShopWall","StaticBody3D",true,false).size() == 1,"Safe zone uses one continuous physical shop wall")
+	var weapon_displays = game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false)
+	check(weapon_displays.size() == data.weapons.size(),"Safe zone displays every selectable weapon on the physical wall")
+	var shop_walls = game.arena.scenery.find_children("WeaponShopWall","StaticBody3D",true,false)
+	check(shop_walls.size() == 1,"Safe zone uses one continuous physical shop wall")
+	var shop_shape = shop_walls[0].find_children("*","CollisionShape3D",true,false)[0] as CollisionShape3D
+	check(shop_shape and shop_shape.shape is BoxShape3D and shop_shape.shape.size.y >= 8.8,"Weapon shop wall is at least twice its previous height")
+	var weapon_mounts: Array = weapon_displays.map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
+	weapon_mounts.sort_custom(func(a,b): return a.x < b.x)
+	var separated = true
+	for index in range(1,weapon_mounts.size()): separated = separated and weapon_mounts[index].x-weapon_mounts[index-1].x >= 2.39
+	check(separated,"Weapon displays leave a generous horizontal gap between adjacent guns")
+	var standing_eye = data.Maps.Defense.height(Vector2(0,60))+preload("res://scripts/player_body.gd").eye_height({"crouch":0.0})
+	check(weapon_mounts.all(func(point): return point.y <= standing_eye),"Every weapon is reachable at standing eye height without jumping")
 	check(game.arena.scenery.find_children("WeaponRack*","StaticBody3D",true,false).is_empty(),"Safe zone no longer uses five separate rack walls")
 
 	game.start_solo("defense")
