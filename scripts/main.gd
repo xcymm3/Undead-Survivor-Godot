@@ -391,7 +391,9 @@ func handle_effects(events: Array) -> void:
 			"armor":
 				effects.burst(event.position,true,event.broken)
 				if event.get("player") == Session.local_id: ui.hit_flash = .12
-				sound.play_at("%s-%s" % [event.armor,"true" if event.broken else "false"],event.position,-13)
+				# The giant's leather helmet uses the padded football impact timbre.
+				var armor_cue: String = "football" if event.armor == "giant" else event.armor
+				sound.play_at("%s-%s" % [armor_cue,"true" if event.broken else "false"],event.position,-13)
 			"hurt":
 				if event.player == Session.local_id:
 					ui.hurt_flash = .45

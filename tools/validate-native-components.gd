@@ -74,21 +74,34 @@ func validate_combat_revision() -> void:
 		sim.zombies.clear()
 		sim.spawn(Vector2(8,57),kind)
 		var z: Dictionary = sim.zombies[0]
-		check(z.hp == (9000 if kind == "football" else 2400),"Double boss health "+kind)
+		check(z.hp == (9000 if kind == "football" else 3000),"Updated boss health "+kind)
 		if kind == "football":
-			check(z.body == 5000 and z.armor == 4000,"Football doubles body HP and armor independently")
+			check(z.body == 3000 and z.armor == 6000,"Football has six thousand armor and three thousand body health")
 			check(z.chase_speed >= 4.6 and z.chase_speed <= 5.2,"Football pursuit uses the ordinary random speed range")
 			z.state = "charging"
 		else:
-			z.hp = 1201
-			z.body = 1201
-		sim.hit_enemy(z,2,false,p,Vector3(0,1,57))
+			z.hp = 1501
+			z.body = 1501
+			sim.hit_enemy(z,2,false,p,Vector3(0,1,57))
 		check(z.pos == Vector2(8,57),"Charge or half-health rage prevents hit displacement "+kind)
-		if kind == "berserker": check(z.rage,"Rage threshold follows doubled maximum health")
+		if kind == "berserker": check(z.rage,"Berserker rages at half of its three thousand health")
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,57),"giant")
+	var armored_giant: Dictionary = sim.zombies[0]
+	check(armored_giant.hp == 6000 and armored_giant.body == 4000 and armored_giant.armor == 2000,"Giant splits unchanged total health into helmet armor and body health")
+	var giant_position: Vector2 = armored_giant.pos
+	var giant_torso_hit: Dictionary = load("res://scripts/enemy_view.gd").hit(armored_giant,Vector3(8,1.8,61),Vector3(0,0,-1),8,sim.elapsed,true)
+	check(not giant_torso_hit.is_empty() and giant_torso_hit.armor,"Giant body hits use the same full-body armor rule as buckets and football zombies")
+	sim.hit_enemy(armored_giant,100,true,p,Vector3(8,2,57))
+	check(armored_giant.armor == 1900 and armored_giant.body == 4000 and armored_giant.pos == giant_position,"Any giant hit consumes armor first without firearm displacement")
+	var calm_berserker: ArrayMesh = game.enemies.mesh_for("berserker",0,false,false)
+	var raging_berserker: ArrayMesh = game.enemies.mesh_for("berserker",0,true,false)
+	var glowing_eyes: StandardMaterial3D = raging_berserker.surface_get_material(1)
+	check(calm_berserker.get_surface_count() == 1 and raging_berserker.get_surface_count() == 2 and glowing_eyes.emission_enabled and glowing_eyes.emission.r > .9,"Half-health berserker adds a distinct emissive red-eye surface")
 	sim.zombies.clear()
 	sim.spawn(Vector2(8,55),"football")
 	var runner: Dictionary = sim.zombies[0]
-	for armor in [4000,0]:
+	for armor in [6000,0]:
 		runner.pos = Vector2(8,55)
 		runner.armor = armor
 		runner.state = "ready"
@@ -698,13 +711,14 @@ func validate_close_combat() -> void:
 	sim.spawn(Vector2(0,65.83),"normal")
 	var beyond: Dictionary = sim.zombies[0]
 	check(sim.try_shove(p) and beyond.state == "ready","Shove still rejects a target beyond 4.16 metres")
-	for kind in ["shield","football"]:
+	for kind in ["shield","football","berserker"]:
 		p.shove_gap = 0.0
 		p.shove_cd = 0.0
 		p.shove_count = 0
 		sim.zombies.clear()
 		sim.spawn(Vector2(0,68.65),kind)
 		var immune: Dictionary = sim.zombies[0]
+		if kind == "berserker": immune.rage = true
 		immune.attack_time = .2
 		var immune_pos: Vector2 = immune.pos
 		var hit_count: int = p.shove_hits

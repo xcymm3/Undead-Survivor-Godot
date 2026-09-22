@@ -40,12 +40,20 @@ for (const weapon of WEAPONS) {
 }
 const config = await import(pathToFileURL(path.join(cache, 'config.mjs')));
 config.ZOMBIE_TYPES.crawler = { ...config.ZOMBIE_TYPES.normal, label: '爬行僵尸' };
+config.ZOMBIE_TYPES.imp = { ...config.ZOMBIE_TYPES.imp, health: 400 };
 config.ZOMBIE_TYPES.shield = { ...config.ZOMBIE_TYPES.shield, health: 1200, armor: 1000 };
+config.ZOMBIE_TYPES.berserker = { ...config.ZOMBIE_TYPES.berserker, health: 3000 };
+config.ZOMBIE_TYPES.giant = { ...config.ZOMBIE_TYPES.giant, health: 6000, armor: 2000 };
+config.ZOMBIE_TYPES.football = { ...config.ZOMBIE_TYPES.football, health: 9000, armor: 6000 };
+config.ENEMY_RULES.berserker = { ...config.ENEMY_RULES.berserker, health: 3000, rageAt: 1500 };
 const { prepareWeapon, prepareProceduralWeapon } = await import(pathToFileURL(path.join(cache, 'weapon.mjs')));
 const audio = await import(pathToFileURL(path.join(cache, 'soundSynthesis.mjs')));
 const zombies = fs.readFileSync(path.join(source, 'src/game/zombies.ts'), 'utf8');
 const partCode = zombies.slice(zombies.indexOf('const PARTS: Part[] = ') + 'const PARTS: Part[] = '.length, zombies.indexOf('\nconst SHIRTS')).replace(/;\s*$/, '');
 const parts = Function('return ' + partCode)();
+// The giant's existing leather helmet is its breakable armor, not decoration.
+const giantHelmet = parts.find(part => part.kind === 'giant' && part.head);
+if (giantHelmet) giantHelmet.armor = true;
 fs.writeFileSync(path.join(root, 'assets/data/rules.json'), JSON.stringify({ weapons: WEAPONS, enemies: config.ZOMBIE_TYPES, enemy_rules: config.ENEMY_RULES, parts }, null, 2));
 globalThis.FileReader = class {
   readAsArrayBuffer(blob) { blob.arrayBuffer().then(result => { this.result = result; this.onloadend?.(); }); }

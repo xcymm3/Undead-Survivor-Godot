@@ -4,6 +4,7 @@ var meshes: Dictionary = {}
 var actors: Dictionary = {}
 var skin: Skin
 var material: StandardMaterial3D
+var rage_eye_material: StandardMaterial3D
 var kinds = ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football"]
 const Wardrobe = preload("res://scripts/zombie_outfits.gd")
 
@@ -13,6 +14,12 @@ func _ready() -> void:
 	material = StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 1.0
+	rage_eye_material = StandardMaterial3D.new()
+	rage_eye_material.albedo_color = Color("ff170d")
+	rage_eye_material.emission_enabled = true
+	rage_eye_material.emission = Color("ff0800")
+	rage_eye_material.emission_energy_multiplier = 5.0
+	rage_eye_material.roughness = .25
 
 func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1) -> ArrayMesh:
 	var dressed = outfit >= 0 and kind in ["normal","crawler","cone","bucket"]
@@ -21,11 +28,12 @@ func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1)
 	var cube = BoxMesh.new().get_mesh_arrays()
 	var surface = SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_material(material)
 	for j in Data.parts.size():
 		var part: Dictionary = Data.parts[j]
 		if (part.has("kind") and part.kind != kind) or (part.get("armor",false) and not armor): continue
 		if dressed and j in [1,2]: continue # Replace old shirt patches with outfit details.
-		var color = Data.rgb(int(part.color))
+		var color = Color("ff170d") if kind == "berserker" and rage and j in [5,6,7,8] else Data.rgb(int(part.color))
 		if part.get("shirt",false):
 			color = [Color(.349,.392,.314),Color(.424,.345,.353),Color(.329,.408,.467),Color(.510,.443,.341)][palette]
 			color = {"imp":Color(.341,.251,.373),"shield":Color(.275,.365,.396),"berserker":Color(.714,.231,.173) if rage else Color(.494,.220,.184),"giant":Color(.443,.349,.263),"football":Color(.561,.157,.188)}.get(kind,color)
@@ -45,7 +53,25 @@ func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1)
 				surface.set_weights(PackedFloat32Array([1,0,0,0]))
 				surface.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*patch.size+patch.position)
 	surface.index()
-	meshes[key] = surface.commit()
+	var mesh: ArrayMesh = surface.commit()
+	if kind == "berserker" and rage:
+		# A separate emissive plate makes the half-health red eyes readable in
+		# motion and at combat distance without changing the CPU hit boxes.
+		var eyes = SurfaceTool.new()
+		eyes.begin(Mesh.PRIMITIVE_TRIANGLES)
+		eyes.set_material(rage_eye_material)
+		for j in [5,6]:
+			var eye: Dictionary = Data.parts[j]
+			var size = Data.v3(eye.size)*Vector3(1.45,1.35,1.0)
+			var position = Data.v3(eye.position)+Vector3(0,0,.018)
+			for index in cube[Mesh.ARRAY_INDEX]:
+				eyes.set_normal(cube[Mesh.ARRAY_NORMAL][index])
+				eyes.set_bones(PackedInt32Array([6,0,0,0]))
+				eyes.set_weights(PackedFloat32Array([1,0,0,0]))
+				eyes.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*size+position)
+		eyes.index()
+		eyes.commit(mesh)
+	meshes[key] = mesh
 	return meshes[key]
 
 func create_actor(z: Dictionary) -> Dictionary:
@@ -61,7 +87,6 @@ func create_actor(z: Dictionary) -> Dictionary:
 	body.add_child(view)
 	view.skeleton = NodePath("../Pose")
 	view.skin = skin
-	view.material_override = material
 	view.custom_aabb = AABB(Vector3(-4,-3,-4),Vector3(8,9,8))
 	return {"body":body,"skeleton":skeleton,"view":view,"kind":z.kind}
 

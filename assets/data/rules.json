@@ -287,7 +287,7 @@
     },
     "imp": {
       "label": "小鬼僵尸",
-      "health": 300,
+      "health": 400,
       "armor": 0,
       "tier": 2
     },
@@ -299,20 +299,20 @@
     },
     "berserker": {
       "label": "狂暴僵尸",
-      "health": 2400,
+      "health": 3000,
       "armor": 0,
       "tier": 3
     },
     "giant": {
       "label": "巨人僵尸",
       "health": 6000,
-      "armor": 0,
+      "armor": 2000,
       "tier": 3
     },
     "football": {
       "label": "橄榄球僵尸",
       "health": 9000,
-      "armor": 4000,
+      "armor": 6000,
       "tier": 4
     },
     "crawler": {
@@ -342,9 +342,9 @@
       "exposeDuration": 0.45
     },
     "berserker": {
-      "health": 2400,
+      "health": 3000,
       "speed": 1.35,
-      "rageAt": 1200,
+      "rageAt": 1500,
       "ragePause": 0.3,
       "rageSpeed": 2.6,
       "speedCap": 5.8,
@@ -968,7 +968,8 @@
       "color": 4929836,
       "head": true,
       "kind": "giant",
-      "decor": true
+      "decor": true,
+      "armor": true
     },
     {
       "size": [

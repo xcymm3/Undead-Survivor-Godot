@@ -168,6 +168,21 @@ func run() -> void:
 	for i in 5: sim.step(.2)
 	check(pawn.hp == 100 and imp.pos.y < 49.0,"An imp beside the player does not attack or chase the player")
 
+	# Giants share the crystal-only target policy and their defense slam cannot
+	# damage a player standing inside its otherwise shared area of effect.
+	sim.zombies.clear()
+	pawn.pos = Vector2(0,47.6)
+	pawn.height = data.enemy_ground_height(pawn.pos,sim.map_id)
+	pawn.hp = 100
+	pawn.protection = 0.0
+	crystal_before = sim.defense.crystal_hp
+	sim.spawn(Vector2(0,47.6),"giant")
+	var giant: Dictionary = sim.zombies[-1]
+	chosen = sim.choose_zombie_target(giant,[pawn])
+	check(chosen.get("is_crystal",false),"Giant target selection is locked to the crystal")
+	for i in 5: sim.step(.2)
+	check(pawn.hp == 100 and sim.defense.crystal_hp < crystal_before,"Defense giant attacks only the crystal even when its slam overlaps a player")
+
 	# Falling is recoverable but costs health; regeneration starts only after the
 	# full five-second combat delay and advances in one-point-per-second ticks.
 	sim.zombies.clear()
@@ -251,6 +266,7 @@ func run() -> void:
 		sim.spawn(Vector2(0,-70),kind)
 		fixed_health = fixed_health and is_equal_approx(wave_one_hp,float(data.enemies[kind].health)) and is_equal_approx(sim.zombies[-1].hp,wave_one_hp)
 	check(fixed_health,"Every enemy keeps its resource health through wave ten")
+	check(shared_population.COST.shield == 6,"Shield zombies consume six threat points")
 	pawn.hp = 100
 	pawn.protection = 0.0
 	var damage_zombie: Dictionary = sim.zombies[-1]

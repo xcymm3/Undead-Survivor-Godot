@@ -308,9 +308,9 @@ func crystal_target() -> Dictionary:
 	return {"id":"crystal","pos":Data.Maps.Defense.CRYSTAL,"height":Data.Maps.Defense.height(Data.Maps.Defense.CRYSTAL),"hp":defense.get("crystal_hp",0),"is_crystal":true}
 
 func choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
-	# Imps are dedicated crystal runners in defense mode and never acquire a
-	# player, even when one body-blocks them at point-blank range.
-	if mode == "defense" and z.kind == "imp" and defense.get("crystal_hp",0) > 0:
+	# Imps and giants are dedicated crystal attackers in defense mode and never
+	# acquire a player, even when one body-blocks them at point-blank range.
+	if mode == "defense" and z.kind in ["imp","giant"] and defense.get("crystal_hp",0) > 0:
 		return crystal_target()
 	var targets: Array = living.duplicate()
 	if mode == "defense" and defense.get("crystal_hp",0) > 0: targets.append(crystal_target())
@@ -570,7 +570,7 @@ func try_shove(p: Dictionary) -> bool:
 		if delta.length() > SHOVE_RANGE or absf(Data.enemy_ground_height(z.pos,map_id)-p.height) > 1.1: continue
 		if delta.length() > .05 and forward.dot(delta.normalized()) < cos(deg_to_rad(80)): continue
 		if not arena.surface_hit(Vector3(p.pos.x,p.height+1.1,p.pos.y),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+1.1,z.pos.y)).is_empty(): continue
-		if z.kind in ["shield","football"]: continue
+		if z.kind in ["shield","football"] or (z.kind == "berserker" and z.rage): continue
 		var heavy: bool = z.kind == "giant"
 		z.guard_awake = true
 		z.attack_time = 0.0
@@ -712,6 +712,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			var victims: Array = pawns.values()
 			if mode == "defense" and defense.get("crystal_hp",0) > 0: victims.append(crystal_target())
 			for victim in victims:
+				if mode == "defense" and z.kind == "giant" and victim.id != "crystal": continue
 				if z.kind != "giant" and victim.id != z.target: continue
 				var offset: Vector2 = victim.pos-z.pos
 				if victim.hp <= 0 or offset.length() > (2.4 if z.kind == "giant" else contact+.15): continue
@@ -831,7 +832,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 	else:
 		# Small displacement is independent of shove velocity/time and stun duration.
 		# A pellet/flame tick cannot multiply displacement within the same volley.
-		if not charging_on_hit and not (z.kind == "berserker" and z.rage) and elapsed >= z.get("hit_push_at",-1.0):
+		if not charging_on_hit and z.kind != "giant" and not (z.kind == "berserker" and z.rage) and elapsed >= z.get("hit_push_at",-1.0):
 			var source: Vector2 = push_origin if push_origin.is_finite() else p.get("pos",Vector2(position.x,position.z))
 			var push: Vector2 = (z.pos-source).normalized()*.22
 			for step in 4:
