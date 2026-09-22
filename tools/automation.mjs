@@ -87,6 +87,44 @@ function launch(name, command, args, timeout = 180_000) {
   return promise;
 }
 
+function browserSpecs(suites) {
+  return suites.flatMap(suite => [...(suite.specs ?? []), ...browserSpecs(suite.suites ?? [])]);
+}
+
+function gameplayObservation(browser) {
+  const spec = browserSpecs(browser.suites ?? []).find(item => item.title.includes('精确自动瞄准'));
+  const attachment = spec?.tests?.[0]?.results?.[0]?.attachments?.find(item => item.name === 'defense-playthrough.json');
+  if (!attachment?.body) return { name: '水晶防线单人自动试玩', result: '未取得结果' };
+  try {
+    const { result } = JSON.parse(Buffer.from(attachment.body, 'base64').toString('utf8'));
+    const player = result.player ?? {};
+    const defense = result.defense ?? {};
+    const accuracy = player.shots > 0 ? `${(player.hits * 100 / player.shots).toFixed(1)}%` : '0.0%';
+    return {
+      name: '水晶防线单人自动试玩',
+      result: result.won ? '胜利' : result.failed ? `失败（${result.cause}）` : '未完成',
+      wave: result.wave,
+      cleared: result.cleared,
+      elapsed: result.elapsed,
+      kills: result.kills,
+      playerHp: player.hp,
+      crystalHp: defense.crystal_hp,
+      crystalMaxHp: defense.crystal_max_hp,
+      shots: player.shots,
+      hits: player.hits,
+      accuracy,
+    };
+  } catch {
+    return { name: '水晶防线单人自动试玩', result: '结果解析失败' };
+  }
+}
+
+function gameplayMarkdown(observation) {
+  if (!observation) return '';
+  if (observation.wave === undefined) return `## 玩法观察\n\n- ${observation.name}：${observation.result}`;
+  return `## 玩法观察\n\n- ${observation.name}：${observation.result}；第 ${observation.wave} 波，完成 ${observation.cleared} 波；用时 ${Number(observation.elapsed).toFixed(1)} 秒；击杀 ${observation.kills}；玩家 ${observation.playerHp} HP；水晶 ${observation.crystalHp}/${observation.crystalMaxHp} HP；命中 ${observation.hits}/${observation.shots}（${observation.accuracy}）`;
+}
+
 const run = (name, command, args, timeout) => launch(name, command, args, timeout);
 const powershell = (name, script, args = [], timeout = 180_000) =>
   run(name, 'pwsh.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, ...args], timeout);
@@ -94,6 +132,7 @@ const engine = path.join(root, '.runtime/Godot_v4.5.2-stable_win64_console.exe')
 const godotArgs = ['--headless', '--audio-driver', 'Dummy', '--path', root];
 let sourceDigest;
 let failure;
+let observation;
 
 try {
   if (process.platform !== 'win32') throw new Error('This pipeline targets Windows; use the windows-2022 Actions runner.');
@@ -127,6 +166,7 @@ try {
     if (browser.stats.unexpected || browser.stats.flaky || browser.stats.skipped || browser.errors?.length || browser.stats.expected !== 7) {
       throw new Error('Browser suite must complete all seven retained tests without failures, skips, or retries.');
     }
+    observation = gameplayObservation(browser);
   }
 
   if (release) {
@@ -151,8 +191,9 @@ try {
     status: failure ? 'failed' : 'passed', startedAt, finishedAt: new Date().toISOString(),
     commit: git(['rev-parse', 'HEAD']), sourceDigest, release, profile, excluded, stages, failure, boundaries,
   };
+  if (observation) report.gameplayObservation = observation;
   report.seconds = (Date.parse(report.finishedAt) - Date.parse(startedAt)) / 1000;
   await writeFile('artifacts/acceptance.json', JSON.stringify(report, null, 2));
-  await writeFile('artifacts/acceptance.md', `# 自动检查：${report.status}\n\n配置：${profile}；总耗时：${report.seconds.toFixed(1)}s\n\n提交：${report.commit}\n\n源码 SHA-256：${sourceDigest ?? '未完成导入'}\n\n| 阶段 | 结果 | 耗时 |\n| --- | --- | --- |\n${stages.map(s => `| ${s.name} | ${s.passed ? '通过' : '失败'} | ${s.seconds.toFixed(1)}s |`).join('\n')}\n\n${boundaries.map(item => '- ' + item).join('\n')}\n\n本配置未运行：${excluded.join(', ') || '无'}\n${failure ? '\n```text\n' + failure + '\n```\n' : ''}`);
+  await writeFile('artifacts/acceptance.md', `# 自动检查：${report.status}\n\n配置：${profile}；总耗时：${report.seconds.toFixed(1)}s\n\n提交：${report.commit}\n\n源码 SHA-256：${sourceDigest ?? '未完成导入'}\n\n| 阶段 | 结果 | 耗时 |\n| --- | --- | --- |\n${stages.map(s => `| ${s.name} | ${s.passed ? '通过' : '失败'} | ${s.seconds.toFixed(1)}s |`).join('\n')}\n\n${gameplayMarkdown(observation)}\n\n${boundaries.map(item => '- ' + item).join('\n')}\n\n本配置未运行：${excluded.join(', ') || '无'}\n${failure ? '\n```text\n' + failure + '\n```\n' : ''}`);
   process.exitCode = failure ? 1 : 0;
 }

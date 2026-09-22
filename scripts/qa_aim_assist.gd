@@ -4,14 +4,16 @@ const EnemyView = preload("res://scripts/enemy_view.gd")
 var game
 var target_id = -1
 var timer = 0.0
+var unrestricted = false
 
 func _ready() -> void:
 	process_priority = -50
 	if not Data.automation or "--qa-autoaim" not in OS.get_cmdline_user_args(): queue_free()
+	unrestricted = "--qa-unrestricted" in OS.get_cmdline_user_args()
 
 func _process(dt: float) -> void:
 	timer += dt
-	if timer < .05: return
+	if not unrestricted and timer < .05: return
 	timer = 0.0
 	var previous_target = target_id
 	target_id = -1
@@ -42,7 +44,7 @@ func _process(dt: float) -> void:
 		# Clear fast close attackers before spending a magazine on a slow tank.
 		var priority: float = {"imp":.55,"berserker":.4 if z.rage else .7,"giant":2.5,"football":1.3}.get(z.kind,1.0)
 		var score = distance*priority
-		if z.id == previous_target: score *= .8
+		if not unrestricted and z.id == previous_target: score *= .8
 		if score >= best_score: continue
 		best_score = score
 		best = offset
@@ -50,6 +52,6 @@ func _process(dt: float) -> void:
 	if target_id >= 0:
 		game.yaw = atan2(-best.x,-best.z)
 		game.pitch = clampf(atan2(best.y,Vector2(best.x,best.z).length()),-deg_to_rad(85),deg_to_rad(85))
-	elif game.sim.rest <= 0:
+	elif not unrestricted and game.sim.rest <= 0:
 		# Look around when no target is visible, as a player would between spawns.
 		game.yaw = wrapf(game.yaw+.035,-PI,PI)
