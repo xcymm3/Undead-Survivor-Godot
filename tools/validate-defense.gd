@@ -57,7 +57,11 @@ func run() -> void:
 	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,44)),"Environmental cover preserves the central bridge, ramp and field lane")
 	var weapon_displays = game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false)
-	check(weapon_displays.size() == data.weapons.size(),"Safe zone displays every selectable weapon on the physical wall")
+	var primary_weapon_indices := [0,1,4,5,7,8,9]
+	check(weapon_displays.size() == primary_weapon_indices.size(),"Safe zone displays exactly the seven primary weapons")
+	var displayed_weapon_indices: Array = weapon_displays.map(func(node): return int(node.get_meta("weapon_display_index")))
+	displayed_weapon_indices.sort()
+	check(displayed_weapon_indices == primary_weapon_indices,"Armory wall excludes always-carried sidearms and melee weapon")
 	var shop_walls = game.arena.scenery.find_children("WeaponShopWall","StaticBody3D",true,false)
 	check(shop_walls.size() == 1,"Safe zone uses one continuous physical shop wall")
 	var shop_shape = shop_walls[0].find_children("*","CollisionShape3D",true,false)[0] as CollisionShape3D
@@ -65,7 +69,7 @@ func run() -> void:
 	var weapon_mounts: Array = weapon_displays.map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
 	weapon_mounts.sort_custom(func(a,b): return a.x < b.x)
 	var separated = true
-	for index in range(1,weapon_mounts.size()): separated = separated and weapon_mounts[index].x-weapon_mounts[index-1].x >= 2.39
+	for index in range(1,weapon_mounts.size()): separated = separated and weapon_mounts[index].x-weapon_mounts[index-1].x >= 3.39
 	check(separated,"Weapon displays leave a generous horizontal gap between adjacent guns")
 	var standing_eye = data.Maps.Defense.height(Vector2(0,60))+preload("res://scripts/player_body.gd").eye_height({"crouch":0.0})
 	check(weapon_mounts.all(func(point): return point.y <= standing_eye),"Every weapon is reachable at standing eye height without jumping")

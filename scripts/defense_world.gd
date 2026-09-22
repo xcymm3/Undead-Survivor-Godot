@@ -1,6 +1,7 @@
 extends "res://scripts/campaign_world.gd"
 const DefenseLayout = preload("res://scripts/defense_layout.gd")
 const DefenseEnvironment = preload("res://scripts/defense_environment.gd")
+const DISPLAYED_PRIMARY_WEAPONS := [0,1,4,5,7,8,9]
 var lever: Node3D
 var crystal: Node3D
 var crystal_core: MeshInstance3D
@@ -114,23 +115,25 @@ func make_safe_zone() -> void:
 		block("ShopFrame%d" % column,Vector3(x,7.2,67.47),Vector3(.12,8.15,.1),"5d4934",false)
 	block("ShopFrameTop",Vector3(0,11.52,67.47),Vector3(25.5,.18,.18),"5d4934",false)
 	block("ShopFrameBottom",Vector3(0,3.08,67.47),Vector3(25.5,.18,.18),"5d4934",false)
-	# Keep every weapon on one eye-level band. The tall upper wall is deliberately
-	# left open so the display stays reachable and readable instead of evenly filled.
-	for index in Data.weapons.size():
-		var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[index].id)
+	# Only primary weapons belong on the armory wall. Sidearms and the melee weapon
+	# are always carried, so the display keeps them out of the player's loadout choice.
+	# The tall upper wall is deliberately left open and every gun stays at eye level.
+	for display_index in DISPLAYED_PRIMARY_WEAPONS.size():
+		var weapon_index: int = DISPLAYED_PRIMARY_WEAPONS[display_index]
+		var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[weapon_index].id)
 		add_child(model)
-		model.name = "WeaponDisplay%02d" % (index+1)
-		model.set_meta("weapon_display_index",index)
+		model.name = "WeaponDisplay%02d" % (display_index+1)
+		model.set_meta("weapon_display_index",weapon_index)
 		model.set_meta("mount_height",4.65)
-		model.set_meta("mount_x",10.8-index*2.4)
+		model.set_meta("mount_x",10.2-display_index*3.4)
 		model.rotation.y = PI/2
 		var bounds = posed_bounds(model)
 		var factor = minf(1.8/maxf(bounds.size.x,.01),.46/maxf(bounds.size.y,.01))
 		model.scale *= factor
 		var mount = Vector3(float(model.get_meta("mount_x")),float(model.get_meta("mount_height")),67.32)
 		model.position = mount-bounds.get_center()*factor
-		var key = "0" if index == 9 else str(index+1)
-		var rack_label = sign_at("%s %s" % [key,Data.weapons[index].label],Vector3(mount.x,5.58,67.42),2.05)
+		var key = "0" if weapon_index == 9 else str(weapon_index+1)
+		var rack_label = sign_at("%s %s" % [key,Data.weapons[weapon_index].label],Vector3(mount.x,5.58,67.42),2.05)
 		rack_label.rotation.y = PI
 		rack_label.position.z -= .22
 	for x in [-9.0,-3.0,3.0,9.0]:
@@ -141,7 +144,7 @@ func make_safe_zone() -> void:
 		light.omni_range = 10.0
 		light.shadow_enabled = true
 		add_child(light)
-	var zone_label = sign_at("水晶防线军械库 · 1—0 更换主武器",Vector3(0,10.25,67.45),12.0)
+	var zone_label = sign_at("水晶防线军械库 · 仅陈列主武器",Vector3(0,10.25,67.45),12.0)
 	zone_label.rotation.y = PI
 	zone_label.position.z -= .22
 
