@@ -18,10 +18,24 @@ func _process(dt: float) -> void:
 	var previous_target = target_id
 	target_id = -1
 	if not game.running or game.paused or game.finished or not game.sim: return
-	if game.sim.mode == "defense" and not game.sim.defense.get("started",false): return
 	var p: Dictionary = game.local_pawn()
 	if p.is_empty() or p.hp <= 0: return
 	var origin = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
+	# The browser playtester still walks to the physical rack and holds the real
+	# interaction key. Aim only the camera at its currently equipped primary so
+	# finite-ammo runs can restock exactly as a player would.
+	if game.sim.mode == "defense" and Input.is_action_pressed("interact"):
+		var layout = preload("res://scripts/defense_layout.gd")
+		var supply_weapon: int = 8 if not game.sim.defense.get("started",false) else int(p.primary)
+		var display_index: int = layout.PRIMARY_WEAPONS.find(supply_weapon)
+		if display_index >= 0:
+			var supply_point: Vector3 = layout.weapon_mount(display_index)
+			var supply_offset: Vector3 = supply_point-origin
+			if supply_offset.length() <= 3.6:
+				game.yaw = atan2(-supply_offset.x,-supply_offset.z)
+				game.pitch = clampf(atan2(supply_offset.y,Vector2(supply_offset.x,supply_offset.z).length()),-deg_to_rad(85),deg_to_rad(85))
+				return
+	if game.sim.mode == "defense" and not game.sim.defense.get("started",false): return
 	var best_score = INF
 	var best = Vector3.ZERO
 	for z in game.sim.zombies:

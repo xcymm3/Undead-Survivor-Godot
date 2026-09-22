@@ -178,7 +178,7 @@ func validate_combat_revision() -> void:
 	p.requested = 9
 	p.slot = 1
 	p.ammo[9] = int(root.get_node("Data").weapons[9].capacity)
-	p.reserves[9] = int(root.get_node("Data").weapons[9].capacity)*5
+	p.reserves[9] = root.get_node("Data").full_reserve(9)
 	p.reserve = p.reserves[9]
 	sim.spawn(Vector2(0,58.7),"crawler")
 	driver.tasks = [[Vector2(0,50),""]]

@@ -36,9 +36,9 @@ func initialize() -> void:
 		p.requested = p.primary
 		p.ammo.fill(0)
 		p.ammo[p.primary] = int(Data.weapons[p.primary].capacity)
-		p.reserves[p.primary] = 5*int(Data.weapons[p.primary].capacity)
+		p.reserves[p.primary] = Data.defense_full_reserve(p.primary)
 		p.ammo[p.secondary] = int(Data.weapons[p.secondary].capacity)
-		p.reserves[p.secondary] = 5*int(Data.weapons[p.secondary].capacity)
+		p.reserves[p.secondary] = Data.defense_full_reserve(p.secondary)
 		p.reserve = p.reserves[p.primary]
 	director.state.projectiles = []
 	director.state.pickup_motion = []
@@ -93,7 +93,7 @@ func pickup(p: Dictionary, id: String) -> bool:
 		p.requested = weapon
 		p.slot = 1
 		p.ammo[weapon] = int(Data.weapons[weapon].capacity)
-		p.reserves[weapon] = 5*int(Data.weapons[weapon].capacity)
+		p.reserves[weapon] = Data.defense_full_reserve(weapon)
 		p.reserve = p.reserves[weapon]
 		p.switch = .65
 		p.reloading = false

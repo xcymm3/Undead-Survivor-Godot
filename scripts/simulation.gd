@@ -18,6 +18,7 @@ var campaign_replica: Dictionary = {}
 var defense_director
 var defense: Dictionary = {}
 var defense_replica: Dictionary = {}
+var defense_difficulty = "normal"
 var equipment
 var won = false
 var elapsed = 0.0
@@ -102,6 +103,7 @@ func add_pawn(id: String, player_name: String, index: int) -> void:
 
 func start(game_mode: String) -> void:
 	mode = str(map_definition.get("mode",game_mode))
+	defense_difficulty = DefensePopulation.normalize_difficulty(defense_difficulty)
 	if mode == "campaign":
 		zombies.clear()
 		paths.clear()
@@ -121,9 +123,9 @@ func start(game_mode: String) -> void:
 
 func prepare_wave() -> void:
 	if mode == "defense":
-		roster = DefensePopulation.roster(wave,pawns.size(),random)
+		roster = DefensePopulation.roster(wave,pawns.size(),random,defense_difficulty)
 		wave_total = roster.size()
-		defense["wave_budget"] = DefensePopulation.budget(wave,pawns.size())
+		defense["wave_budget"] = DefensePopulation.budget(wave,pawns.size(),defense_difficulty)
 		return
 	roster.clear()
 	var weights: Array = [1,0,0,0] if wave <= 2 else [.8,.2,0,0] if wave <= 4 else [.64,.26,.1,0] if wave <= 6 else [.5,.28,.17,.05] if wave <= 8 else [.38,.3,.24,.08] if wave <= 10 else [.32,.3,.28,.1]
@@ -498,7 +500,8 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.switch = .4
 		p.aim = false
 		return
-	if input.get("reload",false) and not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < w.capacity and (not equipment or w.get("infiniteReserve",false) or p.reserves[p.weapon] > 0): p.reload_queued = true
+	var can_reload: bool = not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < w.capacity and (not equipment or w.get("infiniteReserve",false) or p.reserves[p.weapon] > 0)
+	if (input.get("reload",false) or p.ammo[p.weapon] <= 0) and can_reload: p.reload_queued = true
 	p.input.reload = false
 	if p.reload_queued and p.fire_anim <= 0:
 		p.reload = w.reloadDuration

@@ -6,7 +6,7 @@ var enemies: Dictionary = rules.enemies
 var parts: Array = rules.parts
 const Maps = preload("res://scripts/map_catalog.gd")
 signal settings_changed
-var settings = {"sensitivity": 0.0022, "volume": 1.0, "muted": false, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 3, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_defense"}
+var settings = {"sensitivity": 0.0022, "volume": 1.0, "muted": false, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 3, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_defense", "defense_difficulty":"normal"}
 const GRAPHICS_PRESETS = [
     {"resolution":.5,"aa":0,"shadows":0,"effects":0,"distance":0,"frame_limit":60,"pixelated":true},
     {"resolution":.67,"aa":1,"shadows":1,"effects":0,"distance":1,"frame_limit":60,"pixelated":false},
@@ -30,6 +30,14 @@ const SPAWNS = [Vector2(-13,-45), Vector2(1,-45), Vector2(12,-45), Vector2(19,-3
 const PRACTICE = [Vector2(-5.8,-9.5), Vector2(.15,-22), Vector2(5.4,-21), Vector2(-1,-31)]
 const MODELS = ["蓝衣青年", "棕衣大叔", "绿衣队员", "红衣女性"]
 const PALETTE = [0x355747,0x365d73,0x794638,0x987f4c,0x663a4b,0x4b595b]
+const FULL_RESERVE_MAGAZINES = 5
+const DEFENSE_RESERVE_MAGAZINES = 17
+
+func full_reserve(weapon_index: int) -> int:
+	return FULL_RESERVE_MAGAZINES*int(weapons[weapon_index].capacity)
+
+func defense_full_reserve(weapon_index: int) -> int:
+	return DEFENSE_RESERVE_MAGAZINES*int(weapons[weapon_index].capacity)
 
 func _ready() -> void:
 	if automation: settings.map_id = "graypine_night"
@@ -44,6 +52,7 @@ func _ready() -> void:
 				for entry in loaded.scores:
 					if valid_score(entry): scores.append(entry)
 	if not Maps.valid(settings.map_id): settings.map_id = "graypine_defense"
+	settings.defense_difficulty = preload("res://scripts/defense_population.gd").normalize_difficulty(settings.defense_difficulty)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--map=") and Maps.valid(arg.trim_prefix("--map=")): settings.map_id = arg.trim_prefix("--map=")
 	settings.sensitivity = clampf(settings.sensitivity, .00022, .0044)

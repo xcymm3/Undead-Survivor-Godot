@@ -24,7 +24,7 @@ func _init(world) -> void:
 		p.primary = 1
 		p.weapon = p.primary
 		p.requested = p.primary
-		p.reserve = 5*int(Data.weapons[p.primary].capacity)
+		p.reserve = Data.full_reserve(p.primary)
 		p.medkits = 1
 		p.downed = false
 		p.dead = false

@@ -2,6 +2,7 @@ extends Node3D
 const Simulation = preload("res://scripts/simulation.gd")
 const Arena = preload("res://scripts/arena.gd")
 const EnemyView = preload("res://scripts/enemy_view.gd")
+const DefensePopulation = preload("res://scripts/defense_population.gd")
 var arena
 var enemies
 var sim
@@ -131,6 +132,7 @@ func start_solo(mode: String, campaign_seed := -1) -> void:
 	reset_game()
 	load_map(Data.settings.map_id)
 	sim = Simulation.new(arena)
+	sim.defense_difficulty = Data.settings.defense_difficulty
 	sim.add_pawn("solo","幸存者",0)
 	sim.pawns.solo.pos = arena.definition.spawn
 	yaw = arena.definition.yaw
@@ -144,6 +146,7 @@ func start_coop() -> void:
 	load_map(Session.map_id)
 	yaw = arena.definition.yaw
 	sim = Simulation.new(arena)
+	sim.defense_difficulty = Session.defense_difficulty
 	var i = 0
 	for id in Session.members:
 		sim.add_pawn(id,Session.members[id],i)
@@ -601,4 +604,10 @@ func select_map(id: String) -> void:
 	load_map(id)
 	camera.position = arena.definition.camera
 	camera.look_at(arena.definition.look_at)
+	ui.show_home()
+
+func select_defense_difficulty(id: String) -> void:
+	if running or Data.settings.map_id != "graypine_defense": return
+	Data.settings.defense_difficulty = DefensePopulation.normalize_difficulty(id)
+	Data.save()
 	ui.show_home()

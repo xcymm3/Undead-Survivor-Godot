@@ -8,9 +8,11 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-11"
+const PROTOCOL = "undead-survivor-godot-12"
 const PORT = 27777
+const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"
+var defense_difficulty = "normal"
 var transport = ""
 var local_id = "solo"
 var host_id = ""
@@ -159,6 +161,7 @@ func _steam_created(result: int, id: int) -> void:
 	steam.setLobbyData(id,"name",str(steam.getPersonaName())+" 的哨站")
 	steam.setLobbyData(id,"playing","0")
 	steam.setLobbyData(id,"map_id",map_id)
+	steam.setLobbyData(id,"defense_difficulty",defense_difficulty)
 	steam.setLobbyJoinable(id,true)
 
 func _steam_joined(id: int, _permissions: int, _locked: bool, response: int) -> void:
@@ -178,6 +181,8 @@ func _steam_joined(id: int, _permissions: int, _locked: bool, response: int) -> 
 	room_code = str(id)
 	var selected_map = str(steam.getLobbyData(id,"map_id"))
 	if Data.Maps.valid(selected_map): map_id = selected_map
+	var selected_difficulty = str(steam.getLobbyData(id,"defense_difficulty"))
+	if selected_difficulty in DefensePopulation.DIFFICULTIES: defense_difficulty = selected_difficulty
 	last_host = Time.get_ticks_msec()/1000.0
 	refresh_steam_members()
 	status = "Steam 房间已连接"
@@ -221,7 +226,7 @@ func begin_match() -> void:
 	ready_members.clear()
 	nonce = str(Time.get_unix_time_from_system())+"-"+str(randi())
 	status = "正在加载战场，等待所有队员准备完成…"
-	broadcast({"type":"prepare","members":members,"nonce":nonce,"map_id":map_id},true)
+	broadcast({"type":"prepare","members":members,"nonce":nonce,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
 	map_preparing.emit()
 	changed.emit()
 
@@ -241,7 +246,7 @@ func finish_preparing() -> void:
 	if transport == "steam":
 		steam.setLobbyData(lobby,"playing","1")
 		steam.setLobbyJoinable(lobby,false)
-	broadcast({"type":"start","members":members,"nonce":nonce,"map_id":map_id},true)
+	broadcast({"type":"start","members":members,"nonce":nonce,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
 	match_started.emit()
 	changed.emit()
 
@@ -347,15 +352,16 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 	if packet.get("type") == "hello" and is_host() and transport == "lan" and not playing and members.size() < 4:
 		if not packet.get("name") is String: return
 		members[sender] = packet.name.left(32)
-		broadcast({"type":"members","members":members,"map_id":map_id},true)
+		broadcast({"type":"members","members":members,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
 		changed.emit()
 		return
 	if sender != host_id and not members.has(sender): return
 	if sender == host_id: last_host = Time.get_ticks_msec()/1000.0
 	match packet.get("type"):
 		"prepare":
-			if sender == host_id and not playing and packet.get("members") is Dictionary and packet.members.size() in [2,3,4] and packet.get("nonce") is String and Data.Maps.valid(packet.get("map_id")):
+			if sender == host_id and not playing and packet.get("members") is Dictionary and packet.members.size() in [2,3,4] and packet.get("nonce") is String and Data.Maps.valid(packet.get("map_id")) and packet.get("defense_difficulty") in DefensePopulation.DIFFICULTIES:
 				map_id = packet.map_id
+				defense_difficulty = packet.defense_difficulty
 				nonce = packet.nonce
 				members = packet.members
 				loading = true
@@ -374,13 +380,14 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 			if sender == host_id and playing and packet.get("session") == nonce and packet.get("seq") is int:
 				record_probe_reply(packet.seq,Time.get_ticks_msec())
 		"members":
-			if sender == host_id and packet.get("members") is Dictionary and packet.members.size() <= 4 and Data.Maps.valid(packet.get("map_id")):
+			if sender == host_id and packet.get("members") is Dictionary and packet.members.size() <= 4 and Data.Maps.valid(packet.get("map_id")) and packet.get("defense_difficulty") in DefensePopulation.DIFFICULTIES:
 				map_id = packet.map_id
+				defense_difficulty = packet.defense_difficulty
 				members = packet.members
 				status = "房间已连接，等待房主开始"
 				changed.emit()
 		"start":
-			if sender == host_id and loading and not playing and packet.get("nonce") == nonce and packet.get("map_id") == map_id and packet.get("members") is Dictionary and packet.members.size() in [2,3,4]:
+			if sender == host_id and loading and not playing and packet.get("nonce") == nonce and packet.get("map_id") == map_id and packet.get("defense_difficulty") == defense_difficulty and packet.get("members") is Dictionary and packet.members.size() in [2,3,4]:
 				map_id = packet.map_id
 				nonce = packet.nonce
 				members = packet.members
@@ -412,8 +419,10 @@ func valid_world(value) -> bool:
 	if value.mode == "defense":
 		if map_id != "graypine_defense" or not value.get("defense") is Dictionary: return false
 		var defense_state: Dictionary = value.defense
-		if not defense_state.has_all(["started","crystal_hp","crystal_max_hp","wave","objective"]): return false
+		if not defense_state.has_all(["started","crystal_hp","crystal_max_hp","wave","objective","difficulty","difficulty_multiplier"]): return false
 		if not defense_state.started is bool or not defense_state.objective is String or defense_state.objective.length() > 160: return false
+		if not defense_state.difficulty is String or defense_state.difficulty not in DefensePopulation.DIFFICULTIES: return false
+		if not (defense_state.difficulty_multiplier is int or defense_state.difficulty_multiplier is float) or not is_equal_approx(float(defense_state.difficulty_multiplier),DefensePopulation.difficulty_multiplier(defense_state.difficulty)): return false
 		for key in ["crystal_hp","crystal_max_hp","wave"]:
 			if not (defense_state[key] is int or defense_state[key] is float) or not is_finite(defense_state[key]): return false
 		if defense_state.crystal_hp < 0 or defense_state.crystal_hp > defense_state.crystal_max_hp or defense_state.crystal_max_hp != Data.Maps.Defense.CRYSTAL_MAX_HP: return false
@@ -448,7 +457,7 @@ func valid_world(value) -> bool:
 			if not p.heal_time is float or not is_finite(p.heal_time) or p.heal_time < 0 or p.heal_time > 3: return false
 			if not p.reserves is Array or p.reserves.size() != 10: return false
 			for index in 10:
-				if not p.reserves[index] is int or p.reserves[index] < 0 or p.reserves[index] > 5*int(Data.weapons[index].capacity): return false
+				if not p.reserves[index] is int or p.reserves[index] < 0 or p.reserves[index] > Data.full_reserve(index): return false
 			for key in ["reserve","primary","medkits","revives"]:
 				if not p[key] is int or p[key] < 0: return false
 			if p.primary not in [0,1,4,5,7,8,9] or p.medkits > 1 or p.revives > 2 or p.reserve > 6*int(Data.weapons[p.primary].capacity): return false
@@ -485,7 +494,7 @@ func _peer_left(id: int) -> void:
 	received_edges.erase(key)
 	input_sequences.erase(key)
 	member_left.emit(key)
-	if is_host(): broadcast({"type":"members","members":members,"map_id":map_id},true)
+	if is_host(): broadcast({"type":"members","members":members,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
 	changed.emit()
 
 func _connection_lost(message: String) -> void:
@@ -496,6 +505,7 @@ func _connection_lost(message: String) -> void:
 
 func leave() -> void:
 	map_id = Data.settings.map_id
+	defense_difficulty = DefensePopulation.normalize_difficulty(Data.settings.defense_difficulty)
 	loading = false
 	ready_members.clear()
 	if active:
@@ -587,7 +597,7 @@ func choose_map(id: String) -> void:
 	if not is_host() or playing or loading or not Data.Maps.valid(id): return
 	map_id = id
 	if transport == "steam": steam.setLobbyData(lobby,"map_id",id)
-	broadcast({"type":"members","members":members,"map_id":map_id},true)
+	broadcast({"type":"members","members":members,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
 	changed.emit()
 
 func valid_campaign_equipment(state: Dictionary) -> bool:

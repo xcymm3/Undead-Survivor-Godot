@@ -95,7 +95,7 @@ func native_smoke() -> void:
 	await get_tree().create_timer(1.4).timeout
 	Input.action_release("forward")
 	Input.action_release("interact")
-	passed = passed and game.sim.mode == "campaign" and game.sim.campaign.state.departed and game.local_pawn().get("primary",-1) == 1 and game.local_pawn().get("reserve",-1) == 225
+	passed = passed and game.sim.mode == "campaign" and game.sim.campaign.state.departed and game.local_pawn().get("primary",-1) == 1 and game.local_pawn().get("reserve",-1) == Data.full_reserve(1)
 	print("PACKAGED CAMPAIGN SMOKE: "+("PASS" if passed else "FAIL"))
 	var tree = get_tree()
 	reparent(tree.root)

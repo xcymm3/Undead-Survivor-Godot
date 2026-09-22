@@ -12,7 +12,8 @@ func _init(world) -> void:
 	state = {
 		"started":false,"departed":false,"crystal_hp":Layout.CRYSTAL_MAX_HP,
 		"crystal_max_hp":Layout.CRYSTAL_MAX_HP,"wave":1,"countdown":0.0,
-		"objective":"前往水晶旁拉下拉杆，准备第一波进攻","party":world.pawns.size(),"prop_clock":0.0
+		"objective":"前往水晶旁拉下拉杆，准备第一波进攻","party":world.pawns.size(),"prop_clock":0.0,
+		"difficulty":world.defense_difficulty,"difficulty_multiplier":preload("res://scripts/defense_population.gd").difficulty_multiplier(world.defense_difficulty)
 	}
 	equipment = preload("res://scripts/defense_equipment.gd").new(self)
 	equipment.initialize()

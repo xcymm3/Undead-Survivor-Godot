@@ -31,6 +31,7 @@ func _initialize() -> void:
 func run() -> void:
 	var data = root.get_node("Data")
 	data.settings.map_id = "graypine_defense"
+	data.settings.defense_difficulty = "easy"
 	var scene = load("res://scenes/main.tscn")
 	game = scene.instantiate()
 	root.add_child(game)
@@ -95,9 +96,16 @@ func run() -> void:
 	var sim = game.sim
 	var pawn: Dictionary = sim.pawns.solo
 	check(sim.mode == "defense" and not sim.defense.started,"Entering the map does not start waves")
+	check(sim.defense.difficulty == "easy" and is_equal_approx(sim.defense.difficulty_multiplier,.7),"Defense validation runs the Easy difficulty selected before the match")
 	check(pawn.primary == 0 and pawn.secondary == 3 and pawn.slot == 1,"Defense starts with primary, sidearm and melee equipment slots")
 	check(pawn.medkits == 1 and pawn.grenades == 0,"Defense initializes Night's medical and grenade inventory")
-	check(pawn.reserves[pawn.primary] == data.weapons[pawn.primary].capacity*5 and pawn.reserves[pawn.secondary] == data.weapons[pawn.secondary].capacity*5,"Defense firearms use Night's finite reserve ammunition")
+	check(pawn.reserves[pawn.primary] == data.defense_full_reserve(pawn.primary) and pawn.reserves[pawn.secondary] == data.defense_full_reserve(pawn.secondary),"Defense firearms start with seventeen reserve magazines")
+	var reserve_before_auto_reload: int = pawn.reserves[pawn.primary]
+	pawn.ammo[pawn.primary] = 0
+	sim.update_arsenal(pawn,command(pawn.primary),.01)
+	check(pawn.reloading,"An empty firearm automatically starts reloading without an R input")
+	sim.update_arsenal(pawn,command(pawn.primary),float(data.weapons[pawn.primary].reloadDuration)+.01)
+	check(pawn.ammo[pawn.primary] == data.weapons[pawn.primary].capacity and pawn.reserves[pawn.primary] == reserve_before_auto_reload-data.weapons[pawn.primary].capacity,"Automatic reload transfers one full magazine from the finite reserve")
 	check(sim.defense.grenade_slots.size() == 1 and sim.defense.medkit_slots.size() == 1,"Solo armory creates one independent grenade and medical slot")
 	for i in 10:
 		sim.submit("solo",command(0,false,2))
@@ -105,7 +113,7 @@ func run() -> void:
 	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Waiting before the lever keeps timer and spawns stopped")
 	check(pawn.weapon == pawn.secondary and pawn.slot == 2,"Defense uses Night's secondary-weapon slot switching")
 	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(0))
-	check(pawn.primary == 0 and pawn.weapon == 0 and pawn.ammo[0] == data.weapons[0].capacity and pawn.reserves[0] == data.weapons[0].capacity*5,"Interacting with a wall weapon replaces and fully restocks the primary weapon")
+	check(pawn.primary == 0 and pawn.weapon == 0 and pawn.ammo[0] == data.weapons[0].capacity and pawn.reserves[0] == data.defense_full_reserve(0),"Interacting with a wall weapon replaces and fully restocks the primary weapon")
 	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == primary_weapon_indices.size(),"A replacement copy appears immediately after a wall weapon pickup")
 	var grenade_clock: float = sim.defense.prop_clock
 	interact_with(sim,pawn,data.Maps.Defense.GRENADE_MOUNTS[0])
@@ -229,8 +237,8 @@ func run() -> void:
 	var exact_sample_budgets = true
 	for sample in 200:
 		sim.prepare_wave()
-		exact_sample_budgets = exact_sample_budgets and shared_population.points(sim.roster) == population.budget(1,1)
-	check(exact_sample_budgets,"Shared population rules preserve the exact point budget")
+		exact_sample_budgets = exact_sample_budgets and shared_population.points(sim.roster) == population.budget(1,1,"easy")
+	check(exact_sample_budgets,"Easy defense rosters preserve the exact reduced point budget")
 	sim.defense_ordinary_slots = 0
 	var variants: Array = []
 	for slot in 20: variants.append(sim.defense_population_kind("normal"))
@@ -243,17 +251,26 @@ func run() -> void:
 		var night_random = RandomNumberGenerator.new()
 		defense_random.seed = 1000+current_wave
 		night_random.seed = defense_random.seed
-		var defense_roster: Array = population.roster(current_wave,1,defense_random)
+		var defense_roster: Array = population.roster(current_wave,1,defense_random,"easy")
 		var ordinary_roster: Array = defense_roster.filter(func(kind): return kind != "football")
-		var night_roster: Array = shared_population.roster(population.budget(current_wave,1),population.kinds(current_wave),night_random)
-		exact_wave_budgets = exact_wave_budgets and shared_population.points(defense_roster) == population.budget(current_wave,1)
+		var night_roster: Array = shared_population.roster(population.budget(current_wave,1,"easy"),population.kinds(current_wave),night_random)
+		exact_wave_budgets = exact_wave_budgets and shared_population.points(defense_roster) == population.budget(current_wave,1,"easy")
 		exact_football_counts = exact_football_counts and defense_roster.count("football") == population.footballs(current_wave)
 		shared_rosters = shared_rosters and ordinary_roster == night_roster
-	check(exact_wave_budgets,"All ten waves spend their exact point budgets")
+	check(exact_wave_budgets,"All ten Easy waves spend their exact reduced point budgets")
 	check(exact_football_counts,"Waves seven and eight have one football; waves nine and ten have two")
 	check(shared_rosters,"Defense ordinary rosters are generated by the Night point algorithm")
 	check(not shared_population.COST.has("football"),"Authored football zombies have no point cost")
-	check(population.budget(10,2) == roundi(population.budget(10,1)*1.2) and population.budget(10,4) == roundi(population.budget(10,1)*1.6),"Defense uses the Night multiplayer budget multipliers")
+	check(population.budget(10,2,"normal") == roundi(population.BASE_BUDGET[9]*1.2) and population.budget(10,4,"normal") == roundi(population.BASE_BUDGET[9]*1.6),"Normal difficulty preserves the existing multiplayer budget rules")
+	var difficulty_budgets_are_scaled = true
+	for party_size in range(1,5):
+		for current_wave in range(1,11):
+			var normal_budget: int = population.normal_budget(current_wave,party_size)
+			difficulty_budgets_are_scaled = difficulty_budgets_are_scaled and population.budget(current_wave,party_size,"normal") == normal_budget
+			difficulty_budgets_are_scaled = difficulty_budgets_are_scaled and population.budget(current_wave,party_size,"easy") == roundi(normal_budget*.7)
+			difficulty_budgets_are_scaled = difficulty_budgets_are_scaled and population.budget(current_wave,party_size,"hard") == roundi(normal_budget*1.3)
+	check(difficulty_budgets_are_scaled,"Difficulty changes only the final point budget by 70, 100 or 130 percent")
+	check(population.footballs(7) == 1 and population.footballs(10) == 2,"Difficulty does not change authored football boss counts")
 
 	var fixed_health = true
 	for kind in data.enemies:

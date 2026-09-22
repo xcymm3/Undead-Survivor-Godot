@@ -16,10 +16,13 @@ test('吊桥水晶防守使用真实输入换装并拉杆开战', async ({ page 
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   await clickButton(page, '保卫水晶');
   await page.waitForFunction(() => window.__survivorSnapshot?.map_id === 'graypine_defense');
+  await clickButton(page, '简单 · 70%');
   await page.screenshot({ path: info.outputPath('defense-home.png') });
   await clickButton(page, '单人防守');
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense' && window.__survivorSnapshot?.running);
   let state = await snapshot(page);
+  expect(state.defense.difficulty).toBe('easy');
+  expect(state.defense.difficulty_multiplier).toBe(.7);
   expect(state.defense.started).toBe(false);
   expect(state.elapsed).toBe(0);
   expect(state.player.primary).toBe(0);
@@ -47,7 +50,8 @@ test('吊桥水晶防守使用真实输入换装并拉杆开战', async ({ page 
   await page.waitForFunction(() => window.__survivorSnapshot?.enemies?.length > 0, null, { timeout: 10_000 });
   state = await snapshot(page);
   expect(state.wave).toBe(1);
-  expect(state.player.reserves[state.player.primary]).toBeGreaterThan(0);
+  expect(state.player.ammo[state.player.primary]).toBe(30);
+  expect(state.player.reserves[state.player.primary]).toBe(510);
   expect(state.defense.crystal_hp).toBe(state.defense.crystal_max_hp);
   await page.screenshot({ path: info.outputPath('defense-wave-started.png') });
   expect(errors).toEqual([]);

@@ -157,6 +157,17 @@ func show_home() -> void:
 		var map_button = button(map_switches,("● " if map_id == Data.settings.map_id else "")+definition.title,game.select_map.bind(map_id))
 		map_button.custom_minimum_size.y = 38
 		map_button.add_theme_font_size_override("font_size",15)
+	if Data.settings.map_id == "graypine_defense":
+		var difficulty_row = HBoxContainer.new()
+		difficulty_row.name = "DifficultySelection"
+		difficulty_row.add_theme_constant_override("separation",8)
+		map_panel.add_child(difficulty_row)
+		difficulty_row.add_child(label("难度",16,Color("c8c5b8")))
+		for entry in [["easy","简单 · 70%"],["normal","普通 · 100%"],["hard","困难 · 130%"]]:
+			var selected: bool = Data.settings.defense_difficulty == entry[0]
+			var difficulty_button = button(difficulty_row,("● " if selected else "")+entry[1],game.select_defense_difficulty.bind(entry[0]))
+			difficulty_button.custom_minimum_size.y = 38
+			difficulty_button.add_theme_font_size_override("font_size",15)
 	var title_block = VBoxContainer.new()
 	title_block.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	title_block.offset_left = 86
@@ -359,6 +370,9 @@ func show_multiplayer() -> void:
 	paragraph(column,Session.status,17,RUST)
 	if Session.active:
 		column.add_child(label("战场："+Data.Maps.definition(Session.map_id).title,22))
+		if Session.map_id == "graypine_defense":
+			var difficulty = preload("res://scripts/defense_population.gd")
+			column.add_child(label("难度：%s（积分预算 × %.1f）" % [difficulty.difficulty_label(Session.defense_difficulty),difficulty.difficulty_multiplier(Session.defense_difficulty)],19,RUST))
 		column.add_child(label("房间  "+Session.room_code,22))
 		button(column,"复制房间地址 / 房间号",func(): DisplayServer.clipboard_set(Session.room_code))
 		for id in Session.members:

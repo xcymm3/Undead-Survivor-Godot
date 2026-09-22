@@ -54,7 +54,7 @@ func initialize() -> void:
 		p.reserves.fill(0)
 		p.reserves[p.primary] = p.reserve
 		p.ammo[p.secondary] = int(Data.weapons[p.secondary].capacity)
-		p.reserves[p.secondary] = 5*int(Data.weapons[p.secondary].capacity)
+		p.reserves[p.secondary] = Data.full_reserve(p.secondary)
 	director.state.loot = []
 	director.state.grenade_stations = {}
 	director.state.medical_stations = {}
@@ -153,7 +153,7 @@ func pickup(p: Dictionary, id: String) -> bool:
 		p.reserves[old] = 0
 		p[key] = loot.weapon
 		p.ammo[loot.weapon] = int(Data.weapons[loot.weapon].capacity)
-		p.reserves[loot.weapon] = 5*int(Data.weapons[loot.weapon].capacity)
+		p.reserves[loot.weapon] = Data.full_reserve(loot.weapon)
 		p.reserve = p.reserves[p.primary]
 		p.slot = 2 if key == "secondary" else 1
 		p.weapon = loot.weapon
