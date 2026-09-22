@@ -162,6 +162,42 @@ static func build_boundaries(world: Node3D) -> void:
 	make_wall_run(world,Vector3(0,2.1,-77.45),Vector3(64,3.2,1.1),true)
 	make_wall_run(world,Vector3(0,4.1,71.45),Vector3(64,2.2,1.1),true)
 
+static func build_ramp_fill(world: Node3D) -> StaticBody3D:
+	# A convex earthen wedge fills the entire volume below the authored ramp.
+	# It reaches the side shelves so there is no physical seam beside the rails.
+	var points = PackedVector3Array([
+		Vector3(-5.5,0,-28),Vector3(5.5,0,-28),
+		Vector3(-5.5,-.2,-28),Vector3(5.5,-.2,-28),
+		Vector3(-5.5,-.2,-10),Vector3(5.5,-.2,-10),
+		Vector3(-5.5,3,-10),Vector3(5.5,3,-10)
+	])
+	var triangles = PackedInt32Array([
+		0,7,1, 0,6,7,
+		2,3,5, 2,5,4,
+		0,1,3, 0,3,2,
+		4,5,7, 4,7,6,
+		0,2,4, 0,4,6,
+		1,7,5, 1,5,3
+	])
+	var builder = SurfaceTool.new()
+	builder.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in triangles: builder.add_vertex(points[index])
+	builder.generate_normals()
+	var body = StaticBody3D.new()
+	body.name = "RampSolidFill"
+	body.set_meta("environment_feature","ramp_fill")
+	var view = MeshInstance3D.new()
+	view.mesh = builder.commit()
+	view.material_override = surface_material(world,"ramp_earth","343d37","62695e",.62,.99,.16)
+	body.add_child(view)
+	var collision = CollisionShape3D.new()
+	var shape = ConvexPolygonShape3D.new()
+	shape.points = points
+	collision.shape = shape
+	body.add_child(collision)
+	world.add_child(body)
+	return body
+
 static func build_ramp_detail(world: Node3D) -> void:
 	var packed_stone = surface_material(world,"ramp","4a504b","75786d",.82,.98,.12)
 	var angle = -atan2(3.0,18.0)
@@ -220,8 +256,8 @@ static func decorate_existing(world: Node3D) -> void:
 	for node in world.get_children():
 		if not node is Node3D: continue
 		var title: String = node.name
-		if title.begins_with("BridgePlank") or title == "BridgeCollision": apply_material(node,timber)
-		elif title.begins_with("BridgeTower") or title.begins_with("BridgeGuardRail") or title.begins_with("WeaponRack") or title.begins_with("RackRail"): apply_material(node,metal)
+		if title.begins_with("BridgePlank") or title == "BridgeCollision" or title == "WeaponShopWall" or title.begins_with("ShopFrame"): apply_material(node,timber)
+		elif title.begins_with("BridgeTower") or title.begins_with("BridgeGuardRail") or title.begins_with("ShopRail"): apply_material(node,metal)
 		elif title == "StoneRamp" or title.begins_with("RampShelf") or title.begins_with("RampWall"): apply_material(node,ramp)
 		elif title == "SafeZoneFloor": apply_material(node,concrete)
 

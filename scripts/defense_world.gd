@@ -92,6 +92,7 @@ func make_ramp() -> void:
 	var angle = -atan2(3.0,18.0)
 	var ramp = block("StoneRamp",Vector3(0,1.3,-19),Vector3(10,.5,18.25),"59605b",true,false)
 	ramp.rotation.x = angle
+	DefenseEnvironment.build_ramp_fill(self)
 	for x in [-5.2,5.2]:
 		var rail = block("RampWall",Vector3(x,2.05,-19),Vector3(.45,1.2,18.4),"343f3e",true,false)
 		rail.rotation.x = angle
@@ -103,10 +104,18 @@ func make_safe_zone() -> void:
 	block("SafeZoneFloor",Vector3(0,3.035,60.5),Vector3(26,.06,17),"314c45",false)
 	for x in [-13.0,13.0]: block("SafeLine",Vector3(x,3.075,60.5),Vector3(.12,.08,17),"7bd8aa",false)
 	for z in [52.0,69.0]: block("SafeLine",Vector3(0,3.075,z),Vector3(26,.08,.12),"7bd8aa",false)
-	var rack_columns = [-8.5,-4.25,0.0,4.25,8.5]
-	for x in rack_columns:
-		block("WeaponRack",Vector3(x,4.5,67.8),Vector3(3.2,2.8,.35),"293a38",true,false)
-		for row in 3: block("RackRail",Vector3(x,3.8+row*.65,67.58),Vector3(2.7,.07,.08),"a7bbb0",false)
+	# Positive world X appears on the player's left while facing the wall.
+	var rack_columns = [8.5,4.25,0.0,-4.25,-8.5]
+	var shop_wall = block("WeaponShopWall",Vector3(0,5.0,67.85),Vector3(25.5,4.4,.65),"493a2d",true,false)
+	shop_wall.set_meta("environment_feature","weapon_shop_wall")
+	for row in 3:
+		block("ShopRail%d" % row,Vector3(0,3.78+row*.7,67.48),Vector3(23.8,.08,.1),"a7bbb0",false)
+	# Narrow trim breaks up the wood surface while preserving one continuous wall.
+	for column in range(6):
+		var x = -10.625+column*4.25
+		block("ShopFrame%d" % column,Vector3(x,5.0,67.47),Vector3(.12,3.75,.1),"5d4934",false)
+	block("ShopFrameTop",Vector3(0,6.98,67.47),Vector3(25.5,.18,.18),"5d4934",false)
+	block("ShopFrameBottom",Vector3(0,3.08,67.47),Vector3(25.5,.18,.18),"5d4934",false)
 	# Ten real weapon models turn the loadout rule into a readable physical wall:
 	# odd slots sit on the lower rail, even slots on the upper rail.
 	for index in Data.weapons.size():
