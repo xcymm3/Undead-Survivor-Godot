@@ -208,7 +208,7 @@ func cycle_spectator() -> void:
 func input_state() -> Dictionary:
 	var enabled = running and not paused and focused and not finished
 	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"heal":enabled and Input.is_action_pressed("heal"),"crouch":enabled and Input.is_action_pressed("crouch"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held,"shove":enabled and shove_pending}
-	if sim and sim.mode == "campaign":
+	if sim and sim.mode in ["campaign","defense"]:
 		if not preload("res://scripts/campaign_equipment.gd").slot_available(local_pawn(),requested_slot): requested_slot = int(local_pawn().get("slot",1))
 		command.slot = requested_slot
 		command.use_self = enabled and fire_pending
@@ -543,7 +543,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			if absf(delta.x) <= max_delta: yaw = wrapf(yaw-delta.x*sensitivity,-PI,PI)
 			if absf(delta.y) <= max_delta: pitch = clampf(pitch-delta.y*sensitivity,-deg_to_rad(85),deg_to_rad(85))
-	if sim.mode == "campaign":
+	if sim.mode in ["campaign","defense"]:
 		if event.is_action_pressed("weapon_previous"): cycle_equipment(-1)
 		if event.is_action_pressed("weapon_next"): cycle_equipment(1)
 	else:
@@ -553,7 +553,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("reload"): reload_pending = true
 	for i in 10:
 		if event.is_action_pressed("weapon_%d" % i):
-			if sim.mode == "campaign":
+			if sim.mode in ["campaign","defense"]:
 				if i < 5 and preload("res://scripts/campaign_equipment.gd").slot_available(local_pawn(),i+1): requested_slot = i+1
 			else: requested_weapon = i
 

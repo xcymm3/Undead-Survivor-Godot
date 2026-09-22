@@ -15,8 +15,10 @@ var events: Array = []
 var mode = "survival"
 var campaign
 var campaign_replica: Dictionary = {}
+var defense_director
 var defense: Dictionary = {}
 var defense_replica: Dictionary = {}
+var equipment
 var won = false
 var elapsed = 0.0
 var wave = 1
@@ -104,6 +106,7 @@ func start(game_mode: String) -> void:
 		zombies.clear()
 		paths.clear()
 		campaign = preload("res://scripts/night_director.gd").new(self)
+		equipment = campaign.equipment
 	elif mode == "defense":
 		zombies.clear()
 		paths.clear()
@@ -111,8 +114,9 @@ func start(game_mode: String) -> void:
 		wave_total = 0
 		defense_ordinary_slots = 0
 		wave = 1
-		defense = {"started":false,"crystal_hp":Data.Maps.Defense.CRYSTAL_MAX_HP,"crystal_max_hp":Data.Maps.Defense.CRYSTAL_MAX_HP,"wave":1,"objective":"前往水晶旁拉下拉杆，准备第一波进攻"}
-		arena.sync_campaign(defense)
+		defense_director = preload("res://scripts/defense_director.gd").new(self)
+		defense = defense_director.state
+		equipment = defense_director.equipment
 	else: prepare_wave()
 
 func prepare_wave() -> void:
@@ -175,7 +179,7 @@ func submit(id: String, input: Dictionary) -> void:
 	clean.pitch = clampf(clean.pitch,-deg_to_rad(85),deg_to_rad(85))
 	clean.weapon = clampi(int(clean.weapon),0,9)
 	for key in ["jump","fire","reload","aim","crouch","interact","heal","use_self","use_other","shove"]: clean[key] = input.get(key,false) == true
-	if campaign:
+	if equipment:
 		var slot = input.get("slot",pawns[id].slot)
 		if not slot is int or slot < 1 or slot > 5: return
 		clean.slot = slot
@@ -196,11 +200,11 @@ func step(dt: float) -> void:
 	for id in melee_swings.keys():
 		if not pawns.has(id) or pawns[id].hp <= 0: melee_swings.erase(id)
 	if (campaign and campaign.state.departed) or (mode == "defense" and defense.get("started",false)) or (not campaign and mode != "defense"): elapsed += dt
-	if campaign: campaign.equipment.before_movement(dt)
+	if equipment: equipment.before_movement(dt)
 	for p in pawns.values(): update_pawn(p,dt)
-	if campaign: campaign.equipment.step_projectiles(dt)
+	if equipment: equipment.step_projectiles(dt)
 	if mode == "defense":
-		update_defense_interactions()
+		defense_director.interactions(dt)
 		if not defense.get("started",false): return
 	crowd_buckets.clear()
 	for z in zombies:
@@ -240,15 +244,17 @@ func step(dt: float) -> void:
 		return
 	if rest > 0:
 		rest = maxf(0,rest-dt)
+		if mode == "defense": defense_director.sync_countdown(rest)
 		if rest <= 0:
-			wave += 1
+			if mode != "defense" or cleared >= wave: wave += 1
 			spawned = 0
 			credit = 0
 			prepare_wave()
 			if mode == "defense":
 				defense.wave = wave
+				defense.countdown = 0.0
 				defense.objective = "第 %d 波正在逼近" % wave
-				arena.sync_campaign(defense)
+				defense_director.sync_world()
 		return
 	if roster.is_empty() and alive_count() == 0:
 		cleared = wave
@@ -257,10 +263,12 @@ func step(dt: float) -> void:
 			defense.objective = "十波进攻已全部击退，水晶守卫成功"
 			arena.sync_campaign(defense)
 			return
-		rest = 6 if mode == "defense" else 3
+		rest = 5 if mode == "defense" else 3
 		if mode == "defense":
-			defense.objective = "第 %d 波已清除 · 下一波即将到来" % wave
-			arena.sync_campaign(defense)
+			defense.countdown = rest
+			defense.wave = wave+1
+			defense.objective = "第 %d 波已清除 · 第 %d 波将在 5 秒后开始" % [wave,wave+1]
+			defense_director.sync_world()
 		for p in pawns.values():
 			if p.hp <= 0:
 				p.pos = safe_spawn()
@@ -315,25 +323,6 @@ func target_by_id(id: String) -> Dictionary:
 	if mode == "defense" and id == "crystal" and defense.get("crystal_hp",0) > 0: return crystal_target()
 	return pawns.get(id,{})
 
-func update_defense_interactions() -> void:
-	var changed = false
-	for p in pawns.values():
-		var safe: bool = Data.Maps.Defense.in_safe_zone(p.pos)
-		if not defense.get("started",false):
-			p.hint = "安全换装区：按 1—0 选择主武器" if safe else "前往水晶后方整备，随后在水晶旁按 E 拉下拉杆"
-			if p.pos.distance_to(Data.Maps.Defense.LEVER) <= 2.7:
-				p.hint = "按 E 拉下拉杆，开始第一波进攻"
-				if p.input.get("interact",false):
-					defense.started = true
-					defense.objective = "第 1 波正在逼近"
-					prepare_wave()
-					events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(p.pos.x,p.height+1,p.pos.y)})
-					changed = true
-		else:
-			p.hint = "安全换装区：按 1—0 更换主武器" if safe else "保护水晶；僵尸会攻击距离最近的目标"
-		p.input.interact = false
-	if changed: arena.sync_campaign(defense)
-
 func damage_crystal(z: Dictionary, amount: int) -> bool:
 	if mode != "defense" or defense.get("crystal_hp",0) <= 0: return false
 	defense.crystal_hp = maxi(0,int(defense.crystal_hp)-amount)
@@ -370,7 +359,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	p.input_age += dt
 	var input: Dictionary = p.input if p.input_age < .5 else {}
 	if p.hp <= 0: return
-	var locked: bool = campaign != null and (not p.healing.is_empty() or p.being_healed)
+	var locked: bool = equipment != null and (not p.healing.is_empty() or p.being_healed)
 	if not locked:
 		p.yaw = input.get("yaw",p.yaw)
 		p.pitch = input.get("pitch",p.pitch)
@@ -409,7 +398,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	p.input.shove = false
 	update_arsenal(p,input,dt)
 	update_defense_regen(p,dt)
-	if campaign: p.reserve = p.reserves[p.primary]
+	if equipment: p.reserve = p.reserves[p.primary]
 
 func recover_defense_fall(p: Dictionary, body) -> void:
 	var return_position: Vector2 = Data.Maps.Defense.FALL_RETURN
@@ -450,7 +439,7 @@ func update_defense_regen(p: Dictionary, dt: float) -> void:
 	p.regen_credit -= healed
 
 func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
-	if campaign and (p.slot >= 4 or not p.healing.is_empty() or p.being_healed):
+	if equipment and (p.slot >= 4 or not p.healing.is_empty() or p.being_healed):
 		if p.weapon == 3 and p.reloading:
 			p.reloading = false
 			p.reload = 0.0
@@ -466,7 +455,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	update_melee_swing(p,w)
 	var requested: int = input.get("weapon",p.weapon)
 	if campaign: requested = campaign.choose_weapon(p,requested)
-	if mode == "defense" and not Data.Maps.Defense.in_safe_zone(p.pos): requested = p.weapon
+	elif defense_director: requested = defense_director.choose_weapon(p,requested)
 	if requested != p.requested:
 		p.requested = requested
 		p.reload_queued = false
@@ -483,7 +472,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		if before > .2 and p.switch <= .2: p.weapon = p.requested
 		return
 	if p.reloading:
-		if w.id == "shotgun" and input.get("fire",false) and p.ammo[p.weapon] > 0 and p.cooldown <= 0 and p.fire_anim <= 0 and (not campaign or (campaign.state.departed and p.interaction == "")):
+		if w.id == "shotgun" and input.get("fire",false) and p.ammo[p.weapon] > 0 and p.cooldown <= 0 and p.fire_anim <= 0 and (not equipment or ((campaign.state.departed if campaign else defense.get("started",false)) and p.interaction == "")):
 			p.reloading = false
 			p.reload = 0.0
 			p.reload_queued = false
@@ -493,23 +482,23 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.reload -= dt
 		if p.reload <= 0:
 			if w.get("shellReload",false):
-				var loaded = mini(1,p.reserves[p.weapon]) if campaign else 1
+				var loaded = mini(1,p.reserves[p.weapon]) if equipment else 1
 				p.ammo[p.weapon] = mini(int(w.capacity),p.ammo[p.weapon]+loaded)
-				if campaign and not w.get("infiniteReserve",false): p.reserves[p.weapon] -= loaded
+				if equipment and not w.get("infiniteReserve",false): p.reserves[p.weapon] -= loaded
 				p.reload = w.reloadDuration
 				events.append({"kind":"reload","player":p.id})
-				if p.ammo[p.weapon] >= w.capacity or (campaign and p.reserves[p.weapon] <= 0): p.reloading = false
+				if p.ammo[p.weapon] >= w.capacity or (equipment and p.reserves[p.weapon] <= 0): p.reloading = false
 			else:
-				var loaded = mini(int(w.capacity)-p.ammo[p.weapon],p.reserves[p.weapon]) if campaign and not w.get("infiniteReserve",false) else int(w.capacity)-p.ammo[p.weapon]
+				var loaded = mini(int(w.capacity)-p.ammo[p.weapon],p.reserves[p.weapon]) if equipment and not w.get("infiniteReserve",false) else int(w.capacity)-p.ammo[p.weapon]
 				p.ammo[p.weapon] += loaded
-				if campaign and not w.get("infiniteReserve",false): p.reserves[p.weapon] -= loaded
+				if equipment and not w.get("infiniteReserve",false): p.reserves[p.weapon] -= loaded
 				p.reloading = false
 		return
 	if p.requested != p.weapon and p.fire_anim <= 0:
 		p.switch = .4
 		p.aim = false
 		return
-	if input.get("reload",false) and not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < w.capacity and (not campaign or w.get("infiniteReserve",false) or p.reserves[p.weapon] > 0): p.reload_queued = true
+	if input.get("reload",false) and not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < w.capacity and (not equipment or w.get("infiniteReserve",false) or p.reserves[p.weapon] > 0): p.reload_queued = true
 	p.input.reload = false
 	if p.reload_queued and p.fire_anim <= 0:
 		p.reload = w.reloadDuration
@@ -518,7 +507,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.aim = false
 		events.append({"kind":"reload","player":p.id})
 		return
-	var trigger: bool = input.get("fire",false) and (not campaign or (campaign.state.departed and p.interaction == ""))
+	var trigger: bool = input.get("fire",false) and (not equipment or ((campaign.state.departed if campaign else defense.get("started",false)) and p.interaction == ""))
 	if trigger and (w.automatic or not p.trigger) and p.cooldown <= 0 and p.fire_anim <= .00001:
 		if p.ammo[p.weapon] > 0 or w.get("infiniteAmmo",false):
 			if not w.get("infiniteAmmo",false): p.ammo[p.weapon] -= 1
@@ -539,6 +528,7 @@ func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
 		p.combat_timer = DEFENSE_REGEN_DELAY
 		p.regen_credit = 0.0
 	if campaign: campaign.damage(p,z,applied)
+	elif defense_director: p.hurt_at = elapsed
 	p.damage_dir = (z.pos-p.pos).normalized()
 	p.damage_rear = Vector2(-sin(p.yaw),-cos(p.yaw)).dot(p.damage_dir) < -.3
 	p.damage_hint = 1.8
@@ -559,7 +549,7 @@ func charge_knockback(p: Dictionary, direction: Vector2) -> void:
 
 func try_shove(p: Dictionary) -> bool:
 	if p.hp <= 0 or p.shove_cd > 0 or p.shove_gap > 0 or p.switch > 0: return false
-	if campaign and (not campaign.state.departed or p.slot >= 4 or p.interaction != "" or not p.healing.is_empty() or p.being_healed): return false
+	if equipment and ((campaign != null and not campaign.state.departed) or (mode == "defense" and not defense.get("started",false)) or p.slot >= 4 or p.interaction != "" or not p.healing.is_empty() or p.being_healed): return false
 	p.shoves = p.get("shoves",0)+1
 	p.shove_gap = SHOVE_INTERVAL
 	p.shove_anim = .32

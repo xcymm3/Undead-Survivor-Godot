@@ -11,8 +11,19 @@ func check(condition: bool, message: String) -> void:
 		failures += 1
 		push_error("FAIL: "+message)
 
-func command(weapon := 0, interact := false) -> Dictionary:
-	return {"x":0.0,"y":0.0,"yaw":0.0,"pitch":0.0,"weapon":weapon,"interact":interact,"heal":false,"crouch":false,"jump":false,"reload":false,"fire":false,"aim":false,"shove":false}
+func command(weapon := 0, interact := false, slot := 1, yaw := 0.0, pitch := 0.0, fire := false) -> Dictionary:
+	return {"x":0.0,"y":0.0,"yaw":yaw,"pitch":pitch,"weapon":weapon,"slot":slot,"interact":interact,"heal":false,"crouch":false,"jump":false,"reload":false,"fire":fire,"use_self":fire,"use_other":false,"aim":false,"shove":false}
+
+func interact_with(sim, pawn: Dictionary, point: Vector3, id := "solo") -> void:
+	pawn.pos = Vector2(point.x,point.z-1.65)
+	pawn.height = root.get_node("Data").Maps.Defense.height(pawn.pos)
+	var eye_y: float = pawn.height+preload("res://scripts/player_body.gd").eye_height(pawn)
+	var pitch := atan2(point.y-eye_y,1.65)
+	for i in 5:
+		sim.submit(id,command(int(pawn.weapon),true,int(pawn.slot),PI,pitch))
+		sim.step(.1)
+	sim.submit(id,command(int(pawn.weapon),false,int(pawn.slot),PI,pitch))
+	sim.step(.02)
 
 func _initialize() -> void:
 	call_deferred("run")
@@ -67,12 +78,16 @@ func run() -> void:
 	var shop_shape = shop_walls[0].find_children("*","CollisionShape3D",true,false)[0] as CollisionShape3D
 	check(shop_shape and shop_shape.shape is BoxShape3D and shop_shape.shape.size.y >= 8.8,"Weapon shop wall is at least twice its previous height")
 	var weapon_mounts: Array = weapon_displays.map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
-	weapon_mounts.sort_custom(func(a,b): return a.x < b.x)
+	var columns: Array = []
+	for point in weapon_mounts:
+		if not columns.has(point.x): columns.append(point.x)
+	columns.sort()
 	var separated = true
-	for index in range(1,weapon_mounts.size()): separated = separated and weapon_mounts[index].x-weapon_mounts[index-1].x >= 3.39
-	check(separated,"Weapon displays leave a generous horizontal gap between adjacent guns")
+	for index in range(1,columns.size()): separated = separated and columns[index]-columns[index-1] >= 4.79
+	check(columns.size() == 4 and separated,"Weapon displays use four generously spaced columns")
+	check(columns.all(func(x): return weapon_mounts.filter(func(point): return point.x == x).size() in [1,2]) and weapon_mounts.map(func(point): return point.y).min() < weapon_mounts.map(func(point): return point.y).max(),"Primary weapons use two rows per column")
 	var standing_eye = data.Maps.Defense.height(Vector2(0,60))+preload("res://scripts/player_body.gd").eye_height({"crouch":0.0})
-	check(weapon_mounts.all(func(point): return point.y <= standing_eye),"Every weapon is reachable at standing eye height without jumping")
+	check(weapon_mounts.all(func(point): return point.y <= standing_eye+1.0),"Every weapon is reachable while standing without jumping")
 	check(game.arena.scenery.find_children("WeaponRack*","StaticBody3D",true,false).is_empty(),"Safe zone no longer uses five separate rack walls")
 
 	game.start_solo("defense")
@@ -80,19 +95,49 @@ func run() -> void:
 	var sim = game.sim
 	var pawn: Dictionary = sim.pawns.solo
 	check(sim.mode == "defense" and not sim.defense.started,"Entering the map does not start waves")
+	check(pawn.primary == 0 and pawn.secondary == 3 and pawn.slot == 1,"Defense starts with primary, sidearm and melee equipment slots")
+	check(pawn.medkits == 1 and pawn.grenades == 0,"Defense initializes Night's medical and grenade inventory")
+	check(pawn.reserves[pawn.primary] == data.weapons[pawn.primary].capacity*5 and pawn.reserves[pawn.secondary] == data.weapons[pawn.secondary].capacity*5,"Defense firearms use Night's finite reserve ammunition")
+	check(sim.defense.grenade_slots.size() == 1 and sim.defense.medkit_slots.size() == 1,"Solo armory creates one independent grenade and medical slot")
 	for i in 10:
-		sim.submit("solo",command(1))
+		sim.submit("solo",command(0,false,2))
 		sim.step(.05)
 	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Waiting before the lever keeps timer and spawns stopped")
-	check(pawn.weapon == 1,"Any primary weapon can be selected inside the rear safe zone")
+	check(pawn.weapon == pawn.secondary and pawn.slot == 2,"Defense uses Night's secondary-weapon slot switching")
+	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(0))
+	check(pawn.primary == 0 and pawn.weapon == 0 and pawn.ammo[0] == data.weapons[0].capacity and pawn.reserves[0] == data.weapons[0].capacity*5,"Interacting with a wall weapon replaces and fully restocks the primary weapon")
+	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == primary_weapon_indices.size(),"A replacement copy appears immediately after a wall weapon pickup")
+	var grenade_clock: float = sim.defense.prop_clock
+	interact_with(sim,pawn,data.Maps.Defense.GRENADE_MOUNTS[0])
+	check(pawn.grenades == 1 and sim.defense.grenade_slots[0].ready_at >= grenade_clock+30.0,"Grenade pickup starts its own thirty-second refill cooldown")
+	pawn.medkits = 0
+	var medkit_clock: float = sim.defense.prop_clock
+	interact_with(sim,pawn,data.Maps.Defense.MEDKIT_MOUNTS[0])
+	check(pawn.medkits == 1 and sim.defense.medkit_slots[0].ready_at >= medkit_clock+30.0,"Medical pickup starts its own thirty-second refill cooldown")
 	pawn.pos = Vector2(6,49)
-	for i in 10:
-		sim.submit("solo",command(2))
+	pawn.height = data.Maps.Defense.height(pawn.pos)
+	interact_with(sim,pawn,Vector3(data.Maps.Defense.LEVER.x,pawn.height+1.1,data.Maps.Defense.LEVER.y))
+	check(sim.defense.started and sim.rest > 4.0 and sim.roster.is_empty(),"Pulling the lever starts a five-second preparation countdown before wave one")
+	for i in 52:
+		sim.submit("solo",command(int(pawn.weapon),false,int(pawn.slot)))
+		sim.step(.1)
+	check(sim.wave == 1 and sim.rest == 0 and not sim.roster.is_empty(),"Wave one starts after the countdown without being skipped")
+	var grenades_before: int = pawn.grenades
+	sim.submit("solo",command(int(pawn.weapon),false,4,pawn.yaw,pawn.pitch,true))
+	sim.step(.05)
+	check(pawn.grenades == grenades_before-1 and sim.defense.projectiles.size() == 1,"Defense uses Night's grenade slot and authoritative projectile logic")
+	pawn.hp = 50
+	pawn.combat_timer = 100.0
+	sim.submit("solo",command(int(pawn.weapon),false,5,pawn.yaw,pawn.pitch,true))
+	sim.step(.05)
+	for i in 62:
+		sim.submit("solo",command(int(pawn.weapon),false,5,pawn.yaw,pawn.pitch,false))
 		sim.step(.05)
-	check(pawn.weapon == 1,"Weapon switching is locked outside the safe zone")
-	sim.submit("solo",command(1,true))
+	check(pawn.hp == 100 and pawn.medkits == 0,"Defense uses Night's three-second medical treatment logic")
+	sim.roster.clear()
+	sim.zombies.clear()
 	sim.step(.02)
-	check(sim.defense.started and not sim.roster.is_empty(),"Pulling the crystal-side lever prepares wave one")
+	check(sim.cleared == 1 and sim.rest > 4.9 and sim.defense.wave == 2 and sim.defense.countdown > 4.9,"Every later wave also receives a five-second preparation countdown")
 
 	# Isolate target choice from the wave spawner: the closest valid unit must take the hit.
 	sim.roster.clear()
@@ -236,6 +281,18 @@ func run() -> void:
 	sim.damage_crystal({"id":77},Data.Maps.Defense.CRYSTAL_MAX_HP)
 	sim.step(.02)
 	check(sim.failed and sim.cause == "crystal" and sim.defense.crystal_hp == 0,"Destroying the fixed-health crystal ends the game in failure")
+	sim.add_pawn("two","二号",1)
+	sim.defense.party = sim.pawns.size()
+	sim.defense_director.equipment.initialize()
+	check(sim.defense.grenade_slots.size() == 2 and sim.defense.medkit_slots.size() == 2,"Coop armory creates one grenade and medical slot per player")
+	var coop_pawn: Dictionary = sim.pawns.solo
+	var coop_mount: Vector3 = data.Maps.Defense.GRENADE_MOUNTS[0]
+	coop_pawn.pos = Vector2(coop_mount.x,coop_mount.z-1.65)
+	coop_pawn.height = data.Maps.Defense.height(coop_pawn.pos)
+	coop_pawn.yaw = PI
+	coop_pawn.pitch = atan2(coop_mount.y-(coop_pawn.height+preload("res://scripts/player_body.gd").eye_height(coop_pawn)),1.65)
+	check(sim.defense_director.equipment.pickup(coop_pawn,"grenade:0"),"A coop player can pick one authoritative grenade slot")
+	check(sim.defense.grenade_slots[0].ready_at >= sim.defense.prop_clock+30 and sim.defense.grenade_slots[1].ready_at == 0,"Coop supply slots keep independent thirty-second cooldowns")
 
 	print("DEFENSE VALIDATION: %d checks; %d failures" % [checks,failures])
 	game.queue_free()

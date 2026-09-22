@@ -194,7 +194,9 @@ func sync() -> void:
 	crystal_label.visible = sim.mode == "defense"
 	crystal_bar.visible = sim.mode == "defense"
 	if sim.mode == "defense":
-		wave_label.text = "等待拉杆" if not defense.get("started",false) else "第 %02d / 10 波" % sim.wave
+		var defense_wave: int = int(defense.get("wave",sim.wave))
+		var countdown: float = float(defense.get("countdown",0.0))
+		wave_label.text = "等待拉杆" if not defense.get("started",false) else "第 %02d 波 · %d 秒准备" % [defense_wave,ceili(countdown)] if countdown > 0 else "第 %02d / 10 波" % sim.wave
 		count_label.text = "击杀 %d · 场上 %d" % [sim.kills,sim.alive_count()]
 		crystal_label.text = "水晶  %d / %d" % [defense.get("crystal_hp",0),defense.get("crystal_max_hp",0)]
 		crystal_bar.max_value = defense.get("crystal_max_hp",1)
@@ -209,8 +211,7 @@ func sync() -> void:
 	ammo_label.text = "∞  近战" if infinite else "%02d / ∞" % p.ammo[int(p.weapon)]
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
-	if sim.mode == "defense": controls_hint.text = "ESC 暂停 · R 换弹 · E 拉杆 · 安全区内按 1—0 换主武器"
-	if sim.mode == "campaign":
+	if sim.mode in ["campaign","defense"]:
 		controls_hint.text = "1 主武器 · 2 副武器 · 3 斧 · 4 手雷 · 5 医疗包 · E 拾取/交互"
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
 		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 无限备弹" if w.get("infiniteReserve",false) else "R 换弹 · 补给点换枪"
@@ -220,9 +221,10 @@ func sync() -> void:
 			ammo_note.text = "左键投掷 · 1.5 秒引信" if p.slot == 4 else "左键自己 · 右键队友"
 
 	arsenal.visible = not (int(p.weapon) == 5 and p.get("slot",1) < 4 and ui.game.weapon.ads > .8)
-	campaign_arsenal.visible = sim.mode == "campaign" and arsenal.visible
-	arsenal.visible = sim.mode != "campaign" and arsenal.visible
-	if sim.mode == "campaign":
+	var shared_loadout: bool = sim.mode in ["campaign","defense"]
+	campaign_arsenal.visible = shared_loadout and arsenal.visible
+	arsenal.visible = not shared_loadout and arsenal.visible
+	if shared_loadout:
 		for i in 5:
 			var item: Dictionary = equipment_slots[i]
 			var index: int = p.primary if i == 0 else p.secondary if i == 1 else 6

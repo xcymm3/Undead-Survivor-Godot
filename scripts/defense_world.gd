@@ -1,13 +1,14 @@
 extends "res://scripts/campaign_world.gd"
 const DefenseLayout = preload("res://scripts/defense_layout.gd")
 const DefenseEnvironment = preload("res://scripts/defense_environment.gd")
-const DISPLAYED_PRIMARY_WEAPONS := [0,1,4,5,7,8,9]
 var lever: Node3D
 var crystal: Node3D
 var crystal_core: MeshInstance3D
 var crystal_light: OmniLight3D
 var crystal_label: Label3D
 var wave_label: Label3D
+var pickup_animation: Node3D
+var armory_supply_views: Dictionary = {}
 
 func _init() -> void:
 	Layout = DefenseLayout
@@ -107,35 +108,39 @@ func make_safe_zone() -> void:
 	for z in [52.0,69.0]: block("SafeLine",Vector3(0,3.075,z),Vector3(26,.08,.12),"7bd8aa",false)
 	var shop_wall = block("WeaponShopWall",Vector3(0,7.2,67.85),Vector3(25.5,8.8,.65),"493a2d",true,false)
 	shop_wall.set_meta("environment_feature","weapon_shop_wall")
-	for row in 2:
-		block("ShopRail%d" % row,Vector3(0,4.34+row*.64,67.48),Vector3(23.8,.08,.1),"a7bbb0",false)
+	for row in DefenseLayout.ARMORY_ROWS.size():
+		block("ShopRail%d" % row,Vector3(0,DefenseLayout.ARMORY_ROWS[row],67.48),Vector3(23.8,.08,.1),"a7bbb0",false)
 	# Narrow trim breaks up the wood surface while preserving one continuous wall.
 	for column in range(6):
 		var x = -10.625+column*4.25
 		block("ShopFrame%d" % column,Vector3(x,7.2,67.47),Vector3(.12,8.15,.1),"5d4934",false)
 	block("ShopFrameTop",Vector3(0,11.52,67.47),Vector3(25.5,.18,.18),"5d4934",false)
 	block("ShopFrameBottom",Vector3(0,3.08,67.47),Vector3(25.5,.18,.18),"5d4934",false)
-	# Only primary weapons belong on the armory wall. Sidearms and the melee weapon
-	# are always carried, so the display keeps them out of the player's loadout choice.
-	# The tall upper wall is deliberately left open and every gun stays at eye level.
-	for display_index in DISPLAYED_PRIMARY_WEAPONS.size():
-		var weapon_index: int = DISPLAYED_PRIMARY_WEAPONS[display_index]
+	# Seven primary weapons occupy two reachable rows. The outer wall sections are
+	# reserved for per-player grenade and medical supply slots.
+	for display_index in DefenseLayout.PRIMARY_WEAPONS.size():
+		var weapon_index: int = DefenseLayout.PRIMARY_WEAPONS[display_index]
 		var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[weapon_index].id)
 		add_child(model)
 		model.name = "WeaponDisplay%02d" % (display_index+1)
 		model.set_meta("weapon_display_index",weapon_index)
-		model.set_meta("mount_height",4.65)
-		model.set_meta("mount_x",10.2-display_index*3.4)
+		var mount: Vector3 = DefenseLayout.weapon_mount(display_index)
+		model.set_meta("mount_height",mount.y)
+		model.set_meta("mount_x",mount.x)
 		model.rotation.y = PI/2
 		var bounds = posed_bounds(model)
-		var factor = minf(1.8/maxf(bounds.size.x,.01),.46/maxf(bounds.size.y,.01))
+		var factor = minf(2.0/maxf(bounds.size.x,.01),.44/maxf(bounds.size.y,.01))
 		model.scale *= factor
-		var mount = Vector3(float(model.get_meta("mount_x")),float(model.get_meta("mount_height")),67.32)
 		model.position = mount-bounds.get_center()*factor
-		var key = "0" if weapon_index == 9 else str(weapon_index+1)
-		var rack_label = sign_at("%s %s" % [key,Data.weapons[weapon_index].label],Vector3(mount.x,5.58,67.42),2.05)
+		var rack_label = sign_at("E · %s" % Data.weapons[weapon_index].label,Vector3(mount.x,mount.y+.52,67.42),3.6)
 		rack_label.rotation.y = PI
 		rack_label.position.z -= .22
+	var grenade_label = sign_at("手雷补给\n每格独立 30 秒",Vector3(-10.6,7.25,67.42),3.8)
+	grenade_label.rotation.y = PI
+	grenade_label.position.z -= .22
+	var medkit_label = sign_at("医疗包补给\n每格独立 30 秒",Vector3(10.6,7.25,67.42),3.8)
+	medkit_label.rotation.y = PI
+	medkit_label.position.z -= .22
 	for x in [-9.0,-3.0,3.0,9.0]:
 		var light = OmniLight3D.new()
 		light.position = Vector3(x,6.4,65.8)
@@ -144,7 +149,7 @@ func make_safe_zone() -> void:
 		light.omni_range = 10.0
 		light.shadow_enabled = true
 		add_child(light)
-	var zone_label = sign_at("水晶防线军械库 · 仅陈列主武器",Vector3(0,10.25,67.45),12.0)
+	var zone_label = sign_at("水晶防线军械库 · E 拾取 · 主武器即时补货",Vector3(0,10.25,67.45),13.5)
 	zone_label.rotation.y = PI
 	zone_label.position.z -= .22
 
@@ -188,6 +193,25 @@ func _ready() -> void:
 
 func sync(state: Dictionary) -> void:
 	if not is_instance_valid(lever): return
+	if not is_instance_valid(pickup_animation):
+		pickup_animation = preload("res://scripts/interaction_motion.gd").new()
+		add_child(pickup_animation)
+	pickup_animation.sync(state)
+	var clock: float = float(state.get("prop_clock",0.0))
+	for kind in ["grenade","medkit"]:
+		var slots: Array = state.get(kind+"_slots",[])
+		var mounts: Array = DefenseLayout.GRENADE_MOUNTS if kind == "grenade" else DefenseLayout.MEDKIT_MOUNTS
+		for index in slots.size():
+			var id: String = kind+"_"+str(index)
+			if not armory_supply_views.has(id):
+				var prop = preload("res://scripts/campaign_props.gd").model(4 if kind == "grenade" else 5)
+				prop.name = "ArmorySupply"+id.capitalize().replace(" ","")
+				add_child(prop)
+				prop.position = mounts[index]
+				prop.rotation.y = PI
+				prop.scale = Vector3.ONE*(2.8 if kind == "grenade" else 1.55)
+				armory_supply_views[id] = prop
+			armory_supply_views[id].visible = float(slots[index].get("ready_at",0.0)) <= clock
 	var started: bool = state.get("started",false)
 	lever.rotation.x = -1.05 if started else 0.0
 	var hp: float = float(state.get("crystal_hp",DefenseLayout.CRYSTAL_MAX_HP))
@@ -197,4 +221,5 @@ func sync(state: Dictionary) -> void:
 	crystal_light.light_energy = lerpf(.35,5.0,ratio)
 	crystal_light.light_color = Color("f05d4f") if ratio < .3 else Color("65dff2")
 	crystal_label.text = "水晶 %d / %d" % [ceili(hp),ceili(maximum)]
-	wave_label.text = "等待拉杆启动" if not started else "第 %d / %d 波" % [state.get("wave",1),DefenseLayout.MAX_WAVES]
+	var countdown: float = float(state.get("countdown",0.0))
+	wave_label.text = "等待拉杆启动" if not started else "第 %d 波 · %d 秒后开始" % [state.get("wave",1),ceili(countdown)] if countdown > 0 else "第 %d / %d 波" % [state.get("wave",1),DefenseLayout.MAX_WAVES]
