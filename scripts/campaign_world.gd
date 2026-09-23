@@ -112,19 +112,7 @@ func sync(state: Dictionary) -> void:
 			prop.scale = Vector3.ONE*2
 			grenade_views[item.id] = prop
 		grenade_views[item.id].visible = state.get("grenade_stations",{}).get(item.id,{}).get("remaining",0) > 0
-	var live: Array = []
-	for projectile in state.get("projectiles",[]):
-		live.append(projectile.id)
-		if not projectile_views.has(projectile.id):
-			var prop = preload("res://scripts/campaign_props.gd").model(4)
-			add_child(prop)
-			projectile_views[projectile.id] = prop
-		projectile_views[projectile.id].position = projectile.pos
-		projectile_views[projectile.id].rotation.x = projectile.fuse*8
-	for id in projectile_views.keys():
-		if not live.has(id):
-			projectile_views[id].queue_free()
-			projectile_views.erase(id)
+	sync_projectiles(state)
 	for id in doors:
 		if doors[id].has_meta("hinged"): continue
 		var opened: bool = state.get("departed",false) if id == "start" else state.get("gate_open",false) if id == "gate" else state.get("shop_open",false) if id == "street" else state.get("exit_control",false) and not state.get("complete",false)
@@ -146,6 +134,21 @@ func sync(state: Dictionary) -> void:
 				supply_labels[item.id].text = "E 换枪 · %s级 %d / 手雷 %d / 医疗 %d" % [item.tier,left,grenades,state.get("medical_stations",{}).get(item.id,{}).get("remaining",0)]
 		var width = 3.0 if item.kind == "ammo" else 1.4
 		supply_labels[item.id].pixel_size = minf(.006,width*.82/(64*maxi(1,supply_labels[item.id].text.length())))
+
+func sync_projectiles(state: Dictionary) -> void:
+	var live: Array = []
+	for projectile in state.get("projectiles",[]):
+		live.append(projectile.id)
+		if not projectile_views.has(projectile.id):
+			var prop = preload("res://scripts/campaign_props.gd").model(4)
+			add_child(prop)
+			projectile_views[projectile.id] = prop
+		projectile_views[projectile.id].position = projectile.pos
+		projectile_views[projectile.id].rotation.x = projectile.fuse*8
+	for id in projectile_views.keys():
+		if not live.has(id):
+			projectile_views[id].queue_free()
+			projectile_views.erase(id)
 
 static func posed_bounds(model: Node3D) -> AABB:
 	# Imported skins use a vertical bind pose but a horizontal displayed pose.

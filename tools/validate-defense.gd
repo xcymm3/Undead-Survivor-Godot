@@ -154,6 +154,9 @@ func run() -> void:
 	sim.submit("solo",command(int(pawn.weapon),false,4,pawn.yaw,pawn.pitch,true))
 	sim.step(.05)
 	check(pawn.grenades == grenades_before-1 and sim.defense.projectiles.size() == 1,"Defense uses Night's grenade slot and authoritative projectile logic")
+	var thrown: Dictionary = sim.defense.projectiles[0]
+	var grenade_view: Node3D = game.arena.scenery.projectile_views.get(thrown.id)
+	check(is_instance_valid(grenade_view) and grenade_view.position.distance_to(thrown.pos) < .001,"Thrown defense grenade has a world model at its projectile position")
 	pawn.hp = 50
 	pawn.combat_timer = 100.0
 	sim.submit("solo",command(int(pawn.weapon),false,5,pawn.yaw,pawn.pitch,true))
@@ -162,6 +165,7 @@ func run() -> void:
 		sim.submit("solo",command(int(pawn.weapon),false,5,pawn.yaw,pawn.pitch,false))
 		sim.step(.05)
 	check(pawn.hp == 100 and pawn.medkits == 0,"Defense uses Night's three-second medical treatment logic")
+	check(sim.defense.projectiles.is_empty() and game.arena.scenery.projectile_views.is_empty(),"Exploded defense grenade removes its world model")
 	sim.roster.clear()
 	sim.zombies.clear()
 	sim.step(.02)

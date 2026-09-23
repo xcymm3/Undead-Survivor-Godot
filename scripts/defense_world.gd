@@ -193,11 +193,11 @@ func _ready() -> void:
 
 func sync(state: Dictionary) -> void:
 	if not is_instance_valid(lever): return
+	sync_projectiles(state)
 	if not is_instance_valid(pickup_animation):
 		pickup_animation = preload("res://scripts/interaction_motion.gd").new()
 		add_child(pickup_animation)
 	pickup_animation.sync(state)
-	var clock: float = float(state.get("prop_clock",0.0))
 	for kind in ["grenade","medkit"]:
 		var slots: Array = state.get(kind+"_slots",[])
 		var mounts: Array = DefenseLayout.GRENADE_MOUNTS if kind == "grenade" else DefenseLayout.MEDKIT_MOUNTS
@@ -211,7 +211,7 @@ func sync(state: Dictionary) -> void:
 				prop.rotation.y = PI
 				prop.scale = Vector3.ONE*(2.8 if kind == "grenade" else 1.55)
 				armory_supply_views[id] = prop
-			armory_supply_views[id].visible = float(slots[index].get("ready_at",0.0)) <= clock
+			armory_supply_views[id].visible = true
 	var started: bool = state.get("started",false)
 	lever.rotation.x = -1.05 if started else 0.0
 	var hp: float = float(state.get("crystal_hp",DefenseLayout.CRYSTAL_MAX_HP))
