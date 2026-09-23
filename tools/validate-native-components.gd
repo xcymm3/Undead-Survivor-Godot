@@ -520,7 +520,7 @@ func run() -> void:
 	await validate_sniper_penetration()
 	validate_close_combat()
 	validate_revolver()
-	validate_iron_sights()
+	validate_sight_only_changes()
 	validate_buffer()
 	var session = root.get_node("Session")
 	var packet = {"type":"probe","state":{"test":123}}
@@ -602,94 +602,44 @@ func validate_revolver() -> void:
 		check(not state.reloading and state.ammo[3] == 1,"Switching cancels revolver reload without granting rounds at phase "+str(phase))
 	game.weapon.sync(game.local_pawn(),.016,0)
 
-func sight_ray_hits(model: Node3D, camera_ray: Vector3) -> bool:
-	var origin: Vector3 = game.camera.global_position
-	var end: Vector3 = game.camera.to_global(camera_ray*4)
-	for mesh in model.find_children("*","MeshInstance3D",true,false):
-		if not mesh.is_visible_in_tree(): continue
-		var a: Vector3 = mesh.to_local(origin)
-		var b: Vector3 = mesh.to_local(end)
-		var faces: PackedVector3Array = mesh.mesh.get_faces()
-		for i in range(0,faces.size(),3):
-			if Geometry3D.segment_intersects_triangle(a,b,faces[i],faces[i+1],faces[i+2]) != null: return true
-	return false
-
-func validate_iron_sights() -> void:
+func validate_sight_only_changes() -> void:
 	var p: Dictionary = game.local_pawn().duplicate(true)
 	p.switch = 0.0
-	p.hp = 100
 	p.reloading = false
 	p.fire_anim = 0.0
 	p.shove_anim = 0.0
 	p.pickup_remaining = 0.0
-	var saved_visible: bool = game.weapon.visible
-	game.weapon.visible = true
 	for index in game.weapon.models.size():
 		var id: String = root.get_node("Data").weapons[index].id
-		if id not in ["pistol","p90","revolver","heavy-machine-gun"]: continue
+		if id not in ["p90","pistol","heavy-machine-gun"]: continue
+		var model: Node3D = game.weapon.models[index]
+		var original = load("res://assets/models/"+id+".glb").instantiate()
+		check(model.scene_file_path == original.scene_file_path,id+": first person keeps the original imported weapon")
+		for mesh in original.find_children("*","MeshInstance3D",true,false):
+			var retained = model.get_node(original.get_path_to(mesh))
+			check(retained.mesh == mesh.mesh and retained.skin == mesh.skin and retained.material_override == mesh.material_override,id+": sight fittings do not replace body geometry, skin or material")
+		var animation: AnimationPlayer = game.weapon.animations[index]
+		check(animation != null and animation.has_animation("fire") and animation.has_animation("reload"),id+": original firing and reload clips remain available")
+		var sight: Node3D = game.weapon.sights[index]
+		if id != "heavy-machine-gun":
+			check(sight.get_parent() is BoneAttachment3D,id+": added sight follows an original animation bone")
+			check(sight.get_parent().bone_name == ("Slide" if id == "pistol" else "Control"),id+": sight follows the correct rigid part")
+		else:
+			check(not model.find_child("RearSight",true,false).visible and not model.find_child("FrontSight",true,false).visible,"Machine gun replaces only the two original solid sight blocks")
 		p.weapon = index
 		p.requested = index
+		p.aim = false
+		game.weapon.sync(p,1.0,0.0)
+		check(sight.visible,id+": top sights remain attached in hip view")
+		var expected_hip: Vector3 = {"p90":Vector3(.19,-.10,-.46),"pistol":Vector3(.19,-.085,-.46),"heavy-machine-gun":Vector3(.16,-.095,-.74)}[id]
+		check(game.weapon.position.is_equal_approx(expected_hip),id+": original hip placement is unchanged")
 		p.aim = true
-		var model: Node3D = game.weapon.models[index]
-		if id == "revolver": model.reset_motion()
-		var sight: Node3D = model.sight
-		var before = p.duplicate(true)
-		for target in [Vector3(0,0,-180),Vector3(0,0,-2),Vector3(.8,-.4,-6)]:
-			for elapsed in [0.0,1.4,3.8]:
-				game.weapon.sync(p,1.0,elapsed,target)
-				var rear: Vector3 = game.camera.to_local(sight.rear.global_position)
-				var front: Vector3 = game.camera.to_local(sight.front.global_position)
-				check(Vector2(rear.x,rear.y).length() < .00005 and Vector2(front.x,front.y).length() < .00005,id+": settled ADS aligns both edges with the camera ray at any target distance")
-				check(front.z < rear.z and rear.z < -.25,id+": rear sight clears the eye and precedes the front blade")
-		check(p == before,id+": sight alignment does not mutate gameplay state")
-		var rear_notch: MeshInstance3D = sight.get_node("RearNotch")
-		var blade: MeshInstance3D = sight.get_node("FrontBlade")
-		var arrays: Array = rear_notch.mesh.surface_get_arrays(0)
-		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-		var outward_faces = true
-		for i in range(0,vertices.size(),3):
-			if (vertices[i+1]-vertices[i]).cross(vertices[i+2]-vertices[i]).dot(normals[i]) >= 0: outward_faces = false
-		check(outward_faces,id+": notch triangles face outward with Godot clockwise culling")
-		var rear_point: Vector3 = game.camera.to_local(sight.rear.global_position)
-		var front_point: Vector3 = game.camera.to_local(sight.front.global_position)
-		var gap: float = rear_notch.get_meta("gap")*model.scale.x*game.weapon.scale.x/-rear_point.z
-		var projected_blade: float = blade.mesh.size.x*model.scale.x*game.weapon.scale.x/-front_point.z
-		check(projected_blade/gap > .25 and projected_blade/gap < .60,id+": front blade leaves balanced daylight inside the rear U")
-		check(not sight_ray_hits(model,Vector3(0,.001,-1)),id+": receiver and sights leave the target above the tip unobstructed")
-		for side in [-1,1]:
-			check(not sight_ray_hits(model,Vector3(side*gap*.37,-.004,-1)),id+": actual mesh triangles leave the U notch side open")
-		check(sight_ray_hits(model,Vector3(0,-.003,-1)),id+": blade remains physically visible below the aiming point")
-		for mesh in sight.find_children("*","MeshInstance3D",true,false):
-			check(mesh.layers == 2 and mesh.material_override.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED,id+": sight uses the weapon layer and scene lighting")
-		# Exercise the old visibility threshold in both directions, as well as holstering.
-		for amount in [0.0,.54,.56,1.0,.56,.54,0.0]:
-			game.weapon.ads = amount
-			p.aim = amount > .5
-			game.weapon.sync(p,0.0,0)
-			check(sight.is_visible_in_tree(),id+": sight stays attached throughout ADS transition")
-		p.pickup_remaining = .2
-		game.weapon.sync(p,0.0,0)
-		check(not sight.is_visible_in_tree(),id+": pickup hides the complete gun including sights")
-		p.pickup_remaining = 0.0
-		p.aim = true
-		# The moving slide/cylinder and mounted sight must return to one coherent rest pose.
-		var definition: Dictionary = root.get_node("Data").weapons[index]
-		for phase in [.2,.5,.8,1.0]:
-			p.reloading = true
-			p.reload = definition.reloadDuration*(1-phase)
-			game.weapon.sync(p,.2,phase)
-		p.reloading = false
-		p.fire_anim = definition.fireDuration*.5
-		game.weapon.sync(p,.1,2.0)
-		p.fire_anim = 0.0
-		game.weapon.sync(p,1.0,3.0)
-		var recovered: Vector3 = game.camera.to_local(sight.front.global_position)
-		check(Vector2(recovered.x,recovered.y).length() < .00005,id+": reload and recoil recover the aligned sight line")
-		if id != "revolver":
-			check(model.muzzle_point.is_equal_approx(game.weapon.muzzle_offset(definition)),id+": flash and third-person muzzle offsets match the new barrel")
-	game.weapon.visible = saved_visible
-	game.weapon.sync(game.local_pawn(),1.0,0)
+		game.weapon.sync(p,1.0,0.0)
+		var line: Vector3 = model.position+sight.line*model.scale
+		var eye_line: Vector3 = game.weapon.transform*line
+		check(Vector2(eye_line.x,eye_line.y).length() < .00001,id+": only ADS placement aligns the new top sight with the eye")
+		original.free()
+	game.weapon.sync(game.local_pawn(),1.0,0.0)
 
 func validate_buffer() -> void:
 	var buffer = load("res://scripts/snapshot_buffer.gd").new()

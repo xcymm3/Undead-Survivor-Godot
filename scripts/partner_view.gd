@@ -94,7 +94,7 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	var w: Dictionary = Data.weapons[int(p.weapon)]
 	var crouch = float(p.get("crouch",0.0))
 	label.position.y = 2.2-.6*crouch
-	if w.id in ["rifle","pistol","p90","heavy-machine-gun"]: gun_model.pose(p.reloading,clampf(1-p.get("reload",0.0)/w.reloadDuration,0,1) if p.reloading else 0.0,p.fire_anim/w.fireDuration)
+	if w.id == "rifle": gun_model.pose(p.reloading,clampf(1-p.get("reload",0.0)/w.reloadDuration,0,1) if p.reloading else 0.0,p.fire_anim/w.fireDuration)
 	if weapon_animation:
 		var clip = "reload" if p.reloading else "fire"
 		if weapon_animation.has_animation(clip):

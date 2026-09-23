@@ -26,7 +26,6 @@ var preview_speed = -1.0
 var preview_stride = 0.0
 var state_name = "idle"
 var cylinder_open = 0.0
-var sight: Node3D
 
 func material(color: String, metal := false) -> StandardMaterial3D:
 	if not materials.has(color):
@@ -89,10 +88,11 @@ func _init() -> void:
 	box(gun,"Underlug",Vector3(0,.033,-.46),Vector3(.075,.065,.43),"424e5b",true)
 	tube(gun,"Crown",MUZZLE,.048,.022,"909ba5",true)
 	tube(gun,"Bore",MUZZLE+Vector3(0,0,-.012),.027,.003,"111923")
-	sight = preload("res://scripts/iron_sight.gd").new(.222,.035,-.67,.088,.017,.024,.012,.172)
-	gun.add_child(sight)
-	# Seat the blade on the barrel rib instead of leaving it suspended over the bore.
-	box(gun,"FrontSightRib",Vector3(0,.154,-.647),Vector3(.045,.038,.103),"65717e",true)
+	box(gun,"FrontBlade",Vector3(0,.182,-.67),Vector3(.012,.055,.04),"19212b")
+	box(gun,"FrontDot",Vector3(0,.193,-.647),Vector3(.009,.008,.003),"edb876")
+	preload("res://scripts/iron_sight.gd").add_notch(gun,Vector3(0,.2095,.035),.072,.019,.024,.028)
+	box(gun,"RearSightBase",Vector3(0,.176,.035),Vector3(.072,.01,.04),"606966",true)
+	box(gun,"FrontSightFoot",Vector3(0,.151,-.665),Vector3(.024,.022,.055),"535e69",true)
 	var grip = box(gun,"RubberGrip",Vector3(0,-.11,.095),Vector3(.105,.21,.13),"252d38")
 	grip.rotation.x = -.22
 	for side in [-1,1]:
@@ -210,7 +210,7 @@ func sync_pose(p: Dictionary, dt: float, elapsed: float, aim: float) -> void:
 	sample_pose(phase,p.reloading or cancellation,fire,aim,int(p.get("shots",0)))
 	var strength = minf(motion/4.2,1.0)*(1-aim*.88)*(0.2 if p.reloading else 1.0)
 	position = Vector3(sin(stride)*.014,absf(cos(stride))*.013,-absf(sin(stride))*.008)*strength
-	position.y += sin(elapsed*1.7)*.002*(1-aim)
+	position.y += sin(elapsed*1.7)*.002*(1-aim*.8)
 	rotation = Vector3(-sway.y*.012,-sway.x*.013,sin(stride)*.013*strength+sway.x*.006)*(1-aim*.75)
 	if p.switch > 0:
 		rotation.z -= sin((1-p.switch/.4)*PI)*.3
