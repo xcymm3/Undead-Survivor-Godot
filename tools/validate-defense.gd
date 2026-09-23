@@ -101,6 +101,21 @@ func run() -> void:
 	check(pawn.primary == 0 and pawn.secondary == 3 and pawn.slot == 1,"Defense starts with primary, sidearm and melee equipment slots")
 	check(pawn.medkits == 1 and pawn.grenades == 0,"Defense initializes Night's medical and grenade inventory")
 	check(pawn.reserves[pawn.primary] == data.defense_full_reserve(pawn.primary) and pawn.reserves[pawn.secondary] == data.defense_full_reserve(pawn.secondary),"Defense firearms start with seventeen reserve magazines")
+	var prestart_shoves: int = pawn.shoves
+	var shove_command: Dictionary = command()
+	shove_command.shove = true
+	sim.submit("solo",shove_command)
+	sim.step(.05)
+	check(pawn.shoves == prestart_shoves+1 and not sim.defense.started,"Shove works before pulling the defense lever")
+	sim.submit("solo",command())
+	sim.step(.35)
+	var prestart_shots: int = pawn.shots
+	var prestart_ammo: int = pawn.ammo[pawn.primary]
+	sim.submit("solo",command(0,false,1,pawn.yaw,pawn.pitch,true))
+	sim.step(.05)
+	check(pawn.shots == prestart_shots+1 and pawn.ammo[pawn.primary] == prestart_ammo-1 and not sim.defense.started,"Rifle fires and consumes ammunition before pulling the defense lever")
+	sim.submit("solo",command())
+	sim.step(.15)
 	var reserve_before_auto_reload: int = pawn.reserves[pawn.primary]
 	pawn.ammo[pawn.primary] = 0
 	sim.update_arsenal(pawn,command(pawn.primary),.01)

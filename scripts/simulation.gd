@@ -473,7 +473,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		if before > .2 and p.switch <= .2: p.weapon = p.requested
 		return
 	if p.reloading:
-		if w.id == "shotgun" and input.get("fire",false) and p.ammo[p.weapon] > 0 and p.cooldown <= 0 and p.fire_anim <= 0 and (not equipment or ((campaign.state.departed if campaign else defense.get("started",false)) and p.interaction == "")):
+		if w.id == "shotgun" and input.get("fire",false) and p.ammo[p.weapon] > 0 and p.cooldown <= 0 and p.fire_anim <= 0 and (not equipment or ((campaign == null or campaign.state.departed) and p.interaction == "")):
 			p.reloading = false
 			p.reload = 0.0
 			p.reload_queued = false
@@ -509,7 +509,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.aim = false
 		events.append({"kind":"reload","player":p.id})
 		return
-	var trigger: bool = input.get("fire",false) and (not equipment or ((campaign.state.departed if campaign else defense.get("started",false)) and p.interaction == ""))
+	var trigger: bool = input.get("fire",false) and (not equipment or ((campaign == null or campaign.state.departed) and p.interaction == ""))
 	if trigger and (w.automatic or not p.trigger) and p.cooldown <= 0 and p.fire_anim <= .00001:
 		if p.ammo[p.weapon] > 0 or w.get("infiniteAmmo",false):
 			if not w.get("infiniteAmmo",false): p.ammo[p.weapon] -= 1
@@ -551,7 +551,7 @@ func charge_knockback(p: Dictionary, direction: Vector2) -> void:
 
 func try_shove(p: Dictionary) -> bool:
 	if p.hp <= 0 or p.shove_cd > 0 or p.shove_gap > 0 or p.switch > 0: return false
-	if equipment and ((campaign != null and not campaign.state.departed) or (mode == "defense" and not defense.get("started",false)) or p.slot >= 4 or p.interaction != "" or not p.healing.is_empty() or p.being_healed): return false
+	if equipment and ((campaign != null and not campaign.state.departed) or p.slot >= 4 or p.interaction != "" or not p.healing.is_empty() or p.being_healed): return false
 	p.shoves = p.get("shoves",0)+1
 	p.shove_gap = SHOVE_INTERVAL
 	p.shove_anim = .32
