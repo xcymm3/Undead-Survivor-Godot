@@ -170,10 +170,10 @@ static func cave_mouth_mesh() -> ArrayMesh:
 	]
 	var builder = SurfaceTool.new()
 	builder.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for index in outline.size()-1:
+	for index in outline.size():
 		builder.add_vertex(Vector3(0,2.8,0))
 		builder.add_vertex(Vector3(outline[index].x,outline[index].y,0))
-		builder.add_vertex(Vector3(outline[index+1].x,outline[index+1].y,0))
+		builder.add_vertex(Vector3(outline[(index+1)%outline.size()].x,outline[(index+1)%outline.size()].y,0))
 	return builder.commit()
 
 static func build_spawn_caves(world: Node3D) -> void:

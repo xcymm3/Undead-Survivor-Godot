@@ -38,6 +38,7 @@ func run() -> void:
 		check(arena.clear(point,point),"Spawn %d has free enemy clearance" % index)
 		var mouth = arena.scenery.get_node("SpawnCave%02dDarkMouth" % index) as MeshInstance3D
 		check(mouth.position.z > point.y and mouth.material_override is StandardMaterial3D and mouth.material_override.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED and mouth.material_override.albedo_color == Color.BLACK,"Spawn %d starts behind a black cave mouth" % index)
+		check(mouth.mesh.surface_get_array_len(0) == 27,"Spawn %d cave mouth is closed down to the ground" % index)
 		check(mouth.mesh.get_aabb().size.y > 6.0,"Spawn %d has clearance for giant zombies" % index)
 		sim.zombies.clear()
 		sim.paths.clear()
