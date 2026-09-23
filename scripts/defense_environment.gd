@@ -162,6 +162,53 @@ static func build_boundaries(world: Node3D) -> void:
 	make_wall_run(world,Vector3(0,2.1,-77.45),Vector3(64,3.2,1.1),true)
 	make_wall_run(world,Vector3(0,4.1,71.45),Vector3(64,2.2,1.1),true)
 
+static func cave_mouth_mesh() -> ArrayMesh:
+	var outline = [
+		Vector2(-2.75,0),Vector2(-2.75,3.6),Vector2(-2.45,5.0),
+		Vector2(-1.55,6.05),Vector2(0,6.35),Vector2(1.55,6.05),
+		Vector2(2.45,5.0),Vector2(2.75,3.6),Vector2(2.75,0)
+	]
+	var builder = SurfaceTool.new()
+	builder.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in outline.size()-1:
+		builder.add_vertex(Vector3(0,2.8,0))
+		builder.add_vertex(Vector3(outline[index].x,outline[index].y,0))
+		builder.add_vertex(Vector3(outline[index+1].x,outline[index+1].y,0))
+	return builder.commit()
+
+static func build_spawn_caves(world: Node3D) -> void:
+	# Five independent cave mouths sit around the existing spawn coordinates.
+	# Their openings face the bridge; the platform between them stays open.
+	var mouth_mesh = cave_mouth_mesh()
+	var darkness = StandardMaterial3D.new()
+	darkness.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	darkness.cull_mode = BaseMaterial3D.CULL_DISABLED
+	darkness.albedo_color = Color.BLACK
+	for index in world.Layout.ENTRIES.size():
+		var entry: Vector2 = world.Layout.ENTRIES[index]
+		var prefix = "SpawnCave%02d" % index
+		var center = Vector3(entry.x,0,entry.y)
+		var roof = make_rock(world,prefix+"Roof",center+Vector3(0,7.3,0),Vector3(8.2,2.6,6.4),0.0,true,false)
+		roof.set_meta("environment_feature","spawn_cave_roof")
+		for side in [-1.0,1.0]:
+			make_rock(world,prefix+"Wall",center+Vector3(side*3.45,3.2,.15),Vector3(1.9,6.4,5.0),side*12.0,true,true)
+			make_rock(world,prefix+"Brow",center+Vector3(side*1.65,7.0,2.0),Vector3(3.3,1.8,1.7),side*8.0,false,false)
+		make_rock(world,prefix+"Back",center+Vector3(0,3.2,-2.75),Vector3(7.4,6.4,1.1),0.0,true,true)
+		var floor = MeshInstance3D.new()
+		floor.name = prefix+"DarkFloor"
+		var floor_mesh = PlaneMesh.new()
+		floor_mesh.size = Vector2(5.6,4.7)
+		floor.mesh = floor_mesh
+		floor.material_override = darkness
+		floor.position = center+Vector3(0,.035,-.15)
+		world.add_child(floor)
+		var mouth = MeshInstance3D.new()
+		mouth.name = prefix+"DarkMouth"
+		mouth.mesh = mouth_mesh
+		mouth.material_override = darkness
+		mouth.position = center+Vector3(0,0,2.35)
+		world.add_child(mouth)
+
 static func build_ramp_fill(world: Node3D) -> StaticBody3D:
 	# A convex earthen wedge fills the entire volume below the authored ramp.
 	# It reaches the side shelves so there is no physical seam beside the rails.
@@ -264,6 +311,7 @@ static func decorate_existing(world: Node3D) -> void:
 static func build(world: Node3D) -> void:
 	build_base(world)
 	build_boundaries(world)
+	build_spawn_caves(world)
 
 static func decorate(world: Node3D) -> void:
 	decorate_existing(world)
