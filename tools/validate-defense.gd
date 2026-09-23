@@ -201,6 +201,20 @@ func run() -> void:
 	sim.spawn(Vector2(4,42),"normal")
 	for i in 45: sim.step(.1)
 	check(sim.defense.crystal_hp < crystal_before and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Diagonal attackers reach a pedestal face and damage the crystal")
+	# Every enemy archetype must reach and damage the crystal from each open face.
+	for kind in ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football"]:
+		for entry in [Vector2(0,40),Vector2(-5,46),Vector2(5,46),Vector2(0,50)]:
+			sim.zombies.clear()
+			sim.paths.clear()
+			sim.crowd_buckets.clear()
+			sim.defense.crystal_hp = data.Maps.Defense.CRYSTAL_MAX_HP
+			sim.spawn(entry,kind)
+			for tick in 50:
+				sim.elapsed += .1
+				sim.update_zombie(sim.zombies[0],sim.crystal_target(),.1)
+			var attacker: Dictionary = sim.zombies[0]
+			var sight: Dictionary = game.arena.surface_hit(Vector3(attacker.pos.x,4.1,attacker.pos.y),Vector3(0,4.1,46))
+			check(sim.defense.crystal_hp < data.Maps.Defense.CRYSTAL_MAX_HP and game.arena.clear(attacker.pos,attacker.pos),"Crystal attack reaches from %s with %s: pos=%s distance=%.2f attack=%.2f sight=%s" % [str(entry),kind,str(attacker.pos),attacker.pos.distance_to(data.Maps.Defense.CRYSTAL),attacker.attack_time,str(not sight.is_empty())])
 	sim.zombies.clear()
 	pawn.pos = Vector2(0,50)
 	pawn.hp = 100

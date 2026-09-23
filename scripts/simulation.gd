@@ -734,7 +734,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		if z.attack_time >= profile.y: z.attack_time = 0.0
 		return
 	var goal = approach_goal(z,target)
-	move_zombie(z,goal,speed,dt,distance,contact)
+	move_zombie(z,goal,speed,dt,distance,contact,target.get("is_crystal",false))
 
 func advance_attack(z: Dictionary, target: Dictionary, speed: float, dt: float, contact: float) -> void:
 	var offset: Vector2 = target.pos-z.pos
@@ -755,8 +755,9 @@ func advance_attack(z: Dictionary, target: Dictionary, speed: float, dt: float, 
 	z.gait = z.get("gait",0.0)+z.pos.distance_to(old_position)*2.3
 	z.move_speed = z.pos.distance_to(old_position)/maxf(dt,.001)
 
-func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance: float, contact: float) -> void:
-	var direction = (goal-z.pos).normalized()
+func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance: float, contact: float, stop_at_waypoint := false) -> void:
+	var waypoint: Vector2 = goal
+	var direction = (waypoint-z.pos).normalized()
 	var cached: Dictionary = paths.get(z.id,{"until":0.0,"path":PackedVector2Array(),"goal":Vector2.INF,"direct_until":0.0,"direct":false})
 	if elapsed >= cached.get("direct_until",0.0) or cached.get("direct_goal",Vector2.INF).distance_to(goal) > .65:
 		cached.direct = arena.clear(z.pos,goal)
@@ -773,7 +774,8 @@ func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance
 		while route.size() > 1 and z.pos.distance_to(route[0]) < .4: route.remove_at(0)
 		cached.path = route
 		if route.is_empty(): return
-		direction = (route[0]-z.pos).normalized()
+		waypoint = route[0]
+		direction = (waypoint-z.pos).normalized()
 	var separation = Vector2.ZERO
 	var cell = Vector2i(floori(z.pos.x/3),floori(z.pos.y/3))
 	var radius = 2.1 if z.kind == "giant" else .85 if z.kind == "imp" else 1.65
@@ -786,7 +788,9 @@ func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance
 				if d > .001 and d < radius*radius: separation += offset.normalized()*(radius-sqrt(d))
 	direction = (direction+separation.limit_length(.75)).normalized()
 	var old_position: Vector2 = z.pos
-	var next: Vector2 = z.pos+direction*minf(speed*dt,maxf(0,distance-contact*.88))
+	var travel: float = minf(speed*dt,maxf(0,distance-contact*.88))
+	if stop_at_waypoint: travel = minf(travel,waypoint.distance_to(z.pos))
+	var next: Vector2 = z.pos+direction*travel
 	if arena.clear(z.pos,next): z.pos = next
 	else:
 		var x = Vector2(next.x,z.pos.y)
