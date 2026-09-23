@@ -45,7 +45,8 @@ func run() -> void:
 	check(not game.arena.clear(Vector2(12,-70),Vector2(12,0)),"Chasm prevents routes that bypass the bridge")
 	check(not game.arena.clear(Vector2(12,-20),Vector2(12,0)),"Ramp-side shelves cannot bypass the central climb")
 	check(not game.arena.clear(Vector2(0,50),Vector2(0,60)),"Zombies cannot enter the rear loadout safe zone")
-	check(game.arena.clear(Vector2(0,-70),Vector2(0,44)),"Bridge and ramp form one open approach lane")
+	check(game.arena.clear(Vector2(0,-70),Vector2(0,42.7)),"Bridge and ramp form one open approach lane")
+	check(not game.arena.clear(Vector2(0,42.7),data.Maps.Defense.CRYSTAL),"Crystal pedestal blocks enemy navigation")
 	var bridge_hit: Dictionary = game.arena.surface_hit(Vector3(0,5,-45),Vector3(0,-10,-45))
 	var bridge_rail_hit: Dictionary = game.arena.surface_hit(Vector3(0,.72,-45),Vector3(5,.72,-45))
 	var ramp_hit: Dictionary = game.arena.surface_hit(Vector3(0,8,-19),Vector3(0,-5,-19))
@@ -67,7 +68,7 @@ func run() -> void:
 	check(boulder_count >= 10,"Defense field has authored natural rock cover")
 	check(vegetation_count >= 20,"Defense terrain has distributed vegetation detail")
 	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
-	check(game.arena.clear(Vector2(0,-70),Vector2(0,44)),"Environmental cover preserves the central bridge, ramp and field lane")
+	check(game.arena.clear(Vector2(0,-70),Vector2(0,42.7)),"Environmental cover preserves the central bridge, ramp and field lane")
 	var weapon_displays = game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false)
 	var primary_weapon_indices := [0,1,4,5,7,8,9]
 	check(weapon_displays.size() == primary_weapon_indices.size(),"Safe zone displays exactly the seven primary weapons")
@@ -153,9 +154,30 @@ func run() -> void:
 	pawn.pos = Vector2(0,60)
 	pawn.hp = 100
 	var crystal_before: int = sim.defense.crystal_hp
-	sim.spawn(Vector2(0,44.9),"normal")
+	sim.spawn(Vector2(0,42.7),"normal")
 	for i in 4: sim.step(.4)
 	check(sim.defense.crystal_hp < crystal_before and pawn.hp == 100,"A zombie beside the crystal attacks the crystal instead of a distant player")
+	check(sim.zombies[0].pos.y <= 42.95,"Crystal attacker stays outside the pedestal")
+	sim.zombies.clear()
+	crystal_before = sim.defense.crystal_hp
+	sim.spawn(Vector2(0,40),"crawler")
+	for i in 35: sim.step(.1)
+	var crawler: Dictionary = sim.zombies[0]
+	check(crawler.pos.y <= 42.95 and game.arena.clear(crawler.pos,crawler.pos),"Crawler remains outside the crystal pedestal")
+	check(sim.defense.crystal_hp < crystal_before,"Crawler can strike the crystal from outside its pedestal")
+	var shot_origin := Vector3(0,4.6,39)
+	var crawler_hittable := false
+	for aim_step in 8:
+		var aim := Vector3(crawler.pos.x,3.2+aim_step*.1,crawler.pos.y)
+		var ray := (aim-shot_origin).normalized()
+		var hit: Dictionary = load("res://scripts/enemy_view.gd").hit(crawler,shot_origin,ray,8,sim.elapsed,false)
+		if not hit.is_empty() and game.arena.surface_hit(shot_origin,shot_origin+ray*hit.distance).is_empty(): crawler_hittable = true
+	check(crawler_hittable,"Approach-lane shots can hit a crawler beside the crystal")
+	sim.zombies.clear()
+	crystal_before = sim.defense.crystal_hp
+	sim.spawn(Vector2(4,42),"normal")
+	for i in 45: sim.step(.1)
+	check(sim.defense.crystal_hp < crystal_before and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Diagonal attackers reach a pedestal face and damage the crystal")
 	sim.zombies.clear()
 	pawn.pos = Vector2(0,50)
 	pawn.hp = 100
@@ -166,25 +188,25 @@ func run() -> void:
 
 	# Imps ignore even a point-blank player and continue toward the crystal.
 	sim.zombies.clear()
-	pawn.pos = Vector2(0,50)
+	pawn.pos = Vector2(0,42.5)
 	pawn.hp = 100
 	pawn.protection = 0.0
-	sim.spawn(Vector2(0,49.5),"imp")
+	sim.spawn(Vector2(0,42.7),"imp")
 	var imp: Dictionary = sim.zombies[-1]
 	var chosen: Dictionary = sim.choose_zombie_target(imp,[pawn])
 	check(chosen.get("is_crystal",false),"Imp target selection is locked to the crystal")
 	for i in 5: sim.step(.2)
-	check(pawn.hp == 100 and imp.pos.y < 49.0,"An imp beside the player does not attack or chase the player")
+	check(pawn.hp == 100 and imp.pos.y <= 42.95,"An imp beside the player attacks the crystal from outside its pedestal")
 
 	# Giants share the crystal-only target policy and their defense slam cannot
 	# damage a player standing inside its otherwise shared area of effect.
 	sim.zombies.clear()
-	pawn.pos = Vector2(0,47.6)
+	pawn.pos = Vector2(0,42.7)
 	pawn.height = data.enemy_ground_height(pawn.pos,sim.map_id)
 	pawn.hp = 100
 	pawn.protection = 0.0
 	crystal_before = sim.defense.crystal_hp
-	sim.spawn(Vector2(0,47.6),"giant")
+	sim.spawn(Vector2(0,42.7),"giant")
 	var giant: Dictionary = sim.zombies[-1]
 	chosen = sim.choose_zombie_target(giant,[pawn])
 	check(chosen.get("is_crystal",false),"Giant target selection is locked to the crystal")

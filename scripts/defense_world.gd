@@ -33,7 +33,7 @@ func make_crystal() -> void:
 	crystal.name = "DefenseCrystal"
 	crystal.position = Vector3(DefenseLayout.CRYSTAL.x,3.0,DefenseLayout.CRYSTAL.y)
 	add_child(crystal)
-	block("CrystalPedestal",Vector3(0,3.45,46),Vector3(4.2,.9,4.2),"344d50",true,false)
+	block("CrystalPedestal",Vector3(0,3.45,46),Vector3(4.2,.9,4.2),"344d50")
 	for side in [-1.0,1.0]:
 		var cone = MeshInstance3D.new()
 		var mesh = CylinderMesh.new()

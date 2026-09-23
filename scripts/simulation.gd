@@ -589,6 +589,12 @@ func try_shove(p: Dictionary) -> bool:
 
 func approach_goal(z: Dictionary, target: Dictionary) -> Vector2:
 	var distance: float = z.pos.distance_to(target.pos)
+	if target.get("is_crystal",false):
+		# Approach the nearest pedestal face; diagonal corners exceed melee reach.
+		var offset: Vector2 = z.pos-target.pos
+		var side: Vector2 = Vector2(signf(offset.x),0) if absf(offset.x) > absf(offset.y) else Vector2(0,signf(offset.y))
+		if side == Vector2.ZERO: side = Vector2(0,-1)
+		return target.pos+side*Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS
 	if distance > 24: return target.pos
 	# Stable per-enemy offsets avoid a shared chase point; navigation validates each slot.
 	var sector = fmod(z.id*2.399963,TAU)
@@ -637,7 +643,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		z.guard_awake = true
 	var delta: Vector2 = target.pos-z.pos
 	var distance = delta.length()
-	var contact = Data.contact(z.kind)
+	var contact = maxf(Data.contact(z.kind),Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS) if target.get("is_crystal",false) else Data.contact(z.kind)
 	var base_speed: float = float(z.get("chase_speed",4.8))
 	var speed: float = base_speed
 	z.rage_pause = maxf(0,z.rage_pause-dt)
@@ -691,7 +697,8 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		var charge_targets: Array = pawns.values()
 		if mode == "defense" and defense.get("crystal_hp",0) > 0: charge_targets.append(crystal_target())
 		for victim in charge_targets:
-			if victim.hp > 0 and z.pos.distance_to(victim.pos) <= contact and victim.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
+			var victim_contact: float = Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS if victim.get("is_crystal",false) else Data.contact(z.kind)
+			if victim.hp > 0 and z.pos.distance_to(victim.pos) <= victim_contact and victim.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
 				if damage_target(victim,z,CHARGE_DAMAGE) and not victim.get("is_crystal",false): charge_knockback(victim,z.charge_direction)
 				z.state = "ready"
 				z.charge_cooldown = 3.2
@@ -718,7 +725,8 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 				if mode == "defense" and z.kind == "giant" and victim.id != "crystal": continue
 				if z.kind != "giant" and victim.id != z.target: continue
 				var offset: Vector2 = victim.pos-z.pos
-				if victim.hp <= 0 or offset.length() > (2.4 if z.kind == "giant" else contact+.15): continue
+				var strike_range: float = maxf(2.4 if z.kind == "giant" else Data.contact(z.kind)+.15,Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS) if victim.get("is_crystal",false) else (2.4 if z.kind == "giant" else Data.contact(z.kind)+.15)
+				if victim.hp <= 0 or offset.length() > strike_range: continue
 				if Vector2(sin(z.heading),cos(z.heading)).dot(offset.normalized()) < .4: continue
 				if not arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(victim.pos.x,victim.height+1.1,victim.pos.y)).is_empty(): continue
 				hit = damage_target(victim,z,10) or hit
