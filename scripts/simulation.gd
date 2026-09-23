@@ -467,7 +467,7 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.reload = 0.0
 		p.reload_queued = false
 		p.input.reload = false
-	p.aim = input.get("aim",false) and not p.reloading and p.switch <= 0 and p.requested == p.weapon
+	p.aim = input.get("aim",false) and Data.ads_enabled(w) and not p.reloading and p.switch <= 0 and p.requested == p.weapon
 	if p.switch > 0:
 		var before: float = p.switch
 		p.switch = maxf(0,p.switch-dt)

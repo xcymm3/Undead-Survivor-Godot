@@ -31,6 +31,7 @@ const { WEAPONS } = await import(pathToFileURL(path.join(cache, 'weapons.mjs')))
 for (const weapon of WEAPONS) {
   const spreads = { rifle: [.016, .006], p90: [.03, .01], sniper: [.006, .0015], revolver: [.012, .004], 'heavy-machine-gun': [.045, .018] };
   if (spreads[weapon.id]) [weapon.spread, weapon.adsSpread] = spreads[weapon.id];
+  if (['axe', 'shotgun', 'auto-shotgun', 'flamethrower'].includes(weapon.id)) weapon.adsEnabled = false;
   if (weapon.id === 'p90') weapon.damage = 40;
   if (weapon.id === 'axe') weapon.range = 3.5;
   if (weapon.id === 'shotgun') Object.assign(weapon, { spread: .045, spreadVertical: .045 });

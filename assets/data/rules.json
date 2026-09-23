@@ -98,6 +98,7 @@
     },
     {
       "id": "shotgun",
+      "adsEnabled": false,
       "label": "泵动霰弹枪",
       "short": "SHOTGUN",
       "model": "Shotgun",
@@ -156,6 +157,7 @@
     },
     {
       "id": "axe",
+      "adsEnabled": false,
       "label": "消防斧",
       "short": "AXE",
       "model": "Axe",
@@ -184,6 +186,7 @@
     },
     {
       "id": "flamethrower",
+      "adsEnabled": false,
       "label": "喷火枪",
       "short": "FLAME",
       "model": "Flamethrower",
@@ -212,6 +215,7 @@
     },
     {
       "id": "auto-shotgun",
+      "adsEnabled": false,
       "label": "自动霰弹枪",
       "short": "AUTO SG",
       "model": "AutoShotgun",

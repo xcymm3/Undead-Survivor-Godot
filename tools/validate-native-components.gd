@@ -830,6 +830,24 @@ func validate_close_combat() -> void:
 	middle.pressed = true
 	game._input(middle)
 	check(not game.input_state().aim,"Second middle click toggles aim off")
+	for weapon_index in [4,6,7,8]:
+		p.primary = weapon_index
+		p.weapon = weapon_index
+		p.requested = weapon_index
+		p.slot = 1
+		p.switch = 0.0
+		game.requested_weapon = weapon_index
+		game.reset_mouse_buttons()
+		game._input(middle)
+		check(not game.input_state().aim,"Middle click has no effect for non-ADS weapon "+str(weapon_index))
+		p.aim = true
+		sim.update_arsenal(p,{"weapon":weapon_index,"aim":true},.01)
+		check(not p.aim,"Authority rejects ADS state for non-ADS weapon "+str(weapon_index))
+	p.primary = saved.primary
+	p.weapon = p.primary
+	p.requested = p.primary
+	p.slot = 1
+	game.requested_weapon = p.primary
 	var right = InputEventMouseButton.new()
 	right.button_index = MOUSE_BUTTON_RIGHT
 	right.pressed = true

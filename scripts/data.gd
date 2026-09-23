@@ -39,6 +39,9 @@ func full_reserve(weapon_index: int) -> int:
 func defense_full_reserve(weapon_index: int) -> int:
 	return DEFENSE_RESERVE_MAGAZINES*int(weapons[weapon_index].capacity)
 
+static func ads_enabled(weapon: Dictionary) -> bool:
+	return weapon.get("adsEnabled",true) == true
+
 func _ready() -> void:
 	if automation: settings.map_id = "graypine_night"
 	if not automation and FileAccess.file_exists(SAVE_PATH):
