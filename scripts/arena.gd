@@ -36,8 +36,8 @@ func _ready() -> void:
 		environment.environment.fog_density = .018
 	elif map_id == "graypine_defense":
 		environment.environment.ambient_light_color = Color("b9d5c5")
-		environment.environment.ambient_light_energy = .58
-		environment.environment.fog_density = .0045
+		environment.environment.ambient_light_energy = .42
+		environment.environment.fog_density = .008
 	add_child(environment)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52,-35,0)
@@ -48,7 +48,7 @@ func _ready() -> void:
 		sun.shadow_bias = .12
 		sun.shadow_normal_bias = 2.0
 	elif map_id == "graypine_defense":
-		sun.light_energy = 1.15
+		sun.light_energy = .85
 		sun.rotation_degrees = Vector3(-48,-18,0)
 	sun.shadow_enabled = Data.settings.quality > 0
 	sun.directional_shadow_max_distance = 65

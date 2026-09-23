@@ -162,6 +162,25 @@ static func build_boundaries(world: Node3D) -> void:
 	make_wall_run(world,Vector3(0,2.1,-77.45),Vector3(64,3.2,1.1),true)
 	make_wall_run(world,Vector3(0,4.1,71.45),Vector3(64,2.2,1.1),true)
 
+static func build_spawn_shelter(world: Node3D) -> void:
+	# A roof and staggered stone screens hide every spawn from the bridge lane.
+	# The central portal remains wide enough for the enemy navigation grid.
+	var stone = surface_material(world,"spawn_shelter","202a2b","384541",.58,.98,.16)
+	textured_block(world,"FarSpawnRoof",Vector3(0,6.5,-70.5),Vector3(64,1.0,15),stone,true,false)
+	for side in [-1.0,1.0]:
+		textured_block(world,"FarSpawnFacade",Vector3(side*18.25,3.1,-63.5),Vector3(27.5,6.2,1.0),stone)
+		textured_block(world,"FarSpawnSideCap",Vector3(side*31.45,5.6,-70),Vector3(1.1,1.6,16),stone,true,false)
+	textured_block(world,"FarSpawnRearCap",Vector3(0,5.0,-77.45),Vector3(64,2.8,1.1),stone,true,false)
+	textured_block(world,"FarSpawnScreen",Vector3(0,3.0,-68.8),Vector3(10,6.0,1.0),stone)
+	for side in [-1.0,1.0]:
+		var lamp = OmniLight3D.new()
+		lamp.name = "BridgeMouthLight"
+		lamp.position = Vector3(side*4.7,3.6,-62.3)
+		lamp.light_color = Color("b9cabe")
+		lamp.light_energy = 1.2
+		lamp.omni_range = 6.0
+		world.add_child(lamp)
+
 static func build_ramp_fill(world: Node3D) -> StaticBody3D:
 	# A convex earthen wedge fills the entire volume below the authored ramp.
 	# It reaches the side shelves so there is no physical seam beside the rails.
@@ -264,6 +283,7 @@ static func decorate_existing(world: Node3D) -> void:
 static func build(world: Node3D) -> void:
 	build_base(world)
 	build_boundaries(world)
+	build_spawn_shelter(world)
 
 static func decorate(world: Node3D) -> void:
 	decorate_existing(world)

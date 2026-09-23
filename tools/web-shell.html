@@ -28,6 +28,7 @@
     if (new URLSearchParams(location.search).get('unrestricted') === '1') qaArgs.push('--qa-unrestricted');
     if (new URLSearchParams(location.search).get('defenseOverview') === '1') qaArgs.push('--qa-defense-overview');
     if (new URLSearchParams(location.search).get('defenseSafeZone') === '1') qaArgs.push('--qa-defense-safe-zone');
+    if (new URLSearchParams(location.search).get('defenseBridgeMouth') === '1') qaArgs.push('--qa-defense-bridge-mouth');
     engine.startGame({canvas: document.getElementById('canvas'), args: qaArgs,
       onPrintError: (...args) => console.error(...args)
     }).then(() => {
