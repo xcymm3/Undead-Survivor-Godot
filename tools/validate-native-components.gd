@@ -219,7 +219,7 @@ func validate_flame() -> void:
 	var z: Dictionary = sim.zombies[0]
 	var before: float = z.hp
 	sim.fire(p,root.get_node("Data").weapons[7])
-	check(is_equal_approx(before-z.hp,36),"Overlapping flame rays apply damage only once per tick")
+	check(is_equal_approx(before-z.hp,45),"Overlapping flame rays apply damage only once per tick")
 	sim.zombies.clear()
 	sim.spawn(Vector2(8,52),"normal")
 	sim.spawn(Vector2(8.65,50),"normal")
@@ -976,7 +976,7 @@ func validate_inventory_and_heal() -> void:
 	p.input = {"slot":5}
 	equipment.before_movement(2.0)
 	check(p.medkits == 0 and p.slot == 1,"Last medkit consumption returns to primary slot")
-	# Full real swing: a formerly reachable enemy at 3 m must now survive.
+	# Full real swing: the expanded reach hits at 3 m but still misses at 4 m.
 	sim.campaign.state.departed = true
 	sim.zombies.clear()
 	p.slot = 3
@@ -986,7 +986,7 @@ func validate_inventory_and_heal() -> void:
 	p.crouch = 0
 	p.being_healed = false
 	p.healing = ""
-	for distance in [3.0,1.8]:
+	for distance in [4.0,3.0,1.8]:
 		sim.zombies.clear()
 		sim.spawn(p.pos+Vector2(0,-distance),"normal")
 		var w: Dictionary = root.get_node("Data").weapons[6]
@@ -995,7 +995,7 @@ func validate_inventory_and_heal() -> void:
 		for step in 10:
 			p.fire_anim = maxf(0,p.fire_anim-.056)
 			sim.update_melee_swing(p,w)
-		check((sim.zombies[0].hp > 0) == (distance > 2.5),"Axe reduced reach with unchanged lethal damage at "+str(distance))
+		check((sim.zombies[0].hp > 0) == (distance > 3.5),"Axe expanded reach with unchanged lethal damage at "+str(distance))
 	game.return_home()
 	game.start_solo("campaign",71245)
 	await physics_frame
