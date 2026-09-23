@@ -45,6 +45,40 @@ void fragment() {
 }
 """
 
+const SPAWN_MIST_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;
+
+uniform float opacity = 0.55;
+uniform float drift = 0.0;
+
+float hash21(vec2 point) {
+	return fract(sin(dot(point, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float value_noise(vec2 point) {
+	vec2 cell = floor(point);
+	vec2 local = fract(point);
+	local = local * local * (3.0 - 2.0 * local);
+	return mix(
+		mix(hash21(cell), hash21(cell + vec2(1.0, 0.0)), local.x),
+		mix(hash21(cell + vec2(0.0, 1.0)), hash21(cell + vec2(1.0, 1.0)), local.x),
+		local.y
+	);
+}
+
+void fragment() {
+	vec2 point = UV * vec2(3.5, 2.3) + vec2(TIME * 0.035 + drift, TIME * -0.018);
+	float broad = value_noise(point);
+	float wisps = value_noise(point * 2.8 + vec2(8.1, 2.7));
+	float sides = smoothstep(0.0, 0.12, UV.x) * smoothstep(0.0, 0.12, 1.0 - UV.x);
+	float ceiling = smoothstep(0.0, 0.18, 1.0 - UV.y);
+	float floor_edge = smoothstep(0.0, 0.06, UV.y);
+	ALBEDO = mix(vec3(0.055, 0.083, 0.09), vec3(0.11, 0.145, 0.15), wisps * 0.55);
+	ALPHA = opacity * (0.72 + broad * 0.3 + wisps * 0.12) * sides * ceiling * floor_edge;
+}
+"""
+
 static func surface_material(world: Node3D, key: String, dark: String, light: String, scale: float, roughness := .92, strata := 0.0) -> ShaderMaterial:
 	var cache_key = "defense_surface_"+key
 	if world.materials.has(cache_key): return world.materials[cache_key]
@@ -172,6 +206,23 @@ static func build_spawn_shelter(world: Node3D) -> void:
 		textured_block(world,"FarSpawnSideCap",Vector3(side*31.45,5.6,-70),Vector3(1.1,1.6,16),stone,true,false)
 	textured_block(world,"FarSpawnRearCap",Vector3(0,5.0,-77.45),Vector3(64,2.8,1.1),stone,true,false)
 	textured_block(world,"FarSpawnScreen",Vector3(0,3.0,-68.8),Vector3(10,6.0,1.0),stone)
+	# Layered translucent planes conceal the spawn platform while enemies become
+	# visible as they cross the mouth. They have no collision or navigation shape.
+	var mist_shader = Shader.new()
+	mist_shader.code = SPAWN_MIST_SHADER
+	for index in 3:
+		var mist = MeshInstance3D.new()
+		mist.name = "FarSpawnMist%d" % index
+		mist.position = Vector3(0,3.0,-64.3-index*1.35)
+		var veil = QuadMesh.new()
+		veil.size = Vector2(9.2,6.0)
+		mist.mesh = veil
+		var material = ShaderMaterial.new()
+		material.shader = mist_shader
+		material.set_shader_parameter("opacity",0.48+index*0.06)
+		material.set_shader_parameter("drift",index*1.7)
+		mist.material_override = material
+		world.add_child(mist)
 	for side in [-1.0,1.0]:
 		var lamp = OmniLight3D.new()
 		lamp.name = "BridgeMouthLight"
