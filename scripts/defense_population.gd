@@ -2,7 +2,7 @@ extends RefCounted
 ## Crystal Defense spends one exact ordinary-enemy budget per wave. Authored
 ## football bosses are added afterward and never consume this budget.
 const Population = preload("res://scripts/night_population.gd")
-const BASE_BUDGET = [15,25,52,66,126,150,234,258,350,374]
+const BASE_BUDGET = [52,83,111,138,162,184,205,223,239,253]
 const DIFFICULTIES = ["easy","normal","hard"]
 const DIFFICULTY_MULTIPLIERS = {"easy":.7,"normal":1.0,"hard":1.3}
 const DIFFICULTY_LABELS = {"easy":"简单","normal":"普通","hard":"困难"}
