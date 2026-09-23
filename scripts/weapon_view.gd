@@ -28,27 +28,18 @@ func sight_box(parent: Node3D, at: Vector3, size: Vector3, color := "202824") ->
 	part.layers = 2
 	parent.add_child(part)
 
-func sight_ring(parent: Node3D, at: Vector3, inner: float, outer: float) -> void:
-	var shape = TorusMesh.new()
-	shape.inner_radius = inner
-	shape.outer_radius = outer
-	shape.rings = 16
-	shape.ring_segments = 8
-	var part = MeshInstance3D.new()
-	part.mesh = shape
-	part.position = at
-	part.rotation.x = PI/2
-	part.material_override = sight_material("202824")
-	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	part.layers = 2
-	parent.add_child(part)
+func sight_u(parent: Node3D, at: Vector3, half_width: float, post_width: float, post_height: float, depth: float) -> void:
+	for side in [-1,1]:
+		sight_box(parent,at+Vector3(side*half_width,0,0),Vector3(post_width,post_height,depth),"606966")
+	var total_width := half_width*2.0+post_width
+	sight_box(parent,at+Vector3(0,-post_height*.58,0),Vector3(total_width,post_height*.16,depth*1.08),"606966")
 
 func create_iron_sight(id: String) -> Node3D:
 	var rig = Node3D.new()
 	rig.name = id.capitalize()+"FirstPersonSight"
 	match id:
 		"p90":
-			sight_ring(rig,Vector3(0,.16,.17),.037,.055)
+			sight_u(rig,Vector3(0,.142,.17),.025,.012,.038,.035)
 			sight_box(rig,Vector3(0,.125,-.47),Vector3(.018,.07,.025))
 			sight_box(rig,Vector3(0,.157,-.47),Vector3(.009,.012,.028),"e8b75f")
 		"pistol":
@@ -56,7 +47,7 @@ func create_iron_sight(id: String) -> Node3D:
 			sight_box(rig,Vector3(0,.157,-.40),Vector3(.013,.052,.03))
 			sight_box(rig,Vector3(0,.187,-.40),Vector3(.009,.01,.033),"e8b75f")
 		"heavy-machine-gun":
-			sight_ring(rig,Vector3(0,.20,.18),.045,.067)
+			sight_u(rig,Vector3(0,.175,.18),.032,.014,.05,.04)
 			sight_box(rig,Vector3(0,.15,-.68),Vector3(.023,.10,.035))
 			sight_box(rig,Vector3(0,.195,-.68),Vector3(.012,.014,.038),"e8b75f")
 	return rig
