@@ -39,17 +39,17 @@ func create_iron_sight(id: String) -> Node3D:
 	rig.name = id.capitalize()+"FirstPersonSight"
 	match id:
 		"p90":
-			sight_u(rig,Vector3(0,.142,.17),.025,.012,.038,.035)
+			sight_u(rig,Vector3(0,.154,.17),.025,.012,.038,.035)
 			sight_box(rig,Vector3(0,.125,-.47),Vector3(.018,.07,.025))
 			sight_box(rig,Vector3(0,.157,-.47),Vector3(.009,.012,.028),"e8b75f")
 		"pistol":
-			for side in [-1,1]: sight_box(rig,Vector3(side*.035,.158,.15),Vector3(.014,.045,.035))
+			sight_u(rig,Vector3(0,.18,.15),.025,.011,.04,.035)
 			sight_box(rig,Vector3(0,.157,-.40),Vector3(.013,.052,.03))
 			sight_box(rig,Vector3(0,.187,-.40),Vector3(.009,.01,.033),"e8b75f")
 		"heavy-machine-gun":
-			sight_u(rig,Vector3(0,.175,.18),.032,.014,.05,.04)
-			sight_box(rig,Vector3(0,.15,-.68),Vector3(.023,.10,.035))
-			sight_box(rig,Vector3(0,.195,-.68),Vector3(.012,.014,.038),"e8b75f")
+			sight_u(rig,Vector3(0,.19,.18),.032,.014,.05,.04)
+			sight_box(rig,Vector3(0,.13,-.68),Vector3(.023,.10,.035))
+			sight_box(rig,Vector3(0,.177,-.68),Vector3(.012,.014,.038),"e8b75f")
 	return rig
 
 func _ready() -> void:
@@ -59,6 +59,7 @@ func _ready() -> void:
 		add_child(model)
 		var first_person_scale: float = {"p90":1.55,"pistol":1.55,"revolver":1.25,"heavy-machine-gun":1.12}.get(definition.id,1.0)
 		model.scale = Vector3.ONE*first_person_scale
+		if definition.id == "heavy-machine-gun": model.position.y = -.04
 		model.visible = false
 		models.append(model)
 		animations.append(find_animation(model))

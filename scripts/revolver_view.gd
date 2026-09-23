@@ -90,7 +90,8 @@ func _init() -> void:
 	tube(gun,"Bore",MUZZLE+Vector3(0,0,-.012),.027,.003,"111923")
 	box(gun,"FrontBlade",Vector3(0,.182,-.67),Vector3(.012,.055,.04),"19212b")
 	box(gun,"FrontDot",Vector3(0,.193,-.647),Vector3(.009,.008,.003),"edb876")
-	for x in [-.036,.036]: box(gun,"RearNotch",Vector3(x,.18,.035),Vector3(.026,.026,.036),"1d2530")
+	for x in [-.03,.03]: box(gun,"RearNotch",Vector3(x,.18,.035),Vector3(.012,.03,.036),"606966",true)
+	box(gun,"RearSightBase",Vector3(0,.161,.035),Vector3(.072,.009,.04),"606966",true)
 	var grip = box(gun,"RubberGrip",Vector3(0,-.11,.095),Vector3(.105,.21,.13),"252d38")
 	grip.rotation.x = -.22
 	for side in [-1,1]:
