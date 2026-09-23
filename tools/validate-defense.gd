@@ -131,13 +131,17 @@ func run() -> void:
 	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(0))
 	check(pawn.primary == 0 and pawn.weapon == 0 and pawn.ammo[0] == data.weapons[0].capacity and pawn.reserves[0] == data.defense_full_reserve(0),"Interacting with a wall weapon replaces and fully restocks the primary weapon")
 	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == primary_weapon_indices.size(),"A replacement copy appears immediately after a wall weapon pickup")
-	var grenade_clock: float = sim.defense.prop_clock
 	interact_with(sim,pawn,data.Maps.Defense.GRENADE_MOUNTS[0])
-	check(pawn.grenades == 1 and sim.defense.grenade_slots[0].ready_at >= grenade_clock+30.0,"Grenade pickup starts its own thirty-second refill cooldown")
+	check(pawn.grenades == 1,"Grenade pickup supplies one grenade")
+	pawn.grenades = 0
+	interact_with(sim,pawn,data.Maps.Defense.GRENADE_MOUNTS[0])
+	check(pawn.grenades == 1,"Grenade supply can be collected again immediately")
 	pawn.medkits = 0
-	var medkit_clock: float = sim.defense.prop_clock
 	interact_with(sim,pawn,data.Maps.Defense.MEDKIT_MOUNTS[0])
-	check(pawn.medkits == 1 and sim.defense.medkit_slots[0].ready_at >= medkit_clock+30.0,"Medical pickup starts its own thirty-second refill cooldown")
+	check(pawn.medkits == 1,"Medical pickup supplies one kit")
+	pawn.medkits = 0
+	interact_with(sim,pawn,data.Maps.Defense.MEDKIT_MOUNTS[0])
+	check(pawn.medkits == 1,"Medical supply can be collected again immediately")
 	pawn.pos = Vector2(6,49)
 	pawn.height = data.Maps.Defense.height(pawn.pos)
 	interact_with(sim,pawn,Vector3(data.Maps.Defense.LEVER.x,pawn.height+1.1,data.Maps.Defense.LEVER.y))
@@ -376,7 +380,7 @@ func run() -> void:
 	coop_pawn.yaw = PI
 	coop_pawn.pitch = atan2(coop_mount.y-(coop_pawn.height+preload("res://scripts/player_body.gd").eye_height(coop_pawn)),1.65)
 	check(sim.defense_director.equipment.pickup(coop_pawn,"grenade:0"),"A coop player can pick one authoritative grenade slot")
-	check(sim.defense.grenade_slots[0].ready_at >= sim.defense.prop_clock+30 and sim.defense.grenade_slots[1].ready_at == 0,"Coop supply slots keep independent thirty-second cooldowns")
+	check(sim.defense_director.equipment.pickup(coop_pawn,"grenade:0") and coop_pawn.grenades == 2,"Coop grenade supply remains available without a refill timer")
 
 	print("DEFENSE VALIDATION: %d checks; %d failures" % [checks,failures])
 	game.queue_free()

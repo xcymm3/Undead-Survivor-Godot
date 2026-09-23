@@ -135,10 +135,10 @@ func make_safe_zone() -> void:
 		var rack_label = sign_at("E · %s" % Data.weapons[weapon_index].label,Vector3(mount.x,mount.y+.52,67.42),3.6)
 		rack_label.rotation.y = PI
 		rack_label.position.z -= .22
-	var grenade_label = sign_at("手雷补给\n每格独立 30 秒",Vector3(-10.6,7.25,67.42),3.8)
+	var grenade_label = sign_at("手雷补给\n无限供应",Vector3(-10.6,7.25,67.42),3.8)
 	grenade_label.rotation.y = PI
 	grenade_label.position.z -= .22
-	var medkit_label = sign_at("医疗包补给\n每格独立 30 秒",Vector3(10.6,7.25,67.42),3.8)
+	var medkit_label = sign_at("医疗包补给\n无限供应",Vector3(10.6,7.25,67.42),3.8)
 	medkit_label.rotation.y = PI
 	medkit_label.position.z -= .22
 	for x in [-9.0,-3.0,3.0,9.0]:

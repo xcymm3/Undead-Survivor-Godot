@@ -1,7 +1,6 @@
 extends "res://scripts/campaign_equipment.gd"
 ## Defense armory equipment reuses the campaign's five slots, healing and grenades.
 const DefenseLayout = preload("res://scripts/defense_layout.gd")
-const REFILL_SECONDS = 30.0
 
 func _init(defense_director) -> void:
 	super(defense_director)
@@ -46,8 +45,8 @@ func initialize() -> void:
 	director.state.grenade_slots = []
 	director.state.medkit_slots = []
 	for index in director.state.party:
-		director.state.grenade_slots.append({"id":index,"ready_at":0.0})
-		director.state.medkit_slots.append({"id":index,"ready_at":0.0})
+		director.state.grenade_slots.append({"id":index})
+		director.state.medkit_slots.append({"id":index})
 
 func aimed_score(p: Dictionary, point: Vector3) -> float:
 	var forward = Vector3(-sin(p.yaw)*cos(p.pitch),sin(p.pitch),-cos(p.yaw)*cos(p.pitch))
@@ -71,7 +70,6 @@ func pickup_target(p: Dictionary) -> Dictionary:
 		var slots: Array = director.state[kind+"_slots"]
 		var mounts: Array = DefenseLayout.GRENADE_MOUNTS if kind == "grenade" else DefenseLayout.MEDKIT_MOUNTS
 		for index in slots.size():
-			if float(slots[index].ready_at) > float(director.state.prop_clock): continue
 			var value = aimed_score(p,mounts[index])
 			if value > score:
 				score = value
@@ -109,7 +107,7 @@ func pickup(p: Dictionary, id: String) -> bool:
 	var index := int(parts[1])
 	var slots: Array = director.state[kind+"_slots"]
 	var mounts: Array = DefenseLayout.GRENADE_MOUNTS if kind == "grenade" else DefenseLayout.MEDKIT_MOUNTS
-	if index < 0 or index >= slots.size() or float(slots[index].ready_at) > float(director.state.prop_clock): return false
+	if index < 0 or index >= slots.size(): return false
 	if aimed_score(p,mounts[index]) <= .3: return false
 	if kind == "grenade":
 		if p.grenades >= MAX_GRENADES: return false
@@ -119,6 +117,5 @@ func pickup(p: Dictionary, id: String) -> bool:
 		if p.medkits >= 1: return false
 		p.medkits += 1
 		pickup_motion(p,mounts[index],-1,5)
-	slots[index].ready_at = float(director.state.prop_clock)+REFILL_SECONDS
 	p.pickup_latched = true
 	return true
