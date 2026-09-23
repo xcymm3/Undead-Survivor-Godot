@@ -763,12 +763,9 @@ func validate_close_combat() -> void:
 		var shove_start: Vector2 = shoved.pos
 		var hit_count: int = p.shove_hits
 		check(sim.try_shove(p),"Shove is accepted against "+kind)
-		if kind == "shield":
-			check(shoved.state == "ready" and shoved.attack_time == .2 and shoved.shove_time == 0 and shoved.pos == shove_start and p.shove_hits == hit_count,"Shield remains immune to shove")
-		else:
-			check(shoved.state == "ready" and shoved.attack_time == 0 and is_equal_approx(shoved.shove_time,.26) and is_equal_approx(shoved.shove_velocity.length(),2.8/.26) and p.shove_hits == hit_count+1,"Shove gives normal knockback without stun to "+kind)
-			sim.update_zombie(shoved,p,.1)
-			check(shoved.pos.distance_to(shove_start) > .1 and shoved.state != "stunned","Shove moves "+kind+" without stunning it")
+		check(shoved.state == "ready" and shoved.attack_time == 0 and is_equal_approx(shoved.shove_time,.26) and is_equal_approx(shoved.shove_velocity.length(),2.8/.26) and p.shove_hits == hit_count+1,"Shove gives normal knockback without stun to "+kind)
+		sim.update_zombie(shoved,p,.1)
+		check(shoved.pos.distance_to(shove_start) > .1 and shoved.state != "stunned","Shove moves "+kind+" without stunning it")
 	p.shove_gap = 0.0
 	p.shove_cd = 0.0
 	p.shove_count = 0
@@ -776,15 +773,19 @@ func validate_close_combat() -> void:
 	sim.spawn(Vector2(0,68.65),"berserker")
 	var calm_shove_target: Dictionary = sim.zombies[0]
 	check(sim.try_shove(p) and calm_shove_target.state == "stunned" and is_equal_approx(calm_shove_target.state_time,sim.SHOVE_STUN),"Berserker can still be stunned before raging")
-	p.shove_gap = 0.0
-	p.shove_cd = 0.0
-	p.shove_count = 0
-	sim.zombies.clear()
-	sim.spawn(Vector2(0,68.65),"football")
-	var football: Dictionary = sim.zombies[0]
-	football.state = "charging"
-	sim.try_shove(p)
-	check(football.state == "ready" and football.shove_time > 0 and football.charge_cooldown > 0,"Shove interrupts football charge without stunning it")
+	for charge_state in ["windup","charging"]:
+		p.shove_gap = 0.0
+		p.shove_cd = 0.0
+		p.shove_count = 0
+		sim.zombies.clear()
+		sim.spawn(Vector2(0,68.65),"football")
+		var football: Dictionary = sim.zombies[0]
+		football.state = charge_state
+		football.state_time = .2
+		football.attack_time = .1
+		var charge_start: Vector2 = football.pos
+		var charge_hit_count: int = p.shove_hits
+		check(sim.try_shove(p) and football.state == charge_state and is_equal_approx(football.state_time,.2) and is_equal_approx(football.attack_time,.1) and football.pos == charge_start and football.shove_time == 0 and p.shove_hits == charge_hit_count,"Football "+charge_state+" is immune to shove")
 	# Use an existing native collider: the pushed body must stop at its clearance.
 	var wall_checked = false
 	for obstacle in game.arena.obstacles:

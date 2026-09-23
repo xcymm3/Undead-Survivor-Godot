@@ -572,13 +572,11 @@ func try_shove(p: Dictionary) -> bool:
 		if delta.length() > SHOVE_RANGE or absf(Data.enemy_ground_height(z.pos,map_id)-p.height) > 1.1: continue
 		if delta.length() > .05 and forward.dot(delta.normalized()) < cos(deg_to_rad(80)): continue
 		if not arena.surface_hit(Vector3(p.pos.x,p.height+1.1,p.pos.y),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+1.1,z.pos.y)).is_empty(): continue
-		if z.kind == "shield": continue
-		var stun_immune: bool = z.kind in ["football","giant"] or (z.kind == "berserker" and z.rage)
+		if z.kind == "football" and z.state in ["windup","charging"]: continue
+		var stun_immune: bool = z.kind in ["shield","football","giant"] or (z.kind == "berserker" and z.rage)
 		z.guard_awake = true
 		z.attack_time = 0.0
-		if stun_immune:
-			if z.kind == "football" and z.state in ["windup","charging"]: cancel_charge(z)
-		else:
+		if not stun_immune:
 			z.state = "stunned"
 			z.state_time = SHOVE_STUN
 		z.shove_time = .26
