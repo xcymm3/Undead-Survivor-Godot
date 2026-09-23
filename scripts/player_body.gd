@@ -14,8 +14,7 @@ static func eye_height(p: Dictionary) -> float:
 
 func _init() -> void:
 	collision_layer = 0
-	# Layer 2 is reserved for player-only barriers; enemy authority and bullets use layer 1.
-	collision_mask = 3
+	collision_mask = 1
 	safe_margin = .001
 	floor_snap_length = .08
 	collider = CollisionShape3D.new()

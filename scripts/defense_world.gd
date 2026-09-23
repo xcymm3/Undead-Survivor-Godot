@@ -85,19 +85,6 @@ func make_bridge() -> void:
 			if step < 17: beam_between("Suspender",point,Vector3(x,.55,z),.035,"6f7772")
 			previous = point
 		beam_between("Handrail",Vector3(x,1.15,-62),Vector3(x,1.15,-28),.07,"70634f")
-	# The invisible layer-2 gate stops player capsules but never enemy authority
-	# movement or layer-1 bullet traces.
-	var player_gate = StaticBody3D.new()
-	player_gate.name = "FarBridgePlayerBarrier"
-	player_gate.collision_layer = 2
-	player_gate.collision_mask = 0
-	player_gate.position = Vector3(0,0,-62.45)
-	var gate_shape = CollisionShape3D.new()
-	var gate_box = BoxShape3D.new()
-	gate_box.size = Vector3(8.2,20.0,.25)
-	gate_shape.shape = gate_box
-	player_gate.add_child(gate_shape)
-	add_child(player_gate)
 
 func make_ramp() -> void:
 	# Low shelves catch a sideways step at the ramp. Their upper edge remains

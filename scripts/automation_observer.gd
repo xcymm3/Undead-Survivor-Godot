@@ -10,7 +10,7 @@ func _ready() -> void:
 		queue_free()
 		return
 	if "--qa-native-smoke" in OS.get_cmdline_user_args(): call_deferred("native_smoke")
-	if ("--qa-defense-overview" in OS.get_cmdline_user_args() or "--qa-defense-safe-zone" in OS.get_cmdline_user_args() or "--qa-defense-bridge-mouth" in OS.get_cmdline_user_args()) and OS.has_feature("web"):
+	if ("--qa-defense-overview" in OS.get_cmdline_user_args() or "--qa-defense-safe-zone" in OS.get_cmdline_user_args()) and OS.has_feature("web"):
 		var overview = preload("res://scripts/qa_defense_overview.gd").new()
 		overview.game = game
 		add_child(overview)

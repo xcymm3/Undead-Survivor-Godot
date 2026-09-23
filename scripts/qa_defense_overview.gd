@@ -4,7 +4,7 @@ var game
 
 func _ready() -> void:
 	var args = OS.get_cmdline_user_args()
-	if not Data.automation or not OS.has_feature("web") or ("--qa-defense-overview" not in args and "--qa-defense-safe-zone" not in args and "--qa-defense-bridge-mouth" not in args):
+	if not Data.automation or not OS.has_feature("web") or ("--qa-defense-overview" not in args and "--qa-defense-safe-zone" not in args):
 		queue_free()
 		return
 	call_deferred("stage")
@@ -17,20 +17,12 @@ func stage() -> void:
 	game.ui.root.visible = false
 	game.weapon.visible = false
 	var safe_zone = "--qa-defense-safe-zone" in OS.get_cmdline_user_args()
-	var bridge_mouth = "--qa-defense-bridge-mouth" in OS.get_cmdline_user_args()
-	game.camera.projection = Camera3D.PROJECTION_PERSPECTIVE if safe_zone or bridge_mouth else Camera3D.PROJECTION_ORTHOGONAL
-	game.camera.fov = 65 if bridge_mouth else 60 if safe_zone else 56
+	game.camera.projection = Camera3D.PROJECTION_PERSPECTIVE if safe_zone else Camera3D.PROJECTION_ORTHOGONAL
+	game.camera.fov = 60 if safe_zone else 56
 	game.camera.size = 100
 	game.camera.near = .1
 	game.camera.far = 260
-	if bridge_mouth:
-		# The bridge view shows the exit while every actual spawn remains screened.
-		game.sim.spawn(Vector2(-1.2,-62.9),"normal")
-		game.sim.spawn(Vector2(1.2,-64.2),"crawler")
-		game.enemies.sync(game.sim.zombies,game.sim.elapsed,false)
-		game.camera.position = Vector3(0,1.75,-37)
-		game.camera.look_at(Vector3(0,1.3,-64),Vector3.UP)
-	elif safe_zone:
+	if safe_zone:
 		# Front oblique framing includes the safe-zone floor and both weapon rows.
 		game.camera.position = Vector3(0,5.0,53.2)
 		game.camera.look_at(Vector3(0,5.35,67.2),Vector3.UP)
@@ -41,4 +33,4 @@ func stage() -> void:
 		game.camera.look_at(Vector3(0,1,-5),Vector3.UP)
 	RenderingServer.render_loop_enabled = true
 	for i in 5: await get_tree().process_frame
-	JavaScriptBridge.eval("window.__defenseBridgeMouthReady=true" if bridge_mouth else "window.__defenseSafeZoneReady=true" if safe_zone else "window.__defenseOverviewReady=true",true)
+	JavaScriptBridge.eval("window.__defenseSafeZoneReady=true" if safe_zone else "window.__defenseOverviewReady=true",true)

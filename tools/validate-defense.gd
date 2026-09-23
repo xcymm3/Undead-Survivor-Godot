@@ -45,7 +45,7 @@ func run() -> void:
 	check(not game.arena.clear(Vector2(12,-70),Vector2(12,0)),"Chasm prevents routes that bypass the bridge")
 	check(not game.arena.clear(Vector2(12,-20),Vector2(12,0)),"Ramp-side shelves cannot bypass the central climb")
 	check(not game.arena.clear(Vector2(0,50),Vector2(0,60)),"Zombies cannot enter the rear loadout safe zone")
-	check(game.arena.path_to(Vector2(0,-70),Vector2(0,42.7)).size() > 1,"Covered spawn area still routes through the bridge and ramp")
+	check(game.arena.clear(Vector2(0,-70),Vector2(0,42.7)),"Bridge and ramp form one open approach lane")
 	check(not game.arena.clear(Vector2(0,42.7),data.Maps.Defense.CRYSTAL),"Crystal pedestal blocks enemy navigation")
 	var bridge_hit: Dictionary = game.arena.surface_hit(Vector3(0,5,-45),Vector3(0,-10,-45))
 	var bridge_rail_hit: Dictionary = game.arena.surface_hit(Vector3(0,.72,-45),Vector3(5,.72,-45))
@@ -68,7 +68,7 @@ func run() -> void:
 	check(boulder_count >= 10,"Defense field has authored natural rock cover")
 	check(vegetation_count >= 20,"Defense terrain has distributed vegetation detail")
 	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
-	check(game.arena.path_to(Vector2(0,-70),Vector2(0,42.7)).size() > 1,"Environmental cover preserves a route from the spawn area to the crystal")
+	check(game.arena.clear(Vector2(0,-70),Vector2(0,42.7)),"Environmental cover preserves the central bridge, ramp and field lane")
 	var weapon_displays = game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false)
 	var primary_weapon_indices := [0,1,4,5,7,8,9]
 	check(weapon_displays.size() == primary_weapon_indices.size(),"Safe zone displays exactly the seven primary weapons")
