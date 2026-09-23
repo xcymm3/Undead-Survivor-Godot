@@ -1,7 +1,6 @@
 extends Node3D
 var models: Array[Node3D] = []
 var animations: Array = []
-var sights: Array[Node3D] = []
 var ads = 0.0
 var active = 0
 var muzzle: MeshInstance3D
@@ -9,48 +8,8 @@ var axe_pivot: Node3D
 
 static func create_model(id: String) -> Node3D:
 	if id == "rifle": return preload("res://scripts/ak_rifle.gd").new()
+	if id in ["pistol","p90","heavy-machine-gun"]: return preload("res://scripts/iron_sight_firearm.gd").new(id)
 	return load("res://assets/models/%s.glb" % id).instantiate()
-
-func sight_material(color: String) -> StandardMaterial3D:
-	var material = StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color = Color(color)
-	return material
-
-func sight_box(parent: Node3D, at: Vector3, size: Vector3, color := "202824") -> void:
-	var shape = BoxMesh.new()
-	shape.size = size
-	var part = MeshInstance3D.new()
-	part.mesh = shape
-	part.position = at
-	part.material_override = sight_material(color)
-	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	part.layers = 2
-	parent.add_child(part)
-
-func sight_u(parent: Node3D, at: Vector3, half_width: float, post_width: float, post_height: float, depth: float) -> void:
-	for side in [-1,1]:
-		sight_box(parent,at+Vector3(side*half_width,0,0),Vector3(post_width,post_height,depth),"606966")
-	var total_width := half_width*2.0+post_width
-	sight_box(parent,at+Vector3(0,-post_height*.58,0),Vector3(total_width,post_height*.16,depth*1.08),"606966")
-
-func create_iron_sight(id: String) -> Node3D:
-	var rig = Node3D.new()
-	rig.name = id.capitalize()+"FirstPersonSight"
-	match id:
-		"p90":
-			sight_u(rig,Vector3(0,.154,.17),.025,.012,.038,.035)
-			sight_box(rig,Vector3(0,.125,-.47),Vector3(.018,.07,.025))
-			sight_box(rig,Vector3(0,.157,-.47),Vector3(.009,.012,.028),"e8b75f")
-		"pistol":
-			sight_u(rig,Vector3(0,.18,.15),.025,.011,.04,.035)
-			sight_box(rig,Vector3(0,.157,-.40),Vector3(.013,.052,.03))
-			sight_box(rig,Vector3(0,.187,-.40),Vector3(.009,.01,.033),"e8b75f")
-		"heavy-machine-gun":
-			sight_u(rig,Vector3(0,.19,.18),.032,.014,.05,.04)
-			sight_box(rig,Vector3(0,.13,-.68),Vector3(.023,.10,.035))
-			sight_box(rig,Vector3(0,.177,-.68),Vector3(.012,.014,.038),"e8b75f")
-	return rig
 
 func _ready() -> void:
 	scale = Vector3.ONE*.5
@@ -59,14 +18,9 @@ func _ready() -> void:
 		add_child(model)
 		var first_person_scale: float = {"p90":1.55,"pistol":1.55,"revolver":1.25,"heavy-machine-gun":1.12}.get(definition.id,1.0)
 		model.scale = Vector3.ONE*first_person_scale
-		if definition.id == "heavy-machine-gun": model.position.y = -.04
 		model.visible = false
 		models.append(model)
 		animations.append(find_animation(model))
-		var sight := create_iron_sight(definition.id)
-		add_child(sight)
-		sight.visible = false
-		sights.append(sight)
 		if definition.id == "axe":
 			var head = model.find_child("FireAxeHead",true,false)
 			if head: axe_pivot = head.get_parent() as Node3D
@@ -99,7 +53,6 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	ads = move_toward(ads,1.0 if p.aim else 0.0,dt*7)
 	var hide_scope: bool = w.id == "sniper" and ads > .8
 	for i in models.size(): models[i].visible = i == active and not hide_scope and p.get("pickup_remaining",0.0) <= .08
-	for i in sights.size(): sights[i].visible = i == active and ads > .55 and p.get("pickup_remaining",0.0) <= .08
 	if active != 3: models[3].reset_motion()
 	var hip = Vector3(.19,-.085 if w.length < .6 else -.10,-.46)
 	if w.id == "rifle": hip = Vector3(.22,-.10,-.50)
@@ -107,15 +60,22 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	if w.id == "heavy-machine-gun": hip = Vector3(.16,-.095,-.74)
 	var aim = Data.v3(w.ads)
 	if w.id == "rifle": aim = Vector3(0,-.103,-.48)
-	if w.id == "revolver": aim = Vector3(0,-.115,-.58)
-	# The bulky procedural receivers need clearance below the center sight line.
-	if w.id in ["auto-shotgun","heavy-machine-gun"]: aim = Vector3(0,-.20,-.62)
-	if w.id == "heavy-machine-gun": aim = Vector3(0,-.10,-.80)
+	if w.id == "auto-shotgun": aim = Vector3(0,-.20,-.62)
+	var physical_sight: bool = w.id in ["pistol","p90","revolver","heavy-machine-gun"]
+	if physical_sight:
+		# Both aiming edges share this height in the model, including its actual scale.
+		var model = models[active]
+		var height: float = model.sight.rear.position.y
+		aim = Vector3(0,-height*model.scale.y*scale.y,{"pistol":-.48,"p90":-.57,"revolver":-.58,"heavy-machine-gun":-.80}[w.id])
 	if w.get("kind", "gun") == "flame": aim = hip
-	position = hip.lerp(aim,ads)
-	if w.id != "revolver": position.y += sin(elapsed*1.6)*.003
+	var aim_blend = smoothstep(0.0,1.0,ads) if physical_sight else ads
+	position = hip.lerp(aim,aim_blend)
+	if w.id != "revolver": position.y += sin(elapsed*1.6)*.003*(1-aim_blend if physical_sight else 1.0)
 	var visual_target = aim_target.normalized()*maxf(6,aim_target.length())
 	quaternion = Quaternion(Vector3.FORWARD,(visual_target-position).normalized())
+	# Hip fire converges toward the target. ADS follows the camera sight ray instead
+	# of pitching the receiver toward nearby obstacles and lifting the front blade.
+	if physical_sight: quaternion = quaternion.slerp(Quaternion.IDENTITY,aim_blend)
 	if p.switch > 0 and p.get("pickup_remaining",0.0) <= 0: position.y -= sin(clampf(1-p.switch/.4,0,1)*PI)*.5
 	if p.reloading and w.id != "revolver":
 		var reload_pulse = sin(clampf(1-p.reload/maxf(.1,w.reloadDuration),0,1)*PI)
@@ -123,7 +83,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		rotation.z -= reload_pulse*.22
 		rotation.x -= reload_pulse*.1
 	var reload_phase = clampf(1-p.get("reload",0.0)/maxf(.1,w.reloadDuration),0,1) if p.reloading else 0.0
-	if w.id == "rifle": models[active].pose(p.reloading,reload_phase,p.fire_anim/w.fireDuration)
+	if w.id in ["rifle","pistol","p90","heavy-machine-gun"]: models[active].pose(p.reloading,reload_phase,p.fire_anim/w.fireDuration)
 	var player: AnimationPlayer = animations[active]
 	if player:
 		var clip = ""
@@ -180,9 +140,11 @@ static func sample_axe(pivot: Node3D, progress: float) -> void:
 static func muzzle_offset(w: Dictionary) -> Vector3:
 	match w.id:
 		"rifle": return preload("res://scripts/ak_rifle.gd").MUZZLE
+		"pistol": return Vector3(0,.081,-.457)
+		"p90": return Vector3(0,.01,-.579)
 		"flamethrower": return Vector3(.04,.03,-1.01)
 		"auto-shotgun": return Vector3(.05,.04,-1.09)*.72
-		"heavy-machine-gun": return Vector3(.04,.04,-1.17)
+		"heavy-machine-gun": return Vector3(0,.015,-1.209)
 	return Vector3(0,0,-w.length*.72)
 
 func muzzle_position() -> Vector3:
