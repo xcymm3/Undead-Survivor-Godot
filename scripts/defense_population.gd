@@ -2,7 +2,7 @@ extends RefCounted
 ## Crystal Defense spends one exact ordinary-enemy budget per wave. Authored
 ## football bosses are added afterward and never consume this budget.
 const Population = preload("res://scripts/night_population.gd")
-const BASE_BUDGET = [52,83,111,138,162,184,205,223,239,253]
+const BASE_BUDGET = [52,83,111,138,162,184,205,223]
 const DIFFICULTIES = ["easy","normal","hard"]
 const DIFFICULTY_MULTIPLIERS = {"easy":.7,"normal":1.0,"hard":1.3}
 const DIFFICULTY_LABELS = {"easy":"简单","normal":"普通","hard":"困难"}
@@ -23,8 +23,8 @@ static func normal_budget(wave: int, party_size: int) -> int:
 static func budget(wave: int, party_size: int, difficulty := "normal") -> int:
 	return roundi(normal_budget(wave,party_size)*difficulty_multiplier(difficulty))
 
-static func footballs(wave: int) -> int:
-	return 1 if wave in [7,8] else 2 if wave in [9,10] else 0
+static func footballs(wave: int, party_size: int) -> int:
+	return maxi(1,party_size) if wave in [6,7] else maxi(1,party_size)*2 if wave == 8 else 0
 
 static func kinds(wave: int) -> Array:
 	if wave <= 2: return ["cone","bucket"]
@@ -32,13 +32,11 @@ static func kinds(wave: int) -> Array:
 	return ["cone","bucket","imp","shield","berserker","giant"]
 
 static func roster(wave: int, party_size: int, random: RandomNumberGenerator, difficulty := "normal") -> Array:
-	var required_footballs := footballs(wave)
+	var required_footballs := footballs(wave,party_size)
 	var result: Array = Population.roster(budget(wave,party_size,difficulty),kinds(wave),random)
-	# Boss positions are authored as wave progress, keeping two football zombies
-	# separated instead of letting the random shuffle release both together.
-	if required_footballs == 1:
-		result.insert(roundi(result.size()*.6),"football")
-	elif required_footballs == 2:
-		result.insert(roundi(result.size()*.4),"football")
-		result.insert(roundi(result.size()*.75),"football")
+	# Spread the authored bosses through the ordinary roster so multiplayer
+	# waves do not release all of them together. Bosses spend no threat points.
+	var ordinary_count := result.size()
+	for index in required_footballs:
+		result.insert(roundi(ordinary_count*float(index+1)/float(required_footballs+1))+index,"football")
 	return result

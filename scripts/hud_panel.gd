@@ -196,7 +196,7 @@ func sync() -> void:
 	if sim.mode == "defense":
 		var defense_wave: int = int(defense.get("wave",sim.wave))
 		var countdown: float = float(defense.get("countdown",0.0))
-		wave_label.text = "等待拉杆" if not defense.get("started",false) else "第 %02d 波 · %d 秒准备" % [defense_wave,ceili(countdown)] if countdown > 0 else "第 %02d / 10 波" % sim.wave
+		wave_label.text = "等待拉杆" if not defense.get("started",false) else "第 %02d 波 · %d 秒准备" % [defense_wave,ceili(countdown)] if countdown > 0 else "第 %02d / %02d 波" % [sim.wave,Data.Maps.Defense.MAX_WAVES]
 		count_label.text = "击杀 %d · 场上 %d" % [sim.kills,sim.alive_count()]
 		crystal_label.text = "水晶  %d / %d" % [defense.get("crystal_hp",0),defense.get("crystal_max_hp",0)]
 		crystal_bar.max_value = defense.get("crystal_max_hp",1)

@@ -178,7 +178,7 @@ func show_home() -> void:
 	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
 	title.add_theme_constant_override("line_spacing",-12)
 	title_block.add_child(title)
-	title_block.add_child(label("拉下拉杆，守住水晶，击退逐渐增强的十波尸潮。" if Data.settings.map_id == "graypine_defense" else "穿过灰松夜路，抵达门前，坚守 30 秒后进入安全屋。",19,Color("d8dfce")))
+	title_block.add_child(label("拉下拉杆，守住水晶，击退逐渐增强的八波尸潮。" if Data.settings.map_id == "graypine_defense" else "穿过灰松夜路，抵达门前，坚守 30 秒后进入安全屋。",19,Color("d8dfce")))
 	var actions = VBoxContainer.new()
 	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	actions.offset_left = -450
@@ -421,8 +421,8 @@ func show_result() -> void:
 		var state: Dictionary = sim.defense_state()
 		var result = panel("水晶防守成功" if sim.won else "水晶防线失守","保卫水晶",640)
 		current = "result"
-		result.add_child(label("完成 %d / 10 波 · %d 击杀 · %s" % [sim.cleared,sim.kills,time_text(sim.elapsed)],32))
-		paragraph(result,"十波尸潮已被全部击退。" if sim.won else ("水晶被摧毁。" if sim.cause == "crystal" else "守卫者已失去行动能力。")+" 水晶剩余 %d / %d。" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)])
+		result.add_child(label("完成 %d / %d 波 · %d 击杀 · %s" % [sim.cleared,Data.Maps.Defense.MAX_WAVES,sim.kills,time_text(sim.elapsed)],32))
+		paragraph(result,"八波尸潮已被全部击退。" if sim.won else ("水晶被摧毁。" if sim.cause == "crystal" else "守卫者已失去行动能力。")+" 水晶剩余 %d / %d。" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)])
 		if not Session.playing: button(result,"重新防守",func(): game.start_solo("defense"),true)
 		button(result,"返回主菜单",func(): game.return_home())
 		return

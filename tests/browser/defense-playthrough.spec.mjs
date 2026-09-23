@@ -10,7 +10,7 @@ async function clickButton(page, text) {
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
 }
 
-test('简单难度下举枪自动瞄准的自动霰弹枪角色守住水晶十波', async ({ page }, info) => {
+test('简单难度下举枪自动瞄准的自动霰弹枪角色守住水晶八波', async ({ page }, info) => {
   test.setTimeout(720_000);
   const errors = [];
   const held = new Set();
@@ -130,7 +130,7 @@ test('简单难度下举枪自动瞄准的自动霰弹枪角色守住水晶十�
     }
 
     const remainingPrimaryAmmo = state.player.ammo[primaryWeapon] + state.player.reserves[primaryWeapon];
-    if (!restocking && state.cleared < 10 && remainingPrimaryAmmo <= primaryCapacity) restocking = true;
+    if (!restocking && state.cleared < 8 && remainingPrimaryAmmo <= primaryCapacity) restocking = true;
     if (restocking) {
       await setFiring(false);
       const atRack = Math.hypot(state.player.x - rack.x, state.player.z - rack.z) < .9;

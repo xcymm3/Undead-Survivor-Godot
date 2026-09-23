@@ -262,7 +262,7 @@ func step(dt: float) -> void:
 		cleared = wave
 		if mode == "defense" and wave >= Data.Maps.Defense.MAX_WAVES:
 			won = true
-			defense.objective = "十波进攻已全部击退，水晶守卫成功"
+			defense.objective = "八波进攻已全部击退，水晶守卫成功"
 			arena.sync_campaign(defense)
 			return
 		rest = 5 if mode == "defense" else 3
