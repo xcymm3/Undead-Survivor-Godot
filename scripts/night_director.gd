@@ -9,6 +9,7 @@ var burst_left = 0
 var burst_next = 0.0
 var batch_cursor = 0
 var ordinary_slots = 0
+var next_timer_index = 1
 
 func population_kind(kind: String) -> String:
 	# Count successful ordinary spawns across habitats and delayed batches.
@@ -280,8 +281,9 @@ func step(dt: float) -> void:
 		state.milestones.woods = sim.elapsed
 		phase("FINAL_APPROACH","穿过林缘，寻找安全屋暖灯")
 		queue_batch("night_woods",Layout.WOODS_BUDGET,["imp","cone","bucket","shield","berserker"])
-	for i in 2:
-		if sim.elapsed >= [65,125][i]: queue_batch("night_timer_"+str(i),Layout.TIMER_BUDGET,["cone","imp","bucket","shield","berserker"])
+	while sim.elapsed >= next_timer_index*Layout.TIMER_INTERVAL:
+		queue_batch("night_timer_"+str(next_timer_index),Layout.TIMER_SOLO_BUDGET if state.party == 1 else Layout.TIMER_BUDGET,["cone","imp","bucket","shield","berserker"])
+		next_timer_index += 1
 	holdout_step(dt)
 	spawn_groups()
 	investigate_sounds()

@@ -98,6 +98,29 @@ func run() -> void:
 	check(not game.sim.campaign.spawn_one([p.pos],"normal"),"Unsafe batch remains blocked")
 	check(game.sim.campaign.reinforcement_batches[-1].roster.size() == pending,"Blocked batch keeps remaining quota")
 	await start(1,71245)
+	var timer_sim = game.sim
+	var timer_director = timer_sim.campaign
+	timer_director.state.departed = true
+	game.arena.sync_campaign(timer_director.state)
+	var timer_player: Dictionary = game.local_pawn()
+	timer_player.pos = Vector2(0,0)
+	timer_director.step(.01)
+	var woods_batches: Array = timer_director.reinforcement_batches.filter(func(batch): return batch.id == "night_woods")
+	check(woods_batches.size() == 1 and woods_batches[0].budget == 30,"Solo woods reinforcement keeps a single 30-point batch")
+	timer_player.pos = Vector2(0,60)
+	for sample in [[59.99,0],[60.0,1],[119.99,1],[120.0,2],[179.99,2],[180.0,3],[600.0,10]]:
+		timer_sim.elapsed = sample[0]
+		timer_director.step(.01)
+		var timed: Array = timer_director.reinforcement_batches.filter(func(batch): return batch.id.begins_with("night_timer_"))
+		check(timed.size() == sample[1] and timed.all(func(batch): return batch.budget == 30 and batch.spent+preload("res://scripts/night_population.gd").points(batch.roster) == 30),"Solo timer queues 30-point batches every 60 seconds at %s" % str(sample[0]))
+	await start(2,71245)
+	var duo_director = game.sim.campaign
+	duo_director.state.departed = true
+	game.sim.elapsed = 60.0
+	duo_director.step(.01)
+	var duo_timed: Array = duo_director.reinforcement_batches.filter(func(batch): return batch.id.begins_with("night_timer_"))
+	check(duo_timed.size() == 1 and duo_timed[0].budget == 48,"Duo timed reinforcement retains its existing 48-point budget")
+	await start(1,71245)
 	p = game.local_pawn()
 	p.pos = Vector2(0,66.5)
 	check(game.sim.campaign.target(p).get("id","") == "depart","Closed departure door can be operated from inside")
