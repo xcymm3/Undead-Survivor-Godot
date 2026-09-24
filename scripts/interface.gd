@@ -17,9 +17,10 @@ var overlay_state: Array = []
 const INK = Color("303a33")
 const PAPER = Color("f0ece2")
 const RUST = Color("ae573b")
-const SETTINGS_INK = Color("35291f")
-const SETTINGS_MUTED = Color("66513d")
-const SETTINGS_PAPER = Color(.78,.67,.52,.88)
+const SETTINGS_INK = Color("f2e2bd")
+const SETTINGS_MUTED = Color("c4ad86")
+const SETTINGS_BRASS = Color("c59b62")
+const SETTINGS_PAPER = Color(.27,.19,.12,.62)
 
 func _ready() -> void:
 	root = Control.new()
@@ -62,6 +63,81 @@ func box(color: Color, padding := 16) -> StyleBoxFlat:
 	style.corner_radius_bottom_right = 3
 	return style
 
+func settings_box(color: Color, border: Color, padding := 12) -> StyleBoxFlat:
+	var style = box(color,padding)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = border
+	style.corner_radius_top_left = 2
+	style.corner_radius_top_right = 2
+	style.corner_radius_bottom_left = 2
+	style.corner_radius_bottom_right = 2
+	return style
+
+func settings_theme() -> Theme:
+	var theme = Theme.new()
+	theme.default_font = font
+	theme.default_font_size = 18
+	for kind in ["Button","OptionButton"]:
+		theme.set_color("font_color",kind,SETTINGS_INK)
+		theme.set_color("font_hover_color",kind,Color("fff0cf"))
+		theme.set_color("font_pressed_color",kind,Color("fff0cf"))
+		theme.set_color("font_focus_color",kind,SETTINGS_INK)
+		theme.set_color("font_disabled_color",kind,SETTINGS_MUTED)
+		theme.set_stylebox("normal",kind,settings_box(Color(.12,.09,.06,.72),Color(.55,.39,.21,.75)))
+		theme.set_stylebox("hover",kind,settings_box(Color(.28,.18,.10,.9),SETTINGS_BRASS))
+		theme.set_stylebox("pressed",kind,settings_box(Color(.38,.24,.12,.94),SETTINGS_BRASS))
+		theme.set_stylebox("hover_pressed",kind,settings_box(Color(.44,.28,.14,.94),SETTINGS_BRASS))
+		theme.set_stylebox("focus",kind,settings_box(Color.TRANSPARENT,Color(.95,.79,.49,.85),0))
+	theme.set_constant("modulate_arrow","OptionButton",1)
+	theme.set_color("font_color","Label",SETTINGS_INK)
+	theme.set_color("font_color","LineEdit",SETTINGS_INK)
+	theme.set_color("caret_color","LineEdit",SETTINGS_BRASS)
+	theme.set_color("selection_color","LineEdit",Color(.65,.43,.19,.65))
+	theme.set_stylebox("normal","LineEdit",settings_box(Color(.1,.08,.06,.76),Color(.57,.4,.22,.75),8))
+	theme.set_stylebox("focus","LineEdit",settings_box(Color.TRANSPARENT,SETTINGS_BRASS,0))
+	theme.set_stylebox("read_only","LineEdit",settings_box(Color(.1,.08,.06,.5),Color(.4,.3,.2,.65),8))
+	theme.set_stylebox("separator","HSeparator",settings_box(Color(.65,.46,.24,.7),Color.TRANSPARENT,0))
+	theme.set_stylebox("slider","HSlider",settings_box(Color(.1,.08,.06,.85),Color(.61,.44,.24,.75),3))
+	theme.set_stylebox("grabber_area","HSlider",settings_box(Color(.72,.48,.22,.95),Color(.85,.68,.37,.85),3))
+	theme.set_stylebox("grabber_area_highlight","HSlider",settings_box(Color(.86,.61,.28,.98),SETTINGS_BRASS,3))
+	var grabber_image = Image.create_empty(14,14,false,Image.FORMAT_RGBA8)
+	grabber_image.fill(SETTINGS_BRASS)
+	var grabber = ImageTexture.create_from_image(grabber_image)
+	theme.set_icon("grabber","HSlider",grabber)
+	theme.set_icon("grabber_highlight","HSlider",grabber)
+	theme.set_stylebox("scroll","VScrollBar",settings_box(Color(.09,.07,.05,.7),Color.TRANSPARENT,2))
+	theme.set_stylebox("grabber","VScrollBar",settings_box(Color(.55,.39,.21,.9),Color(.78,.6,.35,.8),2))
+	theme.set_stylebox("grabber_highlight","VScrollBar",settings_box(Color(.67,.48,.26,.95),SETTINGS_BRASS,2))
+	theme.set_stylebox("grabber_pressed","VScrollBar",settings_box(Color(.75,.54,.29,.95),SETTINGS_BRASS,2))
+	return theme
+
+func settings_option(option: OptionButton) -> void:
+	option.custom_minimum_size.y = 42
+	option.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var popup = option.get_popup()
+	popup.add_theme_stylebox_override("panel",settings_box(Color(.14,.10,.07,.97),SETTINGS_BRASS,8))
+	popup.add_theme_stylebox_override("hover",settings_box(Color(.42,.28,.14,.96),Color.TRANSPARENT,6))
+	popup.add_theme_color_override("font_color",SETTINGS_INK)
+	popup.add_theme_color_override("font_hover_color",Color("fff0cf"))
+	popup.add_theme_font_override("font",font)
+
+func settings_toggle(parent: VBoxContainer, caption: String, initial: bool, callback: Callable) -> Button:
+	var toggle = Button.new()
+	toggle.toggle_mode = true
+	toggle.button_pressed = initial
+	toggle.text = "%s    %s" % [caption,"◆ 开启" if initial else "◇ 关闭"]
+	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	toggle.custom_minimum_size.y = 44
+	toggle.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	parent.add_child(toggle)
+	toggle.toggled.connect(func(value):
+		toggle.text = "%s    %s" % [caption,"◆ 开启" if value else "◇ 关闭"]
+		callback.call(value))
+	return toggle
+
 func label(text: String, size := 18, color := INK) -> Label:
 	var node = Label.new()
 	node.text = text
@@ -101,11 +177,12 @@ func clear_menu() -> void:
 
 func panel(title: String, subtitle: String, width := 700, warm := false) -> VBoxContainer:
 	clear_menu()
+	if warm and native_hud: native_hud.visible = false
 	menu = Control.new()
 	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(menu)
 	var shade = ColorRect.new()
-	shade.color = Color(.12,.085,.055,.55) if warm else Color(0.06,.1,.08,.68)
+	shade.color = Color(.07,.05,.035,.34) if warm else Color(0.06,.1,.08,.68)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu.add_child(shade)
 	var center = CenterContainer.new()
@@ -114,12 +191,13 @@ func panel(title: String, subtitle: String, width := 700, warm := false) -> VBox
 	var card = PanelContainer.new()
 	var card_style = box(SETTINGS_PAPER if warm else PAPER,28)
 	if warm:
+		card.theme = settings_theme()
 		card_style.border_width_left = 1
 		card_style.border_width_top = 1
 		card_style.border_width_right = 1
 		card_style.border_width_bottom = 1
-		card_style.border_color = Color(.91,.79,.61,.82)
-		card_style.shadow_color = Color(.05,.035,.025,.35)
+		card_style.border_color = SETTINGS_BRASS
+		card_style.shadow_color = Color(.02,.015,.01,.3)
 		card_style.shadow_size = 14
 	card.add_theme_stylebox_override("panel",card_style)
 	card.custom_minimum_size.x = width
@@ -257,16 +335,12 @@ func back() -> void:
 	else: show_home()
 
 func show_settings() -> void:
-	var column = panel("设置", "声音、操控与画质会保存到本机",700,true)
+	var column = panel("战场设置", "声音、操控与画质会保存到本机",700,true)
 	current = "settings"
 	settings_heading(column,"联机")
-	var network_toggle = CheckButton.new()
-	network_toggle.text = "显示客机网络状态"
-	network_toggle.button_pressed = Data.settings.network_stats
-	network_toggle.toggled.connect(func(value):
+	settings_toggle(column,"显示客机网络状态",Data.settings.network_stats,func(value):
 		Data.settings.network_stats = value
 		Data.save())
-	column.add_child(network_toggle)
 	settings_heading(column,"操控")
 	column.add_child(label("鼠标灵敏度",18,SETTINGS_INK))
 	var row = HBoxContainer.new()
@@ -284,6 +358,9 @@ func show_settings() -> void:
 	value.step = 1
 	value.suffix = "%"
 	value.value = slider.value
+	value.add_theme_color_override("up_icon_modulate",SETTINGS_BRASS)
+	value.add_theme_color_override("down_icon_modulate",SETTINGS_BRASS)
+	value.get_line_edit().add_theme_color_override("font_color",SETTINGS_INK)
 	row.add_child(value)
 	slider.value_changed.connect(func(v):
 		value.set_value_no_signal(v)
@@ -303,11 +380,7 @@ func show_settings() -> void:
 		Data.settings.volume = v/100
 		Data.apply_settings()
 		Data.save())
-	var mute = CheckButton.new()
-	mute.text = "静音（M）"
-	mute.button_pressed = Data.settings.muted
-	column.add_child(mute)
-	mute.toggled.connect(func(v):
+	settings_toggle(column,"静音（M）",Data.settings.muted,func(v):
 		Data.settings.muted = v
 		Data.apply_settings()
 		Data.save())
@@ -315,6 +388,7 @@ func show_settings() -> void:
 	var quality = OptionButton.new()
 	for text in ["极限流畅","流畅","均衡","精细","极致画质","自定义"]: quality.add_item(text)
 	quality.selected = int(Data.settings.quality)
+	settings_option(quality)
 	column.add_child(quality)
 	quality.item_selected.connect(func(v):
 		Data.set_preset(v)
@@ -331,10 +405,11 @@ func show_settings() -> void:
 		["特效","effects",[0,1,2],["低","中","高"]],
 		["视距","distance",[0,1,2],["近","中","远"]],
 		["帧率上限","frame_limit",[30,60,120,0],["30 FPS","60 FPS","120 FPS","不限"]]]:
-		advanced.add_child(label(spec[0],17))
+		advanced.add_child(label(spec[0],17,SETTINGS_INK))
 		var option = OptionButton.new()
 		for text in spec[3]: option.add_item(text)
 		option.selected = maxi(0,spec[2].find(Data.settings[spec[1]]))
+		settings_option(option)
 		advanced.add_child(option)
 		option.item_selected.connect(func(index):
 			Data.settings[spec[1]] = spec[2][index]
@@ -342,26 +417,18 @@ func show_settings() -> void:
 			quality.select(5)
 			Data.apply_settings()
 			Data.save())
-	var pixelated = CheckButton.new()
-	pixelated.text = "像素化显示"
-	pixelated.button_pressed = Data.settings.pixelated
-	column.add_child(pixelated)
-	pixelated.toggled.connect(func(value):
+	settings_toggle(column,"像素化显示",Data.settings.pixelated,func(value):
 		Data.settings.pixelated = value
 		Data.settings.quality = 5
 		quality.select(5)
 		Data.apply_settings()
 		Data.save())
-	var fullscreen = CheckButton.new()
-	fullscreen.text = "全屏（F11）"
-	fullscreen.button_pressed = Data.settings.fullscreen
-	column.add_child(fullscreen)
-	fullscreen.toggled.connect(func(v):
+	settings_toggle(column,"全屏（F11）",Data.settings.fullscreen,func(v):
 		Data.settings.fullscreen = v
 		Data.apply_settings()
 		Data.save())
 	paragraph(column,"渲染器：Godot Compatibility\n渲染设备：%s\n版本：%s" % [RenderingServer.get_video_adapter_name(),Engine.get_version_info().string],15,SETTINGS_MUTED)
-	button(column,"返回",back,true)
+	button(column,"返回",back)
 
 func show_guide() -> void:
 	var column = panel("武器与操作", "灰松夜路 · 有限补给 · 到达安全屋",1000)

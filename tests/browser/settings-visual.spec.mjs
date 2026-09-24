@@ -26,5 +26,11 @@ test('游戏内设置菜单使用半透明淡棕色面板', async ({ page }, inf
   await page.screenshot({ path: screenshot });
   await info.attach('游戏内设置菜单', { path: screenshot, contentType: 'image/png' });
   expect((await snapshot(page)).menu).toBe('settings');
+  await page.mouse.move(1020, 735);
+  await page.mouse.wheel(0, 550);
+  await page.waitForTimeout(250);
+  const quality = info.outputPath('游戏内画质选项.png');
+  await page.screenshot({ path: quality });
+  await info.attach('游戏内画质选项', { path: quality, contentType: 'image/png' });
   expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });
 });
