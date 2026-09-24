@@ -1,112 +1,91 @@
 extends Node3D
-## Original first-person arms for the pistol. Coordinates are relative to its model.
-## Both arms follow the weapon, while the support hand has its own reload pose.
+## Two rigid square-section arms. Each arm is one continuous box from the
+## camera edge to the pistol; the material paints a sleeve on the near end.
 
 const PROFILES = preload("res://scripts/survivor_model.gd").PROFILES
+const ARM_WIDTH = .065
 
-var right_upper: MeshInstance3D
-var right_lower: MeshInstance3D
-var right_cuff: MeshInstance3D
-var right_hand: Node3D
-var left_upper: MeshInstance3D
-var left_lower: MeshInstance3D
-var left_cuff: MeshInstance3D
-var left_hand: Node3D
+var right_arm: MeshInstance3D
+var left_arm: MeshInstance3D
 var spare_magazine: MeshInstance3D
-var materials: Dictionary = {}
+var arm_material: ShaderMaterial
 
 func _ready() -> void:
-	right_upper = box(self, Vector3(.077,.18,.080), "shirt")
-	right_lower = box(self, Vector3(.058,.18,.064), "skin")
-	right_cuff = box(self, Vector3(.071,.035,.075), "shirt")
-	left_upper = box(self, Vector3(.077,.18,.080), "shirt")
-	left_lower = box(self, Vector3(.058,.18,.064), "skin")
-	left_cuff = box(self, Vector3(.071,.035,.075), "shirt")
-	right_hand = hand(1)
-	left_hand = hand(-1)
-	spare_magazine = box(left_hand, Vector3(.045,.09,.045), "metal")
-	spare_magazine.position = Vector3(0,-.075,-.025)
+	var shader = Shader.new()
+	shader.code = """
+shader_type spatial;
+uniform vec4 skin_color : source_color;
+uniform vec4 sleeve_color : source_color;
+varying float arm_height;
+void vertex() {
+	arm_height = VERTEX.y;
+}
+void fragment() {
+	ALBEDO = mix(sleeve_color.rgb, skin_color.rgb, step(0.02, arm_height));
+	ROUGHNESS = 0.9;
+}
+"""
+	arm_material = ShaderMaterial.new()
+	arm_material.shader = shader
+	right_arm = make_arm("RightArm")
+	left_arm = make_arm("LeftArm")
+	spare_magazine = MeshInstance3D.new()
+	spare_magazine.name = "SpareMagazine"
+	var magazine_shape = BoxMesh.new()
+	magazine_shape.size = Vector3(.04,.11,.035)
+	spare_magazine.mesh = magazine_shape
+	var magazine_material = StandardMaterial3D.new()
+	magazine_material.albedo_color = Color("303532")
+	magazine_material.roughness = .8
+	spare_magazine.material_override = magazine_material
+	spare_magazine.layers = 2
+	spare_magazine.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(spare_magazine)
 	set_profile(0)
 	pose(0.0,0.0,false,0.0,0.0)
 
-func box(parent: Node3D, size: Vector3, tone: String) -> MeshInstance3D:
-	var mesh = MeshInstance3D.new()
-	mesh.name = tone.capitalize()
+func make_arm(title: String) -> MeshInstance3D:
+	var arm = MeshInstance3D.new()
+	arm.name = title
 	var shape = BoxMesh.new()
-	shape.size = size
-	mesh.mesh = shape
-	mesh.set_meta("tone",tone)
-	mesh.layers = 2
-	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(mesh)
-	return mesh
-
-func hand(side: int) -> Node3D:
-	var root = Node3D.new()
-	root.name = "RightHand" if side == 1 else "LeftHand"
-	add_child(root)
-	var palm = box(root,Vector3(.062,.062,.059),"skin")
-	palm.position = Vector3.ZERO
-	for i in 4:
-		var finger = box(root,Vector3(.014,.046,.019),"skin")
-		finger.position = Vector3((i-1.5)*.014,-.043,-.014)
-	var thumb = box(root,Vector3(.019,.048,.023),"skin")
-	thumb.position = Vector3(-side*.035,-.005,-.008)
-	thumb.rotation.z = side*.55
-	return root
+	shape.size = Vector3(ARM_WIDTH,1.0,ARM_WIDTH)
+	arm.mesh = shape
+	arm.material_override = arm_material
+	arm.layers = 2
+	arm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(arm)
+	return arm
 
 func set_profile(index: int) -> void:
 	var profile: Dictionary = PROFILES[clampi(index,0,PROFILES.size()-1)]
-	for mesh in find_children("*","MeshInstance3D",true,false):
-		var tone: String = mesh.get_meta("tone","")
-		var color: String = profile.get(tone,"252a2b")
-		if not materials.has(color):
-			var material = StandardMaterial3D.new()
-			material.albedo_color = Color(color)
-			material.roughness = .9
-			materials[color] = material
-		mesh.material_override = materials[color]
+	arm_material.set_shader_parameter("skin_color",Color(profile.skin))
+	arm_material.set_shader_parameter("sleeve_color",Color(profile.shirt))
 
-func segment(mesh: MeshInstance3D, start: Vector3, end: Vector3, width: float) -> void:
-	var delta = end-start
-	mesh.position = (start+end)*.5
-	mesh.quaternion = Quaternion(Vector3.UP,delta.normalized())
-	mesh.scale = Vector3(width,delta.length()/.18,width)
+func place_arm(arm: MeshInstance3D, start: Vector3, tip: Vector3) -> void:
+	var direction = tip-start
+	arm.position = (start+tip)*.5
+	arm.quaternion = Quaternion(Vector3.UP,direction.normalized())
+	arm.scale = Vector3(1.0,direction.length(),1.0)
 
-func pose(elapsed: float, aim: float, reloading: bool, reload_phase: float, fire_phase: float) -> void:
+func pose(elapsed: float, _aim: float, reloading: bool, reload_phase: float, fire_phase: float) -> void:
 	var breathe = sin(elapsed*1.6)*.003
-	var right_wrist = Vector3(.039,-.073,.067)
-	var right_elbow = Vector3(.115,-.12,.15)
-	var right_shoulder = Vector3(.18,-.29,.24)
-	var left_wrist = Vector3(-.052,-.043,-.045)
-	var left_elbow = Vector3(-.13,-.12,.12)
-	var left_shoulder = Vector3(-.19,-.29,.24)
-	# The support hand holds the forward underside while aiming. During reload it
-	# reaches the magazine well, withdraws the magazine, and returns to its grip.
+	var right_start = Vector3(.18,-.29,.24)
+	var right_tip = Vector3(.041,-.074,.070)
+	var left_start = Vector3(-.19,-.29,.24)
+	var left_tip = Vector3(-.052,-.046,-.045)
 	if reloading:
 		var reach = smoothstep(.08,.27,reload_phase)*(1.0-smoothstep(.70,.91,reload_phase))
 		var pull = smoothstep(.28,.47,reload_phase)*(1.0-smoothstep(.53,.72,reload_phase))
-		left_wrist = left_wrist.lerp(Vector3(-.047,-.135,.07),reach)
-		left_wrist += Vector3(-.12,.035,-.02)*pull
-		left_elbow = left_elbow.lerp(Vector3(-.18,-.16,.16),reach)
+		left_tip = left_tip.lerp(Vector3(-.047,-.135,.07),reach)
+		left_tip += Vector3(-.12,.035,-.02)*pull
 		spare_magazine.visible = reload_phase > .32 and reload_phase < .68
+		spare_magazine.position = left_tip+Vector3(0,-.065,-.012)
 	else:
 		spare_magazine.visible = false
 	var kick = sin(clampf(fire_phase,0,1)*PI)
-	right_wrist += Vector3(0,.008,.018)*kick
-	right_elbow += Vector3(0,.015,.018)*kick
-	left_wrist += Vector3(0,.004,.008)*kick
-	left_elbow += Vector3(0,.009,.01)*kick
-	left_wrist.y += breathe
-	right_wrist.y += breathe
-	right_hand.position = right_wrist
-	right_hand.rotation = Vector3(-.12,0,-.12)
-	left_hand.position = left_wrist
-	left_hand.rotation = Vector3(-.35,-.25,.30)
-	if reloading: left_hand.rotation.z += sin(reload_phase*PI)*.45
-	segment(right_upper,right_shoulder,right_elbow,1.0)
-	segment(right_lower,right_elbow,right_wrist,1.0)
-	segment(right_cuff,right_elbow.lerp(right_wrist,.72),right_elbow.lerp(right_wrist,.82),1.0)
-	segment(left_upper,left_shoulder,left_elbow,1.0)
-	segment(left_lower,left_elbow,left_wrist,1.0)
-	segment(left_cuff,left_elbow.lerp(left_wrist,.72),left_elbow.lerp(left_wrist,.82),1.0)
+	right_tip += Vector3(0,.009,.018)*kick
+	left_tip += Vector3(0,.005,.008)*kick
+	right_tip.y += breathe
+	left_tip.y += breathe
+	place_arm(right_arm,right_start,right_tip)
+	place_arm(left_arm,left_start,left_tip)
