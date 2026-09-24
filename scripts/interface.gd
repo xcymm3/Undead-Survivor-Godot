@@ -17,6 +17,9 @@ var overlay_state: Array = []
 const INK = Color("303a33")
 const PAPER = Color("f0ece2")
 const RUST = Color("ae573b")
+const SETTINGS_INK = Color("35291f")
+const SETTINGS_MUTED = Color("66513d")
+const SETTINGS_PAPER = Color(.78,.67,.52,.88)
 
 func _ready() -> void:
 	root = Control.new()
@@ -96,20 +99,29 @@ func clear_menu() -> void:
 	if native_hud: native_hud.visible = game.running
 	if hud: hud.queue_redraw()
 
-func panel(title: String, subtitle: String, width := 700) -> VBoxContainer:
+func panel(title: String, subtitle: String, width := 700, warm := false) -> VBoxContainer:
 	clear_menu()
 	menu = Control.new()
 	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(menu)
 	var shade = ColorRect.new()
-	shade.color = Color(0.06,.1,.08,.68)
+	shade.color = Color(.12,.085,.055,.55) if warm else Color(0.06,.1,.08,.68)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu.add_child(shade)
 	var center = CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu.add_child(center)
 	var card = PanelContainer.new()
-	card.add_theme_stylebox_override("panel",box(PAPER,28))
+	var card_style = box(SETTINGS_PAPER if warm else PAPER,28)
+	if warm:
+		card_style.border_width_left = 1
+		card_style.border_width_top = 1
+		card_style.border_width_right = 1
+		card_style.border_width_bottom = 1
+		card_style.border_color = Color(.91,.79,.61,.82)
+		card_style.shadow_color = Color(.05,.035,.025,.35)
+		card_style.shadow_size = 14
+	card.add_theme_stylebox_override("panel",card_style)
 	card.custom_minimum_size.x = width
 	center.add_child(card)
 	var scroll = ScrollContainer.new()
@@ -120,9 +132,15 @@ func panel(title: String, subtitle: String, width := 700) -> VBoxContainer:
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation",14)
 	scroll.add_child(column)
-	column.add_child(label(title,34))
-	paragraph(column,subtitle,16,Color("797b6f"))
+	column.add_child(label(title,34,SETTINGS_INK if warm else INK))
+	paragraph(column,subtitle,16,SETTINGS_MUTED if warm else Color("797b6f"))
 	return column
+
+func settings_heading(parent: VBoxContainer, text: String) -> void:
+	var separator = HSeparator.new()
+	separator.add_theme_constant_override("separation",8)
+	parent.add_child(separator)
+	parent.add_child(label(text,20,SETTINGS_INK))
 
 func show_home() -> void:
 	clear_menu()
@@ -239,8 +257,9 @@ func back() -> void:
 	else: show_home()
 
 func show_settings() -> void:
-	var column = panel("设置", "声音、操控与画质会保存到本机")
+	var column = panel("设置", "声音、操控与画质会保存到本机",700,true)
 	current = "settings"
+	settings_heading(column,"联机")
 	var network_toggle = CheckButton.new()
 	network_toggle.text = "显示客机网络状态"
 	network_toggle.button_pressed = Data.settings.network_stats
@@ -248,7 +267,8 @@ func show_settings() -> void:
 		Data.settings.network_stats = value
 		Data.save())
 	column.add_child(network_toggle)
-	column.add_child(label("鼠标灵敏度",20))
+	settings_heading(column,"操控")
+	column.add_child(label("鼠标灵敏度",18,SETTINGS_INK))
 	var row = HBoxContainer.new()
 	column.add_child(row)
 	var slider = HSlider.new()
@@ -270,8 +290,9 @@ func show_settings() -> void:
 		Data.settings.sensitivity = v/100*.0022
 		Data.save())
 	value.value_changed.connect(func(v): slider.value = v)
-	paragraph(column,"按中键切换开镜时，转向灵敏度会随真实视野同步降低。",15,Color("74796c"))
-	column.add_child(label("主音量",20))
+	paragraph(column,"按中键切换开镜时，转向灵敏度会随真实视野同步降低。",15,SETTINGS_MUTED)
+	settings_heading(column,"声音")
+	column.add_child(label("主音量",18,SETTINGS_INK))
 	var volume = HSlider.new()
 	volume.min_value = 0
 	volume.max_value = 100
@@ -290,7 +311,7 @@ func show_settings() -> void:
 		Data.settings.muted = v
 		Data.apply_settings()
 		Data.save())
-	column.add_child(label("画质",20))
+	settings_heading(column,"画质")
 	var quality = OptionButton.new()
 	for text in ["极限流畅","流畅","均衡","精细","极致画质","自定义"]: quality.add_item(text)
 	quality.selected = int(Data.settings.quality)
@@ -339,7 +360,7 @@ func show_settings() -> void:
 		Data.settings.fullscreen = v
 		Data.apply_settings()
 		Data.save())
-	paragraph(column,"渲染器：Godot Compatibility\n渲染设备：%s\n版本：%s" % [RenderingServer.get_video_adapter_name(),Engine.get_version_info().string],15,Color("74796c"))
+	paragraph(column,"渲染器：Godot Compatibility\n渲染设备：%s\n版本：%s" % [RenderingServer.get_video_adapter_name(),Engine.get_version_info().string],15,SETTINGS_MUTED)
 	button(column,"返回",back,true)
 
 func show_guide() -> void:
