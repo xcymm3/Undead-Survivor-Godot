@@ -195,8 +195,7 @@ func sync() -> void:
 	crystal_bar.visible = sim.mode == "defense"
 	if sim.mode == "defense":
 		var defense_wave: int = int(defense.get("wave",sim.wave))
-		var countdown: float = float(defense.get("countdown",0.0))
-		wave_label.text = "等待拉杆" if not defense.get("started",false) else "第 %02d 波 · %d 秒准备" % [defense_wave,ceili(countdown)] if countdown > 0 else "第 %02d / %02d 波" % [sim.wave,Data.Maps.Defense.MAX_WAVES]
+		wave_label.text = "第 %02d 波 · 准备 %d/%d" % [defense_wave,defense.get("ready_players",[]).size(),sim.pawns.size()] if defense.get("waiting",false) else "第 %02d / %02d 波" % [sim.wave,Data.Maps.Defense.MAX_WAVES]
 		count_label.text = "击杀 %d · 场上 %d" % [sim.kills,sim.alive_count()]
 		crystal_label.text = "水晶  %d / %d" % [defense.get("crystal_hp",0),defense.get("crystal_max_hp",0)]
 		crystal_bar.max_value = defense.get("crystal_max_hp",1)
@@ -267,7 +266,6 @@ func sync() -> void:
 		rest_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		rest_label.add_theme_stylebox_override("normal",style(Color(.04,.055,.05,.8),8))
 		rest_label.text = str(defense.get("objective",""))+"\n"+str(p.get("hint",""))
-		if sim.rest > 0: rest_label.text += "\n下一波倒计时 %.1f 秒" % sim.rest
 	if sim.mode == "campaign":
 		rest_label.visible = true
 		rest_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

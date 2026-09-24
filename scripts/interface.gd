@@ -178,7 +178,7 @@ func show_home() -> void:
 	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
 	title.add_theme_constant_override("line_spacing",-12)
 	title_block.add_child(title)
-	title_block.add_child(label("拉下拉杆，守住水晶，击退逐渐增强的八波尸潮。" if Data.settings.map_id == "graypine_defense" else "穿过灰松夜路，抵达门前，坚守 30 秒后进入安全屋。",19,Color("d8dfce")))
+	title_block.add_child(label("按 T 开始每一波，守住水晶，击退逐渐增强的八波尸潮。" if Data.settings.map_id == "graypine_defense" else "穿过灰松夜路，抵达门前，坚守 30 秒后进入安全屋。",19,Color("d8dfce")))
 	var actions = VBoxContainer.new()
 	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	actions.offset_left = -450

@@ -1,7 +1,6 @@
 extends "res://scripts/campaign_world.gd"
 const DefenseLayout = preload("res://scripts/defense_layout.gd")
 const DefenseEnvironment = preload("res://scripts/defense_environment.gd")
-var lever: Node3D
 var crystal: Node3D
 var crystal_core: MeshInstance3D
 var crystal_light: OmniLight3D
@@ -186,14 +185,7 @@ func _ready() -> void:
 	DefenseEnvironment.decorate(self)
 	for p in [Vector2(-12,43),Vector2(13,42)]:
 		block("CrystalGuard",Vector3(p.x,4.0,p.y),Vector3(3.5,2,1.2),"46534a")
-	lever = Node3D.new()
-	lever.name = "WaveLever"
-	lever.position = Vector3(DefenseLayout.LEVER.x,4.0,DefenseLayout.LEVER.y)
-	add_child(lever)
-	preload("res://scripts/campaign_props.gd").box(lever,Vector3(.75,1.5,.55),Vector3.ZERO,Color("3b4d4b"))
-	preload("res://scripts/campaign_props.gd").box(lever,Vector3(.12,1.15,.12),Vector3(0,.9,0),Color("b7c0b8"))
-	preload("res://scripts/campaign_props.gd").box(lever,Vector3(.42,.18,.18),Vector3(0,1.47,0),Color("b94735"))
-	wave_label = sign_at("E 拉下拉杆 · 开始防守",Vector3(6,6.5,49),5.7)
+	wave_label = sign_at("按 T 开始第 1 波",Vector3(6,6.5,49),5.7)
 	for p in [Vector3(-4.2,5.5,-62),Vector3(4.2,5.5,-62),Vector3(-4.2,5.5,-28),Vector3(4.2,5.5,-28),Vector3(-11,6,48),Vector3(11,6,48)]:
 		var light = OmniLight3D.new()
 		light.position = p
@@ -205,7 +197,6 @@ func _ready() -> void:
 	set_meta("navigation_obstacles",obstacles)
 
 func sync(state: Dictionary) -> void:
-	if not is_instance_valid(lever): return
 	sync_projectiles(state)
 	if not is_instance_valid(pickup_animation):
 		pickup_animation = preload("res://scripts/interaction_motion.gd").new()
@@ -225,8 +216,6 @@ func sync(state: Dictionary) -> void:
 				prop.scale = Vector3.ONE*(2.8 if kind == "grenade" else 1.55)
 				armory_supply_views[id] = prop
 			armory_supply_views[id].visible = true
-	var started: bool = state.get("started",false)
-	lever.rotation.x = -1.05 if started else 0.0
 	var hp: float = float(state.get("crystal_hp",DefenseLayout.CRYSTAL_MAX_HP))
 	var maximum: float = float(state.get("crystal_max_hp",DefenseLayout.CRYSTAL_MAX_HP))
 	var ratio = clampf(hp/maxf(1,maximum),0,1)
@@ -234,5 +223,4 @@ func sync(state: Dictionary) -> void:
 	crystal_light.light_energy = lerpf(.35,5.0,ratio)
 	crystal_light.light_color = Color("f05d4f") if ratio < .3 else Color("65dff2")
 	crystal_label.text = "水晶 %d / %d" % [ceili(hp),ceili(maximum)]
-	var countdown: float = float(state.get("countdown",0.0))
-	wave_label.text = "等待拉杆启动" if not started else "第 %d 波 · %d 秒后开始" % [state.get("wave",1),ceili(countdown)] if countdown > 0 else "第 %d / %d 波" % [state.get("wave",1),DefenseLayout.MAX_WAVES]
+	wave_label.text = "第 %d 波 · 按 T 准备 %d/%d" % [state.get("wave",1),state.get("ready_players",[]).size(),state.get("party",1)] if state.get("waiting",false) else "第 %d / %d 波" % [state.get("wave",1),DefenseLayout.MAX_WAVES]

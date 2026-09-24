@@ -9,7 +9,7 @@ async function clickButton(page, text) {
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
 }
 
-test('吊桥水晶防守使用真实输入换装并拉杆开战', async ({ page }, info) => {
+test('吊桥水晶防守使用真实输入换装并按 T 开战', async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('/');
@@ -41,12 +41,11 @@ test('吊桥水晶防守使用真实输入换装并拉杆开战', async ({ page 
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 3 && window.__survivorSnapshot?.player?.weapon === 6);
   await page.keyboard.press('1');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 1 && window.__survivorSnapshot?.player?.weapon === 0);
-  await page.keyboard.down('e');
+  await page.keyboard.press('t');
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });
-  await page.keyboard.up('e');
   state = await snapshot(page);
-  expect(state.defense.countdown).toBeGreaterThan(0);
-  expect(state.enemies).toHaveLength(0);
+  expect(state.defense.waiting).toBe(false);
+  expect(state.rest).toBe(0);
   await page.waitForFunction(() => window.__survivorSnapshot?.enemies?.length > 0, null, { timeout: 10_000 });
   state = await snapshot(page);
   expect(state.wave).toBe(1);

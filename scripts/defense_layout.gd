@@ -6,7 +6,6 @@ const SPAWN = Vector2(0,61)
 const CRYSTAL = Vector2(0,46)
 const CRYSTAL_RADIUS = 1.05
 const CRYSTAL_CONTACT_RADIUS = 2.3 # Crystal body plus enemy navigation clearance.
-const LEVER = Vector2(6,49)
 const FALL_RETURN = Vector2(-6,49)
 const SAFE_ZONE = Rect2(-13,52,26,17)
 const ENTRIES = [Vector2(-24,-74),Vector2(-11,-68),Vector2(0,-74),Vector2(11,-68),Vector2(24,-74)]

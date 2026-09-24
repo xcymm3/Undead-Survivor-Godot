@@ -33,7 +33,7 @@ var steam_ready = false
 var last_host = 0.0
 var heartbeat = 0.0
 var input_sequences: Dictionary = {}
-var sent_edges = {"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0}
+var sent_edges = {"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0,"wave_ready":0}
 var received_edges: Dictionary = {}
 var send_sequence = 0
 var receive_sequence = -1
@@ -292,7 +292,7 @@ func send_input(command: Dictionary) -> void:
 
 func recover_input_edges(id: String, command: Dictionary) -> Dictionary:
 	var clean = command.duplicate()
-	var previous: Dictionary = received_edges.get(id,{"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0})
+	var previous: Dictionary = received_edges.get(id,{"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0,"wave_ready":0})
 	for action in previous:
 		var sequence = command.get(action+"_seq",0)
 		if not sequence is int or sequence < 0: return {}
@@ -527,7 +527,7 @@ func leave() -> void:
 	host_id = ""
 	members.clear()
 	input_sequences.clear()
-	sent_edges = {"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0}
+	sent_edges = {"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0,"wave_ready":0}
 	received_edges.clear()
 	room_code = ""
 	nonce = ""

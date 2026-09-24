@@ -96,7 +96,7 @@ test('简单难度下举枪自动瞄准的自动霰弹枪角色守住水晶八�
   await page.waitForFunction(weapon => window.__survivorSnapshot?.player?.primary === weapon, primaryWeapon, { timeout: 10_000 });
   await setKey('e', false);
 
-  // Select the scoped primary for the bridge's long firing lane, then walk to the lever.
+  // Select the primary for the bridge's long firing lane, then enter position.
   await page.keyboard.press('1');
   await page.waitForFunction(weapon => window.__survivorSnapshot?.player?.weapon === weapon && window.__survivorSnapshot.player.switch <= 0, primaryWeapon);
   await page.mouse.down({ button: 'middle' });
@@ -104,9 +104,8 @@ test('简单难度下举枪自动瞄准的自动霰弹枪角色守住水晶八�
   await page.waitForFunction(() => window.__survivorSnapshot.player.aim);
   await walkTo(6, 58);
   await walkTo(6, 51.2);
-  await page.keyboard.down('e');
+  await page.keyboard.press('t');
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });
-  await page.keyboard.up('e');
 
   const startedAt = Date.now();
   while (Date.now() - startedAt < 690_000) {
@@ -120,6 +119,13 @@ test('简单难度下举枪自动瞄准的自动霰弹枪角色守住水晶八�
       expect(routeViolation, `Route must remain valid through wave ${state.cleared}`).toBeNull();
     }
     if (state.won || state.failed || state.finished) break;
+    if (state.defense.waiting) {
+      await setFiring(false);
+      await page.keyboard.press('t');
+      await page.waitForTimeout(250);
+      previous = state;
+      continue;
+    }
 
     for (const enemy of state.enemies) {
       const onBridge = enemy.z > -62 && enemy.z < -28;

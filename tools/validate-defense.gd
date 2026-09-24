@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless acceptance for the defense map, lever gate, weapon zone and crystal target.
+## Headless acceptance for the defense map, ready gate, weapon zone and crystal target.
 var checks = 0
 var failures = 0
 var game
@@ -48,6 +48,7 @@ func run() -> void:
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,42.7)),"Bridge and ramp form one open approach lane")
 	check(not game.arena.clear(Vector2(0,42.7),data.Maps.Defense.CRYSTAL),"Crystal body blocks enemy navigation")
 	check(game.arena.scenery.find_children("CrystalPedestal","*",true,false).is_empty(),"Crystal pedestal has been removed")
+	check(game.arena.scenery.find_children("WaveLever","*",true,false).is_empty(),"Defense wave lever has been removed")
 	var crystal_bodies = game.arena.scenery.find_children("CrystalBody","StaticBody3D",true,false)
 	check(crystal_bodies.size() == 1 and crystal_bodies[0].find_children("*","CollisionShape3D",true,false).size() == 1,"Crystal has a native solid body")
 	var bridge_hit: Dictionary = game.arena.surface_hit(Vector3(0,5,-45),Vector3(0,-10,-45))
@@ -112,14 +113,14 @@ func run() -> void:
 	shove_command.shove = true
 	sim.submit("solo",shove_command)
 	sim.step(.05)
-	check(pawn.shoves == prestart_shoves+1 and not sim.defense.started,"Shove works before pulling the defense lever")
+	check(pawn.shoves == prestart_shoves+1 and not sim.defense.started,"Shove works before starting defense")
 	sim.submit("solo",command())
 	sim.step(.35)
 	var prestart_shots: int = pawn.shots
 	var prestart_ammo: int = pawn.ammo[pawn.primary]
 	sim.submit("solo",command(0,false,1,pawn.yaw,pawn.pitch,true))
 	sim.step(.05)
-	check(pawn.shots == prestart_shots+1 and pawn.ammo[pawn.primary] == prestart_ammo-1 and not sim.defense.started,"Rifle fires and consumes ammunition before pulling the defense lever")
+	check(pawn.shots == prestart_shots+1 and pawn.ammo[pawn.primary] == prestart_ammo-1 and not sim.defense.started,"Rifle fires and consumes ammunition before starting defense")
 	sim.submit("solo",command())
 	sim.step(.15)
 	var reserve_before_auto_reload: int = pawn.reserves[pawn.primary]
@@ -132,7 +133,7 @@ func run() -> void:
 	for i in 10:
 		sim.submit("solo",command(0,false,2))
 		sim.step(.05)
-	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Waiting before the lever keeps timer and spawns stopped")
+	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Waiting for T keeps timer and spawns stopped")
 	check(pawn.weapon == pawn.secondary and pawn.slot == 2,"Defense uses Night's secondary-weapon slot switching")
 	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(0))
 	check(pawn.primary == 0 and pawn.weapon == 0 and pawn.ammo[0] == data.weapons[0].capacity and pawn.reserves[0] == data.defense_full_reserve(0),"Interacting with a wall weapon replaces and fully restocks the primary weapon")
@@ -165,17 +166,12 @@ func run() -> void:
 	pawn.medkits = 0
 	interact_with(sim,pawn,data.Maps.Defense.MEDKIT_MOUNTS[0])
 	check(pawn.medkits == 1,"Medical supply can be collected again immediately")
-	pawn.pos = Vector2(6,49)
-	pawn.height = data.Maps.Defense.height(pawn.pos)
-	interact_with(sim,pawn,Vector3(data.Maps.Defense.LEVER.x,pawn.height+1.1,data.Maps.Defense.LEVER.y))
-	check(sim.defense.started and sim.rest > 4.0 and sim.roster.is_empty(),"Pulling the lever starts a five-second preparation countdown before wave one")
-	var wave_horns := 0
-	for i in 52:
-		sim.submit("solo",command(int(pawn.weapon),false,int(pawn.slot)))
-		sim.step(.1)
-		wave_horns += sim.events.filter(func(event): return event.kind == "campaign_cue" and event.get("cue","") == "horde").size()
-	check(sim.wave == 1 and sim.rest == 0 and not sim.roster.is_empty(),"Wave one starts after the countdown without being skipped")
-	check(wave_horns == 1,"Crystal defense sounds one low horn when wave one actually begins")
+	var ready_input := command(int(pawn.weapon),false,int(pawn.slot))
+	ready_input.wave_ready = true
+	sim.submit("solo",ready_input)
+	sim.step(.02)
+	check(sim.defense.started and not sim.defense.waiting and sim.rest == 0 and not sim.roster.is_empty(),"T starts wave one immediately without a countdown")
+	check(sim.wave == 1 and sim.events.filter(func(event): return event.kind == "campaign_cue" and event.get("cue","") == "horde").size() == 1,"Crystal defense sounds one low horn when wave one begins")
 	var grenades_before: int = pawn.grenades
 	sim.submit("solo",command(int(pawn.weapon),false,4,pawn.yaw,pawn.pitch,true))
 	sim.step(.05)
@@ -195,10 +191,12 @@ func run() -> void:
 	sim.roster.clear()
 	sim.zombies.clear()
 	sim.step(.02)
-	check(sim.cleared == 1 and sim.rest > 4.9 and sim.defense.wave == 2 and sim.defense.countdown > 4.9,"Every later wave also receives a five-second preparation countdown")
-	sim.rest = .01
+	check(sim.cleared == 1 and sim.rest == 0 and sim.defense.wave == 2 and sim.defense.waiting and sim.defense.ready_players.is_empty(),"Wave end pauses before wave two and resets readiness")
+	for i in 60: sim.step(.1)
+	check(sim.wave == 1 and sim.defense.waiting and sim.roster.is_empty(),"Waiting never automatically starts the next wave")
+	sim.submit("solo",ready_input)
 	sim.step(.02)
-	check(sim.wave == 2 and sim.events.any(func(event): return event.kind == "campaign_cue" and event.get("cue","") == "horde"),"Later crystal-defense waves also sound the horn at their actual start")
+	check(sim.wave == 2 and not sim.defense.waiting and sim.events.any(func(event): return event.kind == "campaign_cue" and event.get("cue","") == "horde"),"A fresh T starts wave two and sounds its horn")
 
 	# Isolate target choice from the wave spawner: the closest valid unit must take the hit.
 	sim.roster.clear()
@@ -432,8 +430,48 @@ func run() -> void:
 	sim.wave = data.Maps.Defense.MAX_WAVES
 	sim.cleared = data.Maps.Defense.MAX_WAVES-1
 	sim.rest = 0
+	sim.defense.waiting = false
 	sim.step(.02)
 	check(sim.won and sim.cleared == data.Maps.Defense.MAX_WAVES,"Clearing wave eight completes the defense")
+
+	# Three players must each send a fresh T press for every wave.
+	game.start_solo("defense")
+	await physics_frame
+	sim = game.sim
+	sim.add_pawn("two","二号",1)
+	sim.add_pawn("three","三号",2)
+	sim.defense.party = sim.pawns.size()
+	sim.defense_director.equipment.initialize()
+	var coop_ready := command()
+	coop_ready.wave_ready = true
+	sim.submit("solo",coop_ready)
+	sim.step(.02)
+	check(sim.defense.waiting and not sim.defense.started and sim.defense.ready_players.size() == 1 and sim.roster.is_empty(),"One of three players pressing T cannot start wave one")
+	sim.submit("two",coop_ready)
+	sim.step(.02)
+	check(sim.defense.waiting and sim.defense.ready_players.size() == 2 and sim.roster.is_empty(),"Two of three players pressing T cannot start wave one")
+	sim.submit("three",coop_ready)
+	sim.step(.02)
+	check(not sim.defense.waiting and sim.defense.started and sim.wave == 1 and not sim.roster.is_empty() and sim.defense.ready_players.is_empty(),"All three T presses start wave one and clear readiness")
+	sim.submit("solo",coop_ready)
+	sim.submit("two",coop_ready)
+	sim.submit("three",coop_ready)
+	sim.step(.02)
+	check(sim.defense.ready_players.is_empty(),"T presses during an active wave are not saved")
+	sim.roster.clear()
+	sim.zombies.clear()
+	sim.step(.02)
+	check(sim.defense.waiting and sim.defense.wave == 2 and sim.defense.ready_players.is_empty(),"Wave one completion clears all prior T presses")
+	for i in 60: sim.step(.1)
+	check(sim.defense.waiting and sim.wave == 1 and sim.roster.is_empty(),"Three-player wave two stays paused without new presses")
+	sim.submit("solo",coop_ready)
+	sim.step(.02)
+	sim.submit("two",coop_ready)
+	sim.step(.02)
+	check(sim.defense.waiting and sim.defense.ready_players.size() == 2 and sim.roster.is_empty(),"Prior-wave readiness cannot satisfy the missing third player")
+	sim.submit("three",coop_ready)
+	sim.step(.02)
+	check(not sim.defense.waiting and sim.wave == 2 and not sim.roster.is_empty() and sim.defense.ready_players.is_empty(),"All players press T again to start wave two")
 
 	# Failure is driven by non-recoverable crystal health, independent of player health.
 	game.start_solo("defense")
@@ -441,7 +479,9 @@ func run() -> void:
 	sim = game.sim
 	pawn = sim.pawns.solo
 	pawn.pos = Vector2(6,49)
-	sim.submit("solo",command(0,true))
+	var failure_ready := command()
+	failure_ready.wave_ready = true
+	sim.submit("solo",failure_ready)
 	sim.step(.02)
 	sim.damage_crystal({"id":77},Data.Maps.Defense.CRYSTAL_MAX_HP)
 	sim.step(.02)

@@ -507,6 +507,7 @@ func run() -> void:
 	check(not game.input_state().jump,"Old jump key is no longer hard-coded")
 	InputMap.action_erase_events("jump")
 	for event in original: InputMap.action_add_event("jump",event)
+	check(InputMap.action_get_events("start_wave").any(func(event): return event is InputEventKey and event.physical_keycode == KEY_T),"T is bound to the wave start action")
 	var fire = InputEventAction.new()
 	fire.action = "fire"
 	fire.pressed = true
@@ -919,6 +920,9 @@ func validate_close_combat() -> void:
 	var recovered = session.recover_input_edges("shove_fixture",{"shove":false,"shove_seq":1})
 	check(recovered.shove and not session.recover_input_edges("shove_fixture",{"shove_seq":1}).shove,"Network retains a lost shove edge and does not replay duplicate counters")
 	session.received_edges.erase("shove_fixture")
+	var ready_recovered = session.recover_input_edges("ready_fixture",{"wave_ready":false,"wave_ready_seq":1})
+	check(ready_recovered.wave_ready and not session.recover_input_edges("ready_fixture",{"wave_ready_seq":1}).wave_ready,"Network retains a lost T press and does not replay duplicate counters")
+	session.received_edges.erase("ready_fixture")
 	game.reset_mouse_buttons()
 	for key in saved: p[key] = saved[key]
 	sim.zombies = original_zombies

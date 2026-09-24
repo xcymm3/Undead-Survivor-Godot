@@ -179,7 +179,7 @@ func submit(id: String, input: Dictionary) -> void:
 	clean.yaw = wrapf(clean.yaw,-PI,PI)
 	clean.pitch = clampf(clean.pitch,-deg_to_rad(85),deg_to_rad(85))
 	clean.weapon = clampi(int(clean.weapon),0,9)
-	for key in ["jump","fire","reload","aim","crouch","interact","heal","use_self","use_other","shove"]: clean[key] = input.get(key,false) == true
+	for key in ["jump","fire","reload","aim","crouch","interact","wave_ready","heal","use_self","use_other","shove"]: clean[key] = input.get(key,false) == true
 	if equipment:
 		var slot = input.get("slot",pawns[id].slot)
 		if not slot is int or slot < 1 or slot > 5: return
@@ -187,7 +187,7 @@ func submit(id: String, input: Dictionary) -> void:
 	# Network polling can deliver several commands before the next physics tick.
 	# Keep a jump edge until update_pawn consumes it, even if a newer packet releases it.
 	clean.jump = clean.jump or pawns[id].input.get("jump",false)
-	for action in ["use_self","use_other","shove"]: clean[action] = clean[action] or pawns[id].input.get(action,false)
+	for action in ["use_self","use_other","shove","wave_ready"]: clean[action] = clean[action] or pawns[id].input.get(action,false)
 	pawns[id].input = clean
 	pawns[id].input_age = 0.0
 
@@ -243,20 +243,14 @@ func step(dt: float) -> void:
 		campaign.step(dt)
 		won = campaign.state.complete
 		return
+	if mode == "defense" and defense.get("waiting",false): return
 	if rest > 0:
 		rest = maxf(0,rest-dt)
-		if mode == "defense": defense_director.sync_countdown(rest)
 		if rest <= 0:
-			if mode != "defense" or cleared >= wave: wave += 1
+			wave += 1
 			spawned = 0
 			credit = 0
 			prepare_wave()
-			if mode == "defense":
-				events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(Data.Maps.Defense.CRYSTAL.x,5.0,Data.Maps.Defense.CRYSTAL.y)})
-				defense.wave = wave
-				defense.countdown = 0.0
-				defense.objective = "第 %d 波正在逼近" % wave
-				defense_director.sync_world()
 		return
 	if roster.is_empty() and alive_count() == 0:
 		cleared = wave
@@ -265,12 +259,9 @@ func step(dt: float) -> void:
 			defense.objective = "八波进攻已全部击退，水晶守卫成功"
 			arena.sync_campaign(defense)
 			return
-		rest = 5 if mode == "defense" else 3
+		rest = 0 if mode == "defense" else 3
 		if mode == "defense":
-			defense.countdown = rest
-			defense.wave = wave+1
-			defense.objective = "第 %d 波已清除 · 第 %d 波将在 5 秒后开始" % [wave,wave+1]
-			defense_director.sync_world()
+			defense_director.finish_wave()
 		for p in pawns.values():
 			if p.hp <= 0:
 				p.pos = safe_spawn()
