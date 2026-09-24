@@ -178,21 +178,23 @@ func validate_population() -> void:
 	# All entries occupied: boss debt survives until a safe entry is available.
 	var saved = game.sim.zombies.duplicate(true)
 	game.sim.zombies.clear()
-	director.state.boss_queued = true
+	director.state.football_queued = 1
 	for point in Layout.FINAL_ENTRIES: game.sim.spawn(point,"normal")
 	director.spawn_boss()
-	check(not director.state.boss_spawned,"Unsafe boss remains pending instead of disappearing")
+	check(director.state.football_spawned == 0,"Unsafe football remains pending instead of disappearing")
 	game.sim.zombies.clear()
 	game.local_pawn().pos = Layout.HOLDOUT
 	for i in 100: game.sim.spawn(Vector2(0,50),"normal")
 	director.spawn_boss()
-	check(director.state.boss_spawned,"A large active horde does not block the independent boss")
+	check(director.state.football_spawned == 1,"A large active horde does not block the independent football")
 	director.spawn_boss()
 	check(game.sim.zombies.filter(func(z): return z.kind == "football").size() == 1,"Retry never duplicates boss")
 	game.sim.zombies = saved
 	game.local_pawn().pos = Layout.START
 	director.state.boss_queued = false
 	director.state.boss_spawned = false
+	director.state.football_queued = 0
+	director.state.football_spawned = 0
 	for key in ["boss_queued","boss_spawned","boss_holdout_time"]: director.state.milestones.erase(key)
 
 
@@ -307,34 +309,50 @@ func validate_sound_and_holdout() -> void:
 		check(director.target(p).get("id","") == "holdout","Door control offers holdout interaction party "+str(party))
 		director.perform(p,"finish")
 		check(not director.state.complete,"Cannot bypass holdout by sending finish interaction")
+		director.queue_batch("night_timer_fixture",Layout.TIMER_SOLO_BUDGET if party == 1 else Layout.TIMER_BUDGET,["cone","imp","bucket"])
+		var old_timer: Dictionary = director.reinforcement_batches[-1]
+		check(not old_timer.roster.is_empty(),"Route timer can have an unfinished batch before holdout")
 		director.perform(p,"holdout")
+		check(old_timer.roster.is_empty() and old_timer.get("cancelled",0) > 0,"Starting holdout cancels unfinished route timer spawns")
 		director.holdout_step(1.0)
-		check(not director.state.boss_queued,"Boss is not queued before ten seconds")
+		check(director.reinforcement_batches.filter(func(batch): return batch.id.begins_with("night_holdout_")).is_empty() and director.state.football_queued == 0,"Holdout has no immediate reinforcement or football")
 		for pawn in sim.pawns.values(): pawn.pos = Vector2(0,60)
-		director.holdout_step(5.0)
-		check(is_equal_approx(director.state.holdout_time,1.0),"Leaving entrance pauses holdout countdown")
-		for pawn in sim.pawns.values(): pawn.pos = Layout.HOLDOUT
-		for i in 580:
+		for i in 380:
 			sim.elapsed += .05
-			director.holdout_step(.05)
-			director.spawn_groups()
+			director.step(.05)
 			if i == 0: check(is_equal_approx(director.burst_at-sim.elapsed,2.0),"Ordinary reinforcement groups use a two-second schedule")
+		var away_waves: Array = director.reinforcement_batches.filter(func(batch): return batch.id.begins_with("night_holdout_"))
+		check(is_equal_approx(director.state.holdout_time,1.0) and not director.state.exit_control,"Leaving entrance pauses only the shelter unlock countdown")
+		check(game.arena.scenery.holdout_label.text == "解锁剩余 29 秒","Shelter door display keeps the paused unlock countdown")
+		check(director.state.holdout_elapsed >= 19.99 and away_waves.size() == 2 and director.state.football_queued == party,"Away from entrance, ten-second batches and the twenty-second football continue")
+		for pawn in sim.pawns.values(): pawn.pos = Layout.HOLDOUT
+		for i in 600:
+			sim.elapsed += .05
+			director.step(.05)
 			for enemy in sim.zombies:
 				sim.move_zombie(enemy,Layout.HOLDOUT,float(enemy.chase_speed),.05,enemy.pos.distance_to(Layout.HOLDOUT),1.5)
-		var waves: Array = director.reinforcement_batches.filter(func(batch): return batch.id.begins_with("night_holdout_"))
-		print("HOLDOUT FIXTURE party=",party," waves=",JSON.stringify(waves)," entries=",Layout.FINAL_ENTRIES.map(func(point): return [point,director.safe_point(point)]))
-		check(waves[0].spawn_times.size() >= 3 and waves[0].spawn_times[2]-waves[0].spawn_times[0] < 1.5,"First group enters together instead of slow trickle")
-		check(waves.size() == 3,"Exactly three finite holdout batches queued")
-		check(waves.all(func(batch): return batch.budget == (Layout.HOLDOUT_DUO_BUDGET if party == 2 else Layout.HOLDOUT_BUDGET) and batch.spent+preload("res://scripts/night_population.gd").points(batch.roster) == batch.budget),"Holdout spends exact point budgets without losing deferred quota")
-		check(waves.reduce(func(total,batch): return total+batch.spawned,0) >= ceili(waves.reduce(func(total,batch): return total+batch.planned,0)*.5),"At least half the planned holdout population actually enters")
-		check(sim.zombies.filter(func(enemy): return enemy.kind == "football").size() == 2,"Exactly two independent football bosses in solo and duo")
-		check(director.state.milestones.get("boss2_holdout_time",0) >= 29.99,"Second boss arrives at end of holdout")
-		check(director.state.milestones.get("boss_holdout_time",0) >= 10 and director.state.milestones.get("boss_holdout_time",99) <= 10.1,"Boss appears at ten defended seconds with a safe entry")
-		check(sim.zombies.all(func(enemy): return enemy.kind != "giant"),"No giant in holdout population")
-		check(director.state.exit_control,"Door unlocks after thirty defended seconds")
+		check(director.state.exit_control and director.state.holdout_time == 30,"Returning to entrance completes only the cumulative thirty-second unlock")
 		check(not game.arena.clear(Vector2(12,-52),Vector2(12,-57)),"Unlocked door retains navigation blocking while it starts opening")
 		director.step_props(1.2)
 		check(game.arena.clear(Vector2(12,-52),Vector2(12,-57)),"Fully opened door releases navigation after its animation")
+		for pawn in sim.pawns.values(): pawn.pos = Vector2(0,60)
+		for i in 420:
+			sim.elapsed += .05
+			director.step(.05)
+			for enemy in sim.zombies:
+				sim.move_zombie(enemy,Layout.HOLDOUT,float(enemy.chase_speed),.05,enemy.pos.distance_to(Layout.HOLDOUT),1.5)
+		var waves: Array = director.reinforcement_batches.filter(func(batch): return batch.id.begins_with("night_holdout_"))
+		check(waves.size() == 7 and director.state.holdout_elapsed >= 69.99,"Holdout continues queuing every ten seconds after shelter unlock")
+		check(waves.all(func(batch): return batch.budget == (Layout.HOLDOUT_DUO_BUDGET if party == 2 else Layout.HOLDOUT_BUDGET) and batch.spent+preload("res://scripts/night_population.gd").points(batch.roster) == batch.budget),"Holdout spends exact point budgets without losing deferred quota")
+		check(waves[0].get("spawn_times",[]).size() >= 3 and waves[0].spawn_times[2]-waves[0].spawn_times[0] < 1.5,"First holdout group enters together instead of slow trickle")
+		check(director.state.football_queued == 3*party and director.state.football_spawned <= director.state.football_queued,"Football quota repeats at holdout seconds twenty, forty and sixty, scaled by party")
+		check(director.state.football_spawned > 0 and sim.zombies.filter(func(enemy): return enemy.kind == "football").size() == director.state.football_spawned,"Queued footballs eventually spawn through safe entrances")
+		var old_timers: Array = director.reinforcement_batches.filter(func(batch): return batch.id.begins_with("night_timer_"))
+		check(old_timers.size() == 1 and old_timers.all(func(batch): return batch.roster.is_empty()),"Route timed reinforcements stop once holdout begins")
+		check(sim.zombies.all(func(enemy): return enemy.kind != "giant"),"No giant in holdout population")
 		var spawned: int = sim.zombies.size()
 		director.perform(p,"holdout")
 		check(director.state.holdout_time >= 30 and sim.zombies.size() == spawned,"Holdout cannot be restarted or duplicated")
+		director.state.complete = true
+		director.step(20.0)
+		check(director.reinforcement_batches.filter(func(batch): return batch.id.begins_with("night_holdout_")).size() == 7,"Completing the level stops further holdout batches")

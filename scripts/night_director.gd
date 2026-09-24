@@ -10,6 +10,7 @@ var burst_next = 0.0
 var batch_cursor = 0
 var ordinary_slots = 0
 var next_timer_index = 1
+var next_holdout_index = 1
 
 func population_kind(kind: String) -> String:
 	# Count successful ordinary spawns across habitats and delayed batches.
@@ -66,20 +67,22 @@ func finish_label() -> String:
 	return super()
 
 func holdout_step(dt: float) -> void:
-	if state.holdout_started and not state.exit_control:
+	if not state.holdout_started or state.complete: return
+	state.holdout_elapsed += dt
+	while state.holdout_elapsed >= next_holdout_index*10.0:
+		var kinds: Array = [["imp","cone","bucket"],["shield","cone","imp"],["berserker","bucket","cone"]][(next_holdout_index-1)%3]
+		queue_batch("night_holdout_"+str(next_holdout_index),Layout.HOLDOUT_BUDGET,kinds)
+		if next_holdout_index%2 == 0:
+			state.football_queued += state.party
+			state.boss_queued = true
+			if not state.milestones.has("boss_queued"): state.milestones.boss_queued = sim.elapsed
+		next_holdout_index += 1
+	if not state.exit_control:
 		# At least one standing survivor must remain near the entrance.
 		if standing().any(func(p): return p.pos.distance_to(Layout.HOLDOUT) < 14):
 			state.holdout_time = minf(30,state.holdout_time+dt)
 		state.objective = "守住门前 · 解锁剩余 %d 秒" % ceili(30-state.holdout_time)
-		for i in 3:
-			if state.holdout_time >= i*10:
-				queue_batch("night_holdout_"+str(i),Layout.HOLDOUT_BUDGET,[["imp","cone","bucket"],["shield","cone","imp"],["berserker","bucket","cone"]][i])
-		if state.holdout_time >= 10 and not state.boss_queued:
-			state.boss_queued = true
-			state.milestones.boss_queued = sim.elapsed
 		if state.holdout_time >= 30:
-			state.boss2_queued = true
-			state.milestones.boss2_queued = sim.elapsed
 			state.exit_control = true
 			state.exit_passable = false
 			state.exit_motion = 0.0
@@ -88,23 +91,22 @@ func holdout_step(dt: float) -> void:
 			sim.arena.sync_campaign(state)
 
 func spawn_boss() -> void:
-	var second: bool = state.boss_spawned
-	if (not state.boss2_queued or state.boss2_spawned) if second else not state.boss_queued: return
-	# Separate slot: no threat points, burst quota or credit used.
-	for point in Layout.FINAL_ENTRIES:
-		if not safe_point(point): continue
-		sim.spawn(point,"football")
-		sim.zombies[-1]["boss"] = true
-		if second:
-			state.boss2_spawned = true
-			state.milestones.boss2_spawned = sim.elapsed
-			state.milestones.boss2_holdout_time = state.holdout_time
-		else:
-			state.boss_spawned = true
-			state.milestones.boss_spawned = sim.elapsed
-			state.milestones.boss_holdout_time = state.holdout_time
-		sim.events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(point.x,1,point.y)})
-		return
+	# Every second holdout batch adds one football per player. Unsafe entries keep the debt.
+	while state.football_spawned < state.football_queued:
+		var spawned := false
+		for point in Layout.FINAL_ENTRIES:
+			if not safe_point(point): continue
+			sim.spawn(point,"football")
+			sim.zombies[-1]["boss"] = true
+			state.football_spawned += 1
+			if not state.boss_spawned:
+				state.boss_spawned = true
+				state.milestones.boss_spawned = sim.elapsed
+				state.milestones.boss_holdout_time = state.holdout_elapsed
+			sim.events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(point.x,1,point.y)})
+			spawned = true
+			break
+		if not spawned: return
 
 func queue_batch(id: String, budget: int, kinds: Array) -> void:
 	if reinforcement_batches.any(func(batch): return batch.id == id): return
@@ -148,10 +150,11 @@ func _init(world) -> void:
 	state.exit_control = false
 	state.holdout_started = false
 	state.holdout_time = 0.0
+	state.holdout_elapsed = 0.0
+	state.football_queued = 0
+	state.football_spawned = 0
 	state.boss_queued = false
 	state.boss_spawned = false
-	state.boss2_queued = false
-	state.boss2_spawned = false
 	state.power_ready = true
 	state.objective = "沿绿灯穿过街口与店铺，抵达林边安全屋"
 	sim.arena.sync_campaign(state)
@@ -213,7 +216,12 @@ func perform(p: Dictionary, id: String) -> void:
 		sim.events.append({"kind":"campaign_cue","cue":"gate","position":Vector3(0,1.9,65)})
 	elif id == "holdout":
 		if not state.departed or state.holdout_started or not near(p,Layout.HOLDOUT,2.6): return
+		for batch in reinforcement_batches:
+			if batch.id.begins_with("night_timer_") and not batch.roster.is_empty():
+				batch["cancelled"] = Population.points(batch.roster)
+				batch.roster.clear()
 		state.holdout_started = true
+		state.holdout_elapsed = 0.0
 		p.pickup_latched = true
 		sim.events.append({"kind":"campaign_cue","cue":"winch","position":Vector3(14.4,1.5,-50)})
 		state.milestones.holdout_started = sim.elapsed
@@ -281,7 +289,7 @@ func step(dt: float) -> void:
 		state.milestones.woods = sim.elapsed
 		phase("FINAL_APPROACH","穿过林缘，寻找安全屋暖灯")
 		queue_batch("night_woods",Layout.WOODS_BUDGET,["imp","cone","bucket","shield","berserker"])
-	while sim.elapsed >= next_timer_index*Layout.TIMER_INTERVAL:
+	while not state.holdout_started and sim.elapsed >= next_timer_index*Layout.TIMER_INTERVAL:
 		queue_batch("night_timer_"+str(next_timer_index),Layout.TIMER_SOLO_BUDGET if state.party == 1 else Layout.TIMER_BUDGET,["cone","imp","bucket","shield","berserker"])
 		next_timer_index += 1
 	holdout_step(dt)
