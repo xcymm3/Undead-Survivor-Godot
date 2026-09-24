@@ -34,10 +34,10 @@ for (const weapon of WEAPONS) {
   if (['axe', 'shotgun', 'auto-shotgun', 'flamethrower'].includes(weapon.id)) weapon.adsEnabled = false;
   if (weapon.id === 'p90') weapon.damage = 40;
   if (weapon.id === 'axe') weapon.range = 3.5;
-  if (weapon.id === 'shotgun') Object.assign(weapon, { spread: .045, spreadVertical: .045 });
-  if (weapon.id === 'auto-shotgun') Object.assign(weapon, { spread: .055, spreadVertical: .055, capacity: 20, interval: .24, damage: 48 });
+  if (weapon.id === 'shotgun') Object.assign(weapon, { spread: .045, spreadVertical: .045, interval: .7, reloadDuration: .4 });
+  if (weapon.id === 'auto-shotgun') Object.assign(weapon, { spread: .055, spreadVertical: .055, capacity: 16, interval: .24, damage: 40 });
   if (weapon.id === 'rifle') weapon.damage = 120;
-  if (weapon.id === 'sniper') Object.assign(weapon, { capacity: 15, interval: .3, fireDuration: .28, piercing: true, penetrationTargets: 3, penetrationDamage: .8 });
+  if (weapon.id === 'sniper') Object.assign(weapon, { capacity: 15, interval: .3, fireDuration: .28, damage: 200, headshotMultiplier: 2, piercing: true, penetrationTargets: 3, penetrationDamage: .8 });
 }
 const config = await import(pathToFileURL(path.join(cache, 'config.mjs')));
 config.ZOMBIE_TYPES.crawler = { ...config.ZOMBIE_TYPES.normal, label: '爬行僵尸' };

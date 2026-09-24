@@ -255,7 +255,7 @@ func validate_sniper_penetration() -> void:
 		sim.zombies[-1].body = 2000
 	sim.fire(p,w)
 	for index in 4:
-		var expected: float = 280*pow(.8,index) if index < 3 else 0.0
+		var expected: float = float(w.damage)*pow(.8,index) if index < 3 else 0.0
 		check(is_equal_approx(2000-sim.zombies[index].hp,expected),"Sniper front-to-back attenuation and three-target limit "+str(index))
 	p.pos = Vector2(0,70)
 	p.yaw = -PI/2
