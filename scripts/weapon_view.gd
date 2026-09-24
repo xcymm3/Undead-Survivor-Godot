@@ -6,6 +6,8 @@ var ads = 0.0
 var active = 0
 var muzzle: MeshInstance3D
 var axe_pivot: Node3D
+var pistol_arms: Node3D
+var pistol_profile = -1
 
 static func create_model(id: String) -> Node3D:
 	if id == "rifle": return preload("res://scripts/ak_rifle.gd").new()
@@ -58,6 +60,9 @@ func _ready() -> void:
 		for child in model.find_children("*","MeshInstance3D",true,false):
 			child.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			child.layers = 2
+	pistol_arms = preload("res://scripts/pistol_arms.gd").new()
+	models[2].add_child(pistol_arms)
+	pistol_arms.visible = false
 	var sphere = SphereMesh.new()
 	sphere.radius = .032
 	sphere.height = .08
@@ -115,6 +120,13 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		rotation.z -= reload_pulse*.22
 		rotation.x -= reload_pulse*.1
 	var reload_phase = clampf(1-p.get("reload",0.0)/maxf(.1,w.reloadDuration),0,1) if p.reloading else 0.0
+	pistol_arms.visible = active == 2 and models[2].visible
+	if active == 2:
+		var profile: int = int(p.get("appearance",[0])[0])
+		if profile != pistol_profile:
+			pistol_arms.set_profile(profile)
+			pistol_profile = profile
+		pistol_arms.pose(elapsed,ads,p.reloading,reload_phase,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0)
 	if w.id == "rifle": models[active].pose(p.reloading,reload_phase,p.fire_anim/w.fireDuration)
 	var player: AnimationPlayer = animations[active]
 	if player:
