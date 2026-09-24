@@ -522,6 +522,7 @@ func run() -> void:
 	game.sound.play_at("gun",Vector3(7,2,-8))
 	check(game.sound.spatial_players[0].global_position == Vector3(7,2,-8),"World audio retains the event position")
 	check(game.sound.spatial_players[0].max_distance > 0,"World audio has distance attenuation")
+	check(game.sound.streams.has("campaign-horde") and game.sound.streams.has("campaign-growl") and game.sound.streams["campaign-horde"] != game.sound.streams["campaign-growl"],"Reinforcement horn and nearby zombie growl use distinct audio streams")
 	game.sound.clear_effects()
 	check(game.sound.spatial_players.all(func(p): return p.stream == null),"World voice resources clear on scene reset")
 	await validate_equipment()

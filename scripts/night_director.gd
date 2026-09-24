@@ -301,7 +301,7 @@ func step(dt: float) -> void:
 		if sim.elapsed >= cue_at:
 			for z in sim.zombies:
 				if z.hp > 0 and standing().any(func(p): return p.pos.distance_to(z.pos) < 12):
-					sim.events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(z.pos.x,1,z.pos.y)})
+					sim.events.append({"kind":"campaign_cue","cue":"growl","position":Vector3(z.pos.x,1,z.pos.y)})
 					cue_at = sim.elapsed+12
 					break
 	sim.arena.scenery.sync(state)
