@@ -116,10 +116,10 @@ func make_safe_zone() -> void:
 		block("ShopFrame%d" % column,Vector3(x,7.2,67.47),Vector3(.12,8.15,.1),"5d4934",false)
 	block("ShopFrameTop",Vector3(0,11.52,67.47),Vector3(25.5,.18,.18),"5d4934",false)
 	block("ShopFrameBottom",Vector3(0,3.08,67.47),Vector3(25.5,.18,.18),"5d4934",false)
-	# Seven primary weapons occupy two reachable rows. The outer wall sections are
-	# reserved for per-player grenade and medical supply slots.
-	for display_index in DefenseLayout.PRIMARY_WEAPONS.size():
-		var weapon_index: int = DefenseLayout.PRIMARY_WEAPONS[display_index]
+	# Primary weapons occupy two rows; both sidearms share a third central row.
+	# The outer wall sections hold grenade and medical supplies.
+	for display_index in DefenseLayout.ARMORY_WEAPONS.size():
+		var weapon_index: int = DefenseLayout.ARMORY_WEAPONS[display_index]
 		var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[weapon_index].id)
 		add_child(model)
 		model.name = "WeaponDisplay%02d" % (display_index+1)
@@ -135,6 +135,9 @@ func make_safe_zone() -> void:
 		var rack_label = sign_at("E · %s" % Data.weapons[weapon_index].label,Vector3(mount.x,mount.y+.52,67.42),3.6)
 		rack_label.rotation.y = PI
 		rack_label.position.z -= .22
+	var sidearm_label = sign_at("副武器 · 按 2 切换",Vector3(0,8.45,67.42),5.2)
+	sidearm_label.rotation.y = PI
+	sidearm_label.position.z -= .22
 	var grenade_label = sign_at("手雷补给\n无限供应",Vector3(-10.6,7.25,67.42),3.8)
 	grenade_label.rotation.y = PI
 	grenade_label.position.z -= .22
@@ -149,7 +152,7 @@ func make_safe_zone() -> void:
 		light.omni_range = 10.0
 		light.shadow_enabled = true
 		add_child(light)
-	var zone_label = sign_at("水晶防线军械库 · E 拾取 · 主武器即时补货",Vector3(0,10.25,67.45),13.5)
+	var zone_label = sign_at("水晶防线军械库 · E 拾取 · 武器即时补货",Vector3(0,10.25,67.45),13.5)
 	zone_label.rotation.y = PI
 	zone_label.position.z -= .22
 

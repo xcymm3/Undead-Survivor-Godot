@@ -58,12 +58,12 @@ func aimed_score(p: Dictionary, point: Vector3) -> float:
 func pickup_target(p: Dictionary) -> Dictionary:
 	var best: Dictionary = {}
 	var score = .3
-	for display_index in DefenseLayout.PRIMARY_WEAPONS.size():
-		var weapon: int = DefenseLayout.PRIMARY_WEAPONS[display_index]
+	for display_index in DefenseLayout.ARMORY_WEAPONS.size():
+		var weapon: int = DefenseLayout.ARMORY_WEAPONS[display_index]
 		var value = aimed_score(p,DefenseLayout.weapon_mount(display_index))
 		if value > score:
 			score = value
-			best = {"id":"weapon:"+str(weapon),"label":"换取 "+Data.weapons[weapon].label+"（替换主武器）","seconds":.3}
+			best = {"id":"weapon:"+str(weapon),"label":"换取 "+Data.weapons[weapon].label+"（替换"+("副武器" if weapon in DefenseLayout.SECONDARY_WEAPONS else "主武器")+"）","seconds":.3}
 	for kind in ["grenade","medkit"]:
 		if kind == "grenade" and p.grenades >= MAX_GRENADES: continue
 		if kind == "medkit" and p.medkits >= 1: continue
@@ -79,20 +79,21 @@ func pickup_target(p: Dictionary) -> Dictionary:
 func pickup(p: Dictionary, id: String) -> bool:
 	if id.begins_with("weapon:"):
 		var weapon := int(id.trim_prefix("weapon:"))
-		if weapon not in DefenseLayout.PRIMARY_WEAPONS: return false
-		var display_index: int = DefenseLayout.PRIMARY_WEAPONS.find(weapon)
+		if weapon not in DefenseLayout.ARMORY_WEAPONS: return false
+		var display_index: int = DefenseLayout.ARMORY_WEAPONS.find(weapon)
 		if aimed_score(p,DefenseLayout.weapon_mount(display_index)) <= .3: return false
-		var old: int = p.primary
+		var slot: String = "secondary" if weapon in DefenseLayout.SECONDARY_WEAPONS else "primary"
+		var old: int = p[slot]
 		pickup_motion(p,DefenseLayout.weapon_mount(display_index),weapon,0,old)
 		p.ammo[old] = 0
 		p.reserves[old] = 0
-		p.primary = weapon
+		p[slot] = weapon
 		p.weapon = weapon
 		p.requested = weapon
-		p.slot = 1
+		p.slot = 2 if slot == "secondary" else 1
 		p.ammo[weapon] = int(Data.weapons[weapon].capacity)
 		p.reserves[weapon] = Data.defense_full_reserve(weapon)
-		p.reserve = p.reserves[weapon]
+		p.reserve = p.reserves[p.primary]
 		p.switch = .65
 		p.reloading = false
 		p.reload_queued = false

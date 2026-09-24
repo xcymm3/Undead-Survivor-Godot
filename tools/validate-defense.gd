@@ -71,15 +71,17 @@ func run() -> void:
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,42.7)),"Environmental cover preserves the central bridge, ramp and field lane")
 	var weapon_displays = game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false)
 	var primary_weapon_indices := [0,1,4,5,7,8,9]
-	check(weapon_displays.size() == primary_weapon_indices.size(),"Safe zone displays exactly the seven primary weapons")
+	var sidearm_indices := [2,3]
+	check(weapon_displays.size() == primary_weapon_indices.size()+sidearm_indices.size(),"Safe zone displays seven primary weapons and both sidearms")
 	var displayed_weapon_indices: Array = weapon_displays.map(func(node): return int(node.get_meta("weapon_display_index")))
 	displayed_weapon_indices.sort()
-	check(displayed_weapon_indices == primary_weapon_indices,"Armory wall excludes always-carried sidearms and melee weapon")
+	check(displayed_weapon_indices == [0,1,2,3,4,5,7,8,9],"Armory wall includes pistol and revolver but excludes melee weapon")
 	var shop_walls = game.arena.scenery.find_children("WeaponShopWall","StaticBody3D",true,false)
 	check(shop_walls.size() == 1,"Safe zone uses one continuous physical shop wall")
 	var shop_shape = shop_walls[0].find_children("*","CollisionShape3D",true,false)[0] as CollisionShape3D
 	check(shop_shape and shop_shape.shape is BoxShape3D and shop_shape.shape.size.y >= 8.8,"Weapon shop wall is at least twice its previous height")
-	var weapon_mounts: Array = weapon_displays.map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
+	var weapon_mounts: Array = weapon_displays.filter(func(node): return int(node.get_meta("weapon_display_index")) in primary_weapon_indices).map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
+	var sidearm_mounts: Array = weapon_displays.filter(func(node): return int(node.get_meta("weapon_display_index")) in sidearm_indices).map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
 	var columns: Array = []
 	for point in weapon_mounts:
 		if not columns.has(point.x): columns.append(point.x)
@@ -89,7 +91,8 @@ func run() -> void:
 	check(columns.size() == 4 and separated,"Weapon displays use four generously spaced columns")
 	check(columns.all(func(x): return weapon_mounts.filter(func(point): return point.x == x).size() in [1,2]) and weapon_mounts.map(func(point): return point.y).min() < weapon_mounts.map(func(point): return point.y).max(),"Primary weapons use two rows per column")
 	var standing_eye = data.Maps.Defense.height(Vector2(0,60))+preload("res://scripts/player_body.gd").eye_height({"crouch":0.0})
-	check(weapon_mounts.all(func(point): return point.y <= standing_eye+1.0),"Every weapon is reachable while standing without jumping")
+	check(weapon_mounts.all(func(point): return point.y <= standing_eye+1.0),"Every primary weapon is reachable while standing without jumping")
+	check(sidearm_mounts.size() == 2 and sidearm_mounts.all(func(point): return is_equal_approx(point.y,data.Maps.Defense.SIDEARM_HEIGHT) and absf(point.x) < 3.0),"Pistol and revolver occupy the central upper sidearm row")
 	check(game.arena.scenery.find_children("WeaponRack*","StaticBody3D",true,false).is_empty(),"Safe zone no longer uses five separate rack walls")
 
 	game.start_solo("defense")
@@ -130,7 +133,24 @@ func run() -> void:
 	check(pawn.weapon == pawn.secondary and pawn.slot == 2,"Defense uses Night's secondary-weapon slot switching")
 	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(0))
 	check(pawn.primary == 0 and pawn.weapon == 0 and pawn.ammo[0] == data.weapons[0].capacity and pawn.reserves[0] == data.defense_full_reserve(0),"Interacting with a wall weapon replaces and fully restocks the primary weapon")
-	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == primary_weapon_indices.size(),"A replacement copy appears immediately after a wall weapon pickup")
+	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == primary_weapon_indices.size()+sidearm_indices.size(),"A replacement copy appears immediately after a wall weapon pickup")
+	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(7))
+	check(pawn.primary == 0 and pawn.secondary == 2 and pawn.slot == 2 and pawn.weapon == 2,"Picking up the ordinary pistol replaces only the secondary weapon")
+	check(pawn.ammo[2] == data.weapons[2].capacity and pawn.reserves[2] == data.defense_full_reserve(2) and pawn.ammo[3] == 0 and pawn.reserve == pawn.reserves[pawn.primary],"Pistol pickup fills ammunition and preserves the primary reserve")
+	for i in 10:
+		sim.submit("solo",command(0,false,1))
+		sim.step(.05)
+	check(pawn.slot == 1 and pawn.weapon == pawn.primary,"Slot 1 switches back to the retained primary weapon")
+	for i in 10:
+		sim.submit("solo",command(0,false,2))
+		sim.step(.05)
+	check(pawn.slot == 2 and pawn.weapon == 2,"Slot 2 switches back to the newly picked up pistol")
+	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(8))
+	check(pawn.primary == 0 and pawn.secondary == 3 and pawn.slot == 2 and pawn.weapon == 3,"Picking up the revolver replaces only the secondary weapon")
+	check(pawn.ammo[3] == data.weapons[3].capacity and pawn.reserves[3] == data.defense_full_reserve(3) and pawn.ammo[2] == 0,"Revolver pickup fills ammunition and clears the replaced pistol")
+	for i in 10:
+		sim.submit("solo",command(0,false,1))
+		sim.step(.05)
 	interact_with(sim,pawn,data.Maps.Defense.GRENADE_MOUNTS[0])
 	check(pawn.grenades == 1,"Grenade pickup supplies one grenade")
 	pawn.grenades = 0
