@@ -333,6 +333,20 @@ func validate_crawler() -> void:
 	check(death_hands[2][0].z > death_hands[0][0].z+.15 and death_hands[2][1].z > death_hands[0][1].z+.15,"Crawler death extends both hands into a collapsed pose")
 	z.hp = float(data.enemies.crawler.health)
 	z.down = 0.0
+	z.move_speed = 0.0
+	z.attack_time = 0.0
+	z.guard_awake = true
+	var idle_crawl_a: Dictionary = view.pose_state(z,0.0,false)
+	var idle_crawl_b: Dictionary = view.pose_state(z,1.0,false)
+	check(not idle_crawl_a.root.is_equal_approx(idle_crawl_b.root),"Awake crawler has a subtle idle sway")
+	sim.spawn(Vector2(10,60),"normal")
+	var upright: Dictionary = sim.zombies[-1]
+	upright.move_speed = 0.0
+	upright.guard_awake = true
+	var idle_stand_a: Dictionary = view.pose_state(upright,0.0,false)
+	var idle_stand_b: Dictionary = view.pose_state(upright,1.0,false)
+	check(not idle_stand_a.root.is_equal_approx(idle_stand_b.root),"Awake upright zombie has a subtle idle sway")
+	sim.zombies.pop_back()
 	game.enemies.sync(sim.zombies,sim.elapsed,false)
 	var state = view.pose_state(z,sim.elapsed,false)
 	var actor: Dictionary = game.enemies.actors[z.id]
