@@ -316,9 +316,24 @@ func choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
 	var targets: Array = living.duplicate()
 	if mode == "defense" and defense.get("crystal_hp",0) > 0: targets.append(crystal_target())
 	var target: Dictionary = targets[0]
+	var nearest := INF
 	for candidate in targets:
-		if z.pos.distance_squared_to(candidate.pos) < z.pos.distance_squared_to(target.pos): target = candidate
+		if mode == "defense" and not candidate.get("is_crystal",false) and candidate.pos.distance_to(Data.Maps.Defense.CRYSTAL) < 5.0:
+			var eye = Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+1.1,z.pos.y)
+			var player_eye = Vector3(candidate.pos.x,candidate.height+1.1,candidate.pos.y)
+			if not arena.surface_hit(eye,player_eye).is_empty(): continue
+		var distance: float = z.pos.distance_squared_to(candidate.pos)
+		if distance < nearest:
+			nearest = distance
+			target = candidate
 	return target
+
+func crystal_attack_visible(z: Dictionary) -> bool:
+	var offset: Vector2 = z.pos-Data.Maps.Defense.CRYSTAL
+	if offset.length_squared() < .0001: return false
+	var near: Vector2 = Data.Maps.Defense.CRYSTAL+offset.normalized()*(Data.Maps.Defense.CRYSTAL_RADIUS+.08)
+	var eye = Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+1.1,z.pos.y)
+	return arena.surface_hit(eye,Vector3(near.x,4.1,near.y)).is_empty()
 
 func target_by_id(id: String) -> Dictionary:
 	if mode == "defense" and id == "crystal" and defense.get("crystal_hp",0) > 0: return crystal_target()
@@ -590,11 +605,9 @@ func try_shove(p: Dictionary) -> bool:
 func approach_goal(z: Dictionary, target: Dictionary) -> Vector2:
 	var distance: float = z.pos.distance_to(target.pos)
 	if target.get("is_crystal",false):
-		# Approach the nearest pedestal face; diagonal corners exceed melee reach.
 		var offset: Vector2 = z.pos-target.pos
-		var side: Vector2 = Vector2(signf(offset.x),0) if absf(offset.x) > absf(offset.y) else Vector2(0,signf(offset.y))
-		if side == Vector2.ZERO: side = Vector2(0,-1)
-		return target.pos+side*Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS
+		if offset.length_squared() < .0001: offset = Vector2(0,-1)
+		return target.pos+offset.normalized()*Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS
 	if distance > 24: return target.pos
 	# Stable per-enemy offsets avoid a shared chase point; navigation validates each slot.
 	var sector = fmod(z.id*2.399963,TAU)
@@ -704,7 +717,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 				z.charge_cooldown = 3.2
 				break
 		return
-	var contact_visible = arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(target.pos.x,target.height+1.1,target.pos.y)).is_empty() if distance <= contact else false
+	var contact_visible = (crystal_attack_visible(z) if target.get("is_crystal",false) else arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(target.pos.x,target.height+1.1,target.pos.y)).is_empty()) if distance <= contact else false
 	if z.attack_time > 0 or (distance <= contact and contact_visible and absf(target.height-Data.enemy_ground_height(z.pos,map_id)) < 1.1):
 		var profile = Data.attack(z.kind,z.rage)
 		if z.attack_time <= 0:
@@ -728,7 +741,9 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 				var strike_range: float = maxf(2.4 if z.kind == "giant" else Data.contact(z.kind)+.15,Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS) if victim.get("is_crystal",false) else (2.4 if z.kind == "giant" else Data.contact(z.kind)+.15)
 				if victim.hp <= 0 or offset.length() > strike_range: continue
 				if Vector2(sin(z.heading),cos(z.heading)).dot(offset.normalized()) < .4: continue
-				if not arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(victim.pos.x,victim.height+1.1,victim.pos.y)).is_empty(): continue
+				if victim.get("is_crystal",false):
+					if not crystal_attack_visible(z): continue
+				elif not arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(victim.pos.x,victim.height+1.1,victim.pos.y)).is_empty(): continue
 				hit = damage_target(victim,z,10) or hit
 			events.append({"kind":"enemy_impact" if hit else "enemy_miss","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
 		if z.attack_time >= profile.y: z.attack_time = 0.0

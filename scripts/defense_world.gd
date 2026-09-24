@@ -33,7 +33,17 @@ func make_crystal() -> void:
 	crystal.name = "DefenseCrystal"
 	crystal.position = Vector3(DefenseLayout.CRYSTAL.x,3.0,DefenseLayout.CRYSTAL.y)
 	add_child(crystal)
-	block("CrystalPedestal",Vector3(0,3.45,46),Vector3(4.2,.9,4.2),"344d50")
+	var body = StaticBody3D.new()
+	body.name = "CrystalBody"
+	body.position = Vector3(DefenseLayout.CRYSTAL.x,4.8,DefenseLayout.CRYSTAL.y)
+	var shape = CollisionShape3D.new()
+	var cylinder = CylinderShape3D.new()
+	cylinder.radius = DefenseLayout.CRYSTAL_RADIUS
+	cylinder.height = 3.6
+	shape.shape = cylinder
+	body.add_child(shape)
+	add_child(body)
+	obstacles.append({"minX":DefenseLayout.CRYSTAL.x-DefenseLayout.CRYSTAL_RADIUS,"maxX":DefenseLayout.CRYSTAL.x+DefenseLayout.CRYSTAL_RADIUS,"minZ":DefenseLayout.CRYSTAL.y-DefenseLayout.CRYSTAL_RADIUS,"maxZ":DefenseLayout.CRYSTAL.y+DefenseLayout.CRYSTAL_RADIUS})
 	for side in [-1.0,1.0]:
 		var cone = MeshInstance3D.new()
 		var mesh = CylinderMesh.new()
