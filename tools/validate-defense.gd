@@ -169,10 +169,13 @@ func run() -> void:
 	pawn.height = data.Maps.Defense.height(pawn.pos)
 	interact_with(sim,pawn,Vector3(data.Maps.Defense.LEVER.x,pawn.height+1.1,data.Maps.Defense.LEVER.y))
 	check(sim.defense.started and sim.rest > 4.0 and sim.roster.is_empty(),"Pulling the lever starts a five-second preparation countdown before wave one")
+	var wave_horns := 0
 	for i in 52:
 		sim.submit("solo",command(int(pawn.weapon),false,int(pawn.slot)))
 		sim.step(.1)
+		wave_horns += sim.events.filter(func(event): return event.kind == "campaign_cue" and event.get("cue","") == "horde").size()
 	check(sim.wave == 1 and sim.rest == 0 and not sim.roster.is_empty(),"Wave one starts after the countdown without being skipped")
+	check(wave_horns == 1,"Crystal defense sounds one low horn when wave one actually begins")
 	var grenades_before: int = pawn.grenades
 	sim.submit("solo",command(int(pawn.weapon),false,4,pawn.yaw,pawn.pitch,true))
 	sim.step(.05)
@@ -193,6 +196,9 @@ func run() -> void:
 	sim.zombies.clear()
 	sim.step(.02)
 	check(sim.cleared == 1 and sim.rest > 4.9 and sim.defense.wave == 2 and sim.defense.countdown > 4.9,"Every later wave also receives a five-second preparation countdown")
+	sim.rest = .01
+	sim.step(.02)
+	check(sim.wave == 2 and sim.events.any(func(event): return event.kind == "campaign_cue" and event.get("cue","") == "horde"),"Later crystal-defense waves also sound the horn at their actual start")
 
 	# Isolate target choice from the wave spawner: the closest valid unit must take the hit.
 	sim.roster.clear()

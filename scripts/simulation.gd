@@ -252,6 +252,7 @@ func step(dt: float) -> void:
 			credit = 0
 			prepare_wave()
 			if mode == "defense":
+				events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(Data.Maps.Defense.CRYSTAL.x,5.0,Data.Maps.Defense.CRYSTAL.y)})
 				defense.wave = wave
 				defense.countdown = 0.0
 				defense.objective = "第 %d 波正在逼近" % wave

@@ -75,7 +75,6 @@ func interactions(dt: float) -> void:
 			state.started = true
 			state.departed = true
 			start_wave_countdown()
-			sim.events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(p.pos.x,p.height+1,p.pos.y)})
 			p.pickup_latched = true
 		else:
 			equipment.pickup(p,choice.id)
