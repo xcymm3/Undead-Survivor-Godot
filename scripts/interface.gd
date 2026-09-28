@@ -239,31 +239,22 @@ func show_home() -> void:
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu.add_child(shade)
 	var map_panel = VBoxContainer.new()
-	map_panel.name = "MapSelection"
+	map_panel.name = "DefenseSetup"
 	map_panel.position = Vector2(86,120)
 	map_panel.add_theme_constant_override("separation",12)
 	menu.add_child(map_panel)
 	map_panel.add_child(label("战场 · "+game.arena.definition.title,26,Color("fff7e8")))
 	map_panel.add_child(label(game.arena.definition.subtitle,16,Color("c8c5b8")))
-	var map_switches = HBoxContainer.new()
-	map_switches.add_theme_constant_override("separation",8)
-	map_panel.add_child(map_switches)
-	for map_id in Data.Maps.PLAYABLE:
-		var definition: Dictionary = Data.Maps.definition(map_id)
-		var map_button = button(map_switches,("● " if map_id == Data.settings.map_id else "")+definition.title,game.select_map.bind(map_id))
-		map_button.custom_minimum_size.y = 38
-		map_button.add_theme_font_size_override("font_size",15)
-	if Data.settings.map_id == "graypine_defense":
-		var difficulty_row = HBoxContainer.new()
-		difficulty_row.name = "DifficultySelection"
-		difficulty_row.add_theme_constant_override("separation",8)
-		map_panel.add_child(difficulty_row)
-		difficulty_row.add_child(label("难度",16,Color("c8c5b8")))
-		for entry in [["easy","简单 · 70%"],["normal","普通 · 100%"],["hard","困难 · 130%"]]:
-			var selected: bool = Data.settings.defense_difficulty == entry[0]
-			var difficulty_button = button(difficulty_row,("● " if selected else "")+entry[1],game.select_defense_difficulty.bind(entry[0]))
-			difficulty_button.custom_minimum_size.y = 38
-			difficulty_button.add_theme_font_size_override("font_size",15)
+	var difficulty_row = HBoxContainer.new()
+	difficulty_row.name = "DifficultySelection"
+	difficulty_row.add_theme_constant_override("separation",8)
+	map_panel.add_child(difficulty_row)
+	difficulty_row.add_child(label("难度",16,Color("c8c5b8")))
+	for entry in [["easy","简单 · 70%"],["normal","普通 · 100%"],["hard","困难 · 130%"]]:
+		var selected: bool = Data.settings.defense_difficulty == entry[0]
+		var difficulty_button = button(difficulty_row,("● " if selected else "")+entry[1],game.select_defense_difficulty.bind(entry[0]))
+		difficulty_button.custom_minimum_size.y = 38
+		difficulty_button.add_theme_font_size_override("font_size",15)
 	var title_block = VBoxContainer.new()
 	title_block.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	title_block.offset_left = 86
@@ -274,7 +265,7 @@ func show_home() -> void:
 	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
 	title.add_theme_constant_override("line_spacing",-12)
 	title_block.add_child(title)
-	title_block.add_child(label("按 T 开始每一波，守住水晶，击退逐渐增强的八波尸潮。" if Data.settings.map_id == "graypine_defense" else "穿过灰松夜路，抵达门前，坚守 30 秒后进入安全屋。",19,Color("d8dfce")))
+	title_block.add_child(label("按 T 开始每一波，守住水晶，击退逐渐增强的八波尸潮。",19,Color("d8dfce")))
 	var actions = VBoxContainer.new()
 	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	actions.offset_left = -450
@@ -282,7 +273,7 @@ func show_home() -> void:
 	actions.custom_minimum_size.x = 340
 	actions.add_theme_constant_override("separation",14)
 	menu.add_child(actions)
-	for item in [["单人防守" if Data.settings.map_id == "graypine_defense" else "单人模式",func(): game.start_solo(str(game.arena.definition.get("mode","campaign")))],["多人模式",show_multiplayer]]:
+	for item in [["单人防守",func(): game.start_solo("defense")],["多人模式",show_multiplayer]]:
 		var option = button(actions,item[0],item[1])
 		option.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		option.custom_minimum_size.y = 76
@@ -431,10 +422,10 @@ func show_settings() -> void:
 	button(column,"返回",back)
 
 func show_guide() -> void:
-	var column = panel("武器与操作", "灰松夜路 · 有限补给 · 到达安全屋",1000)
+	var column = panel("武器与操作", "水晶防线 · 八波防守 · 按 T 开战",1000)
 	current = "guide"
-	paragraph(column,"灰松夜路：从安全屋出发，沿绿灯穿过堵车街口、店铺与林缘，到达终点安全屋后按住 E 关门。无需清光尸群。合作倒地可救援，死亡后本关不复活。",17)
-	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键推击  /  中键切换开镜\n空格跳跃  /  Ctrl 按住蹲下  /  R 换弹  /  1—5 或滚轮切换装备  /  Esc 暂停\n战役：1 主武器 / 2 副武器 / 3 消防斧 / 4 手雷 / 5 医疗包 / E 拾取与交互\n医疗包：左键自己，右键瞄准近处队友；治疗时无法行动。\n连续推击第 3 次后冷却 3.5 秒，准星上方圆环显示恢复进度。",17)
+	paragraph(column,"守住水晶，击退八波尸潮。每波开始前按 T；合作模式需要所有玩家重新按 T 准备。波间可以自由补给。",17)
+	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键推击  /  中键切换开镜\n空格跳跃  /  Ctrl 按住蹲下  /  R 换弹  /  1—5 或滚轮切换装备  /  Esc 暂停\n装备：1 主武器 / 2 副武器 / 3 消防斧 / 4 手雷 / 5 医疗包 / E 拾取与交互\n医疗包：左键自己，右键瞄准近处队友；治疗时无法行动。\n连续推击第 3 次后冷却 3.5 秒，准星上方圆环显示恢复进度。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation",24)
@@ -444,12 +435,12 @@ func show_guide() -> void:
 	for i in Data.weapons.size():
 		var w: Dictionary = Data.weapons[i]
 		for text in [w.label,w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
-	paragraph(column,"夜路敌人预置在道路、店铺和树林中；枪声和子弹落点会引来调查，看到玩家后开始追击。普通僵尸追击速度高于玩家，利用遮蔽物与推击脱离包围。",17)
-	paragraph(column,"增援按计时或事件投放有限批次，安全条件不满足时延后。无需清光地图；枪械通过补给点更换，每人最多携带一个手雷和一个医疗包。",17)
+	paragraph(column,"僵尸从对岸五个刷怪点走来。普通僵尸会追击玩家，小鬼与巨人优先攻击水晶；利用推搡与火力保护水晶。",17)
+	paragraph(column,"E 从军械墙换枪或领取补给。武器、手雷与医疗包无限供应；最多携带三枚手雷和一个医疗包。主武器仍需换弹和补给。",17)
 	button(column,"返回",back,true)
 
 func show_multiplayer() -> void:
-	var column = panel("一起撤离", "灰松夜路 · 房主模拟整场战斗 · 倒地可救援",850)
+	var column = panel("合作守卫", "水晶防线 · 房主模拟战斗 · 全员按 T 开始每波",850)
 	current = "multiplayer"
 	if OS.has_feature("web"):
 		paragraph(column,"浏览器验收版仅支持单人模式。Steam 与局域网多人模式请使用 Windows 版。")
@@ -512,14 +503,6 @@ func show_result() -> void:
 		result.add_child(label("完成 %d / %d 波 · %d 击杀 · %s" % [sim.cleared,Data.Maps.Defense.MAX_WAVES,sim.kills,time_text(sim.elapsed)],32))
 		paragraph(result,"八波尸潮已被全部击退。" if sim.won else ("水晶被摧毁。" if sim.cause == "crystal" else "守卫者已失去行动能力。")+" 水晶剩余 %d / %d。" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)])
 		if not Session.playing: button(result,"重新防守",func(): game.start_solo("defense"),true)
-		button(result,"返回主菜单",func(): game.return_home())
-		return
-	if sim.mode == "campaign":
-		var result = panel("抵达安全屋" if sim.won else "夜路行动失败","灰松夜路",640)
-		current = "result"
-		result.add_child(label("%s · %d 击杀" % [time_text(sim.elapsed),sim.kills],32))
-		paragraph(result,"全队抵达下一间安全屋。" if sim.won else "全队失去行动能力，从起点安全屋重新出发。")
-		if not Session.playing: button(result,"重新出发",func(): game.start_solo("campaign"),true)
 		button(result,"返回主菜单",func(): game.return_home())
 		return
 static func time_text(value: float) -> String:

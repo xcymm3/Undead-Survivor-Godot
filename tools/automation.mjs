@@ -13,14 +13,12 @@ const full = release || process.argv.includes('--full');
 const profile = full ? 'full' : 'basic';
 const excluded = full
   ? [
-      'night-scripted-playthrough', 'night-full-enet-2',
-      'browser-night-playthrough', 'browser-defense-playthrough',
+      'browser-defense-playthrough',
       ...(release ? [] : ['windows-export-and-package']),
     ]
   : [
       'crystal-defense', 'spread-ballistics', 'export-web', 'browser-technical',
-      'night-scripted-playthrough', 'night-full-enet-2',
-      'browser-night-playthrough', 'browser-defense-playthrough',
+      'browser-defense-playthrough',
       'windows-export-and-package',
     ];
 const children = new Set();
@@ -126,7 +124,7 @@ try {
       });
     });
     const browserGateSpecs = [
-      'tests/browser/campaign.spec.mjs',
+      'tests/browser/defense-home.spec.mjs',
       'tests/browser/close-combat.spec.mjs',
       'tests/browser/defense-overview.spec.mjs',
       'tests/browser/defense.spec.mjs',

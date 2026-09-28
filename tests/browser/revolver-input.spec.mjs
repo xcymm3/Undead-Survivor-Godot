@@ -5,21 +5,14 @@ test('real input fires cancels and completes revolver reload', async ({ page }, 
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
-  expect(await page.evaluate(() => window.__survivorSnapshot.map_id)).toBe('graypine_night');
-  for (const text of ['单人模式']) {
+  expect(await page.evaluate(() => window.__survivorSnapshot.map_id)).toBe('graypine_defense');
+  for (const text of ['单人防守']) {
     const button = await page.evaluate(text => window.__survivorSnapshot.buttons.find(b => b.text === text && !b.disabled), text);
     expect(button).toBeTruthy();
     const canvas = await page.locator('canvas').boundingBox();
     await page.mouse.click(canvas.x+(button.x+button.width/2)*canvas.width/1440, canvas.y+(button.y+button.height/2)*canvas.height/900);
   }
-  await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'campaign');
-  await page.keyboard.down('w'); await page.keyboard.down('e');
-  await page.waitForFunction(() => window.__survivorSnapshot.campaign.bar_removed);
-  await page.keyboard.up('e');
-  await page.waitForTimeout(100);
-  await page.keyboard.down('e');
-  await page.waitForFunction(() => window.__survivorSnapshot.campaign.departed, null, {timeout:15000});
-  await page.keyboard.up('w'); await page.keyboard.up('e');
+  await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense');
   await page.keyboard.press('4');
   await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 1);
   await page.keyboard.press('2');

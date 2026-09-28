@@ -1,9 +1,9 @@
 extends Node3D
 ## Snapshot-driven prop animation; no local timers or inventory authority.
 var views: Dictionary = {}
-const Props = preload("res://scripts/campaign_props.gd")
+const Props = preload("res://scripts/equipment_props.gd")
 const Weapons = preload("res://scripts/weapon_view.gd")
-const World = preload("res://scripts/campaign_world.gd")
+const World = preload("res://scripts/world_geometry.gd")
 
 func make_model(weapon: int, slot: int) -> Node3D:
 	var root = Node3D.new()

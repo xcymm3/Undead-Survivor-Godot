@@ -8,7 +8,7 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-12"
+const PROTOCOL = "undead-survivor-godot-13"
 const PORT = 27777
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"
@@ -169,7 +169,7 @@ func _steam_joined(id: int, _permissions: int, _locked: bool, response: int) -> 
 		status = "Steam 加入房间失败："+str(response)
 		changed.emit()
 		return
-	if steam.getLobbyData(id,"game") not in ["",PROTOCOL] or steam.getLobbyData(id,"playing") == "1":
+	if steam.getLobbyData(id,"game") not in ["",PROTOCOL] or steam.getLobbyData(id,"playing") == "1" or not Data.Maps.valid(str(steam.getLobbyData(id,"map_id"))):
 		steam.leaveLobby(id)
 		status = "该房间版本不兼容或已开始"
 		changed.emit()
@@ -215,6 +215,7 @@ func _steam_request(id: int) -> void:
 func _steam_rooms(ids: Array) -> void:
 	rooms.clear()
 	for id in ids:
+		if not Data.Maps.valid(str(steam.getLobbyData(id,"map_id"))): continue
 		rooms.append({"id":str(id),"name":str(steam.getLobbyData(id,"name")),"count":steam.getNumLobbyMembers(id)})
 	status = "找到 %d 个 Steam 房间" % rooms.size()
 	changed.emit()
@@ -261,7 +262,7 @@ func encode_packet(packet: Dictionary) -> PackedByteArray:
 	return var_to_bytes(envelope).compress(FileAccess.COMPRESSION_DEFLATE)
 
 func send_bytes(id: String, bytes: PackedByteArray, reliable: bool) -> void:
-	# Campaign state plus a horde can exceed one datagram on either transport.
+	# Defense state plus a horde can exceed one datagram on either transport.
 	reliable = reliable or bytes.size() > 1100
 	if transport == "lan" and peer and peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 		var remote = peer.get_peer(int(id))
@@ -415,7 +416,7 @@ func valid_world(value) -> bool:
 	if not value is Dictionary or value.get("map_id") != map_id: return false
 	if not value is Dictionary or not value.has_all(["pawns","zombies","mode","elapsed","wave","cleared","spawned","kills","rest","failed","cause","culprit"]): return false
 	if not value.pawns is Dictionary or value.pawns.size() > 4 or not value.zombies is Array: return false
-	if value.mode not in ["survival","campaign","defense"] or not value.get("won",false) is bool: return false
+	if value.mode != "defense" or not value.get("won",false) is bool: return false
 	if value.mode == "defense":
 		if map_id != "graypine_defense" or not value.get("defense") is Dictionary: return false
 		var defense_state: Dictionary = value.defense
@@ -426,20 +427,8 @@ func valid_world(value) -> bool:
 		for key in ["crystal_hp","crystal_max_hp","wave"]:
 			if not (defense_state[key] is int or defense_state[key] is float) or not is_finite(defense_state[key]): return false
 		if defense_state.crystal_hp < 0 or defense_state.crystal_hp > defense_state.crystal_max_hp or defense_state.crystal_max_hp != Data.Maps.Defense.CRYSTAL_MAX_HP: return false
+		if not valid_defense_equipment(defense_state): return false
 		if defense_state.wave < 1 or defense_state.wave > Data.Maps.Defense.MAX_WAVES: return false
-	if value.mode == "campaign":
-		if map_id != "graypine_night" or not value.get("campaign") is Dictionary: return false
-		var campaign_state: Dictionary = value.campaign
-		if not campaign_state.has_all(["phase","departed","gate_open","complete","bridge_time","taken","claimed","objective","party","shop_key","shop_open","leak_closed","pump_ready","power_ready","late_stage","exit_control"]): return false
-		if campaign_state.phase not in ["PREPARE","STREET","BRIDGE_READY","BRIDGE_ACTIVE","GATE_OPEN","FINAL_APPROACH","HOLDOUT","ESCAPE","COMPLETE","FAILED"]: return false
-		for key in ["departed","gate_open","complete","shop_key","shop_open","leak_closed","pump_ready","power_ready","late_stage","exit_control"]:
-			if not campaign_state[key] is bool: return false
-		if not campaign_state.get("holdout_started") is bool: return false
-		if not (campaign_state.get("holdout_time") is float or campaign_state.get("holdout_time") is int) or not is_finite(campaign_state.holdout_time) or campaign_state.holdout_time < 0 or campaign_state.holdout_time > 30: return false
-		if not campaign_state.bridge_time is float or not is_finite(campaign_state.bridge_time) or campaign_state.bridge_time < 0 or campaign_state.bridge_time > 90: return false
-		if not campaign_state.taken is Dictionary or not campaign_state.claimed is Dictionary or not campaign_state.objective is String or campaign_state.objective.length() > 160: return false
-		if not campaign_state.party is int or campaign_state.party < 1 or campaign_state.party > 4: return false
-		if not valid_campaign_equipment(campaign_state): return false
 	for key in ["elapsed","wave","cleared","spawned","kills","rest","culprit"]:
 		if not (value[key] is int or value[key] is float) or not is_finite(value[key]): return false
 	for id in value.pawns:
@@ -448,8 +437,8 @@ func valid_world(value) -> bool:
 		for field in ["shove_cd","shove_gap","shove_anim","shove_window","damage_hint"]:
 			if not (p.get(field) is float or p.get(field) is int) or not is_finite(p[field]) or p[field] < 0 or p[field] > 3.5: return false
 		if not p.get("shove_count") is int or p.shove_count < 0 or p.shove_count > 2: return false
-		if value.mode == "campaign":
-			if not p.has_all(["reserve","primary","secondary","slot","reserves","grenades","healing","heal_time","being_healed","medkits","downed","dead","bleed","revives","hint"]): return false
+		if value.mode == "defense":
+			if not p.has_all(["reserve","primary","secondary","slot","reserves","grenades","healing","heal_time","being_healed","medkits","hint"]): return false
 			for field in ["secondary","slot","grenades"]:
 				if not p[field] is int: return false
 			if p.secondary not in [2,3] or p.slot < 1 or p.slot > 5 or p.grenades < 0 or p.grenades > 3: return false
@@ -457,11 +446,10 @@ func valid_world(value) -> bool:
 			if not p.heal_time is float or not is_finite(p.heal_time) or p.heal_time < 0 or p.heal_time > 3: return false
 			if not p.reserves is Array or p.reserves.size() != 10: return false
 			for index in 10:
-				if not p.reserves[index] is int or p.reserves[index] < 0 or p.reserves[index] > Data.full_reserve(index): return false
-			for key in ["reserve","primary","medkits","revives"]:
+				if not p.reserves[index] is int or p.reserves[index] < 0 or p.reserves[index] > Data.defense_full_reserve(index): return false
+			for key in ["reserve","primary","medkits"]:
 				if not p[key] is int or p[key] < 0: return false
-			if p.primary not in [0,1,4,5,7,8,9] or p.medkits > 1 or p.revives > 2 or p.reserve > 6*int(Data.weapons[p.primary].capacity): return false
-			if not p.downed is bool or not p.dead is bool or not p.bleed is float or not is_finite(p.bleed) or p.bleed < 0 or p.bleed > 30: return false
+			if p.primary not in [0,1,4,5,7,8,9] or p.medkits > 1 or p.reserve > Data.defense_full_reserve(p.primary): return false
 			if not p.hint is String or p.hint.length() > 160: return false
 		if not p.get("crouch",0.0) is float and not p.get("crouch",0.0) is int: return false
 		if not is_finite(p.get("crouch",0.0)) or p.get("crouch",0.0) < 0 or p.get("crouch",0.0) > 1: return false
@@ -593,31 +581,9 @@ func record_snapshot(seq: int, now: int) -> void:
 	while not snapshot_samples.is_empty() and now-snapshot_samples[0].time > 30000:
 		snapshot_samples.pop_front()
 
-func choose_map(id: String) -> void:
-	if not is_host() or playing or loading or not Data.Maps.valid(id): return
-	map_id = id
-	if transport == "steam": steam.setLobbyData(lobby,"map_id",id)
-	broadcast({"type":"members","members":members,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
-	changed.emit()
-
-func valid_campaign_equipment(state: Dictionary) -> bool:
-	var station_count = preload("res://scripts/night_layout.gd").ITEMS.filter(func(item): return item.kind == "ammo").size()
-	if not state.get("loot") is Array or state.loot.size() > station_count*8: return false
+func valid_defense_equipment(state: Dictionary) -> bool:
 	var ids: Dictionary = {}
-	for item in state.loot:
-		if not item is Dictionary or not item.has_all(["id","station","pos","weapon","tier","taken"]): return false
-		if not item.id is String or item.id.length() > 80 or ids.has(item.id) or not item.station is String: return false
-		ids[item.id] = true
-		if not (item.get("mount_height") is float or item.get("mount_height") is int) or not is_finite(item.mount_height) or item.mount_height < 1 or item.mount_height > 3.1: return false
-		if not item.pos is Vector2 or not item.pos.is_finite() or not item.taken is bool: return false
-		if not item.weapon is int or item.weapon not in [0,1,3,4,5,7,8,9]: return false
-		if item.tier not in ["A","B"] or Data.weapons[item.weapon].tier != item.tier: return false
-	if not state.get("grenade_stations") is Dictionary or state.grenade_stations.size() > station_count: return false
-	for station in state.grenade_stations.values():
-		if not station is Dictionary or not station.get("remaining") is int or station.remaining < 0 or station.remaining > 4: return false
-		if not station.get("claimed") is Array or station.claimed.size() > 4: return false
 	if not state.get("projectiles") is Array or state.projectiles.size() > 24: return false
-	ids.clear()
 	for grenade in state.projectiles:
 		if not grenade is Dictionary or not grenade.has_all(["id","owner","pos","velocity","fuse"]): return false
 		if not grenade.id is int or ids.has(grenade.id) or not grenade.owner is String: return false

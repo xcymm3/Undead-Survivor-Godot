@@ -29,8 +29,8 @@ func setup(p: Dictionary) -> void:
 	bandage_roll = Node3D.new()
 	add_child(bandage_roll)
 	for offset in [-.05,0.0,.05]:
-		preload("res://scripts/campaign_props.gd").box(bandage,Vector3(.13,.045,.15),Vector3(0,offset,0),Color("dedbc7"))
-	preload("res://scripts/campaign_props.gd").box(bandage_roll,Vector3(.065,.07,.065),Vector3.ZERO,Color("eee9d8"))
+		preload("res://scripts/equipment_props.gd").box(bandage,Vector3(.13,.045,.15),Vector3(0,offset,0),Color("dedbc7"))
+	preload("res://scripts/equipment_props.gd").box(bandage_roll,Vector3(.065,.07,.065),Vector3.ZERO,Color("eee9d8"))
 	label = Label3D.new()
 	label.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
 	label.text = display_name(p.name)
@@ -89,7 +89,6 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	held.visible = p.hp > 0
 	held.rotation.x = p.pitch
 	label.text = "%s\n%d HP" % [display_name(p.name),p.hp]
-	if p.get("downed",false): label.text = "%s\n需要救援 %d 秒" % [display_name(p.name),ceili(p.bleed)]
 	if skeleton: skeleton.clear_bones_global_pose_override()
 	var w: Dictionary = Data.weapons[int(p.weapon)]
 	var crouch = float(p.get("crouch",0.0))
@@ -116,7 +115,7 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 		medical_prop = null
 		medical_slot = item_slot
 		if item_slot >= 4:
-			medical_prop = preload("res://scripts/campaign_props.gd").model(item_slot)
+			medical_prop = preload("res://scripts/equipment_props.gd").model(item_slot)
 			add_child(medical_prop)
 	if item_slot >= 4 or medical:
 		held.visible = false

@@ -1,8 +1,5 @@
 extends RefCounted
 ## Authority-only equipment, pickups, healing and ballistic grenades.
-var Layout:
-	get: return director.Layout
-const GUNS = [0,1,2,4,5,7,8,9]
 const MAX_GRENADES = 3
 const HEAL_SECONDS = 3.0
 const GRENADE_FUSE = 1.5
@@ -36,136 +33,6 @@ func pickup_motion(p: Dictionary, point: Vector3, weapon := -1, slot := 0, old :
 
 func _init(director_node) -> void:
 	director_ref = weakref(director_node)
-
-func initialize() -> void:
-	for p in sim.pawns.values():
-		p.secondary = 3
-		p.slot = 1
-		p.grenades = 0
-		p.grenade_ready_at = 0.0
-		p.healing = ""
-		p.heal_time = 0.0
-		p.being_healed = false
-		p.use_latch = false
-		p.pickup_latched = false
-		p.heal_hurt = -100.0
-		p.reserves = []
-		p.reserves.resize(10)
-		p.reserves.fill(0)
-		p.reserves[p.primary] = p.reserve
-		p.ammo[p.secondary] = int(Data.weapons[p.secondary].capacity)
-		p.reserves[p.secondary] = Data.full_reserve(p.secondary)
-	director.state.loot = []
-	director.state.grenade_stations = {}
-	director.state.medical_stations = {}
-	director.state.projectiles = []
-	for item in Layout.ITEMS:
-		director.state.medical_stations[item.id] = {"remaining":director.state.party}
-		if item.kind != "ammo": continue
-		var tier: String = item.tier
-		var source: Array = GUNS.filter(func(index): return Data.weapons[index].tier == tier)
-		var pool: Array = []
-		for i in director.state.party*2:
-			if pool.is_empty():
-				pool = source.duplicate()
-				for j in pool.size():
-					var k = sim.random.randi_range(j,pool.size()-1)
-					var swap = pool[j]
-					pool[j] = pool[k]
-					pool[k] = swap
-			var pos: Vector2 = item.pos+Vector2((i%2)*1.3-.65,-.62)
-			director.state.loot.append({"id":item.id+"_gun_"+str(i),"station":item.id,"pos":pos,"mount_height":1.35+floori(i/2.0)*.55,"weapon":pool.pop_front(),"tier":tier,"taken":false})
-		director.state.grenade_stations[item.id] = {"remaining":director.state.party,"claimed":[]}
-
-func pickup_target(p: Dictionary) -> Dictionary:
-	var best: Dictionary = {}
-	var score = -10.0
-	var forward = Vector2(-sin(p.yaw),-cos(p.yaw))
-	var sight = Vector3(forward.x*cos(p.pitch),sin(p.pitch),forward.y*cos(p.pitch))
-	var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
-	for loot in director.state.loot:
-		if (loot.tier == "A" and not director.state.gate_open) or loot.taken or not director.near(p,loot.pos,2.5): continue
-		var delta: Vector2 = loot.pos-p.pos
-		var point = Vector3(loot.pos.x,loot.mount_height,loot.pos.y)
-		var aim = sight.dot((point-eye).normalized())
-		if delta.length() > .6 and aim < .35: continue
-		var value = aim-delta.length()*.05
-		if value > score:
-			score = value
-			best = {"id":loot.id,"label":"换取 "+loot.tier+" 级 "+Data.weapons[loot.weapon].label+"（替换"+("副武器" if loot.weapon in [2,3] else "主武器")+"）","seconds":.3}
-	for item in Layout.ITEMS:
-		var medical_pos: Vector2 = item.pos+Vector2(1,0) if item.kind == "ammo" else item.pos
-		if p.medkits < 1 and director.state.medical_stations[item.id].remaining > 0 and director.near(p,medical_pos,2.0):
-			var medical_delta: Vector2 = medical_pos-p.pos
-			var medical_aim = sight.dot((Vector3(medical_pos.x,.8,medical_pos.y)-eye).normalized())
-			var medical_score = medical_aim-medical_delta.length()*.05
-			if medical_score > score and (medical_delta.length() <= .6 or medical_aim > .35):
-				score = medical_score
-				best = {"id":"medical:"+item.id,"label":"领取医疗包（恢复至100）","seconds":.25}
-		if item.kind != "ammo" or not director.near(p,item.pos+Vector2(-1,0),2.0): continue
-		var station: Dictionary = director.state.grenade_stations[item.id]
-		if station.remaining > 0 and p.grenades < MAX_GRENADES:
-			var delta: Vector2 = item.pos+Vector2(-1,0)-p.pos
-			var point = Vector3(item.pos.x-1,.65,item.pos.y)
-			var aim = sight.dot((point-eye).normalized())
-			var value: float = aim-delta.length()*.05
-			if value > score and (delta.length() <= .6 or aim > .35):
-				score = value
-				best = {"id":"grenade:"+item.id,"label":"领取手雷","seconds":.25}
-	return best
-
-func pickup(p: Dictionary, id: String) -> bool:
-	# Recheck on completion: two clients cannot consume the same world item.
-	if id.begins_with("medical:"):
-		for item in Layout.ITEMS:
-			if item.id != id.trim_prefix("medical:"): continue
-			var point: Vector2 = item.pos+Vector2(1,0) if item.kind == "ammo" else item.pos
-			var station: Dictionary = director.state.medical_stations[item.id]
-			if p.medkits >= 1 or station.remaining <= 0 or not director.near(p,point,2.0): return false
-			station.remaining -= 1
-			p.medkits += 1
-			pickup_motion(p,Vector3(point.x,.83,point.y),-1,5)
-			if item.kind == "med" and station.remaining == 0: director.state.taken[item.id] = true
-			p.pickup_latched = true
-			return true
-	if id.begins_with("grenade:"):
-		var station_id = id.trim_prefix("grenade:")
-		for item in Layout.ITEMS:
-			if item.id != station_id or item.kind != "ammo" or not director.near(p,item.pos+Vector2(-1,0),2.0): continue
-			var station: Dictionary = director.state.grenade_stations[item.id]
-			if station.remaining <= 0 or p.grenades >= MAX_GRENADES: return false
-			station.remaining -= 1
-			if not station.claimed.has(p.id): station.claimed.append(p.id)
-			p.grenades += 1
-			pickup_motion(p,Vector3(item.pos.x-1,.85,item.pos.y),-1,4)
-			p.pickup_latched = true
-			return true
-	for loot in director.state.loot:
-		if loot.id != id or (loot.tier == "A" and not director.state.gate_open) or loot.taken or not director.near(p,loot.pos,2.5): continue
-		loot.taken = true
-		p.pickup_latched = true
-		if not director.state.claimed.has(loot.station): director.state.claimed[loot.station] = []
-		if not director.state.claimed[loot.station].has(p.id): director.state.claimed[loot.station].append(p.id)
-		var key = "secondary" if loot.weapon in [2,3] else "primary"
-		var old: int = p[key]
-		pickup_motion(p,Vector3(loot.pos.x,loot.mount_height,loot.pos.y),loot.weapon,0,old)
-		p.ammo[old] = 0
-		p.reserves[old] = 0
-		p[key] = loot.weapon
-		p.ammo[loot.weapon] = int(Data.weapons[loot.weapon].capacity)
-		p.reserves[loot.weapon] = Data.full_reserve(loot.weapon)
-		p.reserve = p.reserves[p.primary]
-		p.slot = 2 if key == "secondary" else 1
-		p.weapon = loot.weapon
-		p.requested = loot.weapon
-		p.switch = .65
-		p.reloading = false
-		p.reload_queued = false
-		p.reload = 0.0
-		p.fire_anim = 0.0
-		sim.melee_swings.erase(p.id)
-		return true
-	return false
 
 static func slot_available(p: Dictionary, slot: int) -> bool:
 	return slot >= 1 and slot <= 5 and (slot != 4 or p.get("grenades",0) > 0) and (slot != 5 or p.get("medkits",0) > 0)
@@ -223,7 +90,7 @@ func before_movement(dt: float) -> void:
 				p.heal_hurt = p.hurt_at
 				p.heal_time = 0.0
 				if not p.healing.is_empty(): sim.pawns[p.healing].being_healed = true
-			elif p.slot == 4 and (input.get("use_self",false) or input.get("fire",false)) and director.state.departed and p.grenades > 0:
+			elif p.slot == 4 and (input.get("use_self",false) or input.get("fire",false)) and director.state.started and p.grenades > 0:
 				throw_grenade(p)
 		if not slot_available(p,p.slot): p.slot = 1
 		p.use_latch = use
@@ -290,7 +157,7 @@ func explode(grenade: Dictionary) -> void:
 			record.damage += health_before-z.hp
 			if z.hp <= 0: record.kills += 1
 		sim.stun(z,1.0)
-	# Campaign grenades currently damage enemies only, consistently with gunfire.
+	# Grenades currently damage enemies only, consistently with gunfire.
 	if not record.is_empty():
 		for pawn in sim.pawns.values():
 			var lost: int = maxi(0,int(pawn_health[pawn.id])-int(pawn.hp))

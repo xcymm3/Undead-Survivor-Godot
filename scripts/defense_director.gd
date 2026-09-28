@@ -10,7 +10,7 @@ var equipment
 func _init(world) -> void:
 	owner_ref = weakref(world)
 	state = {
-		"started":false,"departed":false,"waiting":true,"ready_players":[],"crystal_hp":Layout.CRYSTAL_MAX_HP,
+		"started":false,"waiting":true,"ready_players":[],"crystal_hp":Layout.CRYSTAL_MAX_HP,
 		"crystal_max_hp":Layout.CRYSTAL_MAX_HP,"wave":1,
 		"objective":"第 1 波待开始 · 按 T 准备 (0/%d)" % world.pawns.size(),"party":world.pawns.size(),"prop_clock":0.0,
 		"difficulty":world.defense_difficulty,"difficulty_multiplier":preload("res://scripts/defense_population.gd").difficulty_multiplier(world.defense_difficulty)
@@ -30,11 +30,10 @@ func begin_wave() -> void:
 	sim.rest = 0.0
 	sim.prepare_wave()
 	state.started = true
-	state.departed = true
 	state.waiting = false
 	state.ready_players.clear()
 	state.objective = "第 %d 波正在逼近" % sim.wave
-	sim.events.append({"kind":"campaign_cue","cue":"horde","position":Vector3(Layout.CRYSTAL.x,5.0,Layout.CRYSTAL.y)})
+	sim.events.append({"kind":"wave_start","position":Vector3(Layout.CRYSTAL.x,5.0,Layout.CRYSTAL.y)})
 	sync_world()
 
 func finish_wave() -> void:
@@ -92,4 +91,4 @@ func interactions(dt: float) -> void:
 	sync_world()
 
 func sync_world() -> void:
-	sim.arena.sync_campaign(state)
+	sim.arena.sync_defense(state)

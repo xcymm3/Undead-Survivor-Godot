@@ -1,5 +1,5 @@
-extends "res://scripts/campaign_equipment.gd"
-## Defense armory equipment reuses the campaign's five slots, healing and grenades.
+extends "res://scripts/equipment_core.gd"
+## Crystal defense armory, five equipment slots and unlimited pickup supplies.
 const DefenseLayout = preload("res://scripts/defense_layout.gd")
 
 func _init(defense_director) -> void:
@@ -7,7 +7,7 @@ func _init(defense_director) -> void:
 
 func initialize() -> void:
 	for p in sim.pawns.values():
-		# Keep the defense rifle start while using Night's shared five-slot loadout.
+		# Rifle and revolver share the five-slot equipment system.
 		p.primary = 0
 		p.secondary = 3
 		p.slot = 1
@@ -24,10 +24,6 @@ func initialize() -> void:
 		p.action_hurt = -100.0
 		p.interaction = ""
 		p.interact_time = 0.0
-		p.downed = false
-		p.dead = false
-		p.bleed = 0.0
-		p.revives = 0
 		p.reserves = []
 		p.reserves.resize(10)
 		p.reserves.fill(0)

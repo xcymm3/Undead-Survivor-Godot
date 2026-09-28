@@ -68,8 +68,6 @@ try {
   const setupRuntime = await run('setup-runtime', 'pwsh.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools/setup-runtime.ps1'], 600_000);
   const setupWeb = await run('setup-web-templates', 'pwsh.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools/setup-web-templates.ps1'], 1_200_000);
   if (setupRuntime) await run('import', engine, [...godotArgs, '--editor', '--import', '--quit'], 180_000);
-  if (setupRuntime) await run('night-scripted-playthrough', engine, [...godotArgs, '--script', 'res://tools/validate-night.gd', '--', '--silent', '--automation']);
-  if (setupRuntime) await run('night-full-enet-2', process.execPath, ['tools/validate-campaign-network.mjs', '2'], 960_000);
   if (setupRuntime && setupWeb) {
     await mkdir('build/web', { recursive: true });
     const exported = await run('export-web-for-playtests', engine, [...godotArgs, '--export-release', 'Web QA'], 300_000);
@@ -78,7 +76,7 @@ try {
       await run(
         'browser-scripted-playthroughs',
         process.execPath,
-        ['node_modules/@playwright/test/cli.js', 'test', 'tests/browser/playthrough.spec.mjs', 'tests/browser/defense-playthrough.spec.mjs'],
+        ['node_modules/@playwright/test/cli.js', 'test', 'tests/browser/defense-playthrough.spec.mjs'],
         900_000,
         { QA_WEB_PORT: port },
       );

@@ -102,7 +102,7 @@ func retire_actor(actor: Dictionary) -> void:
 
 static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stride: float) -> Transform3D:
 	var basis = Basis(Vector3.UP,z.heading).scaled(Vector3.ONE*Data.enemy_scale(z.kind))
-	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_night"))
+	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense"))
 	var transform = Transform3D(basis,Vector3(z.pos.x,ground+absf(stride)*.04,z.pos.y))
 	if z.hp > 0 and z.get("move_speed",0.0) <= .05 and z.attack_time <= 0 and z.state == "ready":
 		# Root pose is shared by skeleton rendering and CPU ray boxes: no invisible hitbox motion.
@@ -138,7 +138,6 @@ static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 	var stride = sin(z.get("gait",(elapsed-z.born)*5+z.id*2)) if moving else 0.0
 	var idle: bool = z.hp > 0 and z.get("move_speed",0.0) <= .05 and z.attack_time <= 0 and z.state == "ready"
 	if idle: stride = sin(elapsed*1.4+z.id*2.17)*.08
-	var sleeping_guard: bool = idle and not z.get("guard_awake",true) and z.get("map_id","") == "graypine_night"
 	var running: bool = moving and z.get("move_speed",0.0) > 3.5
 	var bones: Array[Transform3D] = [Transform3D.IDENTITY]
 	for side in [1.0,-1.0]:
@@ -147,8 +146,7 @@ static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 		bones.append(Transform3D(rotation,pivot-rotation*pivot))
 	for side in [1.0,-1.0]:
 		var angle = .85-stride*side*.6 if running else .65-stride*side*.2
-		if sleeping_guard: angle = 1.15+stride
-		elif idle: angle += stride*.35
+		if idle: angle += stride*.35
 		if z.attack_time > 0:
 			var hit_at: float = Data.attack(z.kind,z.rage).x
 			var progress: float = z.attack_time/hit_at
@@ -167,7 +165,7 @@ static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 	var phase: float = z.get("gait",elapsed*5+z.id)
 	var idle: bool = z.hp > 0 and not moving and z.attack_time <= 0 and z.state == "ready"
 	var stride = sin(phase) if moving else sin(elapsed*1.4+z.id*2.17)*.06 if idle else 0.0
-	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_night"))
+	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense"))
 	var death: float = smoothstep(0.0,1.0,clampf((.85-float(z.get("down",.85)))/.6,0,1)) if z.hp <= 0 else 0.0
 	var root = Transform3D(Basis(Vector3.UP,z.heading),Vector3(z.pos.x,ground+lerpf(.36,.27,death)+absf(stride)*.015,z.pos.y))
 	if idle:
@@ -243,7 +241,7 @@ static func ray_box(origin: Vector3, direction: Vector3, transform: Transform3D,
 
 static func hit(z: Dictionary, origin: Vector3, direction: Vector3, distance: float, elapsed: float, stationary: bool) -> Dictionary:
 	var scale = Data.enemy_scale(z.kind)
-	var broad = Transform3D(Basis.IDENTITY.scaled(Vector3(3*scale,3.2*scale,3*scale)),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,z.get("map_id","graypine_night"))+1.4*scale,z.pos.y))
+	var broad = Transform3D(Basis.IDENTITY.scaled(Vector3(3*scale,3.2*scale,3*scale)),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense"))+1.4*scale,z.pos.y))
 	if ray_box(origin,direction,broad,distance) == INF: return {}
 	var poses = transforms(z,elapsed,stationary)
 	var nearest = distance

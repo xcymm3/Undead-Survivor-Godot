@@ -14,7 +14,6 @@ test('游戏内设置菜单使用半透明淡棕色面板', async ({ page }, inf
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
-  await clickButton(page, '保卫水晶');
   await clickButton(page, '单人防守');
   await page.waitForFunction(() => window.__survivorSnapshot?.running);
   await page.keyboard.press('Escape');

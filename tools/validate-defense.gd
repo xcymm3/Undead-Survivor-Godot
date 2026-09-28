@@ -106,7 +106,7 @@ func run() -> void:
 	check(sim.mode == "defense" and not sim.defense.started,"Entering the map does not start waves")
 	check(sim.defense.difficulty == "easy" and is_equal_approx(sim.defense.difficulty_multiplier,.7),"Defense validation runs the Easy difficulty selected before the match")
 	check(pawn.primary == 0 and pawn.secondary == 3 and pawn.slot == 1,"Defense starts with primary, sidearm and melee equipment slots")
-	check(pawn.medkits == 1 and pawn.grenades == 0,"Defense initializes Night's medical and grenade inventory")
+	check(pawn.medkits == 1 and pawn.grenades == 0,"Defense initializes shared medical and grenade inventory")
 	check(pawn.reserves[pawn.primary] == data.defense_full_reserve(pawn.primary) and pawn.reserves[pawn.secondary] == data.defense_full_reserve(pawn.secondary),"Defense firearms start with seventeen reserve magazines")
 	var prestart_shoves: int = pawn.shoves
 	var shove_command: Dictionary = command()
@@ -134,7 +134,7 @@ func run() -> void:
 		sim.submit("solo",command(0,false,2))
 		sim.step(.05)
 	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Waiting for T keeps timer and spawns stopped")
-	check(pawn.weapon == pawn.secondary and pawn.slot == 2,"Defense uses Night's secondary-weapon slot switching")
+	check(pawn.weapon == pawn.secondary and pawn.slot == 2,"Defense uses shared secondary-weapon slot switching")
 	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(0))
 	check(pawn.primary == 0 and pawn.weapon == 0 and pawn.ammo[0] == data.weapons[0].capacity and pawn.reserves[0] == data.defense_full_reserve(0),"Interacting with a wall weapon replaces and fully restocks the primary weapon")
 	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == primary_weapon_indices.size()+sidearm_indices.size(),"A replacement copy appears immediately after a wall weapon pickup")
@@ -171,11 +171,11 @@ func run() -> void:
 	sim.submit("solo",ready_input)
 	sim.step(.02)
 	check(sim.defense.started and not sim.defense.waiting and sim.rest == 0 and not sim.roster.is_empty(),"T starts wave one immediately without a countdown")
-	check(sim.wave == 1 and sim.events.filter(func(event): return event.kind == "campaign_cue" and event.get("cue","") == "horde").size() == 1,"Crystal defense sounds one low horn when wave one begins")
+	check(sim.wave == 1 and sim.events.filter(func(event): return event.kind == "wave_start").size() == 1,"Crystal defense sounds one low horn when wave one begins")
 	var grenades_before: int = pawn.grenades
 	sim.submit("solo",command(int(pawn.weapon),false,4,pawn.yaw,pawn.pitch,true))
 	sim.step(.05)
-	check(pawn.grenades == grenades_before-1 and sim.defense.projectiles.size() == 1,"Defense uses Night's grenade slot and authoritative projectile logic")
+	check(pawn.grenades == grenades_before-1 and sim.defense.projectiles.size() == 1,"Defense uses shared grenade slot and authoritative projectile logic")
 	var thrown: Dictionary = sim.defense.projectiles[0]
 	var grenade_view: Node3D = game.arena.scenery.projectile_views.get(thrown.id)
 	check(is_instance_valid(grenade_view) and grenade_view.position.distance_to(thrown.pos) < .001,"Thrown defense grenade has a world model at its projectile position")
@@ -186,7 +186,7 @@ func run() -> void:
 	for i in 62:
 		sim.submit("solo",command(int(pawn.weapon),false,5,pawn.yaw,pawn.pitch,false))
 		sim.step(.05)
-	check(pawn.hp == 100 and pawn.medkits == 0,"Defense uses Night's three-second medical treatment logic")
+	check(pawn.hp == 100 and pawn.medkits == 0,"Defense uses shared three-second medical treatment logic")
 	check(sim.defense.projectiles.is_empty() and game.arena.scenery.projectile_views.is_empty(),"Exploded defense grenade removes its world model")
 	sim.roster.clear()
 	sim.zombies.clear()
@@ -196,7 +196,7 @@ func run() -> void:
 	check(sim.wave == 1 and sim.defense.waiting and sim.roster.is_empty(),"Waiting never automatically starts the next wave")
 	sim.submit("solo",ready_input)
 	sim.step(.02)
-	check(sim.wave == 2 and not sim.defense.waiting and sim.events.any(func(event): return event.kind == "campaign_cue" and event.get("cue","") == "horde"),"A fresh T starts wave two and sounds its horn")
+	check(sim.wave == 2 and not sim.defense.waiting and sim.events.any(func(event): return event.kind == "wave_start"),"A fresh T starts wave two and sounds its horn")
 
 	# Isolate target choice from the wave spawner: the closest valid unit must take the hit.
 	sim.roster.clear()
@@ -347,7 +347,7 @@ func run() -> void:
 	# Exact point budgets replace fixed body counts. A crawler remains a
 	# one-point normal-body variant, so its conversion never changes spending.
 	var population = preload("res://scripts/defense_population.gd")
-	var shared_population = preload("res://scripts/night_population.gd")
+	var shared_population = preload("res://scripts/enemy_population.gd")
 	sim.wave = 1
 	sim.random.seed = 481516
 	var exact_sample_budgets = true
@@ -358,24 +358,24 @@ func run() -> void:
 	sim.defense_ordinary_slots = 0
 	var variants: Array = []
 	for slot in 20: variants.append(sim.defense_population_kind("normal"))
-	check(variants.count("crawler") == 2 and variants[9] == "crawler" and variants[19] == "crawler","Defense uses the Night rule of every tenth ordinary zombie becoming a crawler")
+	check(variants.count("crawler") == 2 and variants[9] == "crawler" and variants[19] == "crawler","Defense uses the shared rule of every tenth ordinary zombie becoming a crawler")
 	var exact_wave_budgets = true
 	var exact_football_counts = true
 	var shared_rosters = true
 	for current_wave in range(1,data.Maps.Defense.MAX_WAVES+1):
 		var defense_random = RandomNumberGenerator.new()
-		var night_random = RandomNumberGenerator.new()
+		var reference_random = RandomNumberGenerator.new()
 		defense_random.seed = 1000+current_wave
-		night_random.seed = defense_random.seed
+		reference_random.seed = defense_random.seed
 		var defense_roster: Array = population.roster(current_wave,1,defense_random,"easy")
 		var ordinary_roster: Array = defense_roster.filter(func(kind): return kind != "football")
-		var night_roster: Array = shared_population.roster(population.budget(current_wave,1,"easy"),population.kinds(current_wave),night_random)
+		var reference_roster: Array = shared_population.roster(population.budget(current_wave,1,"easy"),population.kinds(current_wave),reference_random)
 		exact_wave_budgets = exact_wave_budgets and shared_population.points(defense_roster) == population.budget(current_wave,1,"easy")
 		exact_football_counts = exact_football_counts and defense_roster.count("football") == population.footballs(current_wave,1)
-		shared_rosters = shared_rosters and ordinary_roster == night_roster
+		shared_rosters = shared_rosters and ordinary_roster == reference_roster
 	check(exact_wave_budgets,"All eight Easy waves spend their exact reduced point budgets")
 	check(exact_football_counts,"Solo waves six and seven have one football; wave eight has two")
-	check(shared_rosters,"Defense ordinary rosters are generated by the Night point algorithm")
+	check(shared_rosters,"Defense ordinary rosters are generated by the shared point algorithm")
 	check(not shared_population.COST.has("football"),"Authored football zombies have no point cost")
 	var expected_normal_budgets := [52,83,111,138,162,184,205,223]
 	var actual_normal_budgets: Array = []
@@ -421,10 +421,10 @@ func run() -> void:
 	sim.damage_target(pawn,damage_zombie,10)
 	var before_shared_damage: int = sim.defense.crystal_hp
 	sim.damage_target(sim.crystal_target(),damage_zombie,10)
-	check(pawn.hp == 90 and sim.defense.crystal_hp == before_shared_damage-10,"Defense uses Night's unscaled ten-point melee damage for players and crystal")
+	check(pawn.hp == 90 and sim.defense.crystal_hp == before_shared_damage-10,"Defense uses shared unscaled ten-point melee damage for players and crystal")
 	before_shared_damage = sim.defense.crystal_hp
 	sim.damage_target(sim.crystal_target(),damage_zombie,sim.CHARGE_DAMAGE)
-	check(sim.defense.crystal_hp == before_shared_damage-30,"Football charge deals the same unscaled thirty damage as Night")
+	check(sim.defense.crystal_hp == before_shared_damage-30,"Football charge deals the same unscaled thirty damage as ordinary melee")
 	sim.zombies.clear()
 	sim.roster.clear()
 	sim.wave = data.Maps.Defense.MAX_WAVES

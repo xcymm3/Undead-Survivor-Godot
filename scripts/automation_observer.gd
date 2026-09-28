@@ -37,7 +37,6 @@ func snapshot() -> Dictionary:
 				"width": rect.size.x, "height": rect.size.y, "disabled": node.disabled})
 	if game.sim:
 		result.mode = game.sim.mode
-		result.campaign = game.sim.campaign_state()
 		result.defense = game.sim.defense_state()
 		result.won = game.sim.won
 		result.failed = game.sim.failed
@@ -60,17 +59,14 @@ func snapshot() -> Dictionary:
 
 func native_smoke() -> void:
 	# Packaged-EXE validation: same scene, real input path, no renderer or Steam login.
-	game.start_solo("campaign")
+	game.start_solo("defense")
+	await get_tree().create_timer(.2).timeout
+	Input.action_press("start_wave")
+	await get_tree().create_timer(.1).timeout
+	Input.action_release("start_wave")
 	Input.action_press("forward")
-	Input.action_press("interact")
-	await get_tree().create_timer(1.2).timeout
-	Input.action_release("interact")
-	await get_tree().create_timer(.12).timeout
-	Input.action_press("interact")
-	await get_tree().create_timer(1.4).timeout
+	await get_tree().create_timer(.2).timeout
 	Input.action_release("forward")
-	Input.action_release("interact")
-	await get_tree().create_timer(.25).timeout
 	var event = InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = true
@@ -81,22 +77,9 @@ func native_smoke() -> void:
 	event.pressed = false
 	Input.parse_input_event(event)
 	var p: Dictionary = game.local_pawn()
-	var passed = p.shots > 0 and p.ammo[p.primary] < Data.weapons[p.primary].capacity and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
-	game.return_home()
-	Data.settings.map_id = "graypine_night"
-	game.start_solo("campaign")
-	await get_tree().create_timer(.2).timeout
-	Input.action_press("forward")
-	Input.action_press("interact")
-	await get_tree().create_timer(1.2).timeout
-	Input.action_release("interact")
-	await get_tree().create_timer(.12).timeout
-	Input.action_press("interact")
-	await get_tree().create_timer(1.4).timeout
-	Input.action_release("forward")
-	Input.action_release("interact")
-	passed = passed and game.sim.mode == "campaign" and game.sim.campaign.state.departed and game.local_pawn().get("primary",-1) == 1 and game.local_pawn().get("reserve",-1) == Data.full_reserve(1)
-	print("PACKAGED CAMPAIGN SMOKE: "+("PASS" if passed else "FAIL"))
+	var passed = game.sim.mode == "defense" and game.sim.defense.started and not game.sim.defense.waiting
+	passed = passed and p.primary == 0 and p.shots > 0 and p.ammo[0] < Data.weapons[0].capacity and p.reserve == Data.defense_full_reserve(0) and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
+	print("PACKAGED DEFENSE SMOKE: "+("PASS" if passed else "FAIL"))
 	var tree = get_tree()
 	reparent(tree.root)
 	game.return_home()

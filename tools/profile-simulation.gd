@@ -9,8 +9,9 @@ func run() -> void:
 	await physics_frame
 	var sim = load("res://scripts/simulation.gd").new(game.arena)
 	sim.add_pawn("solo","Profiler",0)
-	sim.start("survival")
-	sim.wave = 12
+	sim.start("defense")
+	sim.defense_director.begin_wave()
+	sim.wave = 8
 	sim.roster.clear()
 	for y in range(-44,4,2):
 		for x in range(-19,20,2):

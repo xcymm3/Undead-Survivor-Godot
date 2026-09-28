@@ -25,8 +25,8 @@ test('简单难度下举枪自动瞄准的自动霰弹枪角色守住水晶八�
   let routeViolation = null;
   let previous = null;
   const primaryWeapon = 8;
-  const primaryCapacity = 20;
-  const primaryReserve = 340;
+  const primaryCapacity = 16;
+  const primaryReserve = 272;
   const rack = { x: 2.4, z: 64.8 };
   page.on('pageerror', error => errors.push(String(error)));
 
@@ -82,7 +82,6 @@ test('简单难度下举枪自动瞄准的自动霰弹枪角色守住水晶八�
   }
   await page.goto('/?autoaim=1');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
-  await clickButton(page, '保卫水晶');
   await page.waitForFunction(() => window.__survivorSnapshot?.map_id === 'graypine_defense');
   await clickButton(page, '简单 · 70%');
   await clickButton(page, '单人防守');

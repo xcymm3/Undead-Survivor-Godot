@@ -38,7 +38,7 @@ func capture() -> void:
 		return
 	game.ui.show_settings()
 	await shot("settings")
-	game.start_solo("survival")
+	game.start_solo("defense")
 	game.focused = true
 	game.set_physics_process(false)
 	game.sim.pawns.solo.pos = Vector2(0,0)

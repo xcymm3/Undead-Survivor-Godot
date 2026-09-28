@@ -1,5 +1,6 @@
-extends "res://scripts/campaign_world.gd"
+extends "res://scripts/world_geometry.gd"
 const DefenseLayout = preload("res://scripts/defense_layout.gd")
+const Layout = DefenseLayout
 const DefenseEnvironment = preload("res://scripts/defense_environment.gd")
 var crystal: Node3D
 var crystal_core: MeshInstance3D
@@ -8,9 +9,6 @@ var crystal_label: Label3D
 var wave_label: Label3D
 var pickup_animation: Node3D
 var armory_supply_views: Dictionary = {}
-
-func _init() -> void:
-	Layout = DefenseLayout
 
 func beam_between(title: String, a: Vector3, b: Vector3, radius: float, color: String) -> MeshInstance3D:
 	var beam = MeshInstance3D.new()
@@ -208,7 +206,7 @@ func sync(state: Dictionary) -> void:
 		for index in slots.size():
 			var id: String = kind+"_"+str(index)
 			if not armory_supply_views.has(id):
-				var prop = preload("res://scripts/campaign_props.gd").model(4 if kind == "grenade" else 5)
+				var prop = preload("res://scripts/equipment_props.gd").model(4 if kind == "grenade" else 5)
 				prop.name = "ArmorySupply"+id.capitalize().replace(" ","")
 				add_child(prop)
 				prop.position = mounts[index]

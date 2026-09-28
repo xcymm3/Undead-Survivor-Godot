@@ -8,7 +8,7 @@ func run() -> void:
 	root.add_child(game)
 	game.set_process(false)
 	game.set_physics_process(false)
-	game.start_solo("campaign",71245)
+	game.start_solo("defense",71245)
 	await physics_frame
 	var pawn: Dictionary = game.local_pawn()
 	pawn.pos = Vector2(8,60)

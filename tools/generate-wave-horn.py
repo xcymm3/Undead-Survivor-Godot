@@ -1,4 +1,4 @@
-"""Generate the two distinct, original night-route warning sounds."""
+"""Generate the original crystal defense wave horn."""
 
 from pathlib import Path
 import wave
@@ -40,22 +40,6 @@ def horn() -> np.ndarray:
     return result
 
 
-def growl() -> np.ndarray:
-    """One sustained rough throat sound, without percussive pops or bubbles."""
-    seconds = 1.55
-    t = np.arange(round(RATE * seconds)) / RATE
-    frequency = 69 - 13 * t / seconds + 2.2 * np.sin(2 * np.pi * 6.2 * t)
-    phase = 2 * np.pi * np.cumsum(frequency) / RATE
-    throat = np.zeros_like(t)
-    for harmonic in range(1, 22):
-        hz = harmonic * 63
-        formant = 0.75 * np.exp(-((hz - 290) / 180) ** 2) + 0.65 * np.exp(-((hz - 680) / 280) ** 2)
-        throat += formant * np.sin(phase * harmonic + harmonic * 0.24) / harmonic ** 0.55
-    rasp = smooth_noise(712, seconds, 110, 850)
-    tremolo = 0.8 + 0.2 * np.sin(2 * np.pi * 11.5 * t)
-    return (throat * tremolo + rasp * 0.22) * envelope(t, 0, seconds, 0.11, 0.32)
-
-
 def write(name: str, samples: np.ndarray) -> None:
     samples = samples / max(float(np.max(np.abs(samples))), 1e-9) * 0.84
     pcm = np.round(samples * 32767).astype("<i2")
@@ -67,5 +51,4 @@ def write(name: str, samples: np.ndarray) -> None:
 
 
 if __name__ == "__main__":
-    write("campaign-horde.wav", horn())
-    write("campaign-growl.wav", growl())
+    write("wave-horn.wav", horn())

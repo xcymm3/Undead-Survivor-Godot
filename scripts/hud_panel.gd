@@ -18,7 +18,7 @@ var health_row: HBoxContainer
 var cards: Dictionary = {}
 var slots: Array[Label] = []
 var equipment_slots: Array[Dictionary] = []
-var campaign_arsenal: VBoxContainer
+var equipment_arsenal: VBoxContainer
 const EquipmentIcon = preload("res://scripts/hud_equipment_icon.gd")
 var arsenal: VBoxContainer
 var content: Control
@@ -61,11 +61,11 @@ func setup(owner_ui) -> void:
 	arsenal = VBoxContainer.new()
 	column.add_child(arsenal)
 	for i in 10: slots.append(text(arsenal,13))
-	campaign_arsenal = VBoxContainer.new()
-	campaign_arsenal.add_theme_constant_override("separation",5)
-	column.add_child(campaign_arsenal)
+	equipment_arsenal = VBoxContainer.new()
+	equipment_arsenal.add_theme_constant_override("separation",5)
+	column.add_child(equipment_arsenal)
 	for i in 5:
-		var panel = card(campaign_arsenal,Vector2(174,62 if i < 3 else 36))
+		var panel = card(equipment_arsenal,Vector2(174,62 if i < 3 else 36))
 		var row = HBoxContainer.new()
 		row.add_theme_constant_override("separation",8)
 		panel.add_child(row)
@@ -189,7 +189,6 @@ func sync() -> void:
 	wave_label.text = "第 %02d 波" % sim.wave
 	count_label.text = "击杀 %d  ·  场上 %d" % [sim.kills,sim.alive_count()]
 	time_label.text = ui.time_text(sim.elapsed)
-	var campaign: Dictionary = sim.campaign_state()
 	var defense: Dictionary = sim.defense_state()
 	crystal_label.visible = sim.mode == "defense"
 	crystal_bar.visible = sim.mode == "defense"
@@ -201,16 +200,13 @@ func sync() -> void:
 		crystal_bar.max_value = defense.get("crystal_max_hp",1)
 		crystal_bar.value = defense.get("crystal_hp",0)
 		crystal_bar.modulate = Color("7fe7ef") if crystal_bar.value > crystal_bar.max_value*.3 else Color("ee6658")
-	if sim.mode == "campaign":
-		wave_label.text = "灰松夜路" if sim.map_id == "graypine_night" else "灰松渡口"
-		count_label.text = "击杀 %d · 医疗包 %d" % [sim.kills,p.get("medkits",0)]
 	var w: Dictionary = Data.weapons[int(p.weapon)]
 	weapon_label.text = "%s · %s级" % [w.label,w.tier]
 	var infinite: bool = w.get("infiniteAmmo",false)
 	ammo_label.text = "∞  近战" if infinite else "%02d / ∞" % p.ammo[int(p.weapon)]
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
-	if sim.mode in ["campaign","defense"]:
+	if sim.mode == "defense":
 		controls_hint.text = "1 主武器 · 2 副武器 · 3 斧 · 4 手雷 · 5 医疗包 · E 拾取/交互"
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
 		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 无限备弹" if w.get("infiniteReserve",false) else "R 换弹 · 补给点换枪"
@@ -220,8 +216,8 @@ func sync() -> void:
 			ammo_note.text = "左键投掷 · 1.5 秒引信" if p.slot == 4 else "左键自己 · 右键队友"
 
 	arsenal.visible = not (int(p.weapon) == 5 and p.get("slot",1) < 4 and ui.game.weapon.ads > .8)
-	var shared_loadout: bool = sim.mode in ["campaign","defense"]
-	campaign_arsenal.visible = shared_loadout and arsenal.visible
+	var shared_loadout: bool = sim.mode == "defense"
+	equipment_arsenal.visible = shared_loadout and arsenal.visible
 	arsenal.visible = not shared_loadout and arsenal.visible
 	if shared_loadout:
 		for i in 5:
@@ -254,7 +250,6 @@ func sync() -> void:
 		health_row.move_child(item.panel,i)
 		item.name.text = "我" if ids[i] == Session.local_id and not Session.playing else str(pawn.get("name",ids[i]))
 		item.hp.text = "+%d" % pawn.hp if pawn.hp > 0 else "阵亡"
-		if pawn.get("downed",false): item.hp.text = "倒地 %d 秒" % ceili(pawn.get("bleed",0))
 		item.bar.value = pawn.hp
 		item.bar.modulate = Color.WHITE if pawn.hp > 50 else Color("e0bc62") if pawn.hp > 25 else Color("dd6958")
 		var key = str(pawn.appearance)
@@ -266,16 +261,9 @@ func sync() -> void:
 		rest_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		rest_label.add_theme_stylebox_override("normal",style(Color(.04,.055,.05,.8),8))
 		rest_label.text = str(defense.get("objective",""))+"\n"+str(p.get("hint",""))
-	if sim.mode == "campaign":
-		rest_label.visible = true
-		rest_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		rest_label.add_theme_stylebox_override("normal",style(Color(.04,.055,.05,.8),8))
-		rest_label.text = campaign.get("objective","")+"\n"+p.get("hint","")
-		if campaign.get("phase") == "BRIDGE_ACTIVE": rest_label.text += "\n闸门开启 %.0f / 90 秒" % campaign.get("bridge_time",0)
 	var local: Dictionary = ui.game.local_pawn()
 	spectator_label.visible = not local.is_empty() and local.hp <= 0 and Session.playing
-	if spectator_label.visible: spectator_label.text = "正在观战 %s · 左键切换队友 · 清波后复活" % p.name
-	if sim.mode == "campaign" and spectator_label.visible: spectator_label.text = "等待队友救援" if local.get("downed",false) else "正在观战 · 本关不复活"
+	if spectator_label.visible: spectator_label.text = "正在观战 %s · 左键切换队友" % p.name
 	network_card.visible = Session.playing and not Session.is_host() and Data.settings.network_stats
 	if network_card.visible:
 		var metrics = Session.network_metrics()

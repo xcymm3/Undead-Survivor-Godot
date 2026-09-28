@@ -14,7 +14,6 @@ test('吊桥水晶防守使用真实输入换装并按 T 开战', async ({ page 
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
-  await clickButton(page, '保卫水晶');
   await page.waitForFunction(() => window.__survivorSnapshot?.map_id === 'graypine_defense');
   await clickButton(page, '简单 · 70%');
   await page.screenshot({ path: info.outputPath('defense-home.png') });

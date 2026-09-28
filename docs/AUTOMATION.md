@@ -12,7 +12,7 @@ npm run verify
 
 ```powershell
 ./tools/validate-headless.ps1 -Mode Defense
-./tools/validate-headless.ps1 -Mode Night
+./tools/validate-headless.ps1 -Mode DefenseSpawns
 ./tools/validate-headless.ps1 -Mode SpreadBallistics
 ```
 
@@ -26,19 +26,19 @@ npm run verify
 npm run verify:full
 ```
 
-发布技术门禁在基础检查之外运行保卫水晶规则专项、弹道、Web 导出，以及五项浏览器技术检查。它验证确定性的规则、页面、路线、输入安全与构建能力，不把脚本操控角色通关或联机结果作为游戏品质结论。
+发布技术门禁在基础检查之外运行保卫水晶规则专项、弹道、Web 导出，以及五项浏览器技术检查。它验证确定性的规则、主页、装备、输入安全与构建能力，不把脚本操控角色通关或联机结果作为游戏品质结论。
 
-## 独立试玩与联机观察
+## 独立试玩观察
 
 ```powershell
 npm run verify:playtests
 ```
 
-这项命令单独运行灰松夜路脚本整关、灰松夜路 ENet 双人测试，以及夜路和水晶防线浏览器脚本试玩，并写入 `artifacts/playtests.json` 与 `artifacts/playtests.md`。这些结果用于发现风险和辅助真人试玩，不被 `verify:full`、`verify:release` 或 GitHub 发布工作流调用；无论通过或失败，都不改变正式发布门禁结论。
+这项命令单独运行水晶防线浏览器脚本试玩，并写入 `artifacts/playtests.json` 与 `artifacts/playtests.md`。这些结果用于发现风险和辅助真人试玩，不被 `verify:full`、`verify:release` 或 GitHub 发布工作流调用；无论通过或失败，都不改变正式发布门禁结论。
 
 ## Windows EXE
 
-准备导出或打包 EXE 时运行：
+正式 EXE 发布先在本地运行基础检查与相关专项，提交并推送源码。以下命令由 GitHub Actions 对同一提交执行；只有用户明确要求本地生成 EXE 或本地发布验收时才在本机运行：
 
 ```powershell
 npm run verify:release

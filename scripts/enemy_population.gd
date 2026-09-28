@@ -1,7 +1,6 @@
 extends RefCounted
 ## Threat points replace ordinary bodies, never add elites on top of the budget.
 const COST = {"normal":1,"crawler":1,"cone":2,"bucket":4,"imp":4,"shield":6,"berserker":12,"giant":12}
-const SPECIALS = ["cone","bucket","imp","shield","berserker"]
 const ELITES = ["cone","bucket","imp","shield","berserker","giant"]
 const PARTY_MULTIPLIER = [1.0,1.2,1.4,1.6]
 
@@ -22,8 +21,7 @@ static func roster(budget: int, kinds: Array, random: RandomNumberGenerator, fra
 	var pool: Array = []
 	for kind in kinds:
 		if kind in ELITES and not pool.has(kind): pool.append(kind)
-	# One of each affordable eligible type before repeats. Route-level coverage
-	# is verified across habitats; a single habitat need not afford every type.
+	# Spend the elite allowance without exceeding the wave budget.
 	while not pool.is_empty():
 		var spent = 0
 		for kind in pool:

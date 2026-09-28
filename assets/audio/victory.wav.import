@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://c8v2buia2gm36"
-path="res://.godot/imported/campaign-gate.wav-9a77893cb194f5f0d1d001e8537b3049.sample"
+path="res://.godot/imported/victory.wav-d893d32ad919f27e15cf04d35e288b78.sample"
 
 [deps]
 
-source_file="res://assets/audio/campaign-gate.wav"
-dest_files=["res://.godot/imported/campaign-gate.wav-9a77893cb194f5f0d1d001e8537b3049.sample"]
+source_file="res://assets/audio/victory.wav"
+dest_files=["res://.godot/imported/victory.wav-d893d32ad919f27e15cf04d35e288b78.sample"]
 
 [params]
 

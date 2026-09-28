@@ -7,7 +7,6 @@ var arena
 var enemies
 var sim
 var camera: Camera3D
-var flashlight: SpotLight3D
 var weapon
 var sound
 var effects
@@ -55,19 +54,6 @@ func _ready() -> void:
 	camera.cull_mask = 3
 	add_child(camera)
 	camera.current = true
-	flashlight = SpotLight3D.new()
-	# The beam shares the viewpoint, including when standing against a wall.
-	flashlight.position = Vector3.ZERO
-	flashlight.spot_range = 23
-	flashlight.spot_angle = 38
-	flashlight.spot_angle_attenuation = 1.2
-	flashlight.light_color = Color("e4e8cd")
-	flashlight.light_energy = 3.2
-	# A camera-coincident beam lights camera-visible surfaces directly. Its shadow
-	# depth map self-shadows distant flat faces into moving bands in Compatibility.
-	# Keep occluder shadows on the world lights, not this camera-mounted fill light.
-	flashlight.shadow_enabled = false
-	camera.add_child(flashlight)
 	weapon = preload("res://scripts/weapon_view.gd").new()
 	camera.add_child(weapon)
 	weapon.visible = false
@@ -112,13 +98,9 @@ func _ready() -> void:
 	return_home()
 	# Explicit command-line launch modes also support silent local integration validation.
 	var args = OS.get_cmdline_user_args()
-	if "--survival" in args: start_solo("survival")
 	if "--defense" in args:
 		Data.settings.map_id = "graypine_defense"
 		start_solo("defense")
-	if "--campaign" in args:
-		Data.settings.map_id = "graypine_night"
-		start_solo("campaign")
 	if "--lan-host" in args: Session.host_lan("房主")
 	for arg in args:
 		if arg.begins_with("--lan-join="): Session.join_lan(arg.trim_prefix("--lan-join="),"队友")
@@ -127,7 +109,7 @@ func _ready() -> void:
 		observer.game = self
 		add_child(observer)
 
-func start_solo(mode: String, campaign_seed := -1) -> void:
+func start_solo(mode: String = "defense", random_seed := -1) -> void:
 	Session.leave()
 	reset_game()
 	load_map(Data.settings.map_id)
@@ -137,7 +119,7 @@ func start_solo(mode: String, campaign_seed := -1) -> void:
 	sim.pawns.solo.pos = arena.definition.spawn
 	yaw = arena.definition.yaw
 	sim.pawns.solo.yaw = yaw
-	if campaign_seed >= 0: sim.random.seed = campaign_seed
+	if random_seed >= 0: sim.random.seed = random_seed
 	sim.start(mode)
 	resume_game()
 
@@ -151,7 +133,7 @@ func start_coop() -> void:
 	for id in Session.members:
 		sim.add_pawn(id,Session.members[id],i)
 		i += 1
-	if Session.is_host(): sim.start(str(arena.definition.get("mode","survival")))
+	if Session.is_host(): sim.start(str(arena.definition.get("mode","defense")))
 	resume_game()
 
 func prepare_coop() -> void:
@@ -192,7 +174,7 @@ func local_pawn() -> Dictionary:
 
 func view_pawn() -> Dictionary:
 	var local = local_pawn()
-	if local.is_empty() or local.hp > 0 or local.get("downed",false) or not Session.playing: return local
+	if local.is_empty() or local.hp > 0 or not Session.playing: return local
 	if sim.pawns.has(spectating) and sim.pawns[spectating].hp > 0: return sim.pawns[spectating]
 	for p in sim.pawns.values():
 		if p.hp > 0:
@@ -213,8 +195,8 @@ func input_state() -> Dictionary:
 	var local: Dictionary = local_pawn() if sim else {}
 	if not local.is_empty() and not Data.ads_enabled(Data.weapons[int(local.weapon)]): aim_held = false
 	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"wave_ready":enabled and Input.is_action_just_pressed("start_wave"),"heal":enabled and Input.is_action_pressed("heal"),"crouch":enabled and Input.is_action_pressed("crouch"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held,"shove":enabled and shove_pending}
-	if sim and sim.mode in ["campaign","defense"]:
-		if not preload("res://scripts/campaign_equipment.gd").slot_available(local_pawn(),requested_slot): requested_slot = int(local_pawn().get("slot",1))
+	if sim and sim.mode == "defense":
+		if not preload("res://scripts/equipment_core.gd").slot_available(local_pawn(),requested_slot): requested_slot = int(local_pawn().get("slot",1))
 		command.slot = requested_slot
 		command.use_self = enabled and fire_pending
 		command.use_other = enabled and shove_pending and requested_slot == 5
@@ -290,10 +272,6 @@ func _process(dt: float) -> void:
 	camera.fov = lerpf(61,aim_fov,weapon.ads)
 	var aim_target = camera.position-camera.global_basis.z*180
 	var aim_surface: Dictionary = arena.surface_hit(camera.position,aim_target)
-	if flashlight.visible:
-		var wall_distance = camera.position.distance_to(aim_surface.position) if not aim_surface.is_empty() else 180.0
-		# Near walls must not saturate after moving the beam back onto the sight line.
-		flashlight.light_energy = 3.2*clampf(pow(wall_distance/1.8,2),.025,1.0)
 	if not aim_surface.is_empty(): aim_target = aim_surface.position
 	var aim_distance = camera.position.distance_to(aim_target)
 	for zombie in visible_zombies:
@@ -310,7 +288,7 @@ func _process(dt: float) -> void:
 		equipment_prop = null
 		equipment_prop_slot = equipment_slot
 		if equipment_slot >= 4:
-			equipment_prop = preload("res://scripts/campaign_props.gd").model(equipment_slot)
+			equipment_prop = preload("res://scripts/equipment_props.gd").model(equipment_slot)
 			camera.add_child(equipment_prop)
 			equipment_prop.position = Vector3(.24,-.20,-.55)
 	if equipment_prop: equipment_prop.visible = not medical_view and not finished
@@ -366,8 +344,8 @@ func handle_effects(events: Array) -> void:
 				sound.play_at("grenade-explosion",event.position,-6)
 			"grenade_throw", "grenade_fuse":
 				sound.play_at(event.kind.replace("_","-"),event.position,-5)
-			"campaign_cue":
-				sound.play_at("campaign-"+event.get("cue","horde"),event.position,-8)
+			"wave_start":
+				sound.play_at("wave-horn",event.position,-8)
 			"shot":
 				var index = clampi(int(event.get("weapon",0)),0,9)
 				var w: Dictionary = Data.weapons[index]
@@ -413,11 +391,7 @@ func finish_run() -> void:
 	death_timer = 1.3 if sim.won else 0.0
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	sound.set_playing(false)
-	sound.play("campaign-gate" if sim.won else "failure",-9)
-	if not Session.playing and sim.mode == "survival":
-		var p = local_pawn()
-		Data.record(sim.cleared,sim.kills,sim.elapsed,p.shots,p.hits)
-
+	sound.play("victory" if sim.won else "failure",-9)
 func pause_game() -> void:
 	if not running or finished: return
 	reset_mouse_buttons()
@@ -481,8 +455,6 @@ func request_draw() -> void:
 	if software_qa(): draw_timer = .5
 
 func apply_graphics() -> void:
-	flashlight.visible = arena.map_id == "graypine_night"
-	flashlight.shadow_enabled = false
 	for light in arena.find_children("*","Light3D",true,false):
 		light.shadow_enabled = Data.settings.shadows > 0
 	arena.sun.directional_shadow_max_distance = [0,25,45,65,90][int(Data.settings.shadows)]
@@ -552,7 +524,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			if absf(delta.x) <= max_delta: yaw = wrapf(yaw-delta.x*sensitivity,-PI,PI)
 			if absf(delta.y) <= max_delta: pitch = clampf(pitch-delta.y*sensitivity,-deg_to_rad(85),deg_to_rad(85))
-	if sim.mode in ["campaign","defense"]:
+	if sim.mode == "defense":
 		if event.is_action_pressed("weapon_previous"): cycle_equipment(-1)
 		if event.is_action_pressed("weapon_next"): cycle_equipment(1)
 	else:
@@ -562,14 +534,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("reload"): reload_pending = true
 	for i in 10:
 		if event.is_action_pressed("weapon_%d" % i):
-			if sim.mode in ["campaign","defense"]:
-				if i < 5 and preload("res://scripts/campaign_equipment.gd").slot_available(local_pawn(),i+1): requested_slot = i+1
+			if sim.mode == "defense":
+				if i < 5 and preload("res://scripts/equipment_core.gd").slot_available(local_pawn(),i+1): requested_slot = i+1
 			else: requested_weapon = i
 
 func cycle_equipment(direction: int) -> void:
 	for offset in range(1,6):
 		var slot = posmod(requested_slot-1+direction*offset,5)+1
-		if preload("res://scripts/campaign_equipment.gd").slot_available(local_pawn(),slot):
+		if preload("res://scripts/equipment_core.gd").slot_available(local_pawn(),slot):
 			requested_slot = slot
 			return
 
@@ -601,17 +573,8 @@ func load_map(id: String) -> void:
 	add_child(arena)
 	if camera: apply_graphics()
 
-func select_map(id: String) -> void:
-	if running or not Data.Maps.valid(id): return
-	Data.settings.map_id = id
-	Data.save()
-	load_map(id)
-	camera.position = arena.definition.camera
-	camera.look_at(arena.definition.look_at)
-	ui.show_home()
-
 func select_defense_difficulty(id: String) -> void:
-	if running or Data.settings.map_id != "graypine_defense": return
+	if running: return
 	Data.settings.defense_difficulty = DefensePopulation.normalize_difficulty(id)
 	Data.save()
 	ui.show_home()
