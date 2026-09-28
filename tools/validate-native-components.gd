@@ -401,6 +401,15 @@ func run() -> void:
 	network.members = {"solo":"测试玩家"}
 	var defense_packet: Dictionary = bytes_to_var(var_to_bytes(game.sim.snapshot()))
 	check(network.valid_world(defense_packet),"Defense equipment and preparation snapshot passes network validation")
+	var endless_packet: Dictionary = defense_packet.duplicate(true)
+	endless_packet.wave = 100
+	endless_packet.cleared = 99
+	endless_packet.defense.wave = 100
+	check(network.valid_world(endless_packet),"Network accepts valid endless wave snapshots above eight")
+	endless_packet.defense.wave = 0
+	check(not network.valid_world(endless_packet),"Network rejects a nonpositive endless wave")
+	endless_packet.defense.wave = 9.5
+	check(not network.valid_world(endless_packet),"Network rejects a fractional endless wave")
 	check(not defense_packet.has("campaign"),"Network snapshot no longer carries night campaign state")
 	var retired_world: Dictionary = defense_packet.duplicate(true)
 	retired_world.mode = "campaign"

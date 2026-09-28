@@ -259,11 +259,6 @@ func step_authority(dt: float) -> void:
 	if mode == "defense" and defense.get("waiting",false): return
 	if roster.is_empty() and alive_count() == 0:
 		cleared = wave
-		if mode == "defense" and wave >= Data.Maps.Defense.MAX_WAVES:
-			won = true
-			defense.objective = "八波进攻已全部击退，水晶守卫成功"
-			arena.sync_defense(defense)
-			return
 		rest = 0
 		if mode == "defense":
 			defense_director.finish_wave()

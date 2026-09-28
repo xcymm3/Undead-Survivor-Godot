@@ -8,7 +8,7 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-17"
+const PROTOCOL = "undead-survivor-godot-18"
 const PORT = 27777
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"
@@ -429,7 +429,7 @@ func valid_world(value) -> bool:
 		if defense_state.crystal_hp < 0 or defense_state.crystal_hp > defense_state.crystal_max_hp or defense_state.crystal_max_hp != Data.Maps.Defense.CRYSTAL_MAX_HP: return false
 		if not valid_defense_equipment(defense_state): return false
 		if not preload("res://scripts/defense_structures.gd").valid_state(defense_state.get("structures")): return false
-		if defense_state.wave < 1 or defense_state.wave > Data.Maps.Defense.MAX_WAVES: return false
+		if defense_state.wave < 1 or defense_state.wave != floor(defense_state.wave): return false
 	for key in ["elapsed","wave","cleared","spawned","kills","rest","culprit"]:
 		if not (value[key] is int or value[key] is float) or not is_finite(value[key]): return false
 	for id in value.pawns:

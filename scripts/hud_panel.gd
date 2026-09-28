@@ -194,7 +194,7 @@ func sync() -> void:
 	crystal_bar.visible = sim.mode == "defense"
 	if sim.mode == "defense":
 		var defense_wave: int = int(defense.get("wave",sim.wave))
-		wave_label.text = "第 %02d 波 · 准备 %d/%d" % [defense_wave,defense.get("ready_players",[]).size(),sim.pawns.size()] if defense.get("waiting",false) else "第 %02d / %02d 波" % [sim.wave,Data.Maps.Defense.MAX_WAVES]
+		wave_label.text = "第 %02d 波 · 准备 %d/%d" % [defense_wave,defense.get("ready_players",[]).size(),sim.pawns.size()] if defense.get("waiting",false) else "第 %02d 波" % sim.wave
 		count_label.text = "击杀 %d · 场上 %d" % [sim.kills,sim.alive_count()]
 		crystal_label.text = "水晶  %d / %d" % [defense.get("crystal_hp",0),defense.get("crystal_max_hp",0)]
 		crystal_bar.max_value = defense.get("crystal_max_hp",1)

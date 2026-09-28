@@ -227,4 +227,4 @@ func sync(state: Dictionary) -> void:
 	crystal_light.light_energy = lerpf(.35,5.0,ratio)
 	crystal_light.light_color = Color("f05d4f") if ratio < .3 else Color("65dff2")
 	crystal_label.text = "水晶 %d / %d" % [ceili(hp),ceili(maximum)]
-	wave_label.text = "第 %d 波 · 按 T 准备 %d/%d" % [state.get("wave",1),state.get("ready_players",[]).size(),state.get("party",1)] if state.get("waiting",false) else "第 %d / %d 波" % [state.get("wave",1),DefenseLayout.MAX_WAVES]
+	wave_label.text = "第 %d 波 · 按 T 准备 %d/%d" % [state.get("wave",1),state.get("ready_players",[]).size(),state.get("party",1)] if state.get("waiting",false) else "第 %d 波" % state.get("wave",1)

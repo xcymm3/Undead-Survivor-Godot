@@ -265,7 +265,7 @@ func show_home() -> void:
 	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
 	title.add_theme_constant_override("line_spacing",-12)
 	title_block.add_child(title)
-	title_block.add_child(label("按 T 开始每一波，守住水晶，击退逐渐增强的八波尸潮。",19,Color("d8dfce")))
+	title_block.add_child(label("按 T 开始每一波，守住水晶，挑战逐渐增强的无尽尸潮。",19,Color("d8dfce")))
 	var actions = VBoxContainer.new()
 	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	actions.offset_left = -450
@@ -422,9 +422,9 @@ func show_settings() -> void:
 	button(column,"返回",back)
 
 func show_guide() -> void:
-	var column = panel("武器与操作", "水晶防线 · 八波防守 · 按 T 开战",1000)
+	var column = panel("武器与操作", "水晶防线 · 无尽防守 · 按 T 开战",1000)
 	current = "guide"
-	paragraph(column,"守住水晶，击退八波尸潮。每波开始前按 T；合作模式需要所有玩家重新按 T 准备。波间可以自由补给。",17)
+	paragraph(column,"守住水晶，挑战无尽尸潮。每波开始前按 T；合作模式需要所有玩家重新按 T 准备。波间可以自由补给。",17)
 	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键推击  /  中键切换开镜\n空格跳跃  /  Ctrl 按住蹲下  /  R 换弹  /  1—5 或滚轮切换装备  /  Esc 暂停\n装备：1 主武器 / 2 副武器 / 3 消防斧 / 4 手雷 / 5 医疗包 / E 拾取与交互\n医疗包：左键自己，右键瞄准近处队友；治疗时无法行动。\n连续推击第 3 次后冷却 3.5 秒，准星上方圆环显示恢复进度。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
@@ -498,10 +498,10 @@ func show_result() -> void:
 	var sim = game.sim
 	if sim.mode == "defense":
 		var state: Dictionary = sim.defense_state()
-		var result = panel("水晶防守成功" if sim.won else "水晶防线失守","保卫水晶",640)
+		var result = panel("水晶防线失守","保卫水晶",640)
 		current = "result"
-		result.add_child(label("完成 %d / %d 波 · %d 击杀 · %s" % [sim.cleared,Data.Maps.Defense.MAX_WAVES,sim.kills,time_text(sim.elapsed)],32))
-		paragraph(result,"八波尸潮已被全部击退。" if sim.won else ("水晶被摧毁。" if sim.cause == "crystal" else "守卫者已失去行动能力。")+" 水晶剩余 %d / %d。" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)])
+		result.add_child(label("守住 %d 波 · %d 击杀 · %s" % [sim.cleared,sim.kills,time_text(sim.elapsed)],32))
+		paragraph(result,("水晶被摧毁。" if sim.cause == "crystal" else "守卫者已失去行动能力。")+" 水晶剩余 %d / %d。" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)])
 		if not Session.playing: button(result,"重新防守",func(): game.start_solo("defense"),true)
 		button(result,"返回主菜单",func(): game.return_home())
 		return

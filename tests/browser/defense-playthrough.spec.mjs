@@ -10,7 +10,7 @@ async function clickButton(page, text) {
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
 }
 
-test('简单难度下举枪自动瞄准的自动霰弹枪角色守住水晶八波', async ({ page }, info) => {
+test('简单难度下自动霰弹枪防守前八波的独立试玩观察', async ({ page }, info) => {
   test.setTimeout(720_000);
   const errors = [];
   const held = new Set();
@@ -117,7 +117,7 @@ test('简单难度下举枪自动瞄准的自动霰弹枪角色守住水晶八�
       console.log(`[波次检查] 第 ${state.cleared} 波完成 | 用时 ${state.elapsed.toFixed(1)} 秒 | 玩家 ${state.player.hp} HP | 水晶 ${state.defense.crystal_hp} HP | 命中 ${state.player.hits}/${state.player.shots}`);
       expect(routeViolation, `Route must remain valid through wave ${state.cleared}`).toBeNull();
     }
-    if (state.won || state.failed || state.finished) break;
+    if (state.won || state.failed || state.finished || state.cleared >= 8) break;
     if (state.defense.waiting) {
       await setFiring(false);
       await page.keyboard.press('t');
