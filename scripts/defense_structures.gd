@@ -3,6 +3,7 @@ extends RefCounted
 const Layout = preload("res://scripts/defense_layout.gd")
 const EnemyView = preload("res://scripts/enemy_view.gd")
 const TURRET_RANGE = 10.0
+const TURRET_DAMAGE_MULTIPLIER = .5
 const MINE_DELAY = preload("res://scripts/equipment_core.gd").GRENADE_FUSE
 const MINE_TRIGGER_RADIUS = .8
 const GATE_HEIGHT = 1.05
@@ -139,7 +140,7 @@ func step_turret(item: Dictionary, dt: float) -> void:
 			shot_distance = hit.distance
 	var end = origin+direction*shot_distance
 	if not shot.is_empty():
-		sim.hit_enemy(shot.z,float(rifle.damage),shot.armor,{"id":item.id,"kills":0},end)
+		sim.hit_enemy(shot.z,float(rifle.damage)*TURRET_DAMAGE_MULTIPLIER,shot.armor,{"id":item.id,"kills":0},end)
 	item.shots += 1
 	item["fired_at"] = float(director.state.prop_clock)
 	sim.events.append({"kind":"turret_shot","from":origin,"to":end})

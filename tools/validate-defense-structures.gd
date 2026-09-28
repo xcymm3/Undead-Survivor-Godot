@@ -59,7 +59,7 @@ func run() -> void:
 		var before_shots: int = turret.shots
 		turret.cooldown = 0.0
 		for i in 10: manager.step(.12)
-		check(turret.shots-before_shots == 10 and is_equal_approx(before-z.hp,float(data.weapons[0].damage)*10),"%s fires rifle damage every rifle interval without headshot bonus" % id)
+		check(turret.shots-before_shots == 10 and is_equal_approx(before-z.hp,600.0),"%s fires 60 torso damage every rifle interval without headshot bonus" % id)
 		var selected: Dictionary = sim.choose_zombie_target(z,sim.pawns.values())
 		check(selected.id == id,"%s enters the same nearest-target selection as player and crystal" % id)
 		var outside: int = turret.shots
