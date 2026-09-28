@@ -41,7 +41,11 @@ for (const scenario of ['combat', 'death', 'entries', '50', '100', '200']) {
         expect(report.rear_attacks).toBe(0);
         expect(report.attack_frames).toBeGreaterThan(0);
         expect(report.physics_ms.samples).toBeGreaterThan(500);
+        expect(report.simulation_ms.samples).toBe(report.physics_ms.samples);
+        expect(report.optimization.slots).toBe(Number(scenario));
+        expect(report.optimization.early_wakes).toBeGreaterThan(0);
         console.log(`${scenario} 敌人物理耗时(ms): ${JSON.stringify(report.physics_ms)}`);
+        console.log(`${scenario} 房主 simulation.step 耗时(ms): ${JSON.stringify(report.simulation_ms)}`);
       }
     }
     expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });

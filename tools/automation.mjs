@@ -108,6 +108,8 @@ try {
   sourceDigest = await fingerprint();
   const native = await run('native-components', engine, [...godotArgs, '--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation']);
   if (!/NATIVE COMPONENTS: \d+ checks; 0 failures/.test(native)) throw new Error('Missing native component check marker.');
+  const enemyOptimization = await powershell('enemy-optimization', 'tools/validate-headless.ps1', ['-Mode', 'EnemyOptimization']);
+  if (!/ENEMY OPTIMIZATION: \d+ checks; 0 failures/.test(enemyOptimization)) throw new Error('Missing enemy optimization check marker.');
 
   if (full) {
     const defense = await run('crystal-defense', engine, [...godotArgs, '--script', 'res://tools/validate-defense.gd', '--', '--silent', '--automation'], 300_000);
@@ -164,8 +166,8 @@ try {
 } finally {
   for (const child of children) stop(child);
   const boundaries = full
-    ? ['本次为发布技术门禁：包含水晶防守规则、弹道、Web 导出和六组浏览器技术检查。', '所有脚本试玩及所有联机测试均为独立观察项，不参与发布通过判定；原生 GPU、真人体验和 Steam 双账号联网也不在自动门禁范围内。']
-    : ['本次为基础测试：仅检查版本、资源导入和原生组件。整关、联网、Web、浏览器、视觉与发布项目未执行，也不计为通过。'];
+    ? ['本次为发布技术门禁：包含水晶防守规则、弹道、Web 导出及浏览器技术检查。', '所有脚本试玩及所有联机测试均为独立观察项，不参与发布通过判定；原生 GPU、真人体验和 Steam 双账号联网也不在自动门禁范围内。']
+    : ['本次为基础测试：检查版本、资源导入、原生组件和僵尸优化状态。整关、联网、Web、浏览器、视觉与发布项目未执行，也不计为通过。'];
   if (release) boundaries.push('本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。');
   const report = {
     status: failure ? 'failed' : 'passed', startedAt, finishedAt: new Date().toISOString(),

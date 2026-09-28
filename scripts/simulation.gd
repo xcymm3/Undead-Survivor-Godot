@@ -2,6 +2,7 @@ extends RefCounted
 ## The sole authority for movement, ammunition, enemies, damage and score, shared by solo/coop.
 const EnemyView = preload("res://scripts/enemy_view.gd")
 const EnemyBody = preload("res://scripts/enemy_body.gd")
+const EnemyCrowd = preload("res://scripts/enemy_crowd.gd")
 const PlayerBody = preload("res://scripts/player_body.gd")
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 const EnemyPopulation = preload("res://scripts/enemy_population.gd")
@@ -9,6 +10,8 @@ const PLAYER_MOVE_SPEED = 4.2
 var player_bodies: Dictionary = {}
 var enemy_bodies: Dictionary = {}
 var enemy_physics_usec = 0
+var simulation_usec = 0
+var enemy_crowd
 var arena
 var map_id = "graypine_defense"
 var map_definition: Dictionary
@@ -66,20 +69,24 @@ const CRAWLER_VARIANT_CHANCE = .1
 
 func _init(world = null) -> void:
 	arena = world
+	if world:
+		enemy_crowd = EnemyCrowd.new(world)
+		enemy_bodies = enemy_crowd.by_id
 	if world and world.get("map_id") is String: map_id = world.map_id
 	map_definition = Data.Maps.definition(map_id)
 	random.randomize()
 
 func dispose() -> void:
-	for body in player_bodies.values()+enemy_bodies.values():
+	for body in player_bodies.values():
 		if is_instance_valid(body): body.free()
 	player_bodies.clear()
-	enemy_bodies.clear()
+	if enemy_crowd: enemy_crowd.clear()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		for body in player_bodies.values()+enemy_bodies.values():
+		for body in player_bodies.values():
 			if is_instance_valid(body): body.free()
+		if enemy_crowd: enemy_crowd.clear()
 
 func player_body(p: Dictionary):
 	if not player_bodies.has(p.id):
@@ -91,26 +98,10 @@ func player_body(p: Dictionary):
 	return body
 
 func sync_enemy_bodies() -> void:
-	var live = {}
-	for z in zombies:
-		if z.hp > 0:
-			live[z.id] = true
-			enemy_body(z)
-	for id in enemy_bodies.keys():
-		if not live.has(id):
-			enemy_bodies[id].retire()
-			enemy_bodies[id].free()
-			enemy_bodies.erase(id)
+	enemy_crowd.reconcile(zombies)
 
 func enemy_body(z: Dictionary):
-	if not enemy_bodies.has(z.id):
-		var body = EnemyBody.new(z.kind)
-		body.name = "ZombieBody_"+str(z.id)
-		arena.add_child(body)
-		enemy_bodies[z.id] = body
-	var body = enemy_bodies[z.id]
-	body.sync_from(z)
-	return body
+	return enemy_crowd.body_for(z)
 
 func physical_move(z: Dictionary, velocity: Vector2, dt: float, gravity := false) -> void:
 	var body = enemy_body(z)
@@ -118,6 +109,7 @@ func physical_move(z: Dictionary, velocity: Vector2, dt: float, gravity := false
 	var was_blocked: bool = z.get("crowd_blocked",false)
 	body.advance(velocity,dt,gravity)
 	body.sync_to(z)
+	enemy_crowd.record(z)
 	enemy_physics_usec += body.physics_usec
 	if gravity:
 		z.crowd_blocked = was_blocked
@@ -218,6 +210,11 @@ func submit(id: String, input: Dictionary) -> void:
 	pawns[id].input_age = 0.0
 
 func step(dt: float) -> void:
+	var start_usec = Time.get_ticks_usec()
+	step_authority(dt)
+	simulation_usec = Time.get_ticks_usec()-start_usec
+
+func step_authority(dt: float) -> void:
 	events.clear()
 	if failed or won: return
 	enemy_physics_usec = 0
@@ -236,11 +233,7 @@ func step(dt: float) -> void:
 		defense_director.interactions(dt)
 		if not defense.get("started",false): return
 	crowd_buckets.clear()
-	for z in zombies:
-		if z.hp <= 0: continue
-		var key = Vector2i(floori(z.pos.x/3),floori(z.pos.y/3))
-		if not crowd_buckets.has(key): crowd_buckets[key] = []
-		crowd_buckets[key].append(z)
+	enemy_crowd.index_cells()
 	var living: Array = pawns.values().filter(func(p): return p.hp > 0)
 	if living.is_empty():
 		failed = true
@@ -754,52 +747,49 @@ func advance_attack(z: Dictionary, target: Dictionary, speed: float, dt: float, 
 	physical_move(z,direction*travel/dt,dt)
 
 func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance: float, contact: float, stop_at_waypoint := false) -> void:
+	var body = enemy_bodies[z.id]
+	var motion_dt = dt
+	var waiting = z.get("crowd_blocked",false) and z.get("blocked_time",0.0) > .25
+	if waiting:
+		z.desired_speed = speed
+		if elapsed < body.next_crowd_probe and not enemy_crowd.needs_wake(body,goal): return
+		motion_dt = maxf(dt,minf(.067,elapsed-body.last_move_at))
+		body.next_crowd_probe = elapsed+.12+fmod(z.id*.013,.04)
+	body.wait_goal = goal
+	body.wait_revision = arena.navigation_revision
+	body.last_move_at = elapsed
 	var waypoint: Vector2 = goal
 	var direction = (waypoint-z.pos).normalized()
 	var cached: Dictionary = paths.get(z.id,{"until":0.0,"path":PackedVector2Array(),"goal":Vector2.INF,"direct_until":0.0,"direct":false})
 	if elapsed >= cached.get("direct_until",0.0) or cached.get("direct_goal",Vector2.INF).distance_to(goal) > .65:
 		cached.direct = arena.enemy_clear(z.pos,goal,z.kind)
 		cached.direct_goal = goal
-		cached.direct_until = elapsed+.15+fmod(z.id*.027,.12)
+		cached.direct_until = elapsed+(.5 if stop_at_waypoint else .15)+fmod(z.id*.027,.12)
 		paths[z.id] = cached
 	if not cached.get("direct",false):
 		if elapsed >= cached.until or cached.goal.distance_to(goal) > 1.3:
-			cached.until = elapsed+.65+fmod(z.id*.037,.25)
+			cached.until = elapsed+(2.0 if stop_at_waypoint else .65)+fmod(z.id*.037,.25)
 			cached.path = arena.enemy_path(z.pos,goal,z.kind)
 			cached.goal = goal
+			cached.shortcut_until = 0.0
 			paths[z.id] = cached
 		var route: PackedVector2Array = cached.path
-		while route.size() > 1 and (z.pos.distance_to(route[0]) < .35 or arena.enemy_clear(z.pos,route[1],z.kind)): route.remove_at(0)
+		while route.size() > 1 and z.pos.distance_to(route[0]) < .35: route.remove_at(0)
+		if elapsed >= cached.get("shortcut_until",0.0):
+			while route.size() > 1 and arena.enemy_clear(z.pos,route[1],z.kind): route.remove_at(0)
+			cached.shortcut_until = elapsed+.25
 		cached.path = route
 		if route.is_empty(): return
 		waypoint = route[0]
 		direction = (waypoint-z.pos).normalized()
-	var separation = Vector2.ZERO
-	var cell = Vector2i(floori(z.pos.x/3),floori(z.pos.y/3))
 	var radius: float = EnemyBody.profile(z.kind).clearance*2+.2
-	for y in range(-1,2):
-		for x in range(-1,2):
-			for other in crowd_buckets.get(cell+Vector2i(x,y),[]):
-				if other.id == z.id or other.hp <= 0: continue
-				var offset: Vector2 = z.pos-other.pos
-				var d = offset.length_squared()
-				if d > .001 and d < radius*radius: separation += offset.normalized()*(radius-sqrt(d))
+	var separation = enemy_crowd.separation(z.id,z.pos,radius)
 	direction = (direction+separation.limit_length(.75)).normalized()
 	# A blocked queue keeps requesting motion. Small lateral steering gives
 	# rear ranks room to shuffle without pushing or teleporting through solids.
 	if z.get("crowd_blocked",false) and z.get("blocked_time",0.0) > .35:
 		var side = Vector2(-direction.y,direction.x)*sin(elapsed*2+z.id*2.4)*.5
 		direction = (direction+side).normalized()
-	var body = enemy_bodies[z.id]
-	var motion_dt = dt
-	if z.get("crowd_blocked",false) and z.get("blocked_time",0.0) > .25:
-		# The capsule remains solid every frame. Blocked rear ranks retry real
-		# sweeps at staggered intervals instead of repeating identical contacts.
-		z.desired_speed = speed
-		if elapsed < body.next_crowd_probe: return
-		motion_dt = maxf(dt,minf(.067,elapsed-body.last_move_at))
-		body.next_crowd_probe = elapsed+.05+fmod(z.id*.013,.014)
-	body.last_move_at = elapsed
 	var travel: float = minf(speed*motion_dt,maxf(0,distance-contact*.88))
 	if stop_at_waypoint: travel = minf(travel,waypoint.distance_to(z.pos))
 	physical_move(z,direction*travel/maxf(motion_dt,.001),motion_dt)
@@ -847,6 +837,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		p.kills += 1
 		paths.erase(z.id)
 		if enemy_bodies.has(z.id): enemy_bodies[z.id].retire()
+		enemy_crowd.record(z)
 		events.append({"kind":"death","player":p.id,"position":position})
 	else:
 		# Small displacement is independent of shove velocity/time and stun duration.

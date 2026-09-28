@@ -12,6 +12,11 @@ var grid = AStarGrid2D.new()
 var scenery: Node3D
 var sun: DirectionalLight3D
 var enemy_grids: Dictionary = {}
+var navigation_revision = 0
+var layout_signature = ""
+var shared_routes: Dictionary = {}
+var route_cache_hits = 0
+var route_cache_misses = 0
 const CELL = .65
 
 func _ready() -> void:
@@ -137,14 +142,24 @@ func surface_hit(origin: Vector3, end: Vector3, ignore_structure := "") -> Dicti
 
 func sync_defense(state: Dictionary) -> void:
 	structure_state = state.get("structures",[])
+	refresh_navigation_revision()
 	scenery.sync(state)
+
+func refresh_navigation_revision() -> void:
+	var signature = ""
+	for item in structure_state:
+		if item.hp > 0 and item.kind != "mine": signature += item.id+";"
+	if signature != layout_signature:
+		layout_signature = signature
+		navigation_revision += 1
+		shared_routes.clear()
 
 func enemy_grid(kind: String) -> AStarGrid2D:
 	var profile = preload("res://scripts/enemy_body.gd").profile(kind)
 	var key: String = profile.key
-	var signature = ""
-	for item in structure_state:
-		if item.hp > 0 and item.kind != "mine": signature += item.id+";"
+	# Also supports deliberate authority fixtures that directly alter HP.
+	refresh_navigation_revision()
+	var signature = layout_signature
 	if not enemy_grids.has(key):
 		var navigation = AStarGrid2D.new()
 		navigation.region = grid.region
@@ -245,6 +260,29 @@ func enemy_path(a: Vector2, b: Vector2, kind: String) -> PackedVector2Array:
 	var first = enemy_cell(navigation,a)
 	var last = enemy_cell(navigation,b)
 	if first.x < 0 or last.x < 0: return PackedVector2Array()
-	var route = navigation.get_point_path(first,last)
+	var tile = Vector2i(floori(first.x/8.0),floori(first.y/8.0))
+	var goal_tile = Vector2i(floori(last.x/8.0),floori(last.y/8.0))
+	var key = [preload("res://scripts/enemy_body.gd").profile(kind).key,goal_tile,tile]
+	var route = PackedVector2Array()
+	if shared_routes.has(key):
+		var corridor: PackedVector2Array = shared_routes[key]
+		var end_point = navigation.get_point_position(last)
+		var tail_clear = not corridor.is_empty() and (corridor[-1] == end_point or enemy_clear(corridor[-1],end_point,kind))
+		var nearest = -1
+		var nearest_distance = INF
+		for i in (mini(12,corridor.size()) if tail_clear else 0):
+			var d = a.distance_squared_to(corridor[i])
+			if d < nearest_distance and enemy_clear(a,corridor[i],kind):
+				nearest = i
+				nearest_distance = d
+		if nearest >= 0:
+			route = corridor.slice(nearest)
+			if route[-1] != end_point: route.append(end_point)
+			route_cache_hits += 1
+	if route.is_empty():
+		route = navigation.get_point_path(first,last)
+		route_cache_misses += 1
+		if shared_routes.size() >= 512: shared_routes.clear()
+		shared_routes[key] = route.duplicate()
 	if not route.is_empty() and enemy_clear(route[-1],b,kind): route.append(b)
 	return route

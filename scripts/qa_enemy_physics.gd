@@ -7,6 +7,7 @@ var active = false
 var clock = 0.0
 var sample_clock = 0.0
 var samples: Array = []
+var simulation_samples: Array = []
 var issues: Array = []
 var queue: Array = []
 var combat: Array = []
@@ -180,7 +181,9 @@ func _physics_process(dt: float) -> void:
 			death_report.crossed = neighbour.pos.x < dead.pos.x
 			done = true
 	else:
-		if clock > 2: samples.append(float(sim.enemy_physics_usec)/1000)
+		if clock > 2:
+			samples.append(float(sim.enemy_physics_usec)/1000)
+			simulation_samples.append(float(sim.simulation_usec)/1000)
 		for z in sim.zombies:
 			if z.id >= int(scenario)/2 and scenario != "entries":
 				if z.get("desired_speed",0.0) > .1 and z.get("crowd_blocked",false): rear_attempts += 1
@@ -199,6 +202,11 @@ func _physics_process(dt: float) -> void:
 		for value in samples: total += value
 		samples.sort()
 		report.physics_ms = {"mean":total/maxi(1,samples.size()),"p95":samples[floori((samples.size()-1)*.95)] if not samples.is_empty() else 0,"max":samples[-1] if not samples.is_empty() else 0,"samples":samples.size()}
+		var simulation_total = 0.0
+		for value in simulation_samples: simulation_total += value
+		simulation_samples.sort()
+		report.simulation_ms = {"mean":simulation_total/maxi(1,simulation_samples.size()),"p95":simulation_samples[floori((simulation_samples.size()-1)*.95)] if not simulation_samples.is_empty() else 0,"samples":simulation_samples.size()}
+		report.optimization = {"route_hits":game.arena.route_cache_hits,"route_misses":game.arena.route_cache_misses,"early_wakes":sim.enemy_crowd.early_wakes,"slots":sim.enemy_crowd.ids.size()}
 		report.progress = []
 		for z in sim.zombies:
 			if initial.has(z.id): report.progress.append({"id":z.id,"kind":z.kind,"moved":z.pos.distance_to(initial[z.id]),"pos":str(z.pos),"blocked":z.get("crowd_blocked",false),"requested":z.get("desired_speed",0.0),"physical_attempts":sim.enemy_bodies[z.id].move_attempts})

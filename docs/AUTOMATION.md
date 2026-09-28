@@ -8,7 +8,7 @@
 npm run verify
 ```
 
-基础检查包含版本一致性、Godot 资源导入和原生组件断言。根据改动范围，可额外运行一个专项：
+基础检查包含版本一致性、Godot 资源导入、原生组件断言和僵尸优化状态专项。根据改动范围，可额外运行一个专项：
 
 ```powershell
 ./tools/validate-headless.ps1 -Mode Defense
@@ -55,3 +55,8 @@ npm run verify:release
 拥堵用例持续 20 个游戏秒，其中前 2 秒不计入性能统计；为持续观察完整栅栏门，该用例将门耐久提高并关闭炮塔火力。默认 1000 血量门的正常破坏与通行由建筑专项单独验证。性能数字是 Web 运行环境中的原生碰撞调用墙钟时间，包含 sweep、滑动、碰撞查询与同步代理，不包含导航缓存构建、渲染、完整游戏帧或原生 Windows GPU 性能。结果保存于忽略提交的 `artifacts/enemy-physics-*.json`。
 
 原生引擎对照使用 `./tools/validate-headless.ps1 -Mode EnemyPhysics -TimeoutSeconds 600`，执行相同体型、数量、20 秒场景与 2 秒预热，输出 `artifacts/enemy-physics-native.json`。此模式不启动图形窗口，也不导出 EXE；通过独立的角色扫掠调用测量碰撞开销，不包含原生 GPU 渲染或整帧性能。
+
+
+优化专项可独立执行 `./tools/validate-headless.ps1 -Mode EnemyOptimization`。碰撞压力报告同时记录移动调用耗时与完整房主 `simulation.step` 耗时（含索敌、导航、状态处理、同步、碰撞及建筑逻辑），并记录共享路线命中和拥堵提前唤醒次数。二者均不含渲染和引擎独立物理步；不得把碰撞移动耗时当作整帧耗时。前后对比应使用相同布置、数量、20 秒观察与 2 秒预热，并串行执行性能测试，避免相互抢占 CPU。
+
+需要减少前后测试时段差异时，先准备独立的旧版本 Godot 工作区，再执行 `./tools/benchmark-enemy-physics-paired.ps1 -BaselineProjectPath <旧版本目录>`。脚本将相同测试脚本复制到旧版本的忽略目录，按 50、100、200 只逐组串行运行旧版本和当前版本；输出 `artifacts/enemy-physics-paired.json`。它只运行真正 headless 的引擎，不修改旧版本玩法源码，不启动图形进程；旧版本必须支持原有僵尸碰撞测试接口。
