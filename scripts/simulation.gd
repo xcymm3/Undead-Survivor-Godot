@@ -20,6 +20,7 @@ var zombies: Array = []
 var events: Array = []
 var mode = "defense"
 var defense_director
+var defense_spawner
 var defense: Dictionary = {}
 var defense_replica: Dictionary = {}
 var defense_difficulty = "normal"
@@ -31,7 +32,6 @@ var cleared = 0
 var spawned = 0
 var kills = 0
 var rest = 0.0
-var credit = 0.0
 var roster: Array = []
 var wave_total = 0
 var defense_ordinary_slots = 0
@@ -153,6 +153,7 @@ func start(_game_mode: String = "defense") -> void:
 	defense_ordinary_slots = 0
 	wave = 1
 	defense_director = preload("res://scripts/defense_director.gd").new(self)
+	defense_spawner = preload("res://scripts/defense_spawner.gd").new(self)
 	defense = defense_director.state
 	equipment = defense_director.equipment
 
@@ -160,6 +161,8 @@ func prepare_wave() -> void:
 	roster = DefensePopulation.roster(wave,pawns.size(),random,defense_difficulty)
 	wave_total = roster.size()
 	defense["wave_budget"] = DefensePopulation.budget(wave,pawns.size(),defense_difficulty)
+	defense_spawner.reset(wave_total)
+	defense["spawn_plan"] = defense_spawner.describe()
 
 func defense_population_kind(kind: String) -> String:
 	if kind != "normal": return kind
@@ -269,22 +272,7 @@ func step_authority(dt: float) -> void:
 				p.velocity = 0.0
 		return
 	if roster.is_empty(): return
-	credit = minf(1,credit+dt*Data.wave_settings(wave).rate)
-	if credit < 1: return
-	var entries: Array = map_definition.spawns.duplicate()
-	entries.shuffle()
-	for point in entries:
-		var safe = true
-		for p in living:
-			var delta: Vector2 = point-p.pos
-			if delta.length() < 8: safe = false
-		if not safe or not arena.clear(point,point): continue
-		if zombies.any(func(z): return z.hp > 0 and point.distance_to(z.pos) < 2.0): continue
-		spawn(point,defense_population_kind(roster[0]))
-		roster.remove_at(0)
-		spawned += 1
-		credit = 0
-		break
+	defense_spawner.step(dt,living)
 
 func safe_spawn() -> Vector2:
 	for p in map_definition.safe:

@@ -28,7 +28,6 @@ func near(p: Dictionary, point: Vector2, distance := 2.0) -> bool:
 func begin_wave() -> void:
 	sim.wave = int(state.wave)
 	sim.spawned = 0
-	sim.credit = 0.0
 	sim.rest = 0.0
 	sim.prepare_wave()
 	state.started = true

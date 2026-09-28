@@ -240,7 +240,7 @@ func validate_crawler() -> void:
 		var expected = "crawler" if (before+i+1)%10 == 0 else "normal"
 		check(sim.defense_population_kind("normal") == expected,"Crawler ratio carries across defense waves "+str(i))
 	check(sim.defense_population_kind("football") == "football" and sim.defense_ordinary_slots == before+20,"Boss does not consume ordinary ratio")
-	check(preload("res://scripts/enemy_population.gd").COST.crawler == 1,"Crawler costs one threat point")
+	check(preload("res://scripts/enemy_population.gd").COST.crawler == .75,"Crawler shares the ordinary cost of three quarters of a point")
 	sim.zombies.clear()
 	sim.spawn(Vector2(8,60),"crawler")
 	var z: Dictionary = sim.zombies[-1]

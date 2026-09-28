@@ -1,10 +1,11 @@
 extends RefCounted
-## Crystal Defense spends one exact ordinary-enemy budget per wave. Authored
+## Crystal Defense spends a bounded quarter-point budget per wave. Authored
 ## football bosses are added afterward and never consume this budget.
 const Population = preload("res://scripts/enemy_population.gd")
-const INITIAL_BUDGET = 52
+const INITIAL_BUDGET = 138
 const INITIAL_GROWTH = 31
 const GROWTH_DECAY = .92
+const GROWTH_OFFSET = 3
 const MIN_GROWTH = 5
 const DIFFICULTIES = ["easy","normal","hard"]
 const DIFFICULTY_MULTIPLIERS = {"easy":.7,"normal":1.0,"hard":1.3}
@@ -24,7 +25,7 @@ static func base_budget(wave: int) -> int:
 	var total = INITIAL_BUDGET
 	var current = 2
 	while current <= target_wave:
-		var growth = maxi(MIN_GROWTH,roundi(INITIAL_GROWTH*pow(GROWTH_DECAY,current-2)))
+		var growth = maxi(MIN_GROWTH,roundi(INITIAL_GROWTH*pow(GROWTH_DECAY,current-2+GROWTH_OFFSET)))
 		# Once the minimum is reached, sum the entire tail directly. Even a
 		# very high wave evaluates only the short initial growth curve.
 		if growth == MIN_GROWTH: return total+(target_wave-current+1)*MIN_GROWTH

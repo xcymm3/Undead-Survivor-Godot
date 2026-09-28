@@ -17,7 +17,7 @@ const excluded = full
       ...(release ? [] : ['windows-export-and-package']),
     ]
   : [
-      'crystal-defense', 'defense-structures', 'spread-ballistics', 'export-web', 'browser-technical',
+      'crystal-defense', 'defense-structures', 'defense-wave-batches', 'spread-ballistics', 'export-web', 'browser-technical',
       'browser-defense-playthrough',
       'windows-export-and-package',
     ];
@@ -112,6 +112,8 @@ try {
   if (!/ENEMY OPTIMIZATION: \d+ checks; 0 failures/.test(enemyOptimization)) throw new Error('Missing enemy optimization check marker.');
 
   if (full) {
+    const waveBatches = await powershell('defense-wave-batches', 'tools/validate-headless.ps1', ['-Mode', 'DefenseWaves', '-TimeoutSeconds', '600'], 600_000);
+    if (!/DEFENSE WAVES: \d+ checks; 0 failures/.test(waveBatches)) throw new Error('Missing defense wave batch check marker.');
     const defense = await run('crystal-defense', engine, [...godotArgs, '--script', 'res://tools/validate-defense.gd', '--', '--silent', '--automation'], 300_000);
     if (!/DEFENSE VALIDATION: \d+ checks; 0 failures/.test(defense)) throw new Error('Missing crystal defense check marker.');
     const structures = await run('defense-structures', engine, [...godotArgs, '--script', 'res://tools/validate-defense-structures.gd', '--', '--silent', '--automation']);

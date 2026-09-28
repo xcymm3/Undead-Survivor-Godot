@@ -13,6 +13,7 @@ npm run verify
 ```powershell
 ./tools/validate-headless.ps1 -Mode Defense
 ./tools/validate-headless.ps1 -Mode DefenseSpawns
+./tools/validate-headless.ps1 -Mode DefenseWaves -TimeoutSeconds 600
 ./tools/validate-headless.ps1 -Mode SpreadBallistics
 ```
 
@@ -47,6 +48,8 @@ npm run verify:release
 发布命令会自动先执行发布技术门禁，再进行 Windows 导出、成品 EXE 无窗口冒烟、单文件隔离检查和 ZIP 打包，不需要额外的 release-full 命令。GitHub Actions 也只使用这条路径，不执行独立试玩或联机观察。
 
 所有本机检查必须保持无窗口，不捕获鼠标、不切换全屏、不操作用户已有的 Godot 或浏览器窗口。日志与报告写入忽略版本控制的 `artifacts/`；单项 PowerShell 检查只在失败时于根目录保留诊断日志。
+
+`DefenseWaves` 验证0.75分普通成本、25%特殊预算、人数/难度缩放、动态30秒批次及刷新点堵塞后的保留配额。它使用正常房主物理循环模拟普通单人第一波，输出 `artifacts/first-wave-horde.json` 的实际种类、出生时间和位置；不是浏览器或整波生存试玩。
 
 ## 僵尸碰撞与导航专项
 
