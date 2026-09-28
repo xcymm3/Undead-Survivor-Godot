@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-for (const scenario of ['gate', 'kills', 'destroy', 'mine']) {
+for (const scenario of ['gate', 'kills', 'destroy', 'mine', 'support']) {
   test(`建筑实机交互：${scenario}`, async ({ page }, info) => {
     test.setTimeout(240_000);
     const errors = [];
@@ -18,7 +18,22 @@ for (const scenario of ['gate', 'kills', 'destroy', 'mine']) {
     expect(report.done).toBe(true);
     expect(report.failed).toBe(false);
     expect(report.player_shots).toBe(0);
-    if (scenario === 'gate') {
+    if (scenario === 'support') {
+      expect(report.support).toHaveLength(27);
+      for (const sample of report.support) {
+        expect(sample.attacking_gate, JSON.stringify(sample)).toBe(true);
+        expect(sample.rays.some(ray => ray.distance <= 10), JSON.stringify(sample)).toBe(true);
+        if (['crawler', 'imp'].includes(sample.kind)) {
+          expect(sample.rays.every(ray => ray.blocker === 'BridgeGate/StructureCollision')).toBe(true);
+          expect(sample.damage).toBe(0);
+          expect(sample.shots).toBe(0);
+        } else {
+          expect(sample.rays.every(ray => ray.blocker === '')).toBe(true);
+          expect(sample.damage, JSON.stringify(sample)).toBeGreaterThan(0);
+          expect(sample.shots).toBeGreaterThan(0);
+        }
+      }
+    } else if (scenario === 'gate') {
       expect(report.bypass).toBe(false);
       expect(report.targets).toContain('bridge_gate');
       expect(report.gate_hp).toBe(0);

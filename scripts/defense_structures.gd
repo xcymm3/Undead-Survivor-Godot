@@ -6,7 +6,7 @@ const TURRET_RANGE = 10.0
 const MINE_DELAY = preload("res://scripts/equipment_core.gd").GRENADE_FUSE
 const MINE_TRIGGER_RADIUS = .8
 const GATE_HEIGHT = 1.05
-const GATE_WIDTH = 7.65
+const GATE_WIDTH = 10.4
 const GATE_DEPTH = .35
 var director_ref: WeakRef
 var director:
@@ -19,7 +19,7 @@ static func initial_state() -> Array:
 	for index in 2:
 		var point = Vector2(-6.3 if index == 0 else 6.3,-6.0)
 		result.append({"id":"turret_left" if index == 0 else "turret_right","kind":"turret","pos":point,"height":Layout.height(point),"hp":200,"max_hp":200,"cooldown":0.0,"yaw":0.0,"pitch":0.0,"shots":0,"destroyed_at":-1.0})
-	result.append({"id":"bridge_gate","kind":"gate","pos":Vector2(0,-30),"height":0.0,"hp":1000,"max_hp":1000,"destroyed_at":-1.0})
+	result.append({"id":"bridge_gate","kind":"gate","pos":Vector2(0,Layout.RAMP.end.y),"height":3.0,"hp":1000,"max_hp":1000,"destroyed_at":-1.0})
 	result.append({"id":"crystal_mine","kind":"mine","pos":Vector2(0,38),"height":3.0,"hp":1,"max_hp":1,"triggered":false,"fuse":MINE_DELAY,"spent":false})
 	return result
 

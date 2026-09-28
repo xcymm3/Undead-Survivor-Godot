@@ -104,16 +104,16 @@ func create_actor(item: Dictionary) -> Dictionary:
 		var panel = Node3D.new()
 		panel.name = "BreakablePanel"
 		root.add_child(panel)
-		for x in [-3.68,3.68]:
+		for x in [-Structures.GATE_WIDTH*.5+.145,Structures.GATE_WIDTH*.5-.145]:
 			box(panel,"GatePost",Vector3(x,.525,0),Vector3(.28,1.05,.32),"343e46")
 			box(panel,"PostCap",Vector3(x,1.06,0),Vector3(.34,.08,.37),"a4afb5")
-		for x in range(-5,6):
-			box(panel,"SteelBar",Vector3(x*.65,.48,0),Vector3(.14,.95,.17),"798791")
-		for x in range(-5,6):
+		for x in range(-8,9):
+			box(panel,"SteelBar",Vector3(x*(Structures.GATE_WIDTH-.6)/16,.48,0),Vector3(.14,.95,.17),"798791")
+		for x in range(-8,9):
 			for y in [.25,.76]:
-				box(panel,"Rivet",Vector3(x*.65,y,.235),Vector3(.07,.07,.045),"a4afb5")
-		for y in [.25,.76]: box(panel,"CrossRail",Vector3(0,y,.11),Vector3(7.6,.17,.2),"58636b")
-		var brace = box(panel,"DiagonalBrace",Vector3(0,.49,.22),Vector3(7.05,.12,.14),"798791")
+				box(panel,"Rivet",Vector3(x*(Structures.GATE_WIDTH-.6)/16,y,.235),Vector3(.07,.07,.045),"a4afb5")
+		for y in [.25,.76]: box(panel,"CrossRail",Vector3(0,y,.11),Vector3(Structures.GATE_WIDTH-.05,.17,.2),"58636b")
+		var brace = box(panel,"DiagonalBrace",Vector3(0,.49,.22),Vector3(Structures.GATE_WIDTH-.6,.12,.14),"798791")
 		brace.rotation.z = .09
 		actor.panel = panel
 	actors[item.id] = actor

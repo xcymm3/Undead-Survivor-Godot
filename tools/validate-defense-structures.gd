@@ -122,34 +122,34 @@ func run() -> void:
 		await physics_frame
 		manager = sim.defense_director.structures
 		var gate: Dictionary = manager.find("bridge_gate")
-		sim.spawn(Vector2(0,-36),kind)
+		sim.spawn(gate.pos+Vector2(0,-6),kind)
 		var z: Dictionary = sim.zombies[-1]
 		var blocked = true
 		for i in 160:
 			sim.elapsed += .05
 			var target: Dictionary = sim.choose_zombie_target(z,sim.pawns.values())
 			sim.update_zombie(z,target,.05)
-			blocked = blocked and z.pos.y < -30.0
+			blocked = blocked and z.pos.y < gate.pos.y
 		check(gate.hp < 1000 and blocked,"%s attacks the gate and cannot cross it" % kind)
 		manager.damage(gate.id,1000)
 		await physics_frame
 		for i in 70:
 			sim.elapsed += .05
 			sim.update_zombie(z,sim.choose_zombie_target(z,sim.pawns.values()),.05)
-		check(z.pos.y > -29 and game.arena.clear(Vector2(0,-32),Vector2(0,-28)),"%s passes through after the gate is destroyed" % kind)
+		check(z.pos.y > gate.pos.y+1 and game.arena.clear(gate.pos+Vector2(0,-2),gate.pos+Vector2(0,2)),"%s passes through after the gate is destroyed" % kind)
 	# Native capsule checks: walk is blocked, jump clears the low full-width gate.
 	sim = fresh()
 	await physics_frame
 	var p: Dictionary = sim.pawns.solo
-	p.pos = Vector2(0,-32)
-	p.height = .12
+	p.pos = Vector2(0,-12)
+	p.height = 2.79
 	p.velocity = 0.0
 	for i in 50:
 		sim.submit("solo",{"y":1,"yaw":0.0,"slot":1})
 		sim.update_pawn(p,.02)
-	check(p.pos.y < -30.3,"Walking player cannot pass through intact gate")
-	p.pos = Vector2(0,-32.2)
-	p.height = .14
+	check(p.pos.y < -10.3,"Walking player cannot pass through intact gate")
+	p.pos = Vector2(0,-12.2)
+	p.height = 2.78
 	p.velocity = 0.0
 	for i in 10:
 		sim.submit("solo",{"slot":1})
@@ -157,9 +157,9 @@ func run() -> void:
 	for i in 85:
 		sim.submit("solo",{"y":1,"yaw":0.0,"slot":1,"jump":i == 0})
 		sim.update_pawn(p,.02)
-	check(p.pos.y > -29,"Player jumps over the gate using normal jump input (pos=%s height=%.2f)" % [p.pos,p.height])
-	check(game.arena.surface_hit(Vector3(0,1.7,-32),Vector3(0,1.7,-28)).is_empty(),"Standing gunfire passes above the gate")
-	check(not game.arena.surface_hit(Vector3(0,.55,-32),Vector3(0,.55,-28)).is_empty(),"Low bullets collide with the gate rather than passing through gaps")
+	check(p.pos.y > -9,"Player jumps over the gate using normal jump input (pos=%s height=%.2f)" % [p.pos,p.height])
+	check(game.arena.surface_hit(Vector3(0,4.7,-12),Vector3(0,4.7,-8)).is_empty(),"Standing gunfire passes above the gate")
+	check(not game.arena.surface_hit(Vector3(0,3.55,-12),Vector3(0,3.55,-8)).is_empty(),"Low bullets collide with the gate rather than passing through gaps")
 	# Mine explosion and grenade explosion are numerically identical.
 	sim = fresh()
 	await physics_frame
