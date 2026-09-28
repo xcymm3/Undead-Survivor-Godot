@@ -9,6 +9,10 @@ func _ready() -> void:
 	if not Data.automation:
 		queue_free()
 		return
+	if "--qa-enemy-physics" in OS.get_cmdline_user_args() and OS.has_feature("web"):
+		var fixture = preload("res://scripts/qa_enemy_physics.gd").new()
+		fixture.game = game
+		add_child(fixture)
 	if "--qa-native-smoke" in OS.get_cmdline_user_args(): call_deferred("native_smoke")
 	if "--qa-defense-structures" in OS.get_cmdline_user_args() and OS.has_feature("web"):
 		var fixture = preload("res://scripts/qa_defense_structures.gd").new()

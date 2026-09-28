@@ -44,8 +44,9 @@ func run() -> void:
 		for tick in 180:
 			sim.elapsed += .1
 			sim.move_zombie(zombie,goal,4.9,.1,zombie.pos.distance_to(goal),data.contact(zombie.kind))
-			stayed_on_route = stayed_on_route and arena.clear(zombie.pos,zombie.pos)
+			await physics_frame
+			stayed_on_route = stayed_on_route and not sim.enemy_bodies[zombie.id].overlaps_world() and zombie.height > -.25
 			if zombie.pos.y > -63: break
-		check(stayed_on_route and zombie.pos.y > -63,"Spawn %d reaches the bridge without leaving walkable terrain" % index)
+		check(stayed_on_route and zombie.pos.y > -63,"Spawn %d reaches the bridge without entering scenery (pos=%s height=%.3f)" % [index,zombie.pos,zombie.height])
 	print("DEFENSE SPAWN VALIDATION: %d checks; %d failures" % [checks,failures])
 	quit(1 if failures else 0)

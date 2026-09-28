@@ -136,6 +136,7 @@ func run() -> void:
 		for i in 70:
 			sim.elapsed += .05
 			sim.update_zombie(z,sim.choose_zombie_target(z,sim.pawns.values()),.05)
+			await physics_frame
 		check(z.pos.y > gate.pos.y+1 and game.arena.clear(gate.pos+Vector2(0,-2),gate.pos+Vector2(0,2)),"%s passes through after the gate is destroyed" % kind)
 	# Native capsule checks: walk is blocked, jump clears the low full-width gate.
 	sim = fresh()

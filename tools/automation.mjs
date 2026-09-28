@@ -131,12 +131,21 @@ try {
       'tests/browser/defense-overview.spec.mjs',
       'tests/browser/defense.spec.mjs',
       'tests/browser/defense-structures.spec.mjs',
+      'tests/browser/enemy-physics.spec.mjs',
       'tests/browser/revolver-input.spec.mjs',
     ];
-    await run('browser-technical', process.execPath, ['node_modules/@playwright/test/cli.js', 'test', ...browserGateSpecs], 900_000);
+    await run('browser-technical', process.execPath, ['node_modules/@playwright/test/cli.js', 'test', ...browserGateSpecs], 1_500_000);
     const browser = JSON.parse(await readFile('artifacts/browser-results.json', 'utf8'));
-    if (browser.stats.unexpected || browser.stats.flaky || browser.stats.skipped || browser.errors?.length || browser.stats.expected !== browserGateSpecs.length) {
-      throw new Error('Browser gate must complete all five technical tests without failures, skips, or retries.');
+    const testedFiles = new Set();
+    const collectFiles = suites => {
+      for (const suite of suites ?? []) {
+        if (suite.specs?.length) testedFiles.add(suite.file.replaceAll('\\', '/'));
+        collectFiles(suite.suites);
+      }
+    };
+    collectFiles(browser.suites);
+    if (browser.stats.unexpected || browser.stats.flaky || browser.stats.skipped || browser.errors?.length || !browser.stats.expected || browserGateSpecs.some(file => ![...testedFiles].some(actual => actual.endsWith(file.replace('tests/browser/', ''))))) {
+      throw new Error('Browser gate must execute every required spec file without failures, skips, or retries.');
     }
   }
 

@@ -1,11 +1,14 @@
 extends RefCounted
 ## The sole authority for movement, ammunition, enemies, damage and score, shared by solo/coop.
 const EnemyView = preload("res://scripts/enemy_view.gd")
+const EnemyBody = preload("res://scripts/enemy_body.gd")
 const PlayerBody = preload("res://scripts/player_body.gd")
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 const EnemyPopulation = preload("res://scripts/enemy_population.gd")
 const PLAYER_MOVE_SPEED = 4.2
 var player_bodies: Dictionary = {}
+var enemy_bodies: Dictionary = {}
+var enemy_physics_usec = 0
 var arena
 var map_id = "graypine_defense"
 var map_definition: Dictionary
@@ -68,13 +71,14 @@ func _init(world = null) -> void:
 	random.randomize()
 
 func dispose() -> void:
-	for body in player_bodies.values():
+	for body in player_bodies.values()+enemy_bodies.values():
 		if is_instance_valid(body): body.free()
 	player_bodies.clear()
+	enemy_bodies.clear()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		for body in player_bodies.values():
+		for body in player_bodies.values()+enemy_bodies.values():
 			if is_instance_valid(body): body.free()
 
 func player_body(p: Dictionary):
@@ -85,6 +89,54 @@ func player_body(p: Dictionary):
 	var body = player_bodies[p.id]
 	body.sync_from(p)
 	return body
+
+func sync_enemy_bodies() -> void:
+	var live = {}
+	for z in zombies:
+		if z.hp > 0:
+			live[z.id] = true
+			enemy_body(z)
+	for id in enemy_bodies.keys():
+		if not live.has(id):
+			enemy_bodies[id].retire()
+			enemy_bodies[id].free()
+			enemy_bodies.erase(id)
+
+func enemy_body(z: Dictionary):
+	if not enemy_bodies.has(z.id):
+		var body = EnemyBody.new(z.kind)
+		body.name = "ZombieBody_"+str(z.id)
+		arena.add_child(body)
+		enemy_bodies[z.id] = body
+	var body = enemy_bodies[z.id]
+	body.sync_from(z)
+	return body
+
+func physical_move(z: Dictionary, velocity: Vector2, dt: float, gravity := false) -> void:
+	var body = enemy_body(z)
+	var previous: Vector2 = z.pos
+	var was_blocked: bool = z.get("crowd_blocked",false)
+	body.advance(velocity,dt,gravity)
+	body.sync_to(z)
+	enemy_physics_usec += body.physics_usec
+	if gravity:
+		z.crowd_blocked = was_blocked
+		return
+	z.desired_speed = velocity.length()
+	var moved: float = previous.distance_to(z.pos)
+	z.gait = z.get("gait",0.0)+moved*2.3
+	z.move_speed = moved/maxf(dt,.001)
+	z.blocked_time = z.get("blocked_time",0.0)+dt if velocity.length() > .1 and moved < velocity.length()*dt*.1 else 0.0
+
+func attack_lane_clear(z: Dictionary, victim: Dictionary) -> bool:
+	# Only another living actor can screen a melee strike. Exact CPU body
+	# hit boxes remain responsible for bullets, heads and armor.
+	var height = .35 # A low actor screen also prevents giants striking over crawlers.
+	var origin = Vector3(z.pos.x,z.get("height",Data.enemy_ground_height(z.pos,map_id))+height,z.pos.y)
+	var end = Vector3(victim.pos.x,victim.height+height,victim.pos.y)
+	var query = PhysicsRayQueryParameters3D.create(origin,end,8)
+	if enemy_bodies.has(z.id): query.exclude = [enemy_bodies[z.id].get_rid(),enemy_bodies[z.id].peer_rid]
+	return arena.get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
 func add_pawn(id: String, player_name: String, index: int) -> void:
 	var ammo: Array = []
@@ -102,6 +154,7 @@ func start(_game_mode: String = "defense") -> void:
 	mode = "defense"
 	defense_difficulty = DefensePopulation.normalize_difficulty(defense_difficulty)
 	zombies.clear()
+	sync_enemy_bodies()
 	paths.clear()
 	roster.clear()
 	wave_total = 0
@@ -122,19 +175,21 @@ func defense_population_kind(kind: String) -> String:
 	return EnemyPopulation.population_kind(kind,defense_ordinary_slots)
 
 func spawn(pos: Vector2, kind: String) -> void:
+	sync_enemy_bodies()
 	var def: Dictionary = Data.enemies[kind]
 	var armor: float = float(def.armor)
 	var body: float = float(def.health-def.armor)
 	var health: float = body+armor
 	var locomotion = RandomNumberGenerator.new()
 	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
-	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
+	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"height":Data.enemy_ground_height(pos,map_id),"vertical_velocity":0.0,"kind":kind,"original":kind,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
 	if kind == "crawler": zombies[-1].chase_speed *= .85
 	if kind in ["normal","crawler","cone","bucket"]:
 		# Cosmetic RNG never advances encounter, movement or combat randomness.
 		var wardrobe = RandomNumberGenerator.new()
 		wardrobe.seed = int(random.seed) ^ (next_id*15485863+32452843)
 		zombies[-1].outfit = wardrobe.randi_range(0,4)
+	enemy_body(zombies[-1])
 	next_id += 1
 
 func submit(id: String, input: Dictionary) -> void:
@@ -165,6 +220,8 @@ func submit(id: String, input: Dictionary) -> void:
 func step(dt: float) -> void:
 	events.clear()
 	if failed or won: return
+	enemy_physics_usec = 0
+	sync_enemy_bodies()
 	for id in player_bodies.keys():
 		if not pawns.has(id):
 			player_bodies[id].free()
@@ -196,6 +253,7 @@ func step(dt: float) -> void:
 		update_zombie(z,target,dt)
 	defense_director.structures.step(dt)
 	zombies = zombies.filter(func(z): return z.hp > 0 or z.down > 0)
+	sync_enemy_bodies()
 	if mode == "defense" and defense.get("crystal_hp",0) <= 0:
 		failed = true
 		cause = "crystal"
@@ -270,7 +328,7 @@ func choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
 			nearest = distance
 			target = candidate
 	if defense_director:
-		var barrier: Dictionary = defense_director.structures.barrier(z.pos,target.pos)
+		var barrier: Dictionary = defense_director.structures.barrier(z.pos,target.pos,z.kind)
 		if not barrier.is_empty(): return barrier
 	return target
 
@@ -306,10 +364,6 @@ func damage_target(target: Dictionary, z: Dictionary, amount: int) -> bool:
 
 func can_move(p: Dictionary, point: Vector2) -> bool:
 	if not map_definition.bounds.grow(-.95).has_point(point): return false
-	for z in zombies:
-		if z.hp <= 0: continue
-		if p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: continue
-		if point.distance_to(z.pos) < Data.contact(z.kind) and point.distance_to(z.pos) < p.pos.distance_to(z.pos)-.00001: return false
 	return true
 
 func update_pawn(p: Dictionary, dt: float) -> void:
@@ -553,8 +607,10 @@ func approach_goal(z: Dictionary, target: Dictionary) -> Vector2:
 	if target.get("is_crystal",false):
 		var offset: Vector2 = z.pos-target.pos
 		if offset.length_squared() < .0001: offset = Vector2(0,-1)
-		return target.pos+offset.normalized()*Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS
+		return target.pos+offset.normalized()*Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS*.98
 	if target.get("is_structure",false):
+		if target.get("structure_kind","") == "gate":
+			return Vector2(target.pos.x,target.pos.y-defense_director.structures.contact_radius(target,z.kind)*.98)
 		var offset: Vector2 = z.pos-target.pos
 		if offset.length_squared() < .0001: offset = Vector2(0,-1)
 		# Stop slightly inside attack range, still outside the navigation margin.
@@ -570,14 +626,17 @@ func approach_goal(z: Dictionary, target: Dictionary) -> Vector2:
 	return target.pos
 
 func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
+	enemy_body(z)
+	z.desired_speed = 0.0
+	# Horizontal sweeps snap to terrain themselves. Only unsupported actors
+	# need a separate gravity sweep; idle grounded crowds do not recast floors.
+	if not z.get("grounded",false) or z.get("vertical_velocity",0.0) != 0:
+		physical_move(z,Vector2.ZERO,dt,true)
 	z.move_speed = 0.0
 	if z.get("shove_time",0.0) > 0:
 		var duration = minf(dt,z.shove_time)
 		z.shove_time -= duration
-		for i in 6:
-			var pushed: Vector2 = z.pos+z.shove_velocity*duration/6.0
-			if arena.clear(z.pos,pushed): z.pos = pushed
-			else: break
+		physical_move(z,z.shove_velocity,duration)
 	var delta: Vector2 = target.pos-z.pos
 	var distance = delta.length()
 	var contact = maxf(Data.contact(z.kind),Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS) if target.get("is_crystal",false) else Data.contact(z.kind)
@@ -619,7 +678,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	if z.state == "charging":
 		var next: Vector2 = z.pos+z.charge_direction*FOOTBALL_CHARGE_SPEED*dt
 		if not arena.clear(z.pos,next):
-			var barrier: Dictionary = defense_director.structures.barrier(z.pos,next)
+			var barrier: Dictionary = defense_director.structures.barrier(z.pos,next,z.kind)
 			if not barrier.is_empty():
 				damage_target(barrier,z,CHARGE_DAMAGE)
 				cancel_charge(z)
@@ -627,15 +686,14 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			if arena.clear(z.pos,next,true): cancel_charge(z)
 			else: stun(z,CHARGE_WALL_STUN)
 			return
-		z.move_speed = z.pos.distance_to(next)/maxf(dt,.001)
-		z.gait = z.get("gait",0.0)+z.pos.distance_to(next)*2.3
-		z.pos = next
+		physical_move(z,z.charge_direction*FOOTBALL_CHARGE_SPEED,dt)
+		if z.get("crowd_blocked",false): cancel_charge(z)
 		var charge_targets: Array = pawns.values()
 		if mode == "defense" and defense.get("crystal_hp",0) > 0: charge_targets.append(crystal_target())
 		charge_targets.append_array(defense_director.structures.targets(z.pos))
 		for victim in charge_targets:
 			var victim_contact: float = Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS if victim.get("is_crystal",false) else defense_director.structures.contact_radius(victim,z.kind) if victim.get("is_structure",false) else Data.contact(z.kind)
-			if victim.hp > 0 and z.pos.distance_to(victim.pos) <= victim_contact and victim.height-Data.enemy_ground_height(z.pos,map_id) < 1.1:
+			if victim.hp > 0 and z.pos.distance_to(victim.pos) <= victim_contact and victim.height-Data.enemy_ground_height(z.pos,map_id) < 1.1 and attack_lane_clear(z,victim):
 				if damage_target(victim,z,CHARGE_DAMAGE) and not victim.get("is_crystal",false) and not victim.get("is_structure",false): charge_knockback(victim,z.charge_direction)
 				z.state = "ready"
 				z.charge_cooldown = 3.2
@@ -643,6 +701,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		return
 	var contact_visible = (crystal_attack_visible(z) if target.get("is_crystal",false) else arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(target.pos.x,target.height+1.1,target.pos.y)).is_empty()) if distance <= contact else false
 	if target.get("is_structure",false): contact_visible = distance <= contact and defense_director.structures.visible(z,target)
+	contact_visible = contact_visible and attack_lane_clear(z,target)
 	if z.attack_time > 0 or (distance <= contact and contact_visible and absf(target.height-Data.enemy_ground_height(z.pos,map_id)) < 1.1):
 		var profile = Data.attack(z.kind,z.rage)
 		if z.attack_time <= 0:
@@ -650,7 +709,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			z.heading = atan2(delta.x,delta.y)
 			events.append({"kind":"enemy_windup","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
 		var locked_target: Dictionary = target_by_id(z.target)
-		if locked_target.get("structure_kind","") == "gate": locked_target = defense_director.structures.target(defense_director.structures.find(z.target),z.pos)
+		if locked_target.get("structure_kind","") == "gate": locked_target = defense_director.structures.target(defense_director.structures.find(z.target),z.pos,z.kind)
 		var windup_motion: float = minf(dt,maxf(0,profile.x-z.attack_time))
 		if windup_motion > 0 and not locked_target.is_empty() and locked_target.hp > 0:
 			advance_attack(z,locked_target,speed,windup_motion,contact)
@@ -662,7 +721,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			if mode == "defense" and defense.get("crystal_hp",0) > 0: victims.append(crystal_target())
 			victims.append_array(defense_director.structures.targets(z.pos))
 			var gate: Dictionary = defense_director.structures.find("bridge_gate")
-			if gate.hp > 0: victims.append(defense_director.structures.target(gate,z.pos))
+			if gate.hp > 0: victims.append(defense_director.structures.target(gate,z.pos,z.kind))
 			for victim in victims:
 				if mode == "defense" and z.kind == "giant" and victim.id != "crystal" and victim.id != z.target: continue
 				if z.kind != "giant" and victim.id != z.target: continue
@@ -676,6 +735,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 				elif victim.get("is_crystal",false):
 					if not crystal_attack_visible(z): continue
 				elif not arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(victim.pos.x,victim.height+1.1,victim.pos.y)).is_empty(): continue
+				if not attack_lane_clear(z,victim): continue
 				hit = damage_target(victim,z,10) or hit
 			events.append({"kind":"enemy_impact" if hit else "enemy_miss","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
 		if z.attack_time >= profile.y: z.attack_time = 0.0
@@ -691,41 +751,32 @@ func advance_attack(z: Dictionary, target: Dictionary, speed: float, dt: float, 
 	var direction = Vector2(sin(z.heading),cos(z.heading))
 	var travel: float = minf(speed*dt,maxf(0,offset.length()-contact*.88))
 	if travel <= 0: return
-	var old_position: Vector2 = z.pos
-	var next: Vector2 = z.pos+direction*travel
-	if arena.clear(z.pos,next): z.pos = next
-	else:
-		var x = Vector2(next.x,z.pos.y)
-		if arena.clear(z.pos,x): z.pos = x
-		var y = Vector2(z.pos.x,next.y)
-		if arena.clear(z.pos,y): z.pos = y
-	z.gait = z.get("gait",0.0)+z.pos.distance_to(old_position)*2.3
-	z.move_speed = z.pos.distance_to(old_position)/maxf(dt,.001)
+	physical_move(z,direction*travel/dt,dt)
 
 func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance: float, contact: float, stop_at_waypoint := false) -> void:
 	var waypoint: Vector2 = goal
 	var direction = (waypoint-z.pos).normalized()
 	var cached: Dictionary = paths.get(z.id,{"until":0.0,"path":PackedVector2Array(),"goal":Vector2.INF,"direct_until":0.0,"direct":false})
 	if elapsed >= cached.get("direct_until",0.0) or cached.get("direct_goal",Vector2.INF).distance_to(goal) > .65:
-		cached.direct = arena.clear(z.pos,goal)
+		cached.direct = arena.enemy_clear(z.pos,goal,z.kind)
 		cached.direct_goal = goal
 		cached.direct_until = elapsed+.15+fmod(z.id*.027,.12)
 		paths[z.id] = cached
 	if not cached.get("direct",false):
 		if elapsed >= cached.until or cached.goal.distance_to(goal) > 1.3:
 			cached.until = elapsed+.65+fmod(z.id*.037,.25)
-			cached.path = arena.path_to(z.pos,goal)
+			cached.path = arena.enemy_path(z.pos,goal,z.kind)
 			cached.goal = goal
 			paths[z.id] = cached
 		var route: PackedVector2Array = cached.path
-		while route.size() > 1 and z.pos.distance_to(route[0]) < .4: route.remove_at(0)
+		while route.size() > 1 and (z.pos.distance_to(route[0]) < .35 or arena.enemy_clear(z.pos,route[1],z.kind)): route.remove_at(0)
 		cached.path = route
 		if route.is_empty(): return
 		waypoint = route[0]
 		direction = (waypoint-z.pos).normalized()
 	var separation = Vector2.ZERO
 	var cell = Vector2i(floori(z.pos.x/3),floori(z.pos.y/3))
-	var radius = 2.1 if z.kind == "giant" else .85 if z.kind == "imp" else 1.65
+	var radius: float = EnemyBody.profile(z.kind).clearance*2+.2
 	for y in range(-1,2):
 		for x in range(-1,2):
 			for other in crowd_buckets.get(cell+Vector2i(x,y),[]):
@@ -734,18 +785,24 @@ func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance
 				var d = offset.length_squared()
 				if d > .001 and d < radius*radius: separation += offset.normalized()*(radius-sqrt(d))
 	direction = (direction+separation.limit_length(.75)).normalized()
-	var old_position: Vector2 = z.pos
-	var travel: float = minf(speed*dt,maxf(0,distance-contact*.88))
+	# A blocked queue keeps requesting motion. Small lateral steering gives
+	# rear ranks room to shuffle without pushing or teleporting through solids.
+	if z.get("crowd_blocked",false) and z.get("blocked_time",0.0) > .35:
+		var side = Vector2(-direction.y,direction.x)*sin(elapsed*2+z.id*2.4)*.5
+		direction = (direction+side).normalized()
+	var body = enemy_bodies[z.id]
+	var motion_dt = dt
+	if z.get("crowd_blocked",false) and z.get("blocked_time",0.0) > .25:
+		# The capsule remains solid every frame. Blocked rear ranks retry real
+		# sweeps at staggered intervals instead of repeating identical contacts.
+		z.desired_speed = speed
+		if elapsed < body.next_crowd_probe: return
+		motion_dt = maxf(dt,minf(.067,elapsed-body.last_move_at))
+		body.next_crowd_probe = elapsed+.05+fmod(z.id*.013,.014)
+	body.last_move_at = elapsed
+	var travel: float = minf(speed*motion_dt,maxf(0,distance-contact*.88))
 	if stop_at_waypoint: travel = minf(travel,waypoint.distance_to(z.pos))
-	var next: Vector2 = z.pos+direction*travel
-	if arena.clear(z.pos,next): z.pos = next
-	else:
-		var x = Vector2(next.x,z.pos.y)
-		if arena.clear(z.pos,x): z.pos = x
-		var y = Vector2(z.pos.x,next.y)
-		if arena.clear(z.pos,y): z.pos = y
-	z.gait = z.get("gait",0.0)+z.pos.distance_to(old_position)*2.3
-	z.move_speed = z.pos.distance_to(old_position)/maxf(dt,.001)
+	physical_move(z,direction*travel/maxf(motion_dt,.001),motion_dt)
 	if direction.length_squared() > .01: z.heading = atan2(direction.x,direction.y)
 
 func cancel_charge(z: Dictionary) -> void:
@@ -789,6 +846,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		kills += 1
 		p.kills += 1
 		paths.erase(z.id)
+		if enemy_bodies.has(z.id): enemy_bodies[z.id].retire()
 		events.append({"kind":"death","player":p.id,"position":position})
 	else:
 		# Small displacement is independent of shove velocity/time and stun duration.
@@ -796,8 +854,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		if not charging_on_hit and z.kind != "giant" and not (z.kind == "berserker" and z.rage) and elapsed >= z.get("hit_push_at",-1.0):
 			var source: Vector2 = push_origin if push_origin.is_finite() else p.get("pos",Vector2(position.x,position.z))
 			var push: Vector2 = (z.pos-source).normalized()*.22
-			for step in 4:
-				if arena.clear(z.pos,z.pos+push/4): z.pos += push/4
+			physical_move(z,push/.04,.04)
 			z["hit_push_at"] = elapsed+.04
 		if z.kind in ["normal","crawler"] and elapsed >= z.get("stagger_ready",-1.0):
 			stun(z,.18)

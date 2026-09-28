@@ -18,6 +18,7 @@
 | 水晶防守 | `scenes/graypine_defense.tscn`、`scripts/defense_world.gd` |
 | 一次性炮塔、地雷与栅栏门 | `scripts/defense_structures.gd`、`scripts/defense_structure_view.gd` |
 | 共享装备与场景几何 | `scripts/equipment_core.gd`、`scripts/equipment_props.gd`、`scripts/world_geometry.gd` |
+| 僵尸角色碰撞与体型 | `scripts/enemy_body.gd`（CharacterBody3D + CapsuleShape3D） |
 | 敌人积分分配 | `scripts/enemy_population.gd`、`scripts/defense_population.gd` |
 | 网络会话 | `scripts/session.gd` |
 | HUD 与菜单 | `scripts/interface.gd` |
@@ -29,8 +30,16 @@
 
 自动检查不代表原生 GPU 画质、真人难度与趣味性、实际音效听感或 Steam 双账号跨网络体验已经通过。需要截图或视觉验收时，按 [视觉检查](VISUAL_QA.md) 单独执行并记录观察结果。
 
-新增建筑专项 `tools/validate-defense-structures.gd` 覆盖炮塔躯干瞄准和步枪火力、射程与遮挡、九种敌人攻击建筑、栅栏门的原生玩家碰撞与跳跃、地雷复用手雷伤害和引信、波间持久状态及客户端快照。建筑改变阻挡和索敌规则，网络协议升级为 `undead-survivor-godot-16`，旧客户端不能混用。静态 Web 截图使用临时源码副本和 headless Chromium / SwiftShader，不启动桌面 Godot 图形进程。
+新增建筑专项 `tools/validate-defense-structures.gd` 覆盖炮塔躯干瞄准和步枪火力、射程与遮挡、九种敌人攻击建筑、栅栏门的原生玩家碰撞与跳跃、地雷复用手雷伤害和引信、波间持久状态及客户端快照。建筑改变阻挡和索敌规则，网络协议现为 `undead-survivor-godot-17`，旧客户端不能混用。静态 Web 截图使用临时源码副本和 headless Chromium / SwiftShader，不启动桌面 Godot 图形进程。
 
 炮塔位于缓坡出口左右的顶部平地（x=±6.3、z=-6、地面高 3 米），不占用斜坡；炮塔和栅栏门不显示头顶名称或血量。栅栏门移至缓坡顶部（z=-10、地面高 3 米），宽度 10.4 米覆盖整个坡口，使用金属钢条、横梁和铆钉。`tests/browser/defense-structures.spec.mjs` 在独立 headless Chromium 中布置敌人后，使用正常游戏物理循环观察绕门、攻击建筑、炮塔击杀与残骸、地雷首次爆炸及再次接触，以及九类僵尸在门外左、中、右攻击位置的炮塔支援射击；没有通过直接扣血来替代战斗。该专项不代表整关试玩或 Steam 双账号验证。
 
 提交遵循简体中文 Conventional Commits。远程仓库已配置时，只提交本次相关文件并推送当前分支，不包含用户已有的无关改动。
+
+## 僵尸角色碰撞与导航
+
+僵尸由真正的 CharacterBody3D 胶囊扫掠运动控制，并与玩家和其他活僵尸碰撞。普通、巨人和小鬼使用不同尺寸的竖直胶囊；爬行僵尸使用贴地的水平胶囊，转向需要有足够空间。角色重力只由场景地面承托，不把其他僵尸当成阶梯。Godot 会延迟更新运动学物体位置，因此每个角色同步一份相同形状的 PhysicsServer3D 原生静态碰撞代理，让同一房主 tick 中后更新的角色读到前一个角色的最新位置。代理没有刚体动力学、没有独立移动规则，也不使用距离检查替代胶囊检测。死亡瞬间关闭角色和代理碰撞，尸体动画仅用于显示，随后释放物理对象。
+
+导航按四种体型缓存 AStarGrid2D，从实际物理墙体、桥栏、岩石、断崖和禁止通行区建立净空；建筑存活状态改变时同步更新阻挡。连续终点检查避免网格格子精度使爬行僵尸停在炮塔攻击距离外。栅栏门的攻击位置限制在本体型能够通过的坡口内，从远端任一刷怪点前往本岸时都必须先攻击完整栅栏门。拥堵时仍提交前进与侧向尝试；已经被堵住的后排按约 15Hz 错开执行原生扫掠，碰撞体一直有效，正常行走、攻击及死亡碰撞解除仍逐帧处理；只有未被其他僵尸实体挡住的近战路线能够伤害目标。CPU 命中与 GPU 显示共用物理高度和姿态。
+
+本次浏览器验证是确定性布置后的真实 Web 游戏循环，不代表整关真人试玩、原生 GPU 画面验收或 Steam 双账号联网验证。

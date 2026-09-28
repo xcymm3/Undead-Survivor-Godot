@@ -102,7 +102,7 @@ func retire_actor(actor: Dictionary) -> void:
 
 static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stride: float) -> Transform3D:
 	var basis = Basis(Vector3.UP,z.heading).scaled(Vector3.ONE*Data.enemy_scale(z.kind))
-	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense"))
+	var ground: float = z.get("height",Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense")))
 	var transform = Transform3D(basis,Vector3(z.pos.x,ground+absf(stride)*.04,z.pos.y))
 	if z.hp > 0 and z.get("move_speed",0.0) <= .05 and z.attack_time <= 0 and z.state == "ready":
 		# Root pose is shared by skeleton rendering and CPU ray boxes: no invisible hitbox motion.
@@ -165,7 +165,7 @@ static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 	var phase: float = z.get("gait",elapsed*5+z.id)
 	var idle: bool = z.hp > 0 and not moving and z.attack_time <= 0 and z.state == "ready"
 	var stride = sin(phase) if moving else sin(elapsed*1.4+z.id*2.17)*.06 if idle else 0.0
-	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense"))
+	var ground: float = z.get("height",Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense")))
 	var death: float = smoothstep(0.0,1.0,clampf((.85-float(z.get("down",.85)))/.6,0,1)) if z.hp <= 0 else 0.0
 	var root = Transform3D(Basis(Vector3.UP,z.heading),Vector3(z.pos.x,ground+lerpf(.36,.27,death)+absf(stride)*.015,z.pos.y))
 	if idle:

@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'SpreadBallistics', 'ExportWeb')]
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'EnemyPhysics', 'SpreadBallistics', 'ExportWeb')]
     [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
@@ -23,6 +23,7 @@ switch ($Mode) {
     'Defense' { $arguments += @('--script', 'res://tools/validate-defense.gd', '--', '--silent', '--automation') }
     'DefenseSpawns' { $arguments += @('--script', 'res://tools/validate-defense-spawns.gd', '--', '--silent', '--automation') }
     'DefenseStructures' { $arguments += @('--script', 'res://tools/validate-defense-structures.gd', '--', '--silent', '--automation') }
+    'EnemyPhysics' { $arguments += @('--script', 'res://tools/benchmark-enemy-physics.gd', '--', '--silent', '--automation') }
     'NativeComponents' { $arguments += @('--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation') }
 }
 # Headless prevents graphics windows; CreateNoWindow prevents console flashes.

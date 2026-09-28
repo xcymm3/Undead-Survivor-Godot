@@ -36,9 +36,11 @@ static func bounds(item: Dictionary) -> Rect2:
 	var size = Vector2(GATE_WIDTH,GATE_DEPTH) if item.kind == "gate" else Vector2(1.3,1.3)
 	return Rect2(item.pos-size*.5,size)
 
-func target(item: Dictionary, from: Vector2) -> Dictionary:
+func target(item: Dictionary, from: Vector2, enemy_kind := "normal") -> Dictionary:
 	var point: Vector2 = item.pos
-	if item.kind == "gate": point.x = clampf(from.x,-GATE_WIDTH*.5+.25,GATE_WIDTH*.5-.25)
+	if item.kind == "gate":
+		var lane: float = Layout.RAMP.size.x/2-preload("res://scripts/enemy_body.gd").profile(enemy_kind).clearance-.2
+		point.x = clampf(from.x,-lane,lane)
 	return {"id":item.id,"pos":point,"height":item.height,"hp":item.hp,"is_structure":true,"structure_kind":item.kind}
 
 func targets(from: Vector2) -> Array:
@@ -47,12 +49,13 @@ func targets(from: Vector2) -> Array:
 		if item.kind == "turret" and item.hp > 0: result.append(target(item,from))
 	return result
 
-func barrier(from: Vector2, destination: Vector2) -> Dictionary:
+func barrier(from: Vector2, destination: Vector2, enemy_kind := "normal") -> Dictionary:
 	var gate = find("bridge_gate")
 	# Navigation still knows the route behind the gate. It must attack this
 	# obstruction rather than fail A* or select a target through it.
-	if gate.hp > 0 and sim.arena.segment_rect(from,destination,bounds(gate).grow(.95)):
-		return target(gate,from)
+	var crosses_lane = from.y < gate.pos.y and destination.y >= gate.pos.y
+	if gate.hp > 0 and (crosses_lane or sim.arena.segment_rect(from,destination,bounds(gate).grow(.95))):
+		return target(gate,from,enemy_kind)
 	return {}
 
 func contact_radius(target_data: Dictionary, enemy_kind: String) -> float:

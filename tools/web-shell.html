@@ -29,6 +29,7 @@
     if (new URLSearchParams(location.search).get('defenseOverview') === '1') qaArgs.push('--qa-defense-overview');
     if (new URLSearchParams(location.search).get('defenseSafeZone') === '1') qaArgs.push('--qa-defense-safe-zone');
     if (new URLSearchParams(location.search).has('structureCase')) qaArgs.push('--qa-defense-structures');
+    if (new URLSearchParams(location.search).has('crowdCase')) qaArgs.push('--qa-enemy-physics');
     engine.startGame({canvas: document.getElementById('canvas'), args: qaArgs,
       onPrintError: (...args) => console.error(...args)
     }).then(() => {

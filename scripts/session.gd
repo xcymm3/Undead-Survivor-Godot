@@ -8,7 +8,7 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-16"
+const PROTOCOL = "undead-survivor-godot-17"
 const PORT = 27777
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"
@@ -463,6 +463,9 @@ func valid_world(value) -> bool:
 	for z in value.zombies:
 		if not z is Dictionary or not z.has_all(["id","pos","kind","hp","armor","down","born","heading","attack_time","rage","rage_pause","state"]): return false
 		if z.get("map_id") != map_id: return false
+		for field in ["height","vertical_velocity"]:
+			if not (z.get(field) is float or z.get(field) is int) or not is_finite(z[field]): return false
+		if z.height < -10 or z.height > 32 or absf(z.vertical_velocity) > 100: return false
 		for field in ["chase_speed","move_speed"]:
 			if not (z.get(field) is float or z.get(field) is int) or not is_finite(z[field]) or z[field] < 0 or z[field] > 15: return false
 		if not z.pos is Vector2 or not z.pos.is_finite() or not Data.enemies.has(z.kind): return false
