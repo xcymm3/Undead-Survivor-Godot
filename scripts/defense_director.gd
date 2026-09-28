@@ -6,6 +6,7 @@ var sim:
 	get: return owner_ref.get_ref()
 var state: Dictionary
 var equipment
+var structures
 
 func _init(world) -> void:
 	owner_ref = weakref(world)
@@ -15,6 +16,7 @@ func _init(world) -> void:
 		"objective":"第 1 波待开始 · 按 T 准备 (0/%d)" % world.pawns.size(),"party":world.pawns.size(),"prop_clock":0.0,
 		"difficulty":world.defense_difficulty,"difficulty_multiplier":preload("res://scripts/defense_population.gd").difficulty_multiplier(world.defense_difficulty)
 	}
+	structures = preload("res://scripts/defense_structures.gd").new(self)
 	equipment = preload("res://scripts/defense_equipment.gd").new(self)
 	equipment.initialize()
 	sync_world()

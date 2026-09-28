@@ -9,6 +9,7 @@ var crystal_label: Label3D
 var wave_label: Label3D
 var pickup_animation: Node3D
 var armory_supply_views: Dictionary = {}
+var structure_view: Node3D
 
 func beam_between(title: String, a: Vector3, b: Vector3, radius: float, color: String) -> MeshInstance3D:
 	var beam = MeshInstance3D.new()
@@ -179,6 +180,10 @@ func _ready() -> void:
 	make_ramp()
 	make_safe_zone()
 	make_crystal()
+	structure_view = preload("res://scripts/defense_structure_view.gd").new()
+	structure_view.name = "DefenseStructures"
+	add_child(structure_view)
+	structure_view.sync({})
 	# 有碰撞的自然掩体避开中央进攻通道；峡谷段保留无围墙的断崖轮廓。
 	DefenseEnvironment.decorate(self)
 	for p in [Vector2(-12,43),Vector2(13,42)]:
@@ -195,6 +200,7 @@ func _ready() -> void:
 	set_meta("navigation_obstacles",obstacles)
 
 func sync(state: Dictionary) -> void:
+	if is_instance_valid(structure_view): structure_view.sync(state)
 	sync_projectiles(state)
 	if not is_instance_valid(pickup_animation):
 		pickup_animation = preload("res://scripts/interaction_motion.gd").new()

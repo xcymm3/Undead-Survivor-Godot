@@ -17,7 +17,7 @@ const excluded = full
       ...(release ? [] : ['windows-export-and-package']),
     ]
   : [
-      'crystal-defense', 'spread-ballistics', 'export-web', 'browser-technical',
+      'crystal-defense', 'defense-structures', 'spread-ballistics', 'export-web', 'browser-technical',
       'browser-defense-playthrough',
       'windows-export-and-package',
     ];
@@ -112,6 +112,8 @@ try {
   if (full) {
     const defense = await run('crystal-defense', engine, [...godotArgs, '--script', 'res://tools/validate-defense.gd', '--', '--silent', '--automation'], 300_000);
     if (!/DEFENSE VALIDATION: \d+ checks; 0 failures/.test(defense)) throw new Error('Missing crystal defense check marker.');
+    const structures = await run('defense-structures', engine, [...godotArgs, '--script', 'res://tools/validate-defense-structures.gd', '--', '--silent', '--automation']);
+    if (!/DEFENSE STRUCTURES: \d+ checks; 0 failures/.test(structures)) throw new Error('Missing defense structure check marker.');
     await run('spread-ballistics', engine, [...godotArgs, '--script', 'res://tools/validate-spread-ballistics.gd', '--', '--silent', '--automation'], 300_000);
     await mkdir('build/web', { recursive: true });
     await run('export-web', engine, [...godotArgs, '--export-release', 'Web QA']);

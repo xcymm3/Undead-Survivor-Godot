@@ -339,6 +339,15 @@ func handle_effects(events: Array) -> void:
 				sound.play_at(event.kind.replace("_","-"),event.position,-12)
 			"crystal_hit":
 				sound.play_at("enemy-impact",event.position,-7)
+			"turret_shot":
+				effects.tracer(event.from,event.to)
+				sound.play_at("gun",event.from,-12)
+			"structure_hit":
+				effects.burst(event.position,true,false)
+				sound.play_at("enemy-impact",event.position,-10)
+			"structure_destroyed":
+				effects.explosion(event.position)
+				sound.play_at("grenade-explosion",event.position,-10)
 			"explosion":
 				effects.explosion(event.position)
 				sound.play_at("grenade-explosion",event.position,-6)

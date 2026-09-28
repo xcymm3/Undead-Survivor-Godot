@@ -7,6 +7,7 @@ var bounds: Rect2
 var walk_regions: Array[PackedVector2Array] = []
 var obstacles: Array = []
 var collision_buckets: Dictionary = {}
+var structure_state: Array = []
 var grid = AStarGrid2D.new()
 var scenery: Node3D
 var sun: DirectionalLight3D
@@ -84,6 +85,8 @@ func index_obstacle(rect: Rect2, is_water: bool) -> void:
 
 func clear(a: Vector2, b: Vector2, allow_water := false) -> bool:
 	if not bounds.grow(-.95).has_point(a) or not bounds.grow(-.95).has_point(b): return false
+	for item in structure_state:
+		if item.hp > 0 and item.kind != "mine" and segment_rect(a,b,preload("res://scripts/defense_structures.gd").bounds(item).grow(.95)): return false
 	for y in range(floori(minf(a.y,b.y)/4),floori(maxf(a.y,b.y)/4)+1):
 		for x in range(floori(minf(a.x,b.x)/4),floori(maxf(a.x,b.x)/4)+1):
 			for obstacle in collision_buckets.get(Vector2i(x,y),[]):
@@ -124,9 +127,13 @@ func path_to(a: Vector2, b: Vector2) -> PackedVector2Array:
 	if start.x < 0 or end.x < 0: return PackedVector2Array()
 	return grid.get_point_path(start,end)
 
-func surface_hit(origin: Vector3, end: Vector3) -> Dictionary:
-	return get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(origin,end,1))
+func surface_hit(origin: Vector3, end: Vector3, ignore_structure := "") -> Dictionary:
+	var query = PhysicsRayQueryParameters3D.create(origin,end,1)
+	if not ignore_structure.is_empty() and scenery.structure_view:
+		query.exclude = scenery.structure_view.collision_rids(ignore_structure)
+	return get_world_3d().direct_space_state.intersect_ray(query)
 
 
 func sync_defense(state: Dictionary) -> void:
+	structure_state = state.get("structures",[])
 	scenery.sync(state)

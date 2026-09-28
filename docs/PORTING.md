@@ -16,6 +16,7 @@
 | 入口与地图目录 | `scripts/main.gd`、`scripts/map_catalog.gd` |
 | 玩法与房主权威 | `scripts/simulation.gd` |
 | 水晶防守 | `scenes/graypine_defense.tscn`、`scripts/defense_world.gd` |
+| 一次性炮塔、地雷与栅栏门 | `scripts/defense_structures.gd`、`scripts/defense_structure_view.gd` |
 | 共享装备与场景几何 | `scripts/equipment_core.gd`、`scripts/equipment_props.gd`、`scripts/world_geometry.gd` |
 | 敌人积分分配 | `scripts/enemy_population.gd`、`scripts/defense_population.gd` |
 | 网络会话 | `scripts/session.gd` |
@@ -27,5 +28,7 @@
 日常修改按 [自动测试与打包](AUTOMATION.md) 运行基础检查和相关专项。只有用户明确提出本地验收/全量测试时，才在本机运行全量流程；正式 EXE 发布的全量验收与打包交给 GitHub Actions。
 
 自动检查不代表原生 GPU 画质、真人难度与趣味性、实际音效听感或 Steam 双账号跨网络体验已经通过。需要截图或视觉验收时，按 [视觉检查](VISUAL_QA.md) 单独执行并记录观察结果。
+
+新增建筑专项 `tools/validate-defense-structures.gd` 覆盖炮塔躯干瞄准和步枪火力、射程与遮挡、九种敌人攻击建筑、栅栏门的原生玩家碰撞与跳跃、地雷复用手雷伤害和引信、波间持久状态及客户端快照。建筑改变阻挡和索敌规则，网络协议升级为 `undead-survivor-godot-14`，旧客户端不能混用。静态 Web 截图使用临时源码副本和 headless Chromium / SwiftShader，不启动桌面 Godot 图形进程。
 
 提交遵循简体中文 Conventional Commits。远程仓库已配置时，只提交本次相关文件并推送当前分支，不包含用户已有的无关改动。
