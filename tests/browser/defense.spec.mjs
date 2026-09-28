@@ -45,7 +45,7 @@ test('吊桥水晶防守使用真实输入换装并按 T 开战', async ({ page 
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });
   state = await snapshot(page);
   expect(state.defense.waiting).toBe(false);
-  expect(state.rest).toBe(0);
+  expect(state.defense.ready_players).toEqual([]);
   await page.waitForFunction(() => window.__survivorSnapshot?.enemies?.length > 0, null, { timeout: 10_000 });
   state = await snapshot(page);
   expect(state.wave).toBe(1);
