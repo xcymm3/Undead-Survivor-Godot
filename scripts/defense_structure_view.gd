@@ -10,6 +10,9 @@ func material(color: String, glow := false) -> StandardMaterial3D:
 		var mat = StandardMaterial3D.new()
 		mat.albedo_color = Color(color)
 		mat.roughness = .8
+		if color in ["58636b","798791","343e46","a4afb5"]:
+			mat.metallic = .8
+			mat.roughness = .38
 		if glow:
 			mat.emission_enabled = true
 			mat.emission = Color(color)
@@ -41,17 +44,6 @@ func cylinder(parent: Node3D, title: String, point: Vector3, radius: float, heig
 	view.position = point
 	parent.add_child(view)
 	return view
-
-func label(parent: Node3D, point: Vector3) -> Label3D:
-	var result = Label3D.new()
-	result.position = point
-	result.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
-	result.font_size = 48
-	result.pixel_size = .005
-	result.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	result.modulate = Color("e7dbba")
-	parent.add_child(result)
-	return result
 
 func collider(parent: Node3D, item: Dictionary) -> StaticBody3D:
 	var body = StaticBody3D.new()
@@ -107,22 +99,23 @@ func create_actor(item: Dictionary) -> Dictionary:
 		actor.yaw = yaw
 		actor.pitch = pitch
 		actor.flash = flash
-		actor.label = label(root,Vector3(0,2.3,0))
 	else:
 		actor.body = collider(root,item)
 		var panel = Node3D.new()
 		panel.name = "BreakablePanel"
 		root.add_child(panel)
 		for x in [-3.68,3.68]:
-			box(panel,"GatePost",Vector3(x,.525,0),Vector3(.28,1.05,.32),"50402b")
-			box(panel,"PostCap",Vector3(x,1.06,0),Vector3(.34,.08,.37),"9d8752")
+			box(panel,"GatePost",Vector3(x,.525,0),Vector3(.28,1.05,.32),"343e46")
+			box(panel,"PostCap",Vector3(x,1.06,0),Vector3(.34,.08,.37),"a4afb5")
 		for x in range(-5,6):
-			box(panel,"Picket",Vector3(x*.65,.48,0),Vector3(.35,.95,.17),"8b6741")
-		for y in [.25,.76]: box(panel,"CrossRail",Vector3(0,y,.11),Vector3(7.6,.17,.2),"684b30")
-		var brace = box(panel,"DiagonalBrace",Vector3(0,.49,.22),Vector3(7.05,.12,.14),"b08a52")
+			box(panel,"SteelBar",Vector3(x*.65,.48,0),Vector3(.14,.95,.17),"798791")
+		for x in range(-5,6):
+			for y in [.25,.76]:
+				box(panel,"Rivet",Vector3(x*.65,y,.235),Vector3(.07,.07,.045),"a4afb5")
+		for y in [.25,.76]: box(panel,"CrossRail",Vector3(0,y,.11),Vector3(7.6,.17,.2),"58636b")
+		var brace = box(panel,"DiagonalBrace",Vector3(0,.49,.22),Vector3(7.05,.12,.14),"798791")
 		brace.rotation.z = .09
 		actor.panel = panel
-		actor.label = label(root,Vector3(0,1.75,0))
 	actors[item.id] = actor
 	return actor
 
@@ -142,8 +135,6 @@ func sync(state: Dictionary) -> void:
 			continue
 		actor.body.collision_layer = 1 if item.hp > 0 else 0
 		var collapse = clampf((clock-item.destroyed_at)/.8,0,1) if item.hp <= 0 else 0.0
-		actor.label.text = ("左炮塔" if item.id == "turret_left" else "右炮塔" if item.kind == "turret" else "栅栏门")+" %d / %d" % [item.hp,item.max_hp]
-		actor.label.visible = item.hp > 0
 		if item.kind == "turret":
 			actor.yaw.rotation.y = item.yaw
 			actor.yaw.rotation.z = collapse*1.1
@@ -153,5 +144,5 @@ func sync(state: Dictionary) -> void:
 			actor.pitch.position.z = .045*maxf(0,1-(clock-item.get("fired_at",-1.0))/.12) if item.hp > 0 else 0.0
 		else:
 			actor.panel.rotation.x = collapse*1.48
-			# Keep fallen boards above the bridge planks instead of burying them.
+			# Keep fallen steel above the bridge planks instead of burying them.
 			actor.panel.position.y = collapse*.18

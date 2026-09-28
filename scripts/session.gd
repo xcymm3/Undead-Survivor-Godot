@@ -8,7 +8,7 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-14"
+const PROTOCOL = "undead-survivor-godot-15"
 const PORT = 27777
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"

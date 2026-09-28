@@ -39,12 +39,19 @@ func run() -> void:
 	check(manager.find("bridge_gate").hp == 1000,"Bridge gate starts with 1000 health")
 	check(Structures.MINE_DELAY == Equipment.GRENADE_FUSE,"Mine uses the grenade's exact fuse duration")
 	check(Structures.valid_state(sim.defense.structures),"Initial structure snapshot passes validation")
+	for item in sim.defense.structures:
+		var actor: Dictionary = game.arena.scenery.structure_view.actors[item.id]
+		check(actor.root.find_children("*","Label3D",true,false).is_empty(),"Buildings have no overhead names or health labels")
+		if item.kind == "turret":
+			check(item.pos.y > -10 and absf(item.pos.x) > 5 and item.height == 3,"Turret stands on the flat plateau beside the ramp exit")
+	var steel = game.arena.scenery.structure_view.actors.bridge_gate.panel.get_node("SteelBar")
+	check(steel.material_override.metallic > .7,"Gate bars use a metallic material")
 	for id in ["turret_left","turret_right"]:
 		var turret: Dictionary = manager.find(id)
 		var mirror_id = "turret_right" if id == "turret_left" else "turret_left"
 		manager.find(mirror_id).cooldown = 100.0
 		sim.zombies.clear()
-		sim.spawn(turret.pos+Vector2(0,-4),"normal")
+		sim.spawn(turret.pos+Vector2(0,4),"normal")
 		var z: Dictionary = sim.zombies[-1]
 		z.body = 10000.0
 		z.hp = 10000.0
@@ -60,7 +67,7 @@ func run() -> void:
 		manager.step(.12)
 		check(turret.shots == outside,"%s does not fire beyond ten metres" % id)
 		sim.zombies.clear()
-		sim.spawn(turret.pos+Vector2(0,-3),"crawler")
+		sim.spawn(turret.pos+Vector2(0,3),"crawler")
 		var crawler: Dictionary = sim.zombies[-1]
 		crawler.body = 10000.0
 		crawler.hp = 10000.0
@@ -87,10 +94,10 @@ func run() -> void:
 	box.size = Vector3(3,4,.4)
 	shape.shape = box
 	wall.add_child(shape)
-	wall.position = Vector3(turret.pos.x,3,turret.pos.y-2)
+	wall.position = Vector3(turret.pos.x,3,turret.pos.y+2)
 	game.arena.add_child(wall)
 	await physics_frame
-	sim.spawn(turret.pos+Vector2(0,-4),"normal")
+	sim.spawn(turret.pos+Vector2(0,4),"normal")
 	manager.step(.12)
 	check(turret.shots == 0,"Turret does not shoot through solid cover")
 	wall.free()
@@ -100,7 +107,7 @@ func run() -> void:
 		await physics_frame
 		manager = sim.defense_director.structures
 		var attacked: Dictionary = manager.find("turret_left")
-		sim.spawn(attacked.pos+Vector2(0,-4),kind)
+		sim.spawn(attacked.pos+Vector2(0,4),kind)
 		var z: Dictionary = sim.zombies[-1]
 		for i in 160:
 			sim.elapsed += .05
@@ -206,7 +213,7 @@ func run() -> void:
 	sim = fresh()
 	await physics_frame
 	manager = sim.defense_director.structures
-	sim.spawn(manager.find("turret_left").pos+Vector2(0,-4),"giant")
+	sim.spawn(manager.find("turret_left").pos+Vector2(0,4),"giant")
 	var integrated: Dictionary = sim.zombies[-1]
 	var original_hp: float = integrated.hp
 	for i in 10: sim.step(.05)

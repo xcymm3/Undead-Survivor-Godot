@@ -130,6 +130,7 @@ try {
       'tests/browser/close-combat.spec.mjs',
       'tests/browser/defense-overview.spec.mjs',
       'tests/browser/defense.spec.mjs',
+      'tests/browser/defense-structures.spec.mjs',
       'tests/browser/revolver-input.spec.mjs',
     ];
     await run('browser-technical', process.execPath, ['node_modules/@playwright/test/cli.js', 'test', ...browserGateSpecs], 900_000);
@@ -154,7 +155,7 @@ try {
 } finally {
   for (const child of children) stop(child);
   const boundaries = full
-    ? ['本次为发布技术门禁：包含水晶防守规则、弹道、Web 导出和五项浏览器技术检查。', '所有脚本试玩及所有联机测试均为独立观察项，不参与发布通过判定；原生 GPU、真人体验和 Steam 双账号联网也不在自动门禁范围内。']
+    ? ['本次为发布技术门禁：包含水晶防守规则、弹道、Web 导出和六组浏览器技术检查。', '所有脚本试玩及所有联机测试均为独立观察项，不参与发布通过判定；原生 GPU、真人体验和 Steam 双账号联网也不在自动门禁范围内。']
     : ['本次为基础测试：仅检查版本、资源导入和原生组件。整关、联网、Web、浏览器、视觉与发布项目未执行，也不计为通过。'];
   if (release) boundaries.push('本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。');
   const report = {
