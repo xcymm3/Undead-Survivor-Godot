@@ -335,7 +335,7 @@ func run() -> void:
 	sim.defense_ordinary_slots = 0
 	var variants: Array = []
 	for slot in 20: variants.append(sim.defense_population_kind("normal"))
-	check(variants.count("crawler") == 2 and variants[9] == "crawler" and variants[19] == "crawler","Defense uses the shared rule of every tenth ordinary zombie becoming a crawler")
+	check(variants.count("crawler") == 1 and variants[18] == "normal" and variants[19] == "crawler","Defense uses the shared rule of every twentieth ordinary zombie becoming a crawler")
 	var exact_wave_budgets = true
 	var exact_football_counts = true
 	var shared_rosters = true

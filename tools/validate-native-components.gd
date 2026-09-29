@@ -228,7 +228,7 @@ func validate_crawler() -> void:
 	var data = root.get_node("Data")
 	var before: int = sim.defense_ordinary_slots
 	for i in 20:
-		var expected = "crawler" if (before+i+1)%10 == 0 else "normal"
+		var expected = "crawler" if (before+i+1)%20 == 0 else "normal"
 		check(sim.defense_population_kind("normal") == expected,"Crawler ratio carries across defense waves "+str(i))
 	check(sim.defense_population_kind("football") == "football" and sim.defense_ordinary_slots == before+20,"Boss does not consume ordinary ratio")
 	check(preload("res://scripts/enemy_population.gd").COST.crawler == .75,"Crawler shares the ordinary cost of three quarters of a point")

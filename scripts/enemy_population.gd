@@ -4,12 +4,13 @@ const POINT_SCALE = 4
 const COST = {"normal":.75,"crawler":.75,"cone":2,"bucket":4,"imp":4,"shield":6,"berserker":12,"giant":12}
 const ELITES = ["cone","bucket","imp","shield","berserker","giant"]
 const PARTY_MULTIPLIER = [1.0,1.2,1.4,1.6]
+const CRAWLER_INTERVAL = 20
 
 static func party_multiplier(party_size: int) -> float:
 	return PARTY_MULTIPLIER[clampi(party_size,1,PARTY_MULTIPLIER.size())-1]
 
 static func population_kind(kind: String, ordinary_slot: int) -> String:
-	return "crawler" if kind == "normal" and ordinary_slot%10 == 0 else kind
+	return "crawler" if kind == "normal" and ordinary_slot%CRAWLER_INTERVAL == 0 else kind
 
 static func point_units(roster: Array) -> int:
 	var total = 0
