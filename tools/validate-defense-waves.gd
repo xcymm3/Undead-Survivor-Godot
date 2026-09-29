@@ -78,11 +78,10 @@ func run() -> void:
 			new_kinds.append(z.original)
 			all_spawned.append(z.original)
 			positions.append({"x":z.pos.x,"z":z.pos.y})
-			var body = sim.enemy_bodies[z.id]
-			var newborn_safe: bool = sim.arena.clear(z.pos,z.pos) and not body.overlaps(13)
+			var newborn_safe: bool = sim.arena.clear(z.pos,z.pos)
 			safe = safe and newborn_safe
 			if not newborn_safe:
-				spawn_issues.append({"id":z.id,"kind":z.original,"time":planner.clock,"pos":str(z.pos),"world":body.overlaps(1),"actors":body.overlaps(12)})
+				spawn_issues.append({"id":z.id,"kind":z.original,"time":planner.clock,"pos":str(z.pos)})
 		if not new_kinds.is_empty():
 			batches.append({"time":planner.clock,"count":new_kinds.size(),"kinds":counts(new_kinds),"positions":positions})
 		last_id = sim.next_id
@@ -94,14 +93,13 @@ func run() -> void:
 		on_time = on_time and batches[index].count == 5 and absf(batches[index].time-(index+1)) <= .02
 	check(on_time,"Real releases are thirty five-body batches at one-second intervals")
 	check(counts(all_spawned) == {"normal":125,"crawler":13,"cone":7,"bucket":5},"Actual first-wave variant conversion yields 125 normal, thirteen crawlers, seven cones and five buckets")
-	check(safe,"Every newborn native capsule is outside scenery and live enemy volumes")
+	check(safe,"Every newborn position is outside the 2D scenery clearance margin")
 	check(sim.pawns.solo.shots == 0 and sim.pawns.solo.shoves == 0,"The spawn observation performs no player firing or shoving")
 	# An occupied platform must retain its backlog and resume safely later.
 	planner.reset(5)
 	sim.spawned = 0
 	sim.roster = ["normal","normal","normal","normal","normal"]
 	sim.zombies.clear()
-	sim.sync_enemy_bodies()
 	var saved_candidates = planner.candidates.duplicate()
 	var saved_centres: Array = sim.map_definition.spawns.duplicate()
 	var blocked_point = Vector2(0,-74)
@@ -110,9 +108,8 @@ func run() -> void:
 	planner.candidates.append(blocked_point)
 	sim.spawn(blocked_point,"normal")
 	planner.step(30,sim.pawns.values())
-	check(sim.spawned == 0 and sim.roster.size() == 5,"Occupied spawn ground never discards quota or overlaps enemies")
+	check(sim.spawned == 0 and sim.roster.size() == 5,"Occupied spawn ground retains quota according to the spawn spacing policy")
 	sim.zombies.clear()
-	sim.sync_enemy_bodies()
 	sim.map_definition.spawns = saved_centres
 	planner.candidates = saved_candidates
 	planner.step(.1,sim.pawns.values())

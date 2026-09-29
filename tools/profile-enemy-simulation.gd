@@ -38,28 +38,6 @@ func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance
 	super.move_zombie(z,goal,speed,dt,distance,contact,stop_at_waypoint)
 	end_scope()
 
-func physical_move(z: Dictionary, velocity: Vector2, dt: float, gravity := false) -> void:
-	begin_scope("enemy_movement")
-	super.physical_move(z,velocity,dt,gravity)
-	end_scope()
-
-func sync_enemy_bodies() -> void:
-	begin_scope("enemy_sync")
-	super.sync_enemy_bodies()
-	end_scope()
-
-func enemy_body(z: Dictionary):
-	begin_scope("enemy_sync")
-	var result = super.enemy_body(z)
-	end_scope()
-	return result
-
-func attack_lane_clear(z: Dictionary, victim: Dictionary) -> bool:
-	begin_scope("attack_occlusion")
-	var result = super.attack_lane_clear(z,victim)
-	end_scope()
-	return result
-
 func fire(p: Dictionary, w: Dictionary) -> void:
 	begin_scope("shooting")
 	shot_calls += 1

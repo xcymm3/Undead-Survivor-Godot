@@ -485,6 +485,7 @@ func run() -> void:
 	await validate_flame()
 	await validate_sniper_penetration()
 	validate_close_combat()
+	validate_enemy_overlap()
 	validate_revolver()
 	validate_sight_only_changes()
 	load("res://tools/validate-weapon-models.gd").validate(game,check)
@@ -950,6 +951,47 @@ func validate_close_combat() -> void:
 	game.reset_mouse_buttons()
 	for key in saved: p[key] = saved[key]
 	sim.zombies = original_zombies
+
+func validate_enemy_overlap() -> void:
+	var sim = game.sim
+	var original_zombies: Array = sim.zombies
+	var original_paths: Dictionary = sim.paths
+	var original_buckets: Dictionary = sim.crowd_buckets
+	var p: Dictionary = game.local_pawn()
+	var saved_position: Vector2 = p.pos
+	var saved_height: float = p.height
+	sim.zombies = []
+	sim.paths = {}
+	sim.crowd_buckets = {}
+	for index in 300:
+		sim.spawn(Vector2(8,25),"crawler" if index%10 == 9 else "normal")
+	check(sim.zombies.size() == 300 and sim.zombies.all(func(z): return z.pos == Vector2(8,25)),"Three hundred living enemies may occupy the same position")
+	for z in sim.zombies:
+		sim.move_zombie(z,Vector2(8,30),z.chase_speed,1.0/60,5.0,1.0)
+	check(sim.zombies.all(func(z): return z.pos.y > 25 and z.pos.distance_to(sim.zombies[0].pos) < .03),"Overlapping enemies all advance without hard mutual collision")
+	var query = PhysicsRayQueryParameters3D.create(Vector3(8,4,23),Vector3(8,4,28),8)
+	check(game.arena.get_world_3d().direct_space_state.intersect_ray(query).is_empty(),"Enemies create no native collision actors or proxies")
+	p.pos = Vector2(8,29)
+	p.height = 3.0
+	check(not sim.can_move(p,Vector2(8,25.2)) and sim.can_move(p,Vector2(8,30)),"Legacy player distance blocking prevents entry but permits escape")
+	var gate: Dictionary = sim.defense_director.structures.find("bridge_gate")
+	var saved_hp: int = gate.hp
+	gate.hp = 1000
+	sim.zombies.clear()
+	sim.spawn(Vector2(0,-13),"normal")
+	var pushed: Dictionary = sim.zombies[0]
+	pushed.shove_time = 1.0
+	pushed.shove_velocity = Vector2(0,20)
+	pushed.state = "stunned"
+	pushed.state_time = 1.0
+	sim.update_zombie(pushed,p,.2)
+	check(pushed.pos.y < -10 and game.arena.clear(pushed.pos,pushed.pos),"Legacy shove movement remains outside the intact gate obstacle")
+	gate.hp = saved_hp
+	p.pos = saved_position
+	p.height = saved_height
+	sim.zombies = original_zombies
+	sim.paths = original_paths
+	sim.crowd_buckets = original_buckets
 
 func validate_inventory() -> void:
 	game.return_home()

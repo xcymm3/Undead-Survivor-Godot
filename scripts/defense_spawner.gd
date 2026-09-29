@@ -4,8 +4,6 @@ const DURATION = 30.0
 const MIN_BATCH_SIZE = 5
 const MAX_BATCHES = 30
 const SPACING = 2.4
-const Body = preload("res://scripts/enemy_body.gd")
-const Population = preload("res://scripts/enemy_population.gd")
 var owner_ref: WeakRef
 var sim:
 	get: return owner_ref.get_ref()
@@ -16,7 +14,6 @@ var interval = 0.0
 var batch_size = 0
 var retries_at = 0.0
 var candidates: Array[Vector2] = []
-var spawn_queries: Dictionary = {}
 
 func _init(owner) -> void:
 	owner_ref = weakref(owner)
@@ -50,7 +47,7 @@ func step(dt: float, living: Array) -> void:
 	var due = scheduled_count(clock)-sim.spawned
 	if due <= 0 or sim.roster.is_empty() or clock < retries_at: return
 	# Blocked points keep their quota. Retry safely rather than discarding
-	# enemies, overlapping solid capsules or dumping the entire wave.
+	# enemies or dumping the entire wave. Spawn spacing is only placement policy.
 	retries_at = clock+.1
 	var occupied = {}
 	for z in sim.zombies:
@@ -68,33 +65,11 @@ func step(dt: float, living: Array) -> void:
 		if released >= mini(due,batch_size) or sim.roster.is_empty(): break
 		if not sim.arena.clear(point,point) or near_occupied(occupied,point): continue
 		if living.any(func(p): return p.pos.distance_squared_to(point) < 64): continue
-		# Peek at the crawler conversion without consuming its slot on a
-		# rejected point. Query the actual body volume before creating it.
-		var kind: String = sim.roster[0]
-		if kind == "normal": kind = Population.population_kind(kind,sim.defense_ordinary_slots+1)
-		if not capsule_clear(point,kind): continue
 		sim.spawn(point,sim.defense_population_kind(sim.roster[0]))
 		sim.roster.remove_at(0)
 		sim.spawned += 1
 		released += 1
 		add_occupied(occupied,point)
-
-func capsule_clear(point: Vector2, kind: String) -> bool:
-	var profile: Dictionary = Body.profile(kind)
-	if not spawn_queries.has(profile.key):
-		var shape = CapsuleShape3D.new()
-		shape.radius = profile.radius-.005
-		shape.height = profile.height-.01
-		var query = PhysicsShapeQueryParameters3D.new()
-		query.shape = shape
-		query.collision_mask = 13
-		spawn_queries[profile.key] = query
-	var query: PhysicsShapeQueryParameters3D = spawn_queries[profile.key]
-	var crawler = profile.key == "crawler"
-	var data = sim.arena.get_node("/root/Data")
-	var centre = Vector3(point.x,data.enemy_ground_height(point,sim.map_id)+(profile.radius+.02 if crawler else profile.height/2),point.y+(.1 if crawler else 0))
-	query.transform = Transform3D(Basis(Vector3.RIGHT,PI/2) if crawler else Basis.IDENTITY,centre)
-	return sim.arena.get_world_3d().direct_space_state.intersect_shape(query,1).is_empty()
 
 func add_occupied(cells: Dictionary, point: Vector2) -> void:
 	var key = Vector2i(floori(point.x/3),floori(point.y/3))

@@ -112,13 +112,13 @@ func stage_case(count: int, scenario: String) -> Dictionary:
 		for row in 8:
 			for column in 33:
 				var point = Vector2(-25.6+column*1.6,-64-row*1.65)
-				if sim.arena.clear(point,point) and sim.defense_spawner.capsule_clear(point,"crawler"): positions.append(point)
+				if sim.arena.clear(point,point): positions.append(point)
 	else:
 		for row in range(32):
 			for column in range(33):
 				var point = Vector2(-25.6+column*1.6,row*1.65) if scenario == "movement" else Vector2(-25.6+column*1.6,34-row*1.65)
 				if point.y < 0 or point.y > 35: continue
-				if sim.arena.clear(point,point) and sim.defense_spawner.capsule_clear(point,"crawler"):
+				if sim.arena.clear(point,point):
 					positions.append(point)
 				if positions.size() >= count: break
 			if positions.size() >= count: break
@@ -165,7 +165,7 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 			if not target.is_empty():
 				var delta: Vector2 = target.pos-p.pos
 				p.yaw = atan2(-delta.x,-delta.y)
-				p.pitch = atan2(target.height+1.2-(p.height+1.7),maxf(delta.length(),.001))
+				p.pitch = atan2(data.enemy_ground_height(target.pos,sim.map_id)+1.2-(p.height+1.7),maxf(delta.length(),.001))
 		sim.submit("solo",{"x":0,"y":0,"yaw":p.yaw,"pitch":p.pitch,"weapon":staged.weapon,"slot":1,"fire":firing})
 		var before = Time.get_ticks_usec()
 		var shots_before: int = p.shots
@@ -187,7 +187,7 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 		game.enemies.sync(sim.zombies,sim.elapsed,false)
 		var animation_ms = (Time.get_ticks_usec()-before)/1000.0
 		if frame >= warmup:
-			var sample = {"frame":frame-warmup,"simulation_ms":simulation_ms,"enemy_capsule_ms":float(sim.enemy_physics_usec)/1000.0,"animation_submit_ms":animation_ms,"crosshair_ms":aim_ms,"cpu_sections_ms":simulation_ms+animation_ms+aim_ms,"shot_calls":p.shots-shots_before,"inclusive_ms":{},"exclusive_ms":{}}
+			var sample = {"frame":frame-warmup,"simulation_ms":simulation_ms,"enemy_capsule_ms":0.0,"animation_submit_ms":animation_ms,"crosshair_ms":aim_ms,"cpu_sections_ms":simulation_ms+animation_ms+aim_ms,"shot_calls":p.shots-shots_before,"inclusive_ms":{},"exclusive_ms":{}}
 			if instrumented:
 				for label in sim.inclusive: sample.inclusive_ms[label] = float(sim.inclusive[label])/1000.0
 				for label in sim.exclusive: sample.exclusive_ms[label] = float(sim.exclusive[label])/1000.0
@@ -196,7 +196,7 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 			cpu_total += sample.cpu_sections_ms
 			for z in sim.zombies:
 				moving_total += int(z.move_speed > .05)
-				blocked_total += int(z.get("crowd_blocked",false))
+				blocked_total += int(z.move_speed <= .05)
 		else:
 			initial_hits = p.hits
 		valid = valid and not sim.failed and sim.zombies.size() == count
@@ -210,5 +210,5 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 func save_results(failed: bool) -> void:
 	DirAccess.make_dir_recursive_absolute("res://artifacts")
 	var output = FileAccess.open("res://artifacts/enemy-cpu-profile.json",FileAccess.WRITE)
-	output.store_string(JSON.stringify({"engine":Engine.get_version_info().string,"display_driver":DisplayServer.get_name(),"instrumented":instrumented,"physics_hz":Engine.physics_ticks_per_second,"warmup_frames":warmup,"sample_frames":sample_count,"rounds":rounds,"enemy_mix":"90% normal, 10% crawler","failed":failed,"cases":all_results},"\t"))
+	output.store_string(JSON.stringify({"movement_model":"2d-overlap", "engine":Engine.get_version_info().string,"display_driver":DisplayServer.get_name(),"instrumented":instrumented,"physics_hz":Engine.physics_ticks_per_second,"warmup_frames":warmup,"sample_frames":sample_count,"rounds":rounds,"enemy_mix":"90% normal, 10% crawler","failed":failed,"cases":all_results},"\t"))
 	output.close()

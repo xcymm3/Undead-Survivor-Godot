@@ -6,6 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const inputArg = process.argv.find(arg => arg.startsWith('--input='));
 const input = path.resolve(root, inputArg?.slice(8) ?? 'artifacts/enemy-cpu-profile/results.json');
 const raw = JSON.parse(await readFile(input, 'utf8'));
+const overlapMovement = raw.movement_model === '2d-overlap';
 if (raw.failed || raw.display_driver !== 'headless') throw new Error('Profile did not complete successfully in headless mode');
 const labels = { movement: '移动', bridge: '桥口拥堵', rifle: '持续射击·步枪', 'auto-shotgun': '持续射击·自动霰弹枪', flamethrower: '持续射击·喷火器' };
 const stages = {
@@ -89,11 +90,15 @@ const lines = [
   `源码提交：\`${raw.source.head}\`。测量使用未提交文件在内的冻结源码副本，完整树 SHA-256：\`${raw.source.sourceDigest}\`。该摘要对应测量时版本，后续添加的报告不在该摘要中。`, '',
   '## 测量口径', '',
   `- 50 / 100 / 200 / 300 只敌人，每组 ${raw.rounds} 轮，第二轮反转数量和场景顺序。每轮预热 ${raw.warmup_frames} 帧，然后采样 ${raw.sample_frames} 帧；固定 dt=1/60。计时单位为毫秒，P95/P99 使用 nearest-rank。`,
-  '- 敌人构成为 90% 普通、10% 爬行。使用真实 simulation、CharacterBody3D、碰撞代理、导航、武器命中和骨骼姿态提交，不包含精英与橄榄球混合压力。',
+  overlapMovement
+    ? '- 敌人构成为 90% 普通、10% 爬行。使用真实 simulation、二维位置移动、障碍矩形导航、软分离、武器命中和骨骼姿态提交；允许僵尸重叠，不包含精英与橄榄球混合压力。'
+    : '- 敌人构成为 90% 普通、10% 爬行。使用真实 simulation、CharacterBody3D、碰撞代理、导航、武器命中和骨骼姿态提交，不包含精英与橄榄球混合压力。',
   '- 移动：本岸宽区域朝目标前进；桥口：完整栅栏门前五列排队，超出桥容量的敌人从实际远岸接近；射击：本岸敌人接近无敌玩家，持续追瞄最近敌人，分别使用步枪、自动霰弹枪和喷火器。',
   '- 炮塔关闭、地雷停用；敌人和水晶高生命，玩家无敌，弹药在测量区间外补充。这用于保持固定数量，包含真实伤害与硬直，不代表正常击杀后的实战总体开销。',
   '- CPU 段合计 = simulation.step 墙钟耗时 + 准星扫描 + 动画姿态计算与提交。模拟内部已包含物理和射击，不能再次相加。它不是完整引擎帧时间，也不是实测 FPS。',
-  '- 胶囊移动为生产代码 enemy_physics_usec：扫掠、地面、重叠与代理更新。射击结算为 fire()：摄像机/枪口射线、逐弹丸候选遍历、身体命中、排序、伤害和事件；不是只计单个碰撞算法。',
+  overlapMovement
+    ? '- 二维移动版本没有敌人胶囊，兼容字段 enemy_capsule_ms 固定为 0，不能解读为整个引擎物理耗时为零。移动计入寻路与邻居避让、敌人状态与攻击；blocked_fraction 记录静止敌人比例，包含障碍停留和攻击停留。射击结算仍为完整 fire() 耗时。'
+    : '- 胶囊移动为生产代码 enemy_physics_usec：扫掠、地面、重叠与代理更新。射击结算为 fire()：摄像机/枪口射线、逐弹丸候选遍历、身体命中、排序、伤害和事件；不是只计单个碰撞算法。',
   '- 模拟分段使用嵌套计时扣除子调用，exclusive 分段可相加；胶囊移动计时嵌套在物理移动分段内，不能再加一次。脚本计时和探针本身存在开销，结果为带探针诊断值。',
   '- 动画只测 CPU 计算和 API 提交，headless 不测真实 GPU 蒙皮/上传/绘制。引擎上一物理帧 Performance.TIME_PHYSICS_PROCESS 单独保留在原始数据中，仅作上下文，不作为可加分段。',
   '- 不含网络快照、声音、特效、HUD、第一人称武器同步、独立引擎物理步与 GPU；没有运行视觉验收、全量测试或发布门禁。运行中其他桌面任务可能影响尖峰，两轮差异单独保留。', '',
