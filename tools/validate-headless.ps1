@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'DefenseWaves', 'EnemyPhysics', 'EnemyOptimization', 'SpreadBallistics', 'ExportWeb')]
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'DefenseWaves', 'SpreadBallistics', 'ExportWeb')]
     [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
@@ -24,8 +24,6 @@ switch ($Mode) {
     'DefenseSpawns' { $arguments += @('--script', 'res://tools/validate-defense-spawns.gd', '--', '--silent', '--automation') }
     'DefenseWaves' { $arguments += @('--script', 'res://tools/validate-defense-waves.gd', '--', '--silent', '--automation') }
     'DefenseStructures' { $arguments += @('--script', 'res://tools/validate-defense-structures.gd', '--', '--silent', '--automation') }
-    'EnemyPhysics' { $arguments += @('--script', 'res://tools/benchmark-enemy-physics.gd', '--', '--silent', '--automation') }
-    'EnemyOptimization' { $arguments += @('--script', 'res://tools/validate-enemy-optimization.gd', '--', '--silent', '--automation') }
     'NativeComponents' { $arguments += @('--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation') }
 }
 # Headless prevents graphics windows; CreateNoWindow prevents console flashes.

@@ -11,12 +11,6 @@ var structure_state: Array = []
 var grid = AStarGrid2D.new()
 var scenery: Node3D
 var sun: DirectionalLight3D
-var enemy_grids: Dictionary = {}
-var navigation_revision = 0
-var layout_signature = ""
-var shared_routes: Dictionary = {}
-var route_cache_hits = 0
-var route_cache_misses = 0
 const CELL = .65
 
 func _ready() -> void:
@@ -71,7 +65,7 @@ func segment_rect(a: Vector2, b: Vector2, rect: Rect2) -> bool:
 	var far = 1.0
 	var delta = b-a
 	for axis in range(2):
-		if delta[axis] == 0.0:
+		if absf(delta[axis]) < .000001:
 			if a[axis] < rect.position[axis] or a[axis] > rect.end[axis]: return false
 		else:
 			var t1 = (rect.position[axis]-a[axis])/delta[axis]
@@ -142,147 +136,4 @@ func surface_hit(origin: Vector3, end: Vector3, ignore_structure := "") -> Dicti
 
 func sync_defense(state: Dictionary) -> void:
 	structure_state = state.get("structures",[])
-	refresh_navigation_revision()
 	scenery.sync(state)
-
-func refresh_navigation_revision() -> void:
-	var signature = ""
-	for item in structure_state:
-		if item.hp > 0 and item.kind != "mine": signature += item.id+";"
-	if signature != layout_signature:
-		layout_signature = signature
-		navigation_revision += 1
-		shared_routes.clear()
-
-func enemy_grid(kind: String) -> AStarGrid2D:
-	var profile = preload("res://scripts/enemy_body.gd").profile(kind)
-	var key: String = profile.key
-	# Also supports deliberate authority fixtures that directly alter HP.
-	refresh_navigation_revision()
-	var signature = layout_signature
-	if not enemy_grids.has(key):
-		var navigation = AStarGrid2D.new()
-		navigation.region = grid.region
-		navigation.cell_size = grid.cell_size
-		navigation.offset = grid.offset
-		navigation.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-		navigation.update()
-		var shape = CylinderShape3D.new()
-		shape.radius = profile.clearance
-		shape.height = (.72 if kind == "crawler" else profile.height)-.24
-		var query = PhysicsShapeQueryParameters3D.new()
-		query.shape = shape
-		query.collision_mask = 1
-		var excluded: Array[RID] = []
-		for item in structure_state:
-			excluded.append_array(scenery.structure_view.collision_rids(item.id))
-		query.exclude = excluded
-		var static_solid = PackedByteArray()
-		static_solid.resize(navigation.region.size.x*navigation.region.size.y)
-		for y in navigation.region.size.y:
-			for x in navigation.region.size.x:
-				var p = navigation.get_point_position(Vector2i(x,y))
-				var solid = not bounds.grow(-profile.clearance).has_point(p)
-				# Authored void boundaries and actual physical scenery share the
-				# same per-body clearance. Rails, cliff faces and posts are queried
-				# even when their old art metadata omitted navigation obstacles.
-				for obstacle in obstacles:
-					var rect = Rect2(obstacle.minX,obstacle.minZ,obstacle.maxX-obstacle.minX,obstacle.maxZ-obstacle.minZ).grow(profile.clearance)
-					if rect.has_point(p):
-						solid = true
-						break
-				if not solid:
-					query.transform = Transform3D(Basis.IDENTITY,Vector3(p.x,Data.enemy_ground_height(p,map_id)+.24+shape.height/2,p.y))
-					solid = not get_world_3d().direct_space_state.intersect_shape(query,1).is_empty()
-				static_solid[y*navigation.region.size.x+x] = int(solid)
-		enemy_grids[key] = {"grid":navigation,"solid":static_solid,"signature":"!"}
-	var cached: Dictionary = enemy_grids[key]
-	var result: AStarGrid2D = cached.grid
-	if cached.signature != signature:
-		for y in result.region.size.y:
-			for x in result.region.size.x:
-				var cell = Vector2i(x,y)
-				var solid = cached.solid[y*result.region.size.x+x] != 0
-				if not solid:
-					for item in structure_state:
-						if item.hp > 0 and item.kind != "mine" and preload("res://scripts/defense_structures.gd").bounds(item).grow(profile.clearance).has_point(result.get_point_position(cell)):
-							solid = true
-							break
-				result.set_point_solid(cell,solid)
-		cached.signature = signature
-	return result
-
-func enemy_cell(navigation: AStarGrid2D, p: Vector2) -> Vector2i:
-	var base = Vector2i(((p-bounds.position)/CELL).round())
-	var best = Vector2i(-1,-1)
-	var distance = INF
-	for y in range(-5,6):
-		for x in range(-5,6):
-			var cell = base+Vector2i(x,y)
-			if not navigation.is_in_boundsv(cell) or navigation.is_point_solid(cell): continue
-			var point = navigation.get_point_position(cell)
-			var d = p.distance_squared_to(point)
-			if d >= distance: continue
-			# Endpoint projection may recover a clearance boundary but must not
-			# link to the other side of a wall, gate or cliff.
-			var hit = surface_hit(Vector3(p.x,Data.enemy_ground_height(p,map_id)+.3,p.y),Vector3(point.x,Data.enemy_ground_height(point,map_id)+.3,point.y))
-			if not hit.is_empty(): continue
-			best = cell
-			distance = d
-	return best
-
-func enemy_clear(a: Vector2, b: Vector2, kind: String) -> bool:
-	var navigation = enemy_grid(kind)
-	var steps = maxi(1,ceili(a.distance_to(b)/(CELL*.4)))
-	for i in steps+1:
-		var p = a.lerp(b,float(i)/steps)
-		var cell = Vector2i(((p-bounds.position)/CELL).round())
-		if not navigation.is_in_boundsv(cell): return false
-		if navigation.is_point_solid(cell) and not enemy_point_clear(p,kind): return false
-	return true
-
-func enemy_point_clear(p: Vector2, kind: String) -> bool:
-	var profile = preload("res://scripts/enemy_body.gd").profile(kind)
-	if not bounds.grow(-profile.clearance).has_point(p): return false
-	for obstacle in obstacles:
-		if Rect2(obstacle.minX,obstacle.minZ,obstacle.maxX-obstacle.minX,obstacle.maxZ-obstacle.minZ).grow(profile.clearance).has_point(p): return false
-	var shape = CylinderShape3D.new()
-	shape.radius = profile.clearance
-	shape.height = (.72 if kind == "crawler" else profile.height)-.24
-	var query = PhysicsShapeQueryParameters3D.new()
-	query.shape = shape
-	query.collision_mask = 1
-	query.transform = Transform3D(Basis.IDENTITY,Vector3(p.x,Data.enemy_ground_height(p,map_id)+.24+shape.height/2,p.y))
-	return get_world_3d().direct_space_state.intersect_shape(query,1).is_empty()
-
-func enemy_path(a: Vector2, b: Vector2, kind: String) -> PackedVector2Array:
-	var navigation = enemy_grid(kind)
-	var first = enemy_cell(navigation,a)
-	var last = enemy_cell(navigation,b)
-	if first.x < 0 or last.x < 0: return PackedVector2Array()
-	var tile = Vector2i(floori(first.x/8.0),floori(first.y/8.0))
-	var goal_tile = Vector2i(floori(last.x/8.0),floori(last.y/8.0))
-	var key = [preload("res://scripts/enemy_body.gd").profile(kind).key,goal_tile,tile]
-	var route = PackedVector2Array()
-	if shared_routes.has(key):
-		var corridor: PackedVector2Array = shared_routes[key]
-		var end_point = navigation.get_point_position(last)
-		var tail_clear = not corridor.is_empty() and (corridor[-1] == end_point or enemy_clear(corridor[-1],end_point,kind))
-		var nearest = -1
-		var nearest_distance = INF
-		for i in (mini(12,corridor.size()) if tail_clear else 0):
-			var d = a.distance_squared_to(corridor[i])
-			if d < nearest_distance and enemy_clear(a,corridor[i],kind):
-				nearest = i
-				nearest_distance = d
-		if nearest >= 0:
-			route = corridor.slice(nearest)
-			if route[-1] != end_point: route.append(end_point)
-			route_cache_hits += 1
-	if route.is_empty():
-		route = navigation.get_point_path(first,last)
-		route_cache_misses += 1
-		if shared_routes.size() >= 512: shared_routes.clear()
-		shared_routes[key] = route.duplicate()
-	if not route.is_empty() and enemy_clear(route[-1],b,kind): route.append(b)
-	return route

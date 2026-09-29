@@ -52,7 +52,9 @@ func stage() -> void:
 		game.sim.spawn(manager.find("turret_left").pos+Vector2(1,5),"crawler")
 	elif scenario == "destroy":
 		for i in 16:
-			game.sim.spawn(manager.find("turret_left").pos+Vector2((i%4-1.5)*1.65,3.2+floori(i/4)*1.65),"giant")
+			var angle = float(i)/15*PI
+			var radius = 2.3+float(i%2)*1.3
+			game.sim.spawn(manager.find("turret_left").pos+Vector2(cos(angle),sin(angle))*radius,"giant")
 	else:
 		game.sim.spawn(manager.find("crystal_mine").pos+Vector2(0,-2),"normal")
 	game.ui.root.visible = false

@@ -13,8 +13,8 @@ static func eye_height(p: Dictionary) -> float:
 	return 1.7-.6*float(p.get("crouch",0.0))
 
 func _init() -> void:
-	collision_layer = 4
-	collision_mask = 9
+	collision_layer = 0
+	collision_mask = 1
 	safe_margin = .001
 	floor_snap_length = .08
 	collider = CollisionShape3D.new()
@@ -28,7 +28,6 @@ func _init() -> void:
 func sync_from(p: Dictionary) -> void:
 	set_height(lerpf(HEIGHT,CROUCH_HEIGHT,float(p.get("crouch",0.0))))
 	position = Vector3(p.pos.x,p.height,p.pos.y)
-	force_update_transform()
 	velocity.y = p.velocity
 	grounded = false
 	if velocity.y <= 0:
@@ -106,4 +105,3 @@ func sync_to(p: Dictionary) -> void:
 	p.height = position.y
 	p.velocity = velocity.y
 	p.grounded = grounded
-	force_update_transform()

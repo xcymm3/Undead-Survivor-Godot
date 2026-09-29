@@ -683,19 +683,17 @@ func validate_sight_only_changes() -> void:
 
 func validate_buffer() -> void:
 	var buffer = load("res://scripts/snapshot_buffer.gd").new()
-	var a = {"elapsed":1.0,"pawns":{},"zombies":[{"id":1,"pos":Vector2.ZERO,"hp":10,"height":0.0,"heading":deg_to_rad(179),"gait":1.0,"state":"ready","attack_time":0.0}]}
+	var a = {"elapsed":1.0,"pawns":{},"zombies":[{"id":1,"pos":Vector2.ZERO,"hp":10,"heading":deg_to_rad(179),"gait":1.0,"state":"ready","attack_time":0.0}]}
 	var b: Dictionary = a.duplicate(true)
 	b.elapsed = 1.1
 	b.zombies[0].pos = Vector2(1,0)
 	b.zombies[0].heading = deg_to_rad(-179)
 	b.zombies[0].gait = 2.0
-	b.zombies[0].height = .2
 	buffer.push(a)
 	buffer.push(b)
 	buffer.clock = 1.05
 	var sample: Dictionary = buffer.sample(0)
 	check(absf(sample.zombies[0].pos.x-.5) < .001,"Enemy positions interpolate between timestamped snapshots")
-	check(is_equal_approx(sample.zombies[0].height,.1),"Physical enemy height interpolates with position on cooperative slopes")
 	check(is_equal_approx(sample.zombies[0].gait,1.5),"Running gait interpolates across cooperative snapshots without changing authority")
 	check(absf(absf(sample.zombies[0].heading)-PI) < .01,"Heading interpolation takes the short arc")
 	check(a.zombies[0].pos == Vector2.ZERO and b.zombies[0].pos == Vector2(1,0),"Display interpolation leaves authority snapshots untouched")
@@ -844,7 +842,7 @@ func validate_close_combat() -> void:
 		p.shove_gap = 0.0
 		sim.try_shove(p)
 		sim.update_zombie(blocked,p,.18)
-		check(blocked.pos.x < edge.x and blocked.pos.distance_to(start) < 1.0,"A real enemy capsule is stopped by the physical wall rather than the old navigation margin: edge="+str(edge)+" start="+str(start)+" end="+str(blocked.pos)+" h="+str(blocked.height))
+		check(blocked.pos.x <= edge.x-.95 and blocked.pos.distance_to(start) < .3,"A shove against a real wall stops before its clearance margin")
 		p.pos = edge-Vector2(.3,0)
 		blocked.pos = edge+Vector2(.3,0)
 		blocked.state = "ready"
