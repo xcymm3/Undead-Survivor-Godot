@@ -126,10 +126,36 @@ func create_actor(item: Dictionary) -> Dictionary:
 		root.add_child(yaw)
 		var pitch = Node3D.new()
 		yaw.add_child(pitch)
-		box(pitch,"Receiver",Vector3(0,0,.06),Vector3(.72,.45,.78),"45574a")
-		box(pitch,"AmmunitionBox",Vector3(.48,-.08,.15),Vector3(.32,.4,.55),"8d7950")
+		var intact = Node3D.new()
+		intact.name = "IntactHousing"
+		pitch.add_child(intact)
+		box(intact,"Receiver",Vector3(0,0,.06),Vector3(.72,.45,.78),"45574a")
+		box(intact,"AmmunitionBox",Vector3(.48,-.08,.15),Vector3(.32,.4,.55),"8d7950")
+		var damaged = Node3D.new()
+		damaged.name = "DamagedHousing"
+		pitch.add_child(damaged)
+		box(damaged,"ScorchedReceiver",Vector3(0,-.12,.06),Vector3(.72,.18,.78),"282e2b")
+		box(damaged,"ExposedMechanism",Vector3(0,.025,.06),Vector3(.44,.2,.5),"343e46")
+		for z in [-.12,.06,.24]:
+			var coil = cylinder(damaged,"ExposedCopperCoil",Vector3(.26,.04,z),.09,.24,"bb7543")
+			coil.rotation.z = PI/2
+		var flap = box(damaged,"TornTopPlate",Vector3(-.22,.24,.12),Vector3(.3,.07,.62),"58636b")
+		flap.rotation.z = -.55
+		var flap_front = box(damaged,"BentFrontPlate",Vector3(.19,.16,-.22),Vector3(.27,.07,.24),"45574a")
+		flap_front.rotation.z = .5
+		var hanging = box(damaged,"HangingSideCover",Vector3(.52,-.36,.12),Vector3(.08,.5,.56),"8d7950")
+		hanging.rotation.z = -.55
+		hanging.rotation.x = .18
+		var crushed = box(damaged,"CrushedFeedBox",Vector3(.4,-.08,.25),Vector3(.25,.25,.36),"534631")
+		crushed.rotation.x = -.25
+		for x in [.16,.3]:
+			var cable = box(damaged,"LooseCable",Vector3(x,-.29,.35),Vector3(.035,.34,.035),"bb7543")
+			cable.rotation.z = .35
+		var warning = box(damaged,"FaultLight",Vector3(.05,.13,-.28),Vector3(.18,.1,.035),"ff8b32")
+		warning.material_override = material("ff8b32",true)
+		damaged.visible = false
 		box(pitch,"Barrel",Vector3(0,0,-.61),Vector3(.16,.16,.77),"282e2b")
-		box(pitch,"BarrelShroud",Vector3(0,0,-.38),Vector3(.26,.26,.3),"626d60")
+		actor.shroud = box(pitch,"BarrelShroud",Vector3(0,0,-.38),Vector3(.26,.26,.3),"626d60")
 		for z in [-.55,-.7,-.85]:
 			var ring = cylinder(pitch,"CoolingRing",Vector3(0,0,z),.12,.055,"788073")
 			ring.rotation.x = PI/2
@@ -142,6 +168,9 @@ func create_actor(item: Dictionary) -> Dictionary:
 		actor.yaw = yaw
 		actor.pitch = pitch
 		actor.flash = flash
+		actor.intact = intact
+		actor.damaged = damaged
+		actor.sensor = lens
 		actor.smoke = create_smoke(root)
 	else:
 		actor.body = collider(root,item)
@@ -201,6 +230,10 @@ func sync(state: Dictionary) -> void:
 		var collapse = clampf((clock-item.destroyed_at)/.8,0,1) if item.hp <= 0 else 0.0
 		var damaged: bool = item.hp <= item.max_hp*DAMAGE_THRESHOLD
 		if item.kind == "turret":
+			actor.intact.visible = not damaged
+			actor.damaged.visible = damaged
+			actor.sensor.material_override = material("ff4c26",true) if damaged else material("67d4b2",true)
+			actor.shroud.material_override = material("282e2b" if damaged else "626d60")
 			actor.smoke.visible = damaged and item.hp > 0
 			if actor.smoke.visible: update_smoke(actor.smoke,clock)
 			actor.yaw.rotation.y = item.yaw

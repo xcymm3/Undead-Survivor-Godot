@@ -30,6 +30,7 @@
     if (new URLSearchParams(location.search).get('defenseSafeZone') === '1') qaArgs.push('--qa-defense-safe-zone');
     const structurePreview = new URLSearchParams(location.search).get('defenseStructures');
     if (structurePreview === 'intact' || structurePreview === 'damaged') qaArgs.push('--qa-defense-structures-' + structurePreview);
+    if (structurePreview && new URLSearchParams(location.search).get('turretClose') === '1') qaArgs.push('--qa-turret-close');
     if (new URLSearchParams(location.search).has('structureCase')) qaArgs.push('--qa-defense-structures');
     engine.startGame({canvas: document.getElementById('canvas'), args: qaArgs,
       onPrintError: (...args) => console.error(...args)

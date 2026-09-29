@@ -31,6 +31,10 @@ func stage() -> void:
 		game.camera.size = 19
 		game.camera.position = Vector3(12,10,-23)
 		game.camera.look_at(Vector3(0,4.4,-7.5),Vector3.UP)
+		if "--qa-turret-close" in OS.get_cmdline_user_args():
+			game.camera.size = 5.4
+			game.camera.position = Vector3(9.3,7.2,-10)
+			game.camera.look_at(Vector3(6.3,4.45,-6),Vector3.UP)
 		damage_preview = "--qa-defense-structures-damaged" in OS.get_cmdline_user_args()
 		if damage_preview:
 			game.sim.defense_director.structures.damage("bridge_gate",500)

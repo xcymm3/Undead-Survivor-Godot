@@ -56,6 +56,9 @@ func run() -> void:
 	sim.defense_director.sync_world()
 	check(structure_view.actors.bridge_gate.damaged.visible and not structure_view.actors.bridge_gate.intact.visible,"Exactly half gate health switches to bent and broken steelwork")
 	check(structure_view.actors.turret_left.smoke.visible and not structure_view.actors.turret_right.smoke.visible,"Exactly half turret health starts smoke only on the damaged turret")
+	var damaged_turret: Dictionary = structure_view.actors.turret_left
+	check(damaged_turret.damaged.visible and not damaged_turret.intact.visible and structure_view.actors.turret_right.intact.visible,"Half-health turret exposes its mechanism, bent armor and hanging side cover")
+	check(damaged_turret.sensor.material_override.emission == Color("ff4c26"),"Damaged turret sensor uses the red fault indicator")
 	check(structure_view.actors.bridge_gate.body.collision_layer == 1 and structure_view.actors.turret_left.body.collision_layer == 1,"Half-health damage cues preserve live building collision")
 	var puff = structure_view.actors.turret_left.smoke.get_child(0)
 	var puff_position: Vector3 = puff.position
@@ -67,6 +70,7 @@ func run() -> void:
 	check(structure_view.actors.bridge_gate.damaged.visible and structure_view.actors.turret_left.smoke.visible,"Client snapshots display the authority's half-health damage cues")
 	sim.defense_director.begin_wave()
 	check(structure_view.actors.bridge_gate.intact.visible and not structure_view.actors.bridge_gate.damaged.visible and not structure_view.actors.turret_left.smoke.visible,"New wave repairs gate appearance and stops turret smoke")
+	check(damaged_turret.intact.visible and not damaged_turret.damaged.visible and damaged_turret.sensor.material_override.emission == Color("67d4b2"),"New wave repairs turret housing and restores the healthy sensor light")
 	for id in ["turret_left","turret_right"]:
 		var turret: Dictionary = manager.find(id)
 		var mirror_id = "turret_right" if id == "turret_left" else "turret_left"
@@ -105,6 +109,7 @@ func run() -> void:
 		sim.defense_director.sync_world()
 		check(is_instance_valid(actor.root) and actor.root.visible and actor.yaw.rotation.z > 1.0 and actor.body.collision_layer == 0,"%s collapses into persistent nonblocking wreckage" % id)
 		check(not actor.smoke.visible,"Destroyed %s stops the active half-health smoke cue" % id)
+		check(actor.damaged.visible and not actor.intact.visible,"Destroyed %s retains torn housing on its collapsed wreck" % id)
 	# Terrain rays must block turret bullets, including a target beside cover.
 	sim = fresh()
 	await physics_frame
