@@ -7,6 +7,8 @@ const PlayerBody = preload("res://scripts/player_body.gd")
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 const EnemyPopulation = preload("res://scripts/enemy_population.gd")
 const PLAYER_MOVE_SPEED = 4.2
+const PLAYER_AIR_ACCELERATION = 4.0 # m/s²; input changes velocity gradually.
+const PLAYER_AIR_WISH_SPEED = 1.5 # Cap the velocity projection along air input.
 var player_bodies: Dictionary = {}
 var enemy_bodies: Dictionary = {}
 var enemy_physics_usec = 0
@@ -342,6 +344,15 @@ func can_move(p: Dictionary, point: Vector2) -> bool:
 	if not map_definition.bounds.grow(-.95).has_point(point): return false
 	return true
 
+static func accelerate_in_air(horizontal: Vector2, wish: Vector2, dt: float) -> Vector2:
+	var strength = minf(wish.length(),1.0)
+	if strength <= .00001: return horizontal
+	var direction = wish.normalized()
+	var available = PLAYER_AIR_WISH_SPEED*strength-horizontal.dot(direction)
+	if available <= 0.0: return horizontal
+	var acceleration = minf(available,PLAYER_AIR_ACCELERATION*strength*dt)
+	return (horizontal+direction*acceleration).limit_length(PLAYER_MOVE_SPEED)
+
 func update_pawn(p: Dictionary, dt: float) -> void:
 	p.damage_hint = maxf(0,p.get("damage_hint",0.0)-dt)
 	p.shove_cd = maxf(0,p.get("shove_cd",0.0)-dt)
@@ -360,18 +371,19 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	var body = player_body(p)
 	body.update_stance(p,input.get("crouch",false),dt)
 	var movement = Vector2(input.get("x",0),input.get("y",0)).limit_length()
-	if body.grounded: p.air = movement
+	var wish = Vector2(movement.x*cos(p.yaw)+movement.y*sin(p.yaw), -movement.x*sin(p.yaw)+movement.y*cos(p.yaw))
+	var ground_velocity = wish*PLAYER_MOVE_SPEED*lerpf(1.0,.55,p.crouch)
+	# Store world-space m/s, so looking around cannot rotate existing momentum.
+	if body.grounded: p.air = ground_velocity
 	if input.get("jump",false) and body.grounded and p.crouch < .1:
 		body.velocity.y = PlayerBody.JUMP_SPEED
 		body.grounded = false
-		p.air = movement
-	if not body.grounded: movement = p.air
-	var dir = Vector2(movement.x*cos(p.yaw)+movement.y*sin(p.yaw), -movement.x*sin(p.yaw)+movement.y*cos(p.yaw))
 	var remaining = dt
 	while remaining > .00001:
 		var step_time = minf(.01,remaining)
 		remaining -= step_time
-		var next: Vector2 = p.pos+dir*PLAYER_MOVE_SPEED*lerpf(1.0,.55,p.crouch)*step_time
+		p.air = ground_velocity if body.grounded else accelerate_in_air(p.air,wish,step_time)
+		var next: Vector2 = p.pos+p.air*step_time
 		next = next.clamp(map_definition.bounds.position+Vector2.ONE*.95,map_definition.bounds.end-Vector2.ONE*.95)
 		if not can_move(p,next):
 			var horizontal = Vector2(next.x,p.pos.y)
@@ -379,6 +391,8 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 			next = horizontal if can_move(p,horizontal) else vertical if can_move(p,vertical) else p.pos
 		body.advance((next-p.pos)/step_time,step_time)
 		body.sync_to(p)
+		# Retain collision-resolved velocity, including walls and map bounds.
+		p.air = Vector2(body.velocity.x,body.velocity.z)
 	if mode == "defense" and p.height < DEFENSE_FALL_HEIGHT:
 		recover_defense_fall(p,body)
 	p.wading = false

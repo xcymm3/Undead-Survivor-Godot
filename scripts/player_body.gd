@@ -81,6 +81,13 @@ func advance(horizontal: Vector2, dt: float) -> void:
 			if velocity.y < 0: velocity.y = 0
 		elif normal.dot(Vector3.DOWN) >= cos(floor_max_angle) and velocity.y > 0:
 			velocity.y = 0
+		if absf(normal.y) < cos(floor_max_angle):
+			var wall_normal = Vector2(normal.x,normal.z).normalized()
+			var horizontal_velocity = Vector2(velocity.x,velocity.z)
+			if horizontal_velocity.dot(wall_normal) < 0:
+				horizontal_velocity = horizontal_velocity.slide(wall_normal)
+				velocity.x = horizontal_velocity.x
+				velocity.z = horizontal_velocity.y
 		motion = hit.get_remainder().slide(normal)
 		# A floor contact inside the recovery margin can repeatedly report zero
 		# travel even for a tangent motion. Retry that remaining sweep against

@@ -475,6 +475,7 @@ func run() -> void:
 	check(game.sound.streams.has("wave-horn") and not game.sound.streams.has("campaign-growl") and not game.sound.streams.has("campaign-winch"),"Defense retains the wave horn and removes night-only cues")
 	game.sound.clear_effects()
 	check(game.sound.spatial_players.all(func(p): return p.stream == null),"World voice resources clear on scene reset")
+	await validate_air_movement()
 	await validate_equipment()
 	await validate_inventory()
 	await validate_combat_revision()
@@ -518,6 +519,78 @@ func run() -> void:
 	await create_timer(.15).timeout
 	print("NATIVE COMPONENTS: %d checks; %d failures" % [checks,failures.size()])
 	quit(0 if failures.is_empty() else 1)
+
+func validate_air_movement() -> void:
+	var sim = game.sim
+	var template: Dictionary = game.local_pawn().duplicate(true)
+	template.id = "air_movement_fixture"
+	template.pos = Vector2(8,30)
+	template.height = root.get_node("Data").enemy_ground_height(template.pos,sim.map_id)
+	template.velocity = 0.0
+	template.crouch = 0.0
+	template.air = Vector2.ZERO
+	var p = template.duplicate(true)
+	p.input = {"y":-1.0,"yaw":0.0,"jump":true}
+	p.input_age = 0.0
+	sim.update_pawn(p,.02)
+	check(not p.grounded and p.velocity > 0 and p.air.is_equal_approx(Vector2(0,-4.2)),"Jump retains full world-space takeoff velocity")
+	var takeoff: Vector2 = p.air
+	p.input = {"yaw":PI/2}
+	sim.update_pawn(p,.1)
+	check(p.air.is_equal_approx(takeoff),"Releasing keys and rotating the camera preserves airborne momentum")
+	p.input = {"x":1.0,"yaw":0.0}
+	sim.update_pawn(p,.1)
+	check(p.air.x > .3 and p.air.x <= .4 and p.air.y < -4.0,"Air strafe bends trajectory gradually while retaining forward inertia")
+	p.input = {"y":1.0,"yaw":0.0}
+	sim.update_pawn(p,.1)
+	check(p.air.y < -3.5,"Opposite air input cannot instantly reverse the jump")
+	p.input = {"crouch":true}
+	takeoff = p.air
+	sim.update_pawn(p,.05)
+	check(p.air.is_equal_approx(takeoff),"Air crouch does not rescale existing horizontal momentum")
+	for i in 50:
+		p.input = {}
+		sim.update_pawn(p,.02)
+	check(p.grounded and p.air.length() < .001,"Landing restores ground movement and released input stops the pawn")
+	p = template.duplicate(true)
+	p.input = {"jump":true,"yaw":0.0}
+	sim.update_pawn(p,.02)
+	p.input = {"x":1.0,"yaw":0.0}
+	for i in 20: sim.update_pawn(p,.02)
+	check(p.air.x > 1.49 and p.air.x <= 1.501,"Standing jump gains only limited horizontal speed from air input")
+	var reference: Dictionary = p.duplicate(true)
+	p = template.duplicate(true)
+	p.input = {"jump":true,"yaw":0.0}
+	sim.update_pawn(p,.02)
+	p.input = {"x":1.0,"yaw":0.0}
+	for i in 40: sim.update_pawn(p,.01)
+	check(p.pos.distance_to(reference.pos) < .001 and p.air.distance_to(reference.air) < .001,"Air control produces matching trajectories at 50 and 100 Hz")
+	var horizontal = Vector2(0,-4.2)
+	var peak_speed = horizontal.length()
+	for i in 1000:
+		var angle = float(i)*.05
+		horizontal = sim.accelerate_in_air(horizontal,Vector2(cos(angle),sin(angle)),.01)
+		peak_speed = maxf(peak_speed,horizontal.length())
+	check(peak_speed <= 4.20001,"Repeated air steering respects the total speed cap")
+	var wall = StaticBody3D.new()
+	wall.collision_layer = 1
+	var collider = CollisionShape3D.new()
+	var shape = BoxShape3D.new()
+	shape.size = Vector3(.2,8,8)
+	collider.shape = shape
+	wall.add_child(collider)
+	game.arena.add_child(wall)
+	wall.position = Vector3(9,template.height+4,30)
+	await physics_frame
+	p = template.duplicate(true)
+	p.input = {"x":1.0,"jump":true,"yaw":0.0}
+	sim.update_pawn(p,.02)
+	p.input = {}
+	sim.update_pawn(p,.25)
+	check(p.pos.x < 8.61 and absf(p.air.x) < .001,"Native wall collision removes blocked airborne momentum")
+	wall.free()
+	sim.player_bodies[template.id].free()
+	sim.player_bodies.erase(template.id)
 
 func validate_revolver() -> void:
 	var p: Dictionary = game.local_pawn().duplicate(true)
