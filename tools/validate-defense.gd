@@ -355,10 +355,9 @@ func run() -> void:
 		sim.prepare_wave()
 		exact_sample_budgets = exact_sample_budgets and valid_roster_budget(sim.roster,population.budget(1,1,"easy"))
 	check(exact_sample_budgets,"Easy rosters respect the quarter-point budget and twenty-five percent special cap")
-	sim.defense_ordinary_slots = 0
 	var variants: Array = []
-	for slot in 20: variants.append(sim.defense_population_kind("normal"))
-	check(variants.count("crawler") == 1 and variants[18] == "normal" and variants[19] == "crawler","Defense uses the shared rule of every twentieth ordinary zombie becoming a crawler")
+	for slot in 200: variants.append(sim.defense_population_kind("normal"))
+	check(variants.count("normal") == 200 and sim.defense_population_kind("crawler") == "normal","All ordinary slots remain normal and legacy crawler slots are replaced")
 	var exact_wave_budgets = true
 	var exact_football_counts = true
 	var shared_rosters = true

@@ -30,7 +30,6 @@ var kills = 0
 var rest = 0.0
 var roster: Array = []
 var wave_total = 0
-var defense_ordinary_slots = 0
 var next_id = 0
 var failed = false
 var cause = "zombie"
@@ -105,7 +104,6 @@ func start(_game_mode: String = "defense") -> void:
 	paths.clear()
 	roster.clear()
 	wave_total = 0
-	defense_ordinary_slots = 0
 	wave = 1
 	defense_director = preload("res://scripts/defense_director.gd").new(self)
 	defense_spawner = preload("res://scripts/defense_spawner.gd").new(self)
@@ -120,9 +118,7 @@ func prepare_wave() -> void:
 	defense["spawn_plan"] = defense_spawner.describe()
 
 func defense_population_kind(kind: String) -> String:
-	if kind != "normal": return kind
-	defense_ordinary_slots += 1
-	return EnemyPopulation.population_kind(kind,defense_ordinary_slots)
+	return EnemyPopulation.population_kind(kind)
 
 func spawn(pos: Vector2, kind: String) -> void:
 	var def: Dictionary = Data.enemies[kind]

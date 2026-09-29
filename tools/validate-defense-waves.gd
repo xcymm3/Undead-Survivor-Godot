@@ -43,6 +43,7 @@ func run() -> void:
 			previous = quota
 		check(complete and previous == count and planner.scheduled_count(29.999) < count and planner.scheduled_count(30) == count,"Dynamic batches release all %d bodies at thirty seconds without oversized bursts" % count)
 	var composition_valid = true
+	var crawler_free = true
 	for party in range(1,5):
 		for difficulty in Defense.DIFFICULTIES:
 			for wave in [1,2,3,4,5,6,7,8,9,20,100]:
@@ -52,8 +53,10 @@ func run() -> void:
 				var budget = Defense.budget(wave,party,difficulty)
 				var spent = Population.points(value)
 				var specials = value.filter(func(kind): return kind in Population.ELITES)
+				crawler_free = crawler_free and value.all(func(kind): return sim.defense_population_kind(kind) != "crawler")
 				composition_valid = composition_valid and spent <= budget and budget-spent < .75 and Population.points(specials) <= budget*.25 and value.count("football") == Defense.footballs(wave,party)
 	check(composition_valid,"All difficulties and one-to-four players respect ordinary 0.75 cost, special 25 percent cap and independent bosses")
+	check(crawler_free,"All difficulties, party sizes and sampled early-to-endless waves spawn no crawlers")
 	sim.defense_director.begin_wave()
 	var initial_roster: Array = sim.roster.duplicate()
 	check(sim.wave_total == 150 and counts(initial_roster) == {"normal":138,"cone":7,"bucket":5},"Normal solo first wave contains 138 ordinary slots, seven cones and five buckets")
@@ -92,13 +95,13 @@ func run() -> void:
 	for index in batches.size():
 		on_time = on_time and batches[index].count == 5 and absf(batches[index].time-(index+1)) <= .02
 	check(on_time,"Real releases are thirty five-body batches at one-second intervals")
-	check(counts(all_spawned) == {"normal":132,"crawler":6,"cone":7,"bucket":5},"Actual first-wave variant conversion yields 132 normal, six crawlers, seven cones and five buckets")
+	check(counts(all_spawned) == {"normal":138,"cone":7,"bucket":5},"Actual first wave spawns 138 normals, seven cones and five buckets with no crawlers")
 	check(safe,"Every newborn position is outside the 2D scenery clearance margin")
 	check(sim.pawns.solo.shots == 0 and sim.pawns.solo.shoves == 0,"The spawn observation performs no player firing or shoving")
 	# An occupied platform must retain its backlog and resume safely later.
 	planner.reset(5)
 	sim.spawned = 0
-	sim.roster = ["normal","normal","normal","normal","normal"]
+	sim.roster = ["crawler","normal","normal","normal","normal"]
 	sim.zombies.clear()
 	var saved_region: Rect2 = planner.spawn_region
 	var blocked_point = Vector2(0,-74)
@@ -110,6 +113,7 @@ func run() -> void:
 	planner.spawn_region = saved_region
 	planner.step(.1,sim.pawns.values())
 	check(sim.spawned == 5 and sim.roster.is_empty(),"Blocked quota resumes after safe ground becomes available")
+	check(sim.zombies.all(func(z): return z.kind == "normal"),"Actual spawner replaces a legacy crawler entry with a normal zombie")
 	var output = {"seed":20260928,"mode":"solo","difficulty":"normal","budget":138,"spent":137.5,"unspent":.5,"plan":{"duration":30,"batches":30,"interval":1,"batch_size":5},"counts":counts(all_spawned),"batches":batches,"spawn_safe":safe,"spawn_issues":spawn_issues,"checks":checks,"failures":failures,"scope":"actual authority physics; no browser, no full wave survival result"}
 	DirAccess.make_dir_recursive_absolute("res://artifacts")
 	var file = FileAccess.open("res://artifacts/first-wave-horde.json",FileAccess.WRITE)

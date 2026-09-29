@@ -226,11 +226,9 @@ func validate_crawler() -> void:
 	await physics_frame
 	var sim = game.sim
 	var data = root.get_node("Data")
-	var before: int = sim.defense_ordinary_slots
 	for i in 20:
-		var expected = "crawler" if (before+i+1)%20 == 0 else "normal"
-		check(sim.defense_population_kind("normal") == expected,"Crawler ratio carries across defense waves "+str(i))
-	check(sim.defense_population_kind("football") == "football" and sim.defense_ordinary_slots == before+20,"Boss does not consume ordinary ratio")
+		check(sim.defense_population_kind("normal") == "normal","Ordinary slot remains normal without crawler conversion "+str(i))
+	check(sim.defense_population_kind("crawler") == "normal" and sim.defense_population_kind("football") == "football","Legacy crawler slot becomes normal and boss retains its kind")
 	check(preload("res://scripts/enemy_population.gd").COST.crawler == .75,"Crawler shares the ordinary cost of three quarters of a point")
 	sim.zombies.clear()
 	sim.spawn(Vector2(8,36.0),"crawler")
