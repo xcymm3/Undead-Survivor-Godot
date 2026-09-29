@@ -78,7 +78,7 @@ func run() -> void:
 			new_kinds.append(z.original)
 			all_spawned.append(z.original)
 			positions.append({"x":z.pos.x,"z":z.pos.y})
-			var newborn_safe: bool = sim.arena.clear(z.pos,z.pos)
+			var newborn_safe: bool = sim.arena.clear(z.pos,z.pos) and root.get_node("Data").Maps.Defense.enemy_spawn_allowed(z.pos)
 			safe = safe and newborn_safe
 			if not newborn_safe:
 				spawn_issues.append({"id":z.id,"kind":z.original,"time":planner.clock,"pos":str(z.pos)})
@@ -100,18 +100,14 @@ func run() -> void:
 	sim.spawned = 0
 	sim.roster = ["normal","normal","normal","normal","normal"]
 	sim.zombies.clear()
-	var saved_candidates = planner.candidates.duplicate()
-	var saved_centres: Array = sim.map_definition.spawns.duplicate()
+	var saved_region: Rect2 = planner.spawn_region
 	var blocked_point = Vector2(0,-74)
-	sim.map_definition.spawns = [blocked_point]
-	planner.candidates.clear()
-	planner.candidates.append(blocked_point)
+	planner.spawn_region = Rect2(blocked_point-Vector2.ONE*.05,Vector2.ONE*.1)
 	sim.spawn(blocked_point,"normal")
 	planner.step(30,sim.pawns.values())
 	check(sim.spawned == 0 and sim.roster.size() == 5,"Occupied spawn ground retains quota according to the spawn spacing policy")
 	sim.zombies.clear()
-	sim.map_definition.spawns = saved_centres
-	planner.candidates = saved_candidates
+	planner.spawn_region = saved_region
 	planner.step(.1,sim.pawns.values())
 	check(sim.spawned == 5 and sim.roster.is_empty(),"Blocked quota resumes after safe ground becomes available")
 	var output = {"seed":20260928,"mode":"solo","difficulty":"normal","budget":138,"spent":137.5,"unspent":.5,"plan":{"duration":30,"batches":30,"interval":1,"batch_size":5},"counts":counts(all_spawned),"batches":batches,"spawn_safe":safe,"spawn_issues":spawn_issues,"checks":checks,"failures":failures,"scope":"actual authority physics; no browser, no full wave survival result"}

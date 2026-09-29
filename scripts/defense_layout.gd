@@ -8,8 +8,9 @@ const CRYSTAL_RADIUS = 1.05
 const CRYSTAL_CONTACT_RADIUS = 2.3 # Crystal body plus enemy navigation clearance.
 const FALL_RETURN = Vector2(-6,49)
 const SAFE_ZONE = Rect2(-13,52,26,17)
-const ENTRIES = [Vector2(-24,-74),Vector2(-11,-68),Vector2(0,-74),Vector2(11,-68),Vector2(24,-74)]
 const BRIDGE = Rect2(-4,-62,8,34)
+const ENEMY_SPAWN_REGION = Rect2(BOUNDS.position,Vector2(BOUNDS.size.x,BRIDGE.position.y-BOUNDS.position.y))
+const ENEMY_BRIDGE_SPAWN_DISTANCE = 8.0
 const RAMP = Rect2(-5,-28,10,18)
 const CRYSTAL_MAX_HP = 1500
 const ARMORY_WEAPONS := [0,8,7,5]
@@ -29,3 +30,8 @@ static func height(p: Vector2) -> float:
 
 static func in_safe_zone(p: Vector2) -> bool:
 	return SAFE_ZONE.has_point(p)
+
+static func enemy_spawn_allowed(p: Vector2) -> bool:
+	if not ENEMY_SPAWN_REGION.has_point(p): return false
+	var mouth = Vector2(clampf(p.x,BRIDGE.position.x,BRIDGE.end.x),BRIDGE.position.y)
+	return p.distance_squared_to(mouth) >= ENEMY_BRIDGE_SPAWN_DISTANCE*ENEMY_BRIDGE_SPAWN_DISTANCE
