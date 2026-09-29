@@ -495,6 +495,7 @@ func run() -> void:
 	validate_close_combat()
 	validate_revolver()
 	validate_sight_only_changes()
+	load("res://tools/validate-weapon-models.gd").validate(game,check)
 	validate_buffer()
 	var session = root.get_node("Session")
 	var packet = {"type":"probe","state":{"test":123}}

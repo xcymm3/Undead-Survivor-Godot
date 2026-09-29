@@ -94,6 +94,10 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	var crouch = float(p.get("crouch",0.0))
 	label.position.y = 2.2-.6*crouch
 	if w.id == "rifle": gun_model.pose(p.reloading,clampf(1-p.get("reload",0.0)/w.reloadDuration,0,1) if p.reloading else 0.0,p.fire_anim/w.fireDuration)
+	if w.id == "revolver":
+		var phase = clampf(1-p.get("reload",0.0)/w.reloadDuration,0,1) if p.reloading else 0.0
+		var fire = clampf(1-p.fire_anim/w.fireDuration,.001,1) if p.fire_anim > 0 else 0.0
+		gun_model.sample_pose(phase,p.reloading,fire,0.0,int(p.get("shots",0)))
 	if weapon_animation:
 		var clip = "reload" if p.reloading else "fire"
 		if weapon_animation.has_animation(clip):
@@ -169,6 +173,8 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	flash.visible = p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.05 and w.get("kind","gun") != "melee"
 
 func muzzle_position() -> Vector3:
+	if gun_model and Data.weapons[weapon_index].id == "revolver":
+		return gun_model.gun.to_global(preload("res://scripts/revolver_model.gd").MUZZLE)
 	return gun_model.to_global(preload("res://scripts/weapon_view.gd").muzzle_offset(Data.weapons[weapon_index])) if gun_model else global_position
 
 func pose_hand(side: String, target: Vector3) -> void:

@@ -9,41 +9,13 @@ var axe_pivot: Node3D
 var pistol_arms: Node3D
 var pistol_profile = -1
 
-static func create_model(id: String) -> Node3D:
-	if id == "rifle": return preload("res://scripts/ak_rifle.gd").new()
-	return load("res://assets/models/%s.glb" % id).instantiate()
-
-func create_iron_sight(id: String, model: Node3D) -> Node3D:
-	if id not in ["p90","pistol","heavy-machine-gun"]:
-		var empty = Node3D.new()
-		model.add_child(empty)
-		return empty
-	var sight = preload("res://scripts/iron_sight.gd").new(id)
-	if id == "heavy-machine-gun":
-		# Replace only the original two sight blocks; receiver/barrel/animation stay intact.
-		var rear = model.find_child("RearSight",true,false)
-		var front = model.find_child("FrontSight",true,false)
-		rear.visible = false
-		front.visible = false
-		rear.get_parent().add_child(sight)
-	else:
-		# Follow the imported slide/control bone instead of floating over the weapon.
-		var skeleton: Skeleton3D = model.find_children("*","Skeleton3D",true,false)[0]
-		var bone_name = "Slide" if id == "pistol" else "Control"
-		var bone = skeleton.find_bone(bone_name)
-		var attachment = BoneAttachment3D.new()
-		attachment.name = "SightAttachment"
-		attachment.bone_name = bone_name
-		skeleton.add_child(attachment)
-		attachment.add_child(sight)
-		var bone_in_model = model.global_transform.affine_inverse()*skeleton.global_transform*skeleton.get_bone_global_rest(bone)
-		sight.transform = bone_in_model.affine_inverse()
-	return sight
+static func create_model(id: String, first_person := false) -> Node3D:
+	return preload("res://scripts/weapon_models.gd").create(id,first_person)
 
 func _ready() -> void:
 	scale = Vector3.ONE*.5
 	for definition in Data.weapons:
-		var model: Node3D = preload("res://scripts/revolver_view.gd").new() if definition.id == "revolver" else create_model(definition.id)
+		var model: Node3D = create_model(definition.id,true)
 		add_child(model)
 		var first_person_scale: float = {"p90":1.55,"pistol":1.55,"revolver":1.25,"heavy-machine-gun":1.12}.get(definition.id,1.0)
 		model.scale = Vector3.ONE*first_person_scale
@@ -51,7 +23,10 @@ func _ready() -> void:
 		model.visible = false
 		models.append(model)
 		animations.append(find_animation(model))
-		var sight := create_iron_sight(definition.id,model)
+		var sight: Node3D = model.find_child("TopIronSight",true,false)
+		if not sight:
+			sight = Node3D.new()
+			model.add_child(sight)
 		sight.visible = false
 		sights.append(sight)
 		if definition.id == "axe":
@@ -184,6 +159,7 @@ static func sample_axe(pivot: Node3D, progress: float) -> void:
 static func muzzle_offset(w: Dictionary) -> Vector3:
 	match w.id:
 		"rifle": return preload("res://scripts/ak_rifle.gd").MUZZLE
+		"revolver": return preload("res://scripts/revolver_model.gd").MUZZLE
 		"flamethrower": return Vector3(.04,.03,-1.01)
 		"auto-shotgun": return Vector3(.05,.04,-1.09)*.72
 		"heavy-machine-gun": return Vector3(.04,.04,-1.17)

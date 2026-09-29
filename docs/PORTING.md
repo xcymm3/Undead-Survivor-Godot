@@ -24,6 +24,8 @@
 | HUD 与菜单 | `scripts/interface.gd` |
 | 数据与武器规则 | `scripts/data.gd`、`assets/data/rules.json` |
 
+武器外观统一由 `scripts/weapon_models.gd` 创建，第一人称、墙上展示、队友持枪与领取/丢弃动画使用相同枪身、材质和瞄具。左轮的共享模型与机械动作位于 `scripts/revolver_model.gd`，第一人称晃动和换弹取消恢复单独由 `scripts/revolver_view.gd` 控制；世界模型使用正常渲染层和阴影，第一人称实例才切换至专用层并关闭阴影。
+
 ## 验证边界
 
 日常修改按 [自动测试与打包](AUTOMATION.md) 运行基础检查和相关专项。只有用户明确提出本地验收/全量测试时，才在本机运行全量流程；正式 EXE 发布的全量验收与打包交给 GitHub Actions。
