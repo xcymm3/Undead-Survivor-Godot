@@ -16,21 +16,25 @@ func stage() -> void:
 	game.running = false
 	game.ui.root.visible = false
 	game.weapon.visible = false
+	# Static review uses full internal resolution so wall labels stay readable.
+	Data.settings.resolution = 1.0
+	game.get_viewport().scaling_3d_scale = 1.0
 	var safe_zone = "--qa-defense-safe-zone" in OS.get_cmdline_user_args()
 	game.camera.projection = Camera3D.PROJECTION_PERSPECTIVE if safe_zone else Camera3D.PROJECTION_ORTHOGONAL
 	game.camera.fov = 60 if safe_zone else 56
-	game.camera.size = 100
+	game.camera.size = 98
 	game.camera.near = .1
 	game.camera.far = 260
 	if safe_zone:
 		# Front oblique framing includes the safe-zone floor and both weapon rows.
-		game.camera.position = Vector3(0,5.0,53.2)
-		game.camera.look_at(Vector3(0,5.35,67.2),Vector3.UP)
+		var placement = Data.Maps.Defense.armory_transform()
+		game.camera.position = placement*Vector3(0,5.0,53.2)
+		game.camera.look_at(placement*Vector3(0,5.35,67.2),Vector3.UP)
 	else:
 		# Side-rear elevation keeps the whole route readable while exposing the
 		# three-metre rise from bridge deck through the ramp onto the plateau.
-		game.camera.position = Vector3(86,68,92)
-		game.camera.look_at(Vector3(0,1,-5),Vector3.UP)
+		game.camera.position = Vector3(-60,80,58)
+		game.camera.look_at(Vector3(0,1,-16),Vector3.UP)
 	RenderingServer.render_loop_enabled = true
 	for i in 5: await get_tree().process_frame
 	JavaScriptBridge.eval("window.__defenseSafeZoneReady=true" if safe_zone else "window.__defenseOverviewReady=true",true)

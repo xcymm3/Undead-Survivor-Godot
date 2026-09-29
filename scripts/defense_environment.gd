@@ -126,8 +126,8 @@ static func build_base(world: Node3D) -> void:
 	water_material.shader = load("res://scripts/river_water.gdshader")
 	apply_material(water,water_material)
 	textured_block(world,"FarCliff",Vector3(0,-.5,-70),Vector3(64,1,16),soil,true,false)
-	textured_block(world,"DefensePlateau",Vector3(0,1.5,31),Vector3(64,3,82),grass,true,false)
-	textured_block(world,"ApproachRoad",Vector3(0,3.035,18),Vector3(11,.07,56),road,false)
+	textured_block(world,"DefensePlateau",Vector3(0,1.5,world.Layout.PLATEAU.get_center().y),Vector3(64,3,world.Layout.PLATEAU.size.y),grass,true,false)
+	textured_block(world,"ApproachRoad",Vector3(0,3.035,(world.Layout.RAMP.end.y+world.Layout.CRYSTAL.y)/2),Vector3(11,.07,world.Layout.CRYSTAL.y-world.Layout.RAMP.end.y),road,false)
 	# Exposed strata and talus make both bridge-side drops read as natural cliffs.
 	for z in [-62.0,-28.0]:
 		for side in [-1.0,1.0]:
@@ -135,7 +135,7 @@ static func build_base(world: Node3D) -> void:
 			for offset in [-9.0,-3.0,4.0,9.0]:
 				make_rock(world,"CliffTalus",Vector3(side*18.5+offset*.62,-6.9,z+(-1.8 if z < -40 else 1.8)),Vector3(2.8,1.7,2.1),offset*9.0,false,false)
 	# Muted edge markers retain long-range readability without looking painted on.
-	for z in range(-8,47,9):
+	for z in range(-8,ceili(world.Layout.CRYSTAL.y),9):
 		textured_block(world,"RoadEdgeStone",Vector3(-4.85,3.09,z),Vector3(.28,.09,3.6),cliff,false)
 		textured_block(world,"RoadEdgeStone",Vector3(4.85,3.09,z),Vector3(.28,.09,3.6),cliff,false)
 
@@ -158,9 +158,9 @@ static func build_boundaries(world: Node3D) -> void:
 	# while every playable outer edge is visibly and physically enclosed.
 	for x in [-31.45,31.45]:
 		make_wall_run(world,Vector3(x,4.1,-70),Vector3(1.1,2.2,16),false)
-		make_wall_run(world,Vector3(x,4.1,22),Vector3(1.1,2.2,100),false)
+		make_wall_run(world,Vector3(x,4.1,(world.Layout.BOUNDS.end.y-28)/2),Vector3(1.1,2.2,world.Layout.BOUNDS.end.y+28),false)
 	make_wall_run(world,Vector3(0,2.1,-77.45),Vector3(64,3.2,1.1),true)
-	make_wall_run(world,Vector3(0,4.1,71.45),Vector3(64,2.2,1.1),true)
+	make_wall_run(world,Vector3(0,4.1,world.Layout.BOUNDS.end.y-.55),Vector3(64,2.2,1.1),true)
 
 static func build_ramp_fill(world: Node3D) -> StaticBody3D:
 	# A convex earthen wedge fills the entire volume below the authored ramp.
@@ -230,9 +230,14 @@ static func build_cover(world: Node3D) -> void:
 	]
 	for index in rocks.size():
 		var entry: Array = rocks[index]
-		make_rock(world,"FieldBoulder%02d" % index,entry[0],entry[1],entry[2],true,true)
+		var position: Vector3 = entry[0]
+		if position.z >= -10: position.z = world.Layout.plateau_depth(position.z)
+		if world.Layout.SAFE_ZONE.grow(2).has_point(Vector2(position.x,position.z)): continue
+		make_rock(world,"FieldBoulder%02d" % index,position,entry[1],entry[2],true,true)
 	# Small companion stones break up the unmistakable single-primitive silhouette.
 	for point in [Vector3(-23,3.35,-1),Vector3(24,3.32,5),Vector3(-20,3.34,15),Vector3(21,3.34,22),Vector3(-25,3.34,33),Vector3(24,3.34,41)]:
+		point.z = world.Layout.plateau_depth(point.z)
+		if world.Layout.SAFE_ZONE.grow(1).has_point(Vector2(point.x,point.z)): continue
 		make_rock(world,"ScatterStone",point,Vector3(1.25,.72,1.0),point.x*4.0,false,false)
 
 static func build_vegetation(world: Node3D) -> void:
@@ -246,6 +251,8 @@ static func build_vegetation(world: Node3D) -> void:
 	]
 	for index in patches.size():
 		var point: Vector2 = patches[index]
+		if point.y >= -10: point.y = world.Layout.plateau_depth(point.y)
+		if world.Layout.SAFE_ZONE.has_point(point): continue
 		make_grass_tuft(world,point,world.Layout.height(point)+.03,"526448" if index%3 else "6c7350")
 
 static func decorate_existing(world: Node3D) -> void:

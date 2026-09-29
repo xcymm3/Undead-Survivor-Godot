@@ -86,7 +86,7 @@ func stage_case(count: int, scenario: String) -> Dictionary:
 	sim.defense.waiting = false
 	sim.defense.crystal_hp = 1000000000
 	var p: Dictionary = sim.pawns.solo
-	p.pos = Vector2(0,48) if scenario in ["movement","bridge"] else Vector2(0,40)
+	p.pos = Vector2(0,data.Maps.Defense.BOUNDS.end.y-6) if scenario in ["movement","bridge"] else Vector2(0,38)
 	p.height = 3.0
 	p.yaw = 0.0
 	p.protection = 10000.0

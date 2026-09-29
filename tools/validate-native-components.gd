@@ -165,26 +165,26 @@ func validate_flame() -> void:
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
-	p.pos = Vector2(8,60)
+	p.pos = Vector2(8,36.0)
 	p.yaw = 0
 	p.pitch = 0
 	p.weapon = 7
 	sim.zombies.clear()
-	sim.spawn(Vector2(8,54),"normal")
+	sim.spawn(Vector2(8,30.0),"normal")
 	var z: Dictionary = sim.zombies[0]
 	var before: float = z.hp
 	sim.fire(p,root.get_node("Data").weapons[7])
 	check(is_equal_approx(before-z.hp,45),"Overlapping flame rays apply damage only once per tick")
 	sim.zombies.clear()
-	sim.spawn(Vector2(8,52),"normal")
-	sim.spawn(Vector2(8.65,50),"normal")
+	sim.spawn(Vector2(8,28.0),"normal")
+	sim.spawn(Vector2(8.65,26.0),"normal")
 	var initial_hp: Array = sim.zombies.map(func(enemy): return enemy.hp)
 	sim.fire(p,root.get_node("Data").weapons[7])
 	check(sim.zombies[0].hp < initial_hp[0] and sim.zombies[1].hp < initial_hp[1],"Flame covers off-axis enemies and penetrates the front row")
-	p.pos = Vector2(0,64)
-	p.yaw = PI
+	p.pos = Vector2(28,6)
+	p.yaw = -PI/2
 	sim.zombies.clear()
-	sim.spawn(Vector2(0,69),"normal")
+	sim.spawn(Vector2(31.5,6),"normal")
 	before = sim.zombies[0].hp
 	sim.fire(p,root.get_node("Data").weapons[7])
 	check(sim.zombies[0].hp == before,"Widened flame cannot damage enemies through the armory wall")
@@ -199,12 +199,12 @@ func validate_sniper_penetration() -> void:
 	var w: Dictionary = root.get_node("Data").weapons[5].duplicate(true)
 	# Isolate penetration from the standing pose's head/body intersection.
 	w.headshotMultiplier = 1
-	p.pos = Vector2(8,60)
+	p.pos = Vector2(8,36.0)
 	p.yaw = 0
 	p.pitch = 0
 	p.weapon = 5
 	sim.zombies.clear()
-	for depth in [54,52,50,48]:
+	for depth in [30,28,26,24]:
 		sim.spawn(Vector2(8,depth),"normal")
 		sim.zombies[-1].hp = 2000
 		sim.zombies[-1].body = 2000
@@ -212,10 +212,10 @@ func validate_sniper_penetration() -> void:
 	for index in 4:
 		var expected: float = float(w.damage)*pow(.8,index) if index < 3 else 0.0
 		check(is_equal_approx(2000-sim.zombies[index].hp,expected),"Sniper front-to-back attenuation and three-target limit "+str(index))
-	p.pos = Vector2(0,64)
-	p.yaw = PI
+	p.pos = Vector2(28,6)
+	p.yaw = -PI/2
 	sim.zombies.clear()
-	sim.spawn(Vector2(0,69),"normal")
+	sim.spawn(Vector2(31.5,6),"normal")
 	var health: float = sim.zombies[0].hp
 	sim.fire(p,w)
 	check(sim.zombies[0].hp == health,"Sniper cannot penetrate the armory wall")
@@ -233,7 +233,7 @@ func validate_crawler() -> void:
 	check(sim.defense_population_kind("football") == "football" and sim.defense_ordinary_slots == before+20,"Boss does not consume ordinary ratio")
 	check(preload("res://scripts/enemy_population.gd").COST.crawler == .75,"Crawler shares the ordinary cost of three quarters of a point")
 	sim.zombies.clear()
-	sim.spawn(Vector2(8,60),"crawler")
+	sim.spawn(Vector2(8,36.0),"crawler")
 	var z: Dictionary = sim.zombies[-1]
 	check(z.hp == root.get_node("Data").enemies.normal.health and z.armor == 0,"Crawler matches normal health and armor")
 	check(z.chase_speed >= 4.6*.85 and z.chase_speed <= 5.2*.85,"Crawler chase speed is 85 percent of ordinary range")
@@ -257,8 +257,8 @@ func validate_crawler() -> void:
 							high = maxf(high,point.y-ground)
 			check(low >= -.05 and high < .95,"Crawl/attack pose stays low without sinking")
 	z.attack_time = 0
-	check(view.hit(z,Vector3(8,ground+1.7,64),Vector3.FORWARD,8,0,false).is_empty(),"Standing head line passes above crawler")
-	var head = view.hit(z,Vector3(8,ground+.53,64),Vector3.FORWARD,8,0,false)
+	check(view.hit(z,Vector3(8,ground+1.7,40.0),Vector3.FORWARD,8,0,false).is_empty(),"Standing head line passes above crawler")
+	var head = view.hit(z,Vector3(8,ground+.53,40.0),Vector3.FORWARD,8,0,false)
 	check(not head.is_empty() and head.head,"Lowered aim hits crawler head")
 	var death_heads: Array = []
 	var death_hands: Array = []
@@ -289,7 +289,7 @@ func validate_crawler() -> void:
 	var idle_crawl_a: Dictionary = view.pose_state(z,0.0,false)
 	var idle_crawl_b: Dictionary = view.pose_state(z,1.0,false)
 	check(not idle_crawl_a.root.is_equal_approx(idle_crawl_b.root),"Awake crawler has a subtle idle sway")
-	sim.spawn(Vector2(10,60),"normal")
+	sim.spawn(Vector2(10,36.0),"normal")
 	var upright: Dictionary = sim.zombies[-1]
 	upright.move_speed = 0.0
 	var idle_stand_a: Dictionary = view.pose_state(upright,0.0,false)
@@ -311,7 +311,7 @@ func validate_outfits() -> void:
 	sim.zombies.clear()
 	for kind in ["normal","crawler","cone","bucket"]:
 		for i in 100:
-			sim.spawn(Vector2(8,60),kind)
+			sim.spawn(Vector2(8,36.0),kind)
 			var z: Dictionary = sim.zombies[-1]
 			check(z.outfit >= 0 and z.outfit < 5,"Eligible infected has valid outfit")
 			counts[z.outfit] += 1
@@ -322,15 +322,15 @@ func validate_outfits() -> void:
 	check(snapshot.zombies.map(func(z): return z.outfit) == sim.zombies.map(func(z): return z.outfit),"Outfit survives network snapshot serialization")
 	var p: Dictionary = game.local_pawn()
 	for kind in ["cone","bucket"]:
-		sim.spawn(Vector2(8,60),kind)
+		sim.spawn(Vector2(8,36.0),kind)
 		var z: Dictionary = sim.zombies[-1]
 		var style: int = z.outfit
-		sim.hit_enemy(z,z.armor,true,p,Vector3(8,1.5,60))
+		sim.hit_enemy(z,z.armor,true,p,Vector3(8,1.5,36.0))
 		check(z.kind == "normal" and z.outfit == style,"Armor break retains clothing "+kind)
-		sim.hit_enemy(z,10000,false,p,Vector3(8,1,60))
+		sim.hit_enemy(z,10000,false,p,Vector3(8,1,36.0))
 		check(z.hp == 0 and z.outfit == style,"Death retains clothing "+kind)
 	for kind in ["imp","shield","berserker","football"]:
-		sim.spawn(Vector2(8,60),kind)
+		sim.spawn(Vector2(8,36.0),kind)
 		check(not sim.zombies[-1].has("outfit"),"Special silhouette remains unchanged "+kind)
 	for kind in ["normal","crawler","cone","bucket"]:
 		var variants: Array = []
@@ -349,8 +349,8 @@ func validate_interaction_motion() -> void:
 	var d = sim.defense_director
 	var p: Dictionary = game.local_pawn()
 	var point: Vector3 = root.get_node("Data").Maps.Defense.weapon_mount(1)
-	p.pos = Vector2(point.x,point.z-1.65)
-	p.yaw = PI
+	p.pos = Vector2(point.x-1.65,point.z)
+	p.yaw = -PI/2
 	p.pitch = atan2(point.y-p.height-preload("res://scripts/player_body.gd").eye_height(p),1.65)
 	var old: int = p.weapon1
 	check(d.equipment.pickup(p,"weapon:8"),"Armory gun exchange starts a native pickup animation")
@@ -438,7 +438,7 @@ func run() -> void:
 		if str(id).begins_with("hud_fixture_"): game.sim.pawns.erase(id)
 	game.ui.tick(.016)
 
-	game.ui.native_hud.size = Vector2(960,540)
+	game.ui.native_hud.size = Vector2(960,516.0)
 	game.ui.native_hud.layout()
 	check(game.ui.native_hud.content.size.x >= 1440,"HUD maintains readable layout at smaller viewport sizes")
 	var original = InputMap.action_get_events("jump")
@@ -1019,7 +1019,7 @@ func validate_inventory() -> void:
 	game.requested_slot = 3
 	game.cycle_equipment(1)
 	check(game.requested_slot == 1,"Wheel skips the empty grenade slot")
-	p.pos = Vector2(0,60)
+	p.pos = Vector2(0,36.0)
 	p.yaw = 0.0
 	p.pitch = 0.0
 	# Full real swing: the expanded reach hits at 3 m but still misses at 4 m.
@@ -1062,8 +1062,8 @@ func validate_equipment() -> void:
 		p.input = {"yaw":0.0,"pitch":0.0}
 		var old_hp: int = p.hp
 		sim.zombies.clear()
-		sim.spawn(Vector2(0,69),"normal")
-		equipment.explode({"owner":p.id,"pos":Vector3(0,4,64)})
+		sim.spawn(Vector2(31.5,6),"normal")
+		equipment.explode({"owner":p.id,"pos":Vector3(28,4,6)})
 		check(sim.zombies[0].hp > 0,"Armory wall blocks grenade blast damage")
 		sim.zombies.clear()
 		sim.spawn(Vector2(8,28.7),"normal")

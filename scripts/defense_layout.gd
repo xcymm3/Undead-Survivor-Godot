@@ -1,13 +1,16 @@
 extends RefCounted
 ## “断崖吊桥”防守地图的共享尺寸、目标点与高度函数。
 const ID = "graypine_defense"
-const BOUNDS = Rect2(-32,-78,64,150)
-const SPAWN = Vector2(0,61)
-const CRYSTAL = Vector2(0,46)
+const PLATEAU = Rect2(-32,-10,64,82.0*2.0/3.0)
+const BOUNDS = Rect2(-32,-78,64,PLATEAU.end.y+78)
+const SPAWN = Vector2(25,6)
+const CRYSTAL = Vector2(0,PLATEAU.position.y+PLATEAU.size.y/2)
 const CRYSTAL_RADIUS = 1.05
 const CRYSTAL_CONTACT_RADIUS = 2.3 # Crystal body plus enemy navigation clearance.
-const FALL_RETURN = Vector2(-6,49)
-const SAFE_ZONE = Rect2(-13,52,26,17)
+const FALL_RETURN = CRYSTAL+Vector2(-6,3)
+const SAFE_ZONE = Rect2(18,-7,12.9,26)
+const ARMORY_WALL_X = 30.575 # Flush against the inner face of the right perimeter.
+const ARMORY_CENTER_Z = 6.0
 const BRIDGE = Rect2(-4,-62,8,34)
 const ENEMY_SPAWN_REGION = Rect2(BOUNDS.position,Vector2(BOUNDS.size.x,BRIDGE.position.y-BOUNDS.position.y))
 const ENEMY_BRIDGE_SPAWN_DISTANCE = 8.0
@@ -18,7 +21,14 @@ const ARMORY_COLUMNS := [-7.2,-2.4,2.4,7.2]
 const ARMORY_ROWS := [5.65]
 
 static func weapon_mount(display_index: int) -> Vector3:
-	return Vector3(ARMORY_COLUMNS[display_index],ARMORY_ROWS[0],67.28)
+	return armory_transform()*Vector3(ARMORY_COLUMNS[display_index],ARMORY_ROWS[0],67.28)
+
+static func armory_transform() -> Transform3D:
+	var basis = Basis(Vector3.UP,PI/2)
+	return Transform3D(basis,Vector3(ARMORY_WALL_X,0,ARMORY_CENTER_Z)-basis*Vector3(0,0,67.85))
+
+static func plateau_depth(old_depth: float) -> float:
+	return PLATEAU.position.y+(old_depth+10)*2.0/3.0
 
 static func height(p: Vector2) -> float:
 	if p.y <= RAMP.position.y: return 0.0

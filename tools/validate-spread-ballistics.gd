@@ -11,7 +11,7 @@ func run() -> void:
 	game.start_solo("defense",71245)
 	await physics_frame
 	var pawn: Dictionary = game.local_pawn()
-	pawn.pos = Vector2(8,60)
+	pawn.pos = Vector2(8,36)
 	pawn.yaw = 0
 	pawn.pitch = 0
 	game.sim.zombies.clear()

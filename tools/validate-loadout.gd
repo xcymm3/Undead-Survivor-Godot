@@ -1,8 +1,8 @@
 extends RefCounted
 
 static func aim_at_mount(p: Dictionary, point: Vector3) -> void:
-	p.pos = Vector2(point.x,point.z-1.65)
-	p.yaw = PI
+	p.pos = Vector2(point.x-1.65,point.z)
+	p.yaw = -PI/2
 	p.pitch = atan2(point.y-p.height-preload("res://scripts/player_body.gd").eye_height(p),1.65)
 
 static func validate(game, check: Callable) -> void:

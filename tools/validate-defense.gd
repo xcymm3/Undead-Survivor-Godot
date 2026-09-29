@@ -21,14 +21,14 @@ func command(weapon := 0, interact := false, slot := 1, yaw := 0.0, pitch := 0.0
 	return {"x":0.0,"y":0.0,"yaw":yaw,"pitch":pitch,"weapon":weapon,"slot":slot,"interact":interact,"crouch":false,"jump":false,"reload":false,"fire":fire,"use_self":fire,"aim":false,"shove":false}
 
 func interact_with(sim, pawn: Dictionary, point: Vector3, id := "solo") -> void:
-	pawn.pos = Vector2(point.x,point.z-1.65)
+	pawn.pos = Vector2(point.x-1.65,point.z)
 	pawn.height = root.get_node("Data").Maps.Defense.height(pawn.pos)
 	var eye_y: float = pawn.height+preload("res://scripts/player_body.gd").eye_height(pawn)
 	var pitch := atan2(point.y-eye_y,1.65)
 	for i in 5:
-		sim.submit(id,command(int(pawn.weapon),true,int(pawn.slot),PI,pitch))
+		sim.submit(id,command(int(pawn.weapon),true,int(pawn.slot),-PI/2,pitch))
 		sim.step(.1)
-	sim.submit(id,command(int(pawn.weapon),false,int(pawn.slot),PI,pitch))
+	sim.submit(id,command(int(pawn.weapon),false,int(pawn.slot),-PI/2,pitch))
 	sim.step(.02)
 
 func _initialize() -> void:
@@ -47,12 +47,16 @@ func run() -> void:
 	game.set_process(false)
 	game.set_physics_process(false)
 	check(game.arena.map_id == "graypine_defense","Defense map loads as an authored scene")
+	var layout = data.Maps.Defense
+	check(is_equal_approx(layout.PLATEAU.size.y,82.0*2.0/3.0) and is_equal_approx(layout.BOUNDS.end.y,layout.PLATEAU.end.y),"Plateau and world boundary shorten to two thirds of the original length")
+	check(layout.CRYSTAL == layout.PLATEAU.get_center(),"Crystal occupies the exact centre of the flat plateau")
+	check(layout.SAFE_ZONE.position.x > 0 and layout.SAFE_ZONE.get_center().y < layout.CRYSTAL.y and layout.SAFE_ZONE.has_point(layout.SPAWN),"Armory and player spawn occupy the right side toward the bridge")
 	check(game.arena.obstacles.size() >= 5,"Chasm, ramp shelves and rear safe zone participate in navigation")
 	check(not game.arena.clear(Vector2(12,-70),Vector2(12,0)),"Chasm prevents routes that bypass the bridge")
 	check(not game.arena.clear(Vector2(12,-20),Vector2(12,0)),"Ramp-side shelves cannot bypass the central climb")
-	check(not game.arena.clear(Vector2(0,50),Vector2(0,60)),"Zombies cannot enter the rear loadout safe zone")
-	check(game.arena.clear(Vector2(0,-70),Vector2(0,42.7)),"Bridge and ramp form one open approach lane")
-	check(not game.arena.clear(Vector2(0,42.7),data.Maps.Defense.CRYSTAL),"Crystal body blocks enemy navigation")
+	check(not game.arena.clear(Vector2(17,6),Vector2(25,6)),"Zombies cannot enter the side armory safe zone")
+	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Bridge and ramp form one open approach lane")
+	check(not game.arena.clear(Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997),data.Maps.Defense.CRYSTAL),"Crystal body blocks enemy navigation")
 	check(game.arena.scenery.find_children("CrystalPedestal","*",true,false).is_empty(),"Crystal pedestal has been removed")
 	check(game.arena.scenery.find_children("WaveLever","*",true,false).is_empty(),"Defense wave lever has been removed")
 	var crystal_bodies = game.arena.scenery.find_children("CrystalBody","StaticBody3D",true,false)
@@ -70,7 +74,7 @@ func run() -> void:
 	check(not shelf_hit.is_empty() and absf(shelf_hit.position.y) < .1,"Ramp sides provide low physical fall-catching shelves")
 	check(not ramp_fill_hit.is_empty() and ramp_fill_hit.position.x > 5.3,"Ramp underside is a solid physical wedge")
 	check(not ramp_seam_hit.is_empty() and ramp_seam_hit.position.y > -.1,"Ramp fill closes the seam beside the lower rail")
-	check(not plateau_hit.is_empty() and absf(plateau_hit.position.y-3) < .1,"Crystal stands at the end of the raised flat ground")
+	check(not plateau_hit.is_empty() and absf(plateau_hit.position.y-3) < .1,"Crystal stands at the centre of the shortened raised flat ground")
 	var environment_features = game.arena.scenery.find_children("*","Node3D",true,false)
 	var boulder_count = environment_features.filter(func(node): return node.get_meta("environment_feature","") == "boulder").size()
 	var vegetation_count = environment_features.filter(func(node): return node.get_meta("environment_feature","") == "vegetation").size()
@@ -78,7 +82,7 @@ func run() -> void:
 	check(boulder_count >= 10,"Defense field has authored natural rock cover")
 	check(vegetation_count >= 20,"Defense terrain has distributed vegetation detail")
 	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
-	check(game.arena.clear(Vector2(0,-70),Vector2(0,42.7)),"Environmental cover preserves the central bridge, ramp and field lane")
+	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Environmental cover preserves the central bridge, ramp and field lane")
 	var weapon_displays = game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false)
 	var armory_weapon_indices := [0,8,7,5]
 	check(weapon_displays.size() == 4,"Armory displays only rifle, automatic shotgun, flamethrower and sniper")
@@ -88,6 +92,7 @@ func run() -> void:
 	var shop_walls = game.arena.scenery.find_children("WeaponShopWall","StaticBody3D",true,false)
 	check(shop_walls.size() == 1,"Safe zone uses one continuous physical shop wall")
 	var shop_shape = shop_walls[0].find_children("*","CollisionShape3D",true,false)[0] as CollisionShape3D
+	check(is_equal_approx(shop_walls[0].position.x+.325,30.9) and absf(shop_walls[0].basis.z.x) > .99,"Armory wall sits flush against the right perimeter and faces the field")
 	check(shop_shape and shop_shape.shape is BoxShape3D and shop_shape.shape.size.y >= 8.8,"Weapon shop wall is at least twice its previous height")
 	var weapon_mounts: Array = weapon_displays.map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
 	var columns: Array = []
@@ -178,21 +183,21 @@ func run() -> void:
 	# Isolate target choice from the wave spawner: the closest valid unit must take the hit.
 	sim.roster.clear()
 	sim.zombies.clear()
-	pawn.pos = Vector2(0,60)
+	pawn.pos = data.Maps.Defense.SPAWN
 	pawn.hp = 100
 	var crystal_before: int = sim.defense.crystal_hp
-	sim.spawn(Vector2(0,42.7),"normal")
+	sim.spawn(Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997),"normal")
 	for i in 4: sim.step(.4)
 	check(sim.defense.crystal_hp < crystal_before and pawn.hp == 100,"A zombie beside the crystal attacks the crystal instead of a distant player")
-	check(sim.zombies[0].pos.y <= 44.05 and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Crystal attacker stays outside the solid crystal")
+	check(sim.zombies[0].pos.y <= data.Maps.Defense.CRYSTAL.y-1.9500000000000028 and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Crystal attacker stays outside the solid crystal")
 	sim.zombies.clear()
 	crystal_before = sim.defense.crystal_hp
-	sim.spawn(Vector2(0,40),"crawler")
+	sim.spawn(Vector2(0,data.Maps.Defense.CRYSTAL.y-6.0),"crawler")
 	for i in 35: sim.step(.1)
 	var crawler: Dictionary = sim.zombies[0]
-	check(crawler.pos.y <= 44.05 and game.arena.clear(crawler.pos,crawler.pos),"Crawler remains outside the solid crystal")
+	check(crawler.pos.y <= data.Maps.Defense.CRYSTAL.y-1.9500000000000028 and game.arena.clear(crawler.pos,crawler.pos),"Crawler remains outside the solid crystal")
 	check(sim.defense.crystal_hp < crystal_before,"Crawler can strike the crystal without entering it")
-	var shot_origin := Vector3(0,4.6,39)
+	var shot_origin := Vector3(0,4.6,data.Maps.Defense.CRYSTAL.y-7.0)
 	var crawler_hittable := false
 	for aim_step in 8:
 		var aim := Vector3(crawler.pos.x,3.2+aim_step*.1,crawler.pos.y)
@@ -202,12 +207,12 @@ func run() -> void:
 	check(crawler_hittable,"Approach-lane shots can hit a crawler beside the crystal")
 	sim.zombies.clear()
 	crystal_before = sim.defense.crystal_hp
-	sim.spawn(Vector2(4,42),"normal")
+	sim.spawn(Vector2(4,data.Maps.Defense.CRYSTAL.y-4.0),"normal")
 	for i in 45: sim.step(.1)
 	check(sim.defense.crystal_hp < crystal_before and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Diagonal attackers surround and damage the crystal")
 	# Every enemy archetype must reach and damage the crystal from each open face.
 	for kind in ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football"]:
-		for entry in [Vector2(0,40),Vector2(-5,46),Vector2(5,46),Vector2(0,50)]:
+		for entry in [Vector2(0,data.Maps.Defense.CRYSTAL.y-6.0),Vector2(-5,data.Maps.Defense.CRYSTAL.y+0.0),Vector2(5,data.Maps.Defense.CRYSTAL.y+0.0),Vector2(0,data.Maps.Defense.CRYSTAL.y+4.0)]:
 			sim.zombies.clear()
 			sim.paths.clear()
 			sim.crowd_buckets.clear()
@@ -217,37 +222,37 @@ func run() -> void:
 				sim.elapsed += .1
 				sim.update_zombie(sim.zombies[0],sim.crystal_target(),.1)
 			var attacker: Dictionary = sim.zombies[0]
-			var sight: Dictionary = game.arena.surface_hit(Vector3(attacker.pos.x,4.1,attacker.pos.y),Vector3(0,4.1,46))
+			var sight: Dictionary = game.arena.surface_hit(Vector3(attacker.pos.x,4.1,attacker.pos.y),Vector3(0,4.1,data.Maps.Defense.CRYSTAL.y+0.0))
 			check(sim.defense.crystal_hp < data.Maps.Defense.CRYSTAL_MAX_HP and game.arena.clear(attacker.pos,attacker.pos),"Crystal attack reaches from %s with %s: pos=%s distance=%.2f attack=%.2f sight=%s" % [str(entry),kind,str(attacker.pos),attacker.pos.distance_to(data.Maps.Defense.CRYSTAL),attacker.attack_time,str(not sight.is_empty())])
 	sim.zombies.clear()
-	pawn.pos = Vector2(0,50)
+	pawn.pos = Vector2(0,data.Maps.Defense.CRYSTAL.y+4.0)
 	pawn.hp = 100
 	crystal_before = sim.defense.crystal_hp
-	sim.spawn(Vector2(0,48.9),"normal")
+	sim.spawn(Vector2(0,data.Maps.Defense.CRYSTAL.y+2.8999999999999986),"normal")
 	for i in 4: sim.step(.4)
 	check(pawn.hp < 100 and sim.defense.crystal_hp == crystal_before,"A zombie beside the player attacks the player instead of the farther crystal")
 
 	# Imps ignore even a point-blank player and continue toward the crystal.
 	sim.zombies.clear()
-	pawn.pos = Vector2(0,42.5)
+	pawn.pos = Vector2(0,data.Maps.Defense.CRYSTAL.y-3.5)
 	pawn.hp = 100
 	pawn.protection = 0.0
-	sim.spawn(Vector2(0,42.7),"imp")
+	sim.spawn(Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997),"imp")
 	var imp: Dictionary = sim.zombies[-1]
 	var chosen: Dictionary = sim.choose_zombie_target(imp,[pawn])
 	check(chosen.get("is_crystal",false),"Imp target selection is locked to the crystal")
 	for i in 5: sim.step(.2)
-	check(pawn.hp == 100 and imp.pos.y <= 44.05,"An imp beside the player attacks from outside the crystal")
+	check(pawn.hp == 100 and imp.pos.y <= data.Maps.Defense.CRYSTAL.y-1.9500000000000028,"An imp beside the player attacks from outside the crystal")
 
 	# Giants share the crystal-only target policy and their defense slam cannot
 	# damage a player standing inside its otherwise shared area of effect.
 	sim.zombies.clear()
-	pawn.pos = Vector2(0,42.7)
+	pawn.pos = Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)
 	pawn.height = data.enemy_ground_height(pawn.pos,sim.map_id)
 	pawn.hp = 100
 	pawn.protection = 0.0
 	crystal_before = sim.defense.crystal_hp
-	sim.spawn(Vector2(0,42.7),"giant")
+	sim.spawn(Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997),"giant")
 	var giant: Dictionary = sim.zombies[-1]
 	chosen = sim.choose_zombie_target(giant,[pawn])
 	check(chosen.get("is_crystal",false),"Giant target selection is locked to the crystal")
@@ -256,30 +261,30 @@ func run() -> void:
 
 	# Move the native player capsule into the crystal from both sides.
 	sim.zombies.clear()
-	pawn.pos = Vector2(0,42)
+	pawn.pos = Vector2(0,data.Maps.Defense.CRYSTAL.y-4.0)
 	pawn.height = 3.0
 	var into_crystal = command(int(pawn.weapon))
 	into_crystal.y = 1.0
 	for i in 80:
 		sim.submit("solo",into_crystal)
 		sim.step(.05)
-	check(pawn.pos.y > 42.5 and pawn.pos.y < 44.8,"Player capsule stops at the crystal's near side")
-	check(not game.arena.surface_hit(Vector3(0,4.1,42),Vector3(0,4.1,46)).is_empty(),"Native physics ray hits the crystal body")
-	pawn.pos = Vector2(0,50)
+	check(pawn.pos.y > data.Maps.Defense.CRYSTAL.y-3.5 and pawn.pos.y < data.Maps.Defense.CRYSTAL.y-1.2000000000000028,"Player capsule stops at the crystal's near side")
+	check(not game.arena.surface_hit(Vector3(0,4.1,data.Maps.Defense.CRYSTAL.y-4.0),Vector3(0,4.1,data.Maps.Defense.CRYSTAL.y+0.0)).is_empty(),"Native physics ray hits the crystal body")
+	pawn.pos = Vector2(0,data.Maps.Defense.CRYSTAL.y+4.0)
 	into_crystal.y = -1.0
 	for i in 80:
 		sim.submit("solo",into_crystal)
 		sim.step(.05)
-	check(pawn.pos.y < 49.5 and pawn.pos.y > 47.2,"Player capsule stops at the crystal's far side")
+	check(pawn.pos.y < data.Maps.Defense.CRYSTAL.y+3.5 and pawn.pos.y > data.Maps.Defense.CRYSTAL.y+1.2000000000000028,"Player capsule stops at the crystal's far side")
 
 	# The crystal occludes a player on its far side; enemies must keep the crystal target.
 	sim.zombies.clear()
-	pawn.pos = Vector2(0,47.4)
+	pawn.pos = Vector2(0,data.Maps.Defense.CRYSTAL.y+1.3999999999999986)
 	pawn.height = 3.0
 	pawn.hp = 100
 	pawn.protection = 0.0
 	crystal_before = sim.defense.crystal_hp
-	sim.spawn(Vector2(0,42),"normal")
+	sim.spawn(Vector2(0,data.Maps.Defense.CRYSTAL.y-4.0),"normal")
 	check(sim.choose_zombie_target(sim.zombies[0],[pawn]).get("is_crystal",false),"Crystal-side player does not steal an occluded zombie target")
 	for i in 50: sim.step(.1)
 	check(sim.defense.crystal_hp < crystal_before and pawn.hp == 100 and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Zombie continues attacking crystal while player stands behind it")
@@ -487,7 +492,7 @@ func run() -> void:
 	await physics_frame
 	sim = game.sim
 	pawn = sim.pawns.solo
-	pawn.pos = Vector2(6,49)
+	pawn.pos = Vector2(6,data.Maps.Defense.CRYSTAL.y+3.0)
 	var failure_ready := command()
 	failure_ready.wave_ready = true
 	sim.submit("solo",failure_ready)

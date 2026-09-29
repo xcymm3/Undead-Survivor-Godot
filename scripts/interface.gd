@@ -435,7 +435,7 @@ func show_guide() -> void:
 	for i in Data.weapons.size():
 		var w: Dictionary = Data.weapons[i]
 		for text in [w.label,w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
-	paragraph(column,"僵尸从对岸五个刷怪点走来。普通僵尸会追击玩家，小鬼与巨人优先攻击水晶；利用推搡与火力保护水晶。",17)
+	paragraph(column,"僵尸从对岸随机地点走来，出生位置远离桥口。水晶位于高地中心，军械库在靠桥方向的右侧墙边；利用推搡与火力保护水晶。",17)
 	paragraph(column,"军械库提供步枪、自动霰弹枪、喷火枪和狙击枪。先按 1 或 2 选择槽位，再按 E 换枪并补充弹药；可携带两把任意武器。每波实际开始时，手雷自动补满至 3 枚。",17)
 	button(column,"返回",back,true)
 

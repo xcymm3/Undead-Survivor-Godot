@@ -66,7 +66,7 @@ func make_crystal() -> void:
 	crystal_light.omni_range = 13.0
 	crystal_light.shadow_enabled = true
 	crystal.add_child(crystal_light)
-	crystal_label = sign_at("水晶 1500 / 1500",Vector3(0,7.8,46),4.6)
+	crystal_label = sign_at("水晶 1500 / 1500",Vector3(DefenseLayout.CRYSTAL.x,7.8,DefenseLayout.CRYSTAL.y),4.6)
 
 func make_bridge() -> void:
 	# 连续碰撞板负责角色行走；独立木板、桥塔和垂索塑造吊桥轮廓。
@@ -110,9 +110,14 @@ func make_ramp() -> void:
 		block("RampMark",Vector3(0,y+.28,z),Vector3(9.7,.06,.18),"8b7654",false)
 
 func make_safe_zone() -> void:
-	block("SafeZoneFloor",Vector3(0,3.035,60.5),Vector3(26,.06,17),"314c45",false)
-	for x in [-13.0,13.0]: block("SafeLine",Vector3(x,3.075,60.5),Vector3(.12,.08,17),"7bd8aa",false)
-	for z in [52.0,69.0]: block("SafeLine",Vector3(0,3.075,z),Vector3(26,.08,.12),"7bd8aa",false)
+	var previous_children = get_children()
+	var local_front = 67.85+DefenseLayout.SAFE_ZONE.position.x-DefenseLayout.ARMORY_WALL_X
+	var local_back = 67.85+DefenseLayout.SAFE_ZONE.end.x-DefenseLayout.ARMORY_WALL_X
+	var local_center = (local_front+local_back)/2
+	var depth = local_back-local_front
+	block("SafeZoneFloor",Vector3(0,3.035,local_center),Vector3(26,.06,depth),"314c45",false)
+	for x in [-13.0,13.0]: block("SafeLine",Vector3(x,3.075,local_center),Vector3(.12,.08,depth),"7bd8aa",false)
+	for z in [local_front,local_back]: block("SafeLine",Vector3(0,3.075,z),Vector3(26,.08,.12),"7bd8aa",false)
 	var shop_wall = block("WeaponShopWall",Vector3(0,7.2,67.85),Vector3(25.5,8.8,.65),"493a2d",true,false)
 	shop_wall.set_meta("environment_feature","weapon_shop_wall")
 	for row in DefenseLayout.ARMORY_ROWS.size():
@@ -130,7 +135,7 @@ func make_safe_zone() -> void:
 		add_child(model)
 		model.name = "WeaponDisplay%02d" % (display_index+1)
 		model.set_meta("weapon_display_index",weapon_index)
-		var mount: Vector3 = DefenseLayout.weapon_mount(display_index)
+		var mount = Vector3(DefenseLayout.ARMORY_COLUMNS[display_index],DefenseLayout.ARMORY_ROWS[0],67.28)
 		model.set_meta("mount_height",mount.y)
 		model.set_meta("mount_x",mount.x)
 		model.rotation.y = PI/2
@@ -144,6 +149,8 @@ func make_safe_zone() -> void:
 	var loadout_label = sign_at("军械库 · 1 / 2 选择武器槽 · E 换枪",Vector3(0,8.45,67.42),5.2)
 	loadout_label.rotation.y = PI
 	loadout_label.position.z -= .22
+	loadout_label.rotation.y = PI
+	loadout_label.position.z -= .22
 	for x in [-9.0,-3.0,3.0,9.0]:
 		var light = OmniLight3D.new()
 		light.position = Vector3(x,6.4,65.8)
@@ -155,6 +162,11 @@ func make_safe_zone() -> void:
 	var zone_label = sign_at("水晶防线军械库 · E 拾取 · 武器即时补货",Vector3(0,10.25,67.45),13.5)
 	zone_label.rotation.y = PI
 	zone_label.position.z -= .22
+	# Build the familiar wall display locally, then rotate it to face the field.
+	# Transform every visual and native collider together; no desktop render path.
+	var placement = DefenseLayout.armory_transform()
+	for child in get_children():
+		if child not in previous_children and child is Node3D: child.transform = placement*child.transform
 
 func _ready() -> void:
 	# 深谷、坡地与高地保持原有玩法尺寸，环境模块只提升表面与边界表现。
@@ -165,9 +177,9 @@ func _ready() -> void:
 	obstacles.append({"minX":4.0,"maxX":32.0,"minZ":-62.0,"maxZ":-28.0})
 	obstacles.append({"minX":-32.0,"maxX":-5.5,"minZ":-28.0,"maxZ":-10.0})
 	obstacles.append({"minX":5.5,"maxX":32.0,"minZ":-28.0,"maxZ":-10.0})
-	# The rear loadout zone is a true enemy-safe fallback. A retreating player
-	# crosses this line, making the crystal both closer and reachable to the horde.
-	obstacles.append({"minX":-32.0,"maxX":32.0,"minZ":52.0,"maxZ":72.0})
+	# The side armory remains enemy-safe while leaving the central field open.
+	var safe = DefenseLayout.SAFE_ZONE
+	obstacles.append({"minX":safe.position.x,"maxX":safe.end.x,"minZ":safe.position.y,"maxZ":safe.end.y})
 	make_bridge()
 	make_ramp()
 	make_safe_zone()
@@ -178,10 +190,10 @@ func _ready() -> void:
 	structure_view.sync({})
 	# 有碰撞的自然掩体避开中央进攻通道；峡谷段保留无围墙的断崖轮廓。
 	DefenseEnvironment.decorate(self)
-	for p in [Vector2(-12,43),Vector2(13,42)]:
+	for p in [DefenseLayout.CRYSTAL+Vector2(-12,-3),DefenseLayout.CRYSTAL+Vector2(13,-4)]:
 		block("CrystalGuard",Vector3(p.x,4.0,p.y),Vector3(3.5,2,1.2),"46534a")
-	wave_label = sign_at("按 T 开始第 1 波",Vector3(6,6.5,49),5.7)
-	for p in [Vector3(-4.2,5.5,-62),Vector3(4.2,5.5,-62),Vector3(-4.2,5.5,-28),Vector3(4.2,5.5,-28),Vector3(-11,6,48),Vector3(11,6,48)]:
+	wave_label = sign_at("按 T 开始第 1 波",Vector3(6,6.5,DefenseLayout.CRYSTAL.y+3),5.7)
+	for p in [Vector3(-4.2,5.5,-62),Vector3(4.2,5.5,-62),Vector3(-4.2,5.5,-28),Vector3(4.2,5.5,-28),Vector3(-11,6,DefenseLayout.CRYSTAL.y+2),Vector3(11,6,DefenseLayout.CRYSTAL.y+2)]:
 		var light = OmniLight3D.new()
 		light.position = p
 		light.light_color = Color("ffc77d")

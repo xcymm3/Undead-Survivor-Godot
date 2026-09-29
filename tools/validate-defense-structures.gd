@@ -165,6 +165,10 @@ func run() -> void:
 	await physics_frame
 	manager = sim.defense_director.structures
 	var mine: Dictionary = manager.find("crystal_mine")
+	# The shorter field puts these blast samples inside turret range.
+	# Isolate mine damage from supporting fire, which is checked above.
+	for item in sim.defense.structures:
+		if item.kind == "turret": item.cooldown = 1000.0
 	for offset in [Vector2.ZERO,Vector2(0,-5),Vector2(0,-10),Vector2(0,-12)]:
 		sim.spawn(mine.pos+offset,"giant")
 	var before_health: Array = sim.zombies.map(func(z): return z.hp)

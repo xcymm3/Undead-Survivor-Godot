@@ -61,7 +61,6 @@ const DEFENSE_REGEN_DELAY = 5.0
 const DEFENSE_REGEN_RATE = 1.0
 const DEFENSE_FALL_HEIGHT = -3.5
 const DEFENSE_FALL_DAMAGE = 10
-const CRAWLER_VARIANT_CHANCE = .1
 
 func _init(world = null) -> void:
 	arena = world
@@ -548,7 +547,8 @@ func approach_goal(z: Dictionary, target: Dictionary) -> Vector2:
 	if target.get("is_crystal",false):
 		var offset: Vector2 = z.pos-target.pos
 		if offset.length_squared() < .0001: offset = Vector2(0,-1)
-		return target.pos+offset.normalized()*Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS
+		# Stay inside attack range even when the map centre has fractional metres.
+		return target.pos+offset.normalized()*Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS*.98
 	if target.get("is_structure",false):
 		var offset: Vector2 = z.pos-target.pos
 		if offset.length_squared() < .0001: offset = Vector2(0,-1)
