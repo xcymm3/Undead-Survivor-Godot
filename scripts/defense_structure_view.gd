@@ -3,6 +3,49 @@ extends Node3D
 const Structures = preload("res://scripts/defense_structures.gd")
 var actors: Dictionary = {}
 var materials: Dictionary = {}
+const DAMAGE_THRESHOLD = .5
+
+func smoke_material() -> StandardMaterial3D:
+	if materials.has("smoke"): return materials.smoke
+	var texture = Image.create(64,64,false,Image.FORMAT_RGBA8)
+	var noise = FastNoiseLite.new()
+	noise.seed = 2718
+	noise.frequency = .12
+	for y in 64:
+		for x in 64:
+			var radius = Vector2(x-31.5,y-31.5).length()/31.5
+			var alpha = pow(maxf(0,1-radius),.7)*clampf(.7+noise.get_noise_2d(x,y),0,1)*.7
+			texture.set_pixel(x,y,Color(.24,.26,.27,alpha))
+	var mat = StandardMaterial3D.new()
+	mat.albedo_texture = ImageTexture.create_from_image(texture)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	materials.smoke = mat
+	return mat
+
+func create_smoke(parent: Node3D) -> Node3D:
+	var smoke = Node3D.new()
+	smoke.name = "DamageSmoke"
+	parent.add_child(smoke)
+	for index in 7:
+		var puff = MeshInstance3D.new()
+		puff.name = "SmokePuff%d" % index
+		puff.mesh = QuadMesh.new()
+		puff.material_override = smoke_material()
+		puff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		smoke.add_child(puff)
+	smoke.visible = false
+	return smoke
+
+func update_smoke(smoke: Node3D, clock: float) -> void:
+	for index in smoke.get_child_count():
+		var puff = smoke.get_child(index)
+		var age = fposmod(clock/2.7+index/7.0,1.0)
+		puff.position = Vector3(sin(clock*.6+index)*.13+age*.35,1.8+age*2.8,.12+age*.18)
+		puff.scale = Vector3.ONE*(.6+age*1.65)
+		puff.transparency = age*age*.95
 
 func material(color: String, glow := false) -> StandardMaterial3D:
 	var key = color+str(glow)
@@ -99,6 +142,7 @@ func create_actor(item: Dictionary) -> Dictionary:
 		actor.yaw = yaw
 		actor.pitch = pitch
 		actor.flash = flash
+		actor.smoke = create_smoke(root)
 	else:
 		actor.body = collider(root,item)
 		var panel = Node3D.new()
@@ -107,14 +151,34 @@ func create_actor(item: Dictionary) -> Dictionary:
 		for x in [-Structures.GATE_WIDTH*.5+.145,Structures.GATE_WIDTH*.5-.145]:
 			box(panel,"GatePost",Vector3(x,.525,0),Vector3(.28,1.05,.32),"343e46")
 			box(panel,"PostCap",Vector3(x,1.06,0),Vector3(.34,.08,.37),"a4afb5")
+		var intact = Node3D.new()
+		intact.name = "IntactSteelwork"
+		panel.add_child(intact)
 		for x in range(-8,9):
-			box(panel,"SteelBar",Vector3(x*(Structures.GATE_WIDTH-.6)/16,.48,0),Vector3(.14,.95,.17),"798791")
+			box(intact,"SteelBar",Vector3(x*(Structures.GATE_WIDTH-.6)/16,.48,0),Vector3(.14,.95,.17),"798791")
 		for x in range(-8,9):
 			for y in [.25,.76]:
-				box(panel,"Rivet",Vector3(x*(Structures.GATE_WIDTH-.6)/16,y,.235),Vector3(.07,.07,.045),"a4afb5")
-		for y in [.25,.76]: box(panel,"CrossRail",Vector3(0,y,.11),Vector3(Structures.GATE_WIDTH-.05,.17,.2),"58636b")
-		var brace = box(panel,"DiagonalBrace",Vector3(0,.49,.22),Vector3(Structures.GATE_WIDTH-.6,.12,.14),"798791")
+				box(intact,"Rivet",Vector3(x*(Structures.GATE_WIDTH-.6)/16,y,.235),Vector3(.07,.07,.045),"a4afb5")
+		for y in [.25,.76]: box(intact,"CrossRail",Vector3(0,y,.11),Vector3(Structures.GATE_WIDTH-.05,.17,.2),"58636b")
+		var brace = box(intact,"DiagonalBrace",Vector3(0,.49,.22),Vector3(Structures.GATE_WIDTH-.6,.12,.14),"798791")
 		brace.rotation.z = .09
+		var damaged = Node3D.new()
+		damaged.name = "DamagedSteelwork"
+		panel.add_child(damaged)
+		for x in range(-8,9):
+			var shortened = x in [-4,-1,0,3,6]
+			var bar = box(damaged,"BentBar",Vector3(x*(Structures.GATE_WIDTH-.6)/16,.4 if shortened else .48,.08*sin(x)),Vector3(.14,.48 if shortened else .9,.17),"58636b")
+			bar.rotation.z = sin(x*2.3)*.32
+			bar.rotation.x = cos(x*1.7)*.24
+		for side in [-1.0,1.0]:
+			var rail = box(damaged,"BuckledRail",Vector3(side*2.65,.64,.17),Vector3(5.0,.17,.2),"58636b")
+			rail.rotation.z = side*.07
+		box(damaged,"LowerRail",Vector3(0,.25,.11),Vector3(Structures.GATE_WIDTH-.05,.17,.2),"58636b")
+		var hanging = box(damaged,"LooseBrace",Vector3(-1.8,.33,.25),Vector3(4.9,.12,.14),"798791")
+		hanging.rotation.z = -.16
+		damaged.visible = false
+		actor.intact = intact
+		actor.damaged = damaged
 		actor.panel = panel
 	actors[item.id] = actor
 	return actor
@@ -135,7 +199,10 @@ func sync(state: Dictionary) -> void:
 			continue
 		actor.body.collision_layer = 1 if item.hp > 0 else 0
 		var collapse = clampf((clock-item.destroyed_at)/.8,0,1) if item.hp <= 0 else 0.0
+		var damaged: bool = item.hp <= item.max_hp*DAMAGE_THRESHOLD
 		if item.kind == "turret":
+			actor.smoke.visible = damaged and item.hp > 0
+			if actor.smoke.visible: update_smoke(actor.smoke,clock)
 			actor.yaw.rotation.y = item.yaw
 			actor.yaw.rotation.z = collapse*1.1
 			actor.yaw.position = Vector3(collapse*.48,1.55-collapse*.95,0)
@@ -143,6 +210,8 @@ func sync(state: Dictionary) -> void:
 			actor.flash.visible = item.hp > 0 and clock-item.get("fired_at",-1.0) < .055
 			actor.pitch.position.z = .045*maxf(0,1-(clock-item.get("fired_at",-1.0))/.12) if item.hp > 0 else 0.0
 		else:
+			actor.intact.visible = not damaged
+			actor.damaged.visible = damaged
 			actor.panel.rotation.x = collapse*1.48
 			# Keep fallen steel above the bridge planks instead of burying them.
 			actor.panel.position.y = collapse*.18

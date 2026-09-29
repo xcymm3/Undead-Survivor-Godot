@@ -14,7 +14,7 @@ func _ready() -> void:
 		var fixture = preload("res://scripts/qa_defense_structures.gd").new()
 		fixture.game = game
 		add_child(fixture)
-	if ("--qa-defense-overview" in OS.get_cmdline_user_args() or "--qa-defense-safe-zone" in OS.get_cmdline_user_args()) and OS.has_feature("web"):
+	if OS.has_feature("web") and Array(OS.get_cmdline_user_args()).any(func(arg): return arg in ["--qa-defense-overview","--qa-defense-safe-zone","--qa-defense-structures-intact","--qa-defense-structures-damaged"]):
 		var overview = preload("res://scripts/qa_defense_overview.gd").new()
 		overview.game = game
 		add_child(overview)

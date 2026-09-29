@@ -44,8 +44,29 @@ func run() -> void:
 		check(actor.root.find_children("*","Label3D",true,false).is_empty(),"Buildings have no overhead names or health labels")
 		if item.kind == "turret":
 			check(item.pos.y > -10 and absf(item.pos.x) > 5 and item.height == 3,"Turret stands on the flat plateau beside the ramp exit")
-	var steel = game.arena.scenery.structure_view.actors.bridge_gate.panel.get_node("SteelBar")
+	var structure_view = game.arena.scenery.structure_view
+	var steel = structure_view.actors.bridge_gate.intact.get_node("SteelBar")
 	check(steel.material_override.metallic > .7,"Gate bars use a metallic material")
+	manager.damage("bridge_gate",499)
+	manager.damage("turret_left",99)
+	sim.defense_director.sync_world()
+	check(structure_view.actors.bridge_gate.intact.visible and not structure_view.actors.turret_left.smoke.visible,"Above half health buildings retain their healthy appearance")
+	manager.damage("bridge_gate",1)
+	manager.damage("turret_left",1)
+	sim.defense_director.sync_world()
+	check(structure_view.actors.bridge_gate.damaged.visible and not structure_view.actors.bridge_gate.intact.visible,"Exactly half gate health switches to bent and broken steelwork")
+	check(structure_view.actors.turret_left.smoke.visible and not structure_view.actors.turret_right.smoke.visible,"Exactly half turret health starts smoke only on the damaged turret")
+	check(structure_view.actors.bridge_gate.body.collision_layer == 1 and structure_view.actors.turret_left.body.collision_layer == 1,"Half-health damage cues preserve live building collision")
+	var puff = structure_view.actors.turret_left.smoke.get_child(0)
+	var puff_position: Vector3 = puff.position
+	sim.defense.prop_clock += .3
+	sim.defense_director.sync_world()
+	check(puff.position != puff_position,"Damage smoke rises over time using the synchronized world clock")
+	var damage_replica = load("res://scripts/simulation.gd").new(game.arena)
+	damage_replica.apply_snapshot(sim.snapshot())
+	check(structure_view.actors.bridge_gate.damaged.visible and structure_view.actors.turret_left.smoke.visible,"Client snapshots display the authority's half-health damage cues")
+	sim.defense_director.begin_wave()
+	check(structure_view.actors.bridge_gate.intact.visible and not structure_view.actors.bridge_gate.damaged.visible and not structure_view.actors.turret_left.smoke.visible,"New wave repairs gate appearance and stops turret smoke")
 	for id in ["turret_left","turret_right"]:
 		var turret: Dictionary = manager.find(id)
 		var mirror_id = "turret_right" if id == "turret_left" else "turret_left"
@@ -83,6 +104,7 @@ func run() -> void:
 		sim.defense.prop_clock += 1.0
 		sim.defense_director.sync_world()
 		check(is_instance_valid(actor.root) and actor.root.visible and actor.yaw.rotation.z > 1.0 and actor.body.collision_layer == 0,"%s collapses into persistent nonblocking wreckage" % id)
+		check(not actor.smoke.visible,"Destroyed %s stops the active half-health smoke cue" % id)
 	# Terrain rays must block turret bullets, including a target beside cover.
 	sim = fresh()
 	await physics_frame
