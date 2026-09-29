@@ -17,7 +17,7 @@
 | 入口与地图目录 | `scripts/main.gd`、`scripts/map_catalog.gd` |
 | 玩法与房主权威 | `scripts/simulation.gd` |
 | 水晶防守 | `scenes/graypine_defense.tscn`、`scripts/defense_world.gd` |
-| 一次性炮塔、地雷与栅栏门 | `scripts/defense_structures.gd`、`scripts/defense_structure_view.gd` |
+| 每波重置的炮塔、地雷与栅栏门 | `scripts/defense_structures.gd`、`scripts/defense_structure_view.gd` |
 | 共享装备与场景几何 | `scripts/equipment_core.gd`、`scripts/equipment_props.gd`、`scripts/world_geometry.gd` |
 | 敌人积分分配 | `scripts/enemy_population.gd`、`scripts/defense_population.gd` |
 | 网络会话 | `scripts/session.gd` |
@@ -32,7 +32,7 @@
 
 自动检查不代表原生 GPU 画质、真人难度与趣味性、实际音效听感或 Steam 双账号跨网络体验已经通过。需要截图或视觉验收时，按 [视觉检查](VISUAL_QA.md) 单独执行并记录观察结果。
 
-新增建筑专项 `tools/validate-defense-structures.gd` 覆盖炮塔躯干瞄准和火力（当前伤害为步枪的一半，即 60，间隔 0.12 秒）、射程与遮挡、九种敌人攻击建筑、栅栏门的原生玩家碰撞与跳跃、地雷复用手雷伤害和引信、波间持久状态及客户端快照。装备改为双武器独立弹药、固定斧和每波三枚手雷，移除医疗包；装备与预算机制改变玩法，网络协议现为 `undead-survivor-godot-22`，旧客户端不能混用。静态 Web 截图使用临时源码副本和 headless Chromium / SwiftShader，不启动桌面 Godot 图形进程。
+新增建筑专项 `tools/validate-defense-structures.gd` 覆盖炮塔躯干瞄准和火力（当前伤害为步枪的一半，即 60，间隔 0.12 秒）、射程与遮挡、九种敌人攻击建筑、栅栏门的原生玩家碰撞与跳跃、地雷复用手雷伤害和引信、开波恢复初始状态及客户端快照。装备改为双武器独立弹药、固定斧和每波三枚手雷，移除医疗包；装备与预算机制改变玩法，网络协议现为 `undead-survivor-godot-22`，旧客户端不能混用。静态 Web 截图使用临时源码副本和 headless Chromium / SwiftShader，不启动桌面 Godot 图形进程。
 
 炮塔位于缓坡出口左右的顶部平地（x=±6.3、z=-6、地面高 3 米），不占用斜坡；炮塔和栅栏门不显示头顶名称或血量。栅栏门移至缓坡顶部（z=-10、地面高 3 米），宽度 10.4 米覆盖整个坡口，使用金属钢条、横梁和铆钉。`tests/browser/defense-structures.spec.mjs` 在独立 headless Chromium 中布置敌人后，使用正常游戏物理循环观察绕门、攻击建筑、炮塔击杀与残骸、地雷首次爆炸及再次接触，以及九类僵尸在门外左、中、右攻击位置的炮塔支援射击；没有通过直接扣血来替代战斗。该专项不代表整关试玩或 Steam 双账号验证。
 

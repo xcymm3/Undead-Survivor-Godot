@@ -194,15 +194,14 @@ func run() -> void:
 	var paused_shots: int = manager.find("turret_left").shots
 	manager.step(.12)
 	check(manager.find("turret_left").shots == paused_shots,"Turrets do not fire during wave preparation")
-	# Fresh readiness and joining supply initialization cannot repair structures.
+	# Preparation and joining do not reset structures; only actual wave start does.
 	manager.damage("turret_left",200)
 	manager.damage("bridge_gate",1000)
 	var persistent = sim.defense.structures.duplicate(true)
 	sim.defense_director.finish_wave()
-	sim.defense_director.begin_wave()
 	sim.add_pawn("two","二号",1)
 	sim.defense_director.equipment.initialize()
-	check(sim.defense.structures == persistent,"Wave transitions and multiplayer supplies do not repair or replace structures")
+	check(sim.defense.structures == persistent,"Preparation and multiplayer supplies preserve damaged structures")
 	var snapshot = sim.snapshot()
 	root.get_node("Session").members = {"solo":{"name":"一号"},"two":{"name":"二号"}}
 	check(root.get_node("Session").valid_world(snapshot),"Coop world packet accepts authoritative structure state")
@@ -210,10 +209,30 @@ func run() -> void:
 	replica.apply_snapshot(snapshot)
 	check(replica.defense_state().structures == persistent,"Client snapshot retains destroyed turrets, broken gate and spent mine")
 	check(game.arena.scenery.structure_view.actors.bridge_gate.body.collision_layer == 0,"Client snapshot removes destroyed gate collision")
+	sim.paths["stale_route"] = [Vector2.ZERO]
+	var crystal_hp: int = sim.defense.crystal_hp
+	sim.defense_director.begin_wave()
+	check(sim.defense.structures == Structures.initial_state() and sim.paths.is_empty(),"Wave start restores every structure's complete initial state and clears cached routes")
+	check(sim.defense.crystal_hp == crystal_hp,"Wave start preserves crystal durability")
+	var view = game.arena.scenery.structure_view
+	check(view.actors.bridge_gate.body.collision_layer == 1 and view.actors.bridge_gate.panel.rotation.x == 0,"Authority restores gate collision and upright appearance")
+	check(view.actors.turret_left.body.collision_layer == 1 and view.actors.turret_left.yaw.rotation == Vector3.ZERO,"Authority restores destroyed turret collision and orientation")
+	check(view.actors.crystal_mine.root.visible and not view.actors.crystal_mine.led.visible,"Wave start restores a visible unprimed mine")
+	snapshot = sim.snapshot()
+	check(root.get_node("Session").valid_world(snapshot),"Coop world packet accepts restored structure state")
+	replica.apply_snapshot(snapshot)
+	check(replica.defense_state().structures == Structures.initial_state() and view.actors.bridge_gate.body.collision_layer == 1,"Client snapshot restores buildings and gate collision for the new wave")
+	sim.zombies.clear()
+	mine = manager.find("crystal_mine")
+	sim.spawn(mine.pos,"normal")
+	manager.step_mine(mine,.02)
+	check(mine.triggered and not mine.spent,"Restored mine can be triggered in the next wave")
+	manager.step_mine(mine,Equipment.GRENADE_FUSE)
+	check(mine.spent and sim.zombies[0].hp <= 0,"Restored mine detonates with real grenade damage in the next wave")
 	snapshot.defense.structures[0].hp = 201
 	check(not root.get_node("Session").valid_world(snapshot),"Malformed structure health is rejected by network validation")
 	game.start_solo("defense",42)
-	check(game.sim.defense.structures == Structures.initial_state(),"Only starting a new match restores the four structures")
+	check(game.sim.defense.structures == Structures.initial_state(),"Starting a new match also restores the four structures")
 	sim = fresh()
 	await physics_frame
 	manager = sim.defense_director.structures

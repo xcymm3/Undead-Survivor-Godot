@@ -57,7 +57,6 @@ const ATTACK_TURN_SPEED = 2.09439510239 # 120 degrees per second
 const IMP_SPEED_MULTIPLIER = 1.296 # Existing 1.08 speed increased by 20 percent.
 const BERSERKER_RAGE_SPEED = 7.2
 const FOOTBALL_CHARGE_SPEED = 12.0
-const DEFENSE_REGEN_DELAY = 5.0
 const DEFENSE_REGEN_RATE = 1.0
 const DEFENSE_FALL_HEIGHT = -3.5
 const DEFENSE_FALL_DAMAGE = 10
@@ -95,7 +94,7 @@ func add_pawn(id: String, player_name: String, index: int) -> void:
 	for pawn in pawns.values(): available.erase(int(pawn.appearance[0]))
 	if available.is_empty(): available = range(Data.MODELS.size())
 	var model: int = available[random.randi_range(0,available.size()-1)]
-	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"damage_dir":Vector2.ZERO,"damage_rear":false,"damage_hint":0.0,"combat_timer":0.0,"regen_credit":0.0,"shove_cd":0.0,"shove_gap":0.0,"shove_window":0.0,"shove_count":0,"shoves":0,"shove_hits":0,"shove_anim":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0],"hint":""}
+	pawns[id] = {"id":id,"name":player_name,"pos":map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6),"yaw":map_definition.yaw,"pitch":0.0,"height":0.0,"velocity":0.0,"crouch":0.0,"crouching":false,"air":Vector2.ZERO,"hp":100,"protection":0.0,"damage_dir":Vector2.ZERO,"damage_rear":false,"damage_hint":0.0,"regen_credit":0.0,"shove_cd":0.0,"shove_gap":0.0,"shove_window":0.0,"shove_count":0,"shoves":0,"shove_hits":0,"shove_anim":0.0,"weapon":0,"requested":0,"switch":0.0,"ammo":ammo,"cooldown":0.0,"fire_anim":0.0,"reload":0.0,"reload_queued":false,"reloading":false,"shots":0,"gun_shots":[0,0,0,0,0,0,0,0,0,0],"hits":0,"kills":0,"aim":false,"trigger":false,"input":{},"input_age":0.0,"appearance":[model,0,0],"hint":""}
 
 	pawns[id].height = Data.enemy_ground_height(pawns[id].pos,map_id)
 
@@ -369,8 +368,6 @@ func recover_defense_fall(p: Dictionary, body) -> void:
 	p.damage_dir = Vector2.ZERO
 	p.damage_rear = false
 	p.damage_hint = 1.8
-	p.combat_timer = DEFENSE_REGEN_DELAY
-	p.regen_credit = 0.0
 	events.append({"kind":"hurt","player":p.id,"rear":false})
 	if p.hp == 0:
 		cause = "fall"
@@ -379,19 +376,14 @@ func recover_defense_fall(p: Dictionary, body) -> void:
 func update_defense_regen(p: Dictionary, dt: float) -> void:
 	if mode != "defense" or p.hp <= 0:
 		return
-	var cooldown: float = float(p.get("combat_timer",0.0))
-	var healing_time: float = dt
-	if cooldown > 0:
-		healing_time = maxf(0,dt-cooldown)
-		p.combat_timer = maxf(0,cooldown-dt)
-	if p.hp >= 100 or healing_time <= 0:
+	if p.hp >= 100 or dt <= 0:
 		if p.hp >= 100: p.regen_credit = 0.0
 		return
-	p.regen_credit = float(p.get("regen_credit",0.0))+healing_time*DEFENSE_REGEN_RATE
+	p.regen_credit = float(p.get("regen_credit",0.0))+dt*DEFENSE_REGEN_RATE
 	var healed: int = floori(p.regen_credit)
 	if healed <= 0: return
 	p.hp = mini(100,p.hp+healed)
-	p.regen_credit -= healed
+	p.regen_credit = 0.0 if p.hp == 100 else p.regen_credit-healed
 
 func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	advance_arsenal(p,input,dt)
@@ -482,9 +474,6 @@ func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
 	p.hp = maxi(0,p.hp-amount)
 	# Give the rear-hit cue time to be actionable under overlapping melee attacks.
 	p.protection = .65
-	if mode == "defense":
-		p.combat_timer = DEFENSE_REGEN_DELAY
-		p.regen_credit = 0.0
 	if defense_director: p.hurt_at = elapsed
 	p.damage_dir = (z.pos-p.pos).normalized()
 	p.damage_rear = Vector2(-sin(p.yaw),-cos(p.yaw)).dot(p.damage_dir) < -.3
@@ -858,9 +847,6 @@ func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 	if progress >= MELEE_END: melee_swings.erase(p.id)
 
 func fire(p: Dictionary, w: Dictionary) -> void:
-	if mode == "defense":
-		p.combat_timer = DEFENSE_REGEN_DELAY
-		p.regen_credit = 0.0
 	if w.get("kind","gun") == "melee":
 		melee_swings[p.id] = {"weapon":p.weapon,"progress":0.0,"damaged":{},"landed":false}
 		var origin = Vector3(p.pos.x,p.height+PlayerBody.eye_height(p)-.5,p.pos.y)

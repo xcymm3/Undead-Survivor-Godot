@@ -30,7 +30,13 @@ func begin_wave() -> void:
 	sim.spawned = 0
 	sim.rest = 0.0
 	sim.prepare_wave()
+	structures.reset_wave()
 	for p in sim.pawns.values():
+		p.hp = 100
+		p.regen_credit = 0.0
+		p.damage_hint = 0.0
+		p.damage_dir = Vector2.ZERO
+		p.damage_rear = false
 		p.grenades = equipment.MAX_GRENADES
 		p.grenade_ready_at = 0.0
 	state.started = true

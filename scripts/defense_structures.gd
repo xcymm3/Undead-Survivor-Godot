@@ -1,5 +1,5 @@
 extends RefCounted
-## Match-long structures. Only the solo/host simulation advances their state.
+## Structures reset each wave. Only the solo/host simulation advances their state.
 const Layout = preload("res://scripts/defense_layout.gd")
 const EnemyView = preload("res://scripts/enemy_view.gd")
 const TURRET_RANGE = 10.0
@@ -27,6 +27,11 @@ static func initial_state() -> Array:
 func _init(owner) -> void:
 	director_ref = weakref(owner)
 	director.state["structures"] = initial_state()
+
+func reset_wave() -> void:
+	director.state["structures"] = initial_state()
+	# Restored obstacles invalidate routes cached while the gate was destroyed.
+	sim.paths.clear()
 
 func find(id: String) -> Dictionary:
 	for item in director.state.structures:

@@ -289,8 +289,7 @@ func run() -> void:
 	for i in 50: sim.step(.1)
 	check(sim.defense.crystal_hp < crystal_before and pawn.hp == 100 and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Zombie continues attacking crystal while player stands behind it")
 
-	# Falling is recoverable but costs health; regeneration starts only after the
-	# full five-second combat delay and advances in one-point-per-second ticks.
+	# Falling costs health; passive regeneration continues immediately in combat.
 	sim.zombies.clear()
 	pawn.pos = Vector2(14,-45)
 	pawn.height = -6.0
@@ -298,10 +297,29 @@ func run() -> void:
 	pawn.protection = 0.0
 	sim.step(.02)
 	check(pawn.pos.distance_to(Data.Maps.Defense.FALL_RETURN) < .01 and pawn.hp == 90 and absf(pawn.height-3.0) < .01,"Falling returns the player beside the crystal and removes ten health")
-	for i in 99: sim.update_pawn(pawn,.05)
-	check(pawn.hp == 90,"Defense regeneration waits five seconds after combat")
-	for i in 21: sim.update_pawn(pawn,.05)
-	check(pawn.hp == 91,"Defense regeneration restores one health per second")
+	pawn.regen_credit = 0.0
+	for i in 20: sim.update_pawn(pawn,.05)
+	check(pawn.hp == 91,"Defense regeneration restores one health per second immediately after falling")
+	pawn.hp = 80
+	pawn.regen_credit = 0.0
+	var shots_before: int = pawn.shots
+	for i in 80:
+		sim.submit(pawn.id,command(int(pawn.weapon),false,int(pawn.slot),0.0,0.0,true))
+		sim.update_pawn(pawn,.05)
+	check(pawn.shots > shots_before and pawn.hp == 84,"Continuous live firing does not interrupt four seconds of passive healing")
+	pawn.regen_credit = .75
+	pawn.protection = 0.0
+	var hurt_hp: int = pawn.hp
+	check(sim.damage_pawn(pawn,{"pos":pawn.pos+Vector2(0,1)},10),"Regeneration regression applies real enemy damage")
+	sim.update_defense_regen(pawn,.25)
+	check(pawn.hp == hurt_hp-9,"Taking damage preserves partial healing and does not postpone regeneration")
+	pawn.hp = 99
+	sim.update_defense_regen(pawn,2.0)
+	check(pawn.hp == 100 and pawn.regen_credit == 0,"Passive healing caps at full health without banking surplus")
+	pawn.hp = 0
+	sim.update_defense_regen(pawn,10.0)
+	check(pawn.hp == 0,"Passive healing does not revive a dead player during a wave")
+	pawn.hp = 100
 
 	# Stress crowd separation on both narrow sections without attack handling.
 	# Every displacement still has to pass arena.clear, so overlap pressure cannot

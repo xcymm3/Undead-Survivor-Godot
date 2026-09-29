@@ -70,22 +70,31 @@ static func validate(game, check: Callable) -> void:
 	var peer: Dictionary = sim.pawns.loadout_peer
 	p.grenades = 0
 	peer.grenades = 1
+	p.hp = 35
+	peer.hp = 1
+	p.regen_credit = .9
 	sim.defense_director.begin_wave()
 	check.call(p.grenades == 3 and peer.grenades == 3,"Actual wave start restores every player's grenades to three")
+	check.call(p.hp == 100 and peer.hp == 100 and p.regen_credit == 0,"Wave start fully heals every coop player and clears fractional healing")
 	p.input = {"yaw":0.0,"pitch":0.0}
 	equipment = sim.equipment
 	check.call(equipment.throw_grenade(p) and p.grenades == 2,"Throwing consumes one of the wave's three grenades")
 	sim.defense_director.finish_wave()
+	p.hp = 35
+	peer.hp = 60
+	sim.defense_director.structures.damage("bridge_gate",1000)
 	sim.defense_director.interactions(.01)
 	check.call(p.grenades == 2,"Entering preparation does not refill grenades")
 	p.input = {"wave_ready":true}
 	p.input_age = 0.0
 	sim.defense_director.interactions(.01)
 	check.call(sim.defense.waiting and p.grenades == 2,"One ready coop player cannot refill before the wave starts")
+	check.call(p.hp == 35 and peer.hp == 60 and sim.defense_director.structures.find("bridge_gate").hp == 0,"Partial coop readiness cannot heal players or repair buildings")
 	peer.input = {"wave_ready":true}
 	peer.input_age = 0.0
 	sim.defense_director.interactions(.01)
 	check.call(not sim.defense.waiting and p.grenades == 3 and peer.grenades == 3,"All ready coop players start the wave and refill grenades")
+	check.call(p.hp == 100 and peer.hp == 100 and sim.defense_director.structures.find("bridge_gate").hp == 1000,"All ready coop players trigger full healing and building restoration")
 	game.ui.native_hud.sync()
 	check.call(game.ui.native_hud.equipment_slots.size() == 4,"HUD exposes two weapons, axe and grenade slots")
 	check.call(game.ui.native_hud.equipment_slots[0].title.text.begins_with("武器1") and game.ui.native_hud.equipment_slots[1].title.text.begins_with("武器2"),"HUD names the two unrestricted weapon slots")
