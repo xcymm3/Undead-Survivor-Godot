@@ -16,19 +16,10 @@ func validate_combat_revision() -> void:
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
 	var director = sim.defense_director
-	p.hp = 1
-	p.medkits = 1
-	p.slot = 5
-	p.input = {"slot":5,"use_self":true}
-	p.input_age = 0
-	director.equipment.before_movement(.016)
-	director.equipment.before_movement(3)
-	check(p.hp == 100 and p.medkits == 0,"A completed kit restores even one HP to exactly 100")
-	p.being_healed = false
-	game.arena.sync_defense(director.state)
+	check(not p.has("medkits") and not p.has("healing"),"Defense has no medical inventory or treatment state")
 	p.pos = Vector2(8,30)
 	p.slot = 1
-	p.primary = 4
+	p.weapon1 = 4
 	p.weapon = 4
 	p.requested = 4
 	p.switch = 0
@@ -361,10 +352,10 @@ func validate_interaction_motion() -> void:
 	p.pos = Vector2(point.x,point.z-1.65)
 	p.yaw = PI
 	p.pitch = atan2(point.y-p.height-preload("res://scripts/player_body.gd").eye_height(p),1.65)
-	var old: int = p.primary
-	check(d.equipment.pickup(p,"weapon:1"),"Armory gun exchange starts a native pickup animation")
+	var old: int = p.weapon1
+	check(d.equipment.pickup(p,"weapon:8"),"Armory gun exchange starts a native pickup animation")
 	var motion: Dictionary = d.state.pickup_motion[-1]
-	check(motion.old == old and motion.weapon == 1 and p.switch >= .65,"Gun exchange records both models and blocks immediate shooting")
+	check(motion.old == old and motion.weapon == 8 and p.switch >= .65,"Gun exchange records both models and blocks immediate shooting")
 	var copy: Dictionary = bytes_to_var(var_to_bytes(sim.snapshot()))
 	check(copy.defense.pickup_motion[-1].id == motion.id,"Pickup animation identity survives network snapshot serialization")
 	p.input = {}
@@ -485,7 +476,7 @@ func run() -> void:
 	game.sound.clear_effects()
 	check(game.sound.spatial_players.all(func(p): return p.stream == null),"World voice resources clear on scene reset")
 	await validate_equipment()
-	await validate_inventory_and_heal()
+	await validate_inventory()
 	await validate_combat_revision()
 	await validate_outfits()
 	await validate_interaction_motion()
@@ -496,6 +487,7 @@ func run() -> void:
 	validate_revolver()
 	validate_sight_only_changes()
 	load("res://tools/validate-weapon-models.gd").validate(game,check)
+	await load("res://tools/validate-loadout.gd").validate(game,check)
 	validate_buffer()
 	var session = root.get_node("Session")
 	var packet = {"type":"probe","state":{"test":123}}
@@ -656,15 +648,14 @@ func validate_close_combat() -> void:
 	sim.zombies.clear()
 	game.arena.sync_defense(sim.defense_director.state)
 	p.slot = 1
-	p.healing = ""
 	p.interaction = ""
 	p.pos = Vector2(0,30)
 	p.height = 3.0
 	p.hp = 100
 	p.yaw = 0.0
 	p.switch = 0.0
-	p.weapon = p.primary
-	p.requested = p.primary
+	p.weapon = p.weapon1
+	p.requested = p.weapon1
 	p.shove_gap = 0.0
 	p.shove_cd = 0.0
 	p.shove_count = 0
@@ -675,7 +666,7 @@ func validate_close_combat() -> void:
 	# Magazine, revolver and shell reloads continue through right-click shove.
 	for gun in [0,3,4]:
 		p.weapon = gun
-		p.primary = gun
+		p.weapon1 = gun
 		p.requested = gun
 		p.ammo[gun] = 0
 		p.reserves[gun] = 10
@@ -689,9 +680,9 @@ func validate_close_combat() -> void:
 		check(p.reloading and is_equal_approx(p.reload,.1),"Reload clock advances during shove gun "+str(gun))
 		sim.update_arsenal(p,{"weapon":gun},.11)
 		check(p.ammo[gun] > 0 and (p.reserves[gun] == 10 if gun == 3 else p.ammo[gun]+p.reserves[gun] == 10),"Reload transfers rounds exactly once gun "+str(gun))
-	p.primary = saved.primary
-	p.weapon = p.primary
-	p.requested = p.primary
+	p.weapon1 = saved.weapon1
+	p.weapon = p.weapon1
+	p.requested = p.weapon1
 	p.reloading = false
 	p.shove_gap = 0.0
 	p.shove_cd = 0.0
@@ -856,7 +847,7 @@ func validate_close_combat() -> void:
 	game._input(middle)
 	check(not game.input_state().aim,"Second middle click toggles aim off")
 	for weapon_index in [4,6,7,8]:
-		p.primary = weapon_index
+		p.weapon1 = weapon_index
 		p.weapon = weapon_index
 		p.requested = weapon_index
 		p.slot = 1
@@ -868,11 +859,11 @@ func validate_close_combat() -> void:
 		p.aim = true
 		sim.update_arsenal(p,{"weapon":weapon_index,"aim":true},.01)
 		check(not p.aim,"Authority rejects ADS state for non-ADS weapon "+str(weapon_index))
-	p.primary = saved.primary
-	p.weapon = p.primary
-	p.requested = p.primary
+	p.weapon1 = saved.weapon1
+	p.weapon = p.weapon1
+	p.requested = p.weapon1
 	p.slot = 1
-	game.requested_weapon = p.primary
+	game.requested_weapon = p.weapon1
 	var right = InputEventMouseButton.new()
 	right.button_index = MOUSE_BUTTON_RIGHT
 	right.pressed = true
@@ -889,82 +880,35 @@ func validate_close_combat() -> void:
 	for key in saved: p[key] = saved[key]
 	sim.zombies = original_zombies
 
-func validate_inventory_and_heal() -> void:
+func validate_inventory() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
-	var equipment = sim.defense_director.equipment
-	p.slot = 2
+	var equipment = sim.equipment
+	p.weapon1 = 3
+	p.slot = 1
 	p.weapon = 3
 	p.requested = 3
 	p.ammo[3] = 0
 	p.reserves[3] = 0
 	p.switch = 0.0
 	sim.update_arsenal(p,{"reload":true},.01)
-	check(p.reloading,"Revolver can reload with zero reserve")
+	check(p.reloading,"Either weapon slot supports a revolver with zero reserve")
 	sim.update_arsenal(p,{},2.0)
 	check(p.ammo[3] == 6 and p.reserves[3] == 0,"Infinite reserve refills six chambers without negative inventory")
-	p.slot = 1
 	p.grenades = 0
-	p.medkits = 0
-	for slot in [4,5]:
-		p.input = {"slot":slot}
-		p.input_age = 0.0
-		equipment.before_movement(.016)
-		check(p.slot == 1,"Authority rejects empty item slot "+str(slot))
-		game.requested_slot = 1
-		var key = InputEventKey.new()
-		key.pressed = true
-		key.physical_keycode = KEY_4 if slot == 4 else KEY_5
-		game._unhandled_input(key)
-		check(game.requested_slot == 1,"Shortcut rejects empty item slot "+str(slot))
+	p.input = {"slot":4}
+	p.input_age = 0.0
+	equipment.before_movement(.016)
+	check(p.slot == 1,"Authority rejects the empty grenade slot")
 	game.requested_slot = 3
 	game.cycle_equipment(1)
-	check(game.requested_slot == 1,"Wheel skips both empty items")
-	var mount: Vector3 = root.get_node("Data").Maps.Defense.GRENADE_MOUNTS[0]
-	p.pos = Vector2(mount.x,mount.z-1.65)
-	p.yaw = PI
-	p.pitch = atan2(mount.y-p.height-preload("res://scripts/player_body.gd").eye_height(p),1.65)
-	for i in 3: check(equipment.pickup(p,"grenade:0") and p.grenades == i+1,"Grenade stacks to "+str(i+1))
-	check(not equipment.pickup(p,"grenade:0"),"Fourth grenade is rejected")
+	check(game.requested_slot == 1,"Wheel skips the empty grenade slot")
 	p.pos = Vector2(0,60)
 	p.yaw = 0.0
 	p.pitch = 0.0
-	p.slot = 5
-	p.medkits = 1
-	p.hp = 40
-	p.interaction = ""
-	p.input_age = 0.0
-	p.input = {"slot":5,"use_self":true,"yaw":2.0,"x":1.0}
-	equipment.before_movement(.016)
-	sim.update_pawn(p,.2)
-	check(p.yaw == 0 and p.crouch > .9 and p.pos.distance_to(Vector2(0,60)) < .01,"Self healing crouches and locks movement and facing")
-	game.yaw = 0
-	game.medical_camera_active = false
-	game._process(.016)
-	var old_camera: Vector3 = game.camera.position
-	for i in 14:
-		var motion = InputEventMouseMotion.new()
-		motion.screen_relative = Vector2(100,0)
-		game._unhandled_input(motion)
-	game._process(.016)
-	check(p.yaw == 0 and game.camera.position.distance_to(old_camera) > 2 and game.camera.position.z < p.pos.y,"Medical mouse orbit reaches character front without rotating pawn")
-	var actor = game.partners[p.id]
-	p.heal_time = 1.4
-	actor.sync(p,.016)
-	check(actor.bandage.visible and actor.bandage_roll.visible and not actor.held.visible,"Healing displays bandage and hides the gun")
-	var previous = actor.medical_hands(0,1.0,true)
-	var continuous = true
-	for i in range(1,301):
-		var hands = actor.medical_hands(i*.01,1.0,true)
-		if hands.left.distance_to(previous.left) > .08 or hands.right.distance_to(previous.right) > .08: continuous = false
-		previous = hands
-	check(continuous,"Bandaging hand targets stay continuous across retrieval and wrapping phases")
-	p.input = {"slot":5}
-	equipment.before_movement(2.0)
-	check(p.medkits == 0 and p.slot == 1,"Last medkit consumption returns to primary slot")
 	# Full real swing: the expanded reach hits at 3 m but still misses at 4 m.
 	sim.zombies.clear()
 	p.slot = 3
@@ -972,8 +916,6 @@ func validate_inventory_and_heal() -> void:
 	p.requested = 6
 	p.reloading = false
 	p.crouch = 0
-	p.being_healed = false
-	p.healing = ""
 	for distance in [4.0,3.0,1.8]:
 		sim.zombies.clear()
 		sim.spawn(p.pos+Vector2(0,-distance),"normal")
@@ -1000,30 +942,8 @@ func validate_equipment() -> void:
 		var equipment = sim.equipment
 		var p: Dictionary = game.local_pawn()
 		p.pos = Vector2(8,30)
-		p.hp = 40
-		p.slot = 5
-		p.medkits = 1
-		p.input_age = 0.0
-		p.input = {"slot":5,"use_self":true,"y":-1}
-		equipment.before_movement(.016)
-		check(p.healing == p.id,"Left medical input starts self healing")
-		var before: Vector2 = p.pos
-		sim.update_pawn(p,.1)
-		check(p.pos.distance_to(before) < .01,"Healing blocks movement")
-		equipment.before_movement(3.0)
-		check(p.hp == 100 and p.medkits == 0 and p.healing == "","Completed healing consumes one kit")
-		if party == 2:
-			var q: Dictionary = sim.pawns.equipment_peer
-			q.pos = Vector2(8,28.5)
-			q.hp = 40
-			p.slot = 5
-			p.yaw = 0.0
-			p.medkits = 1
-			p.input = {"slot":5,"use_other":true}
-			equipment.before_movement(.016)
-			check(p.healing == q.id and q.being_healed,"Right medical input selects the nearby teammate")
-			equipment.before_movement(3.0)
-			check(q.hp == 100 and p.medkits == 0,"Teammate healing consumes the healer's single kit")
+		p.hp = 100
+		if party == 2: sim.pawns.equipment_peer.hp = 100
 		p.slot = 1
 		p.grenades = 1
 		p.input = {"yaw":0.0,"pitch":0.0}

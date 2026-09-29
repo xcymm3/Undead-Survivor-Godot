@@ -22,12 +22,12 @@ func _process(dt: float) -> void:
 	if p.is_empty() or p.hp <= 0: return
 	var origin = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 	# The browser playtester still walks to the physical rack and holds the real
-	# interaction key. Aim only the camera at its currently equipped primary so
+	# interaction key. Aim only the camera at its currently equipped weapon in slot 1 so
 	# finite-ammo runs can restock exactly as a player would.
 	if game.sim.mode == "defense" and Input.is_action_pressed("interact"):
 		var layout = preload("res://scripts/defense_layout.gd")
-		var supply_weapon: int = 8 if not game.sim.defense.get("started",false) else int(p.primary)
-		var display_index: int = layout.PRIMARY_WEAPONS.find(supply_weapon)
+		var supply_weapon: int = 8 if not game.sim.defense.get("started",false) else int(p.weapon1)
+		var display_index: int = layout.ARMORY_WEAPONS.find(supply_weapon)
 		if display_index >= 0:
 			var supply_point: Vector3 = layout.weapon_mount(display_index)
 			var supply_offset: Vector3 = supply_point-origin

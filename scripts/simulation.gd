@@ -200,15 +200,15 @@ func submit(id: String, input: Dictionary) -> void:
 	clean.yaw = wrapf(clean.yaw,-PI,PI)
 	clean.pitch = clampf(clean.pitch,-deg_to_rad(85),deg_to_rad(85))
 	clean.weapon = clampi(int(clean.weapon),0,9)
-	for key in ["jump","fire","reload","aim","crouch","interact","wave_ready","heal","use_self","use_other","shove"]: clean[key] = input.get(key,false) == true
+	for key in ["jump","fire","reload","aim","crouch","interact","wave_ready","use_self","shove"]: clean[key] = input.get(key,false) == true
 	if equipment:
 		var slot = input.get("slot",pawns[id].slot)
-		if not slot is int or slot < 1 or slot > 5: return
+		if not slot is int or slot < 1 or slot > 4: return
 		clean.slot = slot
 	# Network polling can deliver several commands before the next physics tick.
 	# Keep a jump edge until update_pawn consumes it, even if a newer packet releases it.
 	clean.jump = clean.jump or pawns[id].input.get("jump",false)
-	for action in ["use_self","use_other","shove","wave_ready"]: clean[action] = clean[action] or pawns[id].input.get(action,false)
+	for action in ["use_self","shove","wave_ready"]: clean[action] = clean[action] or pawns[id].input.get(action,false)
 	pawns[id].input = clean
 	pawns[id].input_age = 0.0
 
@@ -355,16 +355,10 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	p.input_age += dt
 	var input: Dictionary = p.input if p.input_age < .5 else {}
 	if p.hp <= 0: return
-	var locked: bool = equipment != null and (not p.healing.is_empty() or p.being_healed)
-	if not locked:
-		p.yaw = input.get("yaw",p.yaw)
-		p.pitch = input.get("pitch",p.pitch)
-	if locked:
-		input = input.duplicate()
-		for action in ["x","y","jump","fire","aim","reload","shove"]: input[action] = 0
-		p.air = Vector2.ZERO
+	p.yaw = input.get("yaw",p.yaw)
+	p.pitch = input.get("pitch",p.pitch)
 	var body = player_body(p)
-	body.update_stance(p,(p.heal_time < 2.65 if not p.get("healing","").is_empty() else false) if locked else input.get("crouch",false),dt)
+	body.update_stance(p,input.get("crouch",false),dt)
 	var movement = Vector2(input.get("x",0),input.get("y",0)).limit_length()
 	if body.grounded: p.air = movement
 	if input.get("jump",false) and body.grounded and p.crouch < .1:
@@ -393,7 +387,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	p.input.shove = false
 	update_arsenal(p,input,dt)
 	update_defense_regen(p,dt)
-	if equipment: p.reserve = p.reserves[p.primary]
+	if equipment: p.reserve = p.reserves[p.weapon]
 
 func recover_defense_fall(p: Dictionary, body) -> void:
 	var return_position: Vector2 = Data.Maps.Defense.FALL_RETURN
@@ -434,7 +428,11 @@ func update_defense_regen(p: Dictionary, dt: float) -> void:
 	p.regen_credit -= healed
 
 func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
-	if equipment and (p.slot >= 4 or not p.healing.is_empty() or p.being_healed):
+	advance_arsenal(p,input,dt)
+	if equipment: equipment.save_weapon_slot(p)
+
+func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
+	if equipment and (p.slot == 4):
 		if p.weapon == 3 and p.reloading:
 			p.reloading = false
 			p.reload = 0.0
@@ -542,7 +540,7 @@ func charge_knockback(p: Dictionary, direction: Vector2) -> void:
 
 func try_shove(p: Dictionary) -> bool:
 	if p.hp <= 0 or p.shove_cd > 0 or p.shove_gap > 0 or p.switch > 0: return false
-	if equipment and (p.slot >= 4 or p.interaction != "" or not p.healing.is_empty() or p.being_healed): return false
+	if equipment and (p.slot == 3 or p.interaction != ""): return false
 	p.shoves = p.get("shoves",0)+1
 	p.shove_gap = SHOVE_INTERVAL
 	p.shove_anim = .32

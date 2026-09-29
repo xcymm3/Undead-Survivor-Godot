@@ -18,7 +18,7 @@ func valid_roster_budget(value: Array, budget: int) -> bool:
 	return spent <= budget and budget-spent < .75 and population.points(specials) <= budget*.25
 
 func command(weapon := 0, interact := false, slot := 1, yaw := 0.0, pitch := 0.0, fire := false) -> Dictionary:
-	return {"x":0.0,"y":0.0,"yaw":yaw,"pitch":pitch,"weapon":weapon,"slot":slot,"interact":interact,"heal":false,"crouch":false,"jump":false,"reload":false,"fire":fire,"use_self":fire,"use_other":false,"aim":false,"shove":false}
+	return {"x":0.0,"y":0.0,"yaw":yaw,"pitch":pitch,"weapon":weapon,"slot":slot,"interact":interact,"crouch":false,"jump":false,"reload":false,"fire":fire,"use_self":fire,"aim":false,"shove":false}
 
 func interact_with(sim, pawn: Dictionary, point: Vector3, id := "solo") -> void:
 	pawn.pos = Vector2(point.x,point.z-1.65)
@@ -80,18 +80,16 @@ func run() -> void:
 	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,42.7)),"Environmental cover preserves the central bridge, ramp and field lane")
 	var weapon_displays = game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false)
-	var primary_weapon_indices := [0,1,4,5,7,8,9]
-	var sidearm_indices := [2,3]
-	check(weapon_displays.size() == primary_weapon_indices.size()+sidearm_indices.size(),"Safe zone displays seven primary weapons and both sidearms")
+	var armory_weapon_indices := [0,8,7,5]
+	check(weapon_displays.size() == 4,"Armory displays only rifle, automatic shotgun, flamethrower and sniper")
 	var displayed_weapon_indices: Array = weapon_displays.map(func(node): return int(node.get_meta("weapon_display_index")))
 	displayed_weapon_indices.sort()
-	check(displayed_weapon_indices == [0,1,2,3,4,5,7,8,9],"Armory wall includes pistol and revolver but excludes melee weapon")
+	check(displayed_weapon_indices == [0,5,7,8],"Armory contains exactly the four allowed guns")
 	var shop_walls = game.arena.scenery.find_children("WeaponShopWall","StaticBody3D",true,false)
 	check(shop_walls.size() == 1,"Safe zone uses one continuous physical shop wall")
 	var shop_shape = shop_walls[0].find_children("*","CollisionShape3D",true,false)[0] as CollisionShape3D
 	check(shop_shape and shop_shape.shape is BoxShape3D and shop_shape.shape.size.y >= 8.8,"Weapon shop wall is at least twice its previous height")
-	var weapon_mounts: Array = weapon_displays.filter(func(node): return int(node.get_meta("weapon_display_index")) in primary_weapon_indices).map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
-	var sidearm_mounts: Array = weapon_displays.filter(func(node): return int(node.get_meta("weapon_display_index")) in sidearm_indices).map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
+	var weapon_mounts: Array = weapon_displays.map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
 	var columns: Array = []
 	for point in weapon_mounts:
 		if not columns.has(point.x): columns.append(point.x)
@@ -99,10 +97,9 @@ func run() -> void:
 	var separated = true
 	for index in range(1,columns.size()): separated = separated and columns[index]-columns[index-1] >= 4.79
 	check(columns.size() == 4 and separated,"Weapon displays use four generously spaced columns")
-	check(columns.all(func(x): return weapon_mounts.filter(func(point): return point.x == x).size() in [1,2]) and weapon_mounts.map(func(point): return point.y).min() < weapon_mounts.map(func(point): return point.y).max(),"Primary weapons use two rows per column")
+	check(weapon_mounts.all(func(point): return is_equal_approx(point.y,data.Maps.Defense.ARMORY_ROWS[0])),"Four weapon displays share a reachable row")
 	var standing_eye = data.Maps.Defense.height(Vector2(0,60))+preload("res://scripts/player_body.gd").eye_height({"crouch":0.0})
-	check(weapon_mounts.all(func(point): return point.y <= standing_eye+1.0),"Every primary weapon is reachable while standing without jumping")
-	check(sidearm_mounts.size() == 2 and sidearm_mounts.all(func(point): return is_equal_approx(point.y,data.Maps.Defense.SIDEARM_HEIGHT) and absf(point.x) < 3.0),"Pistol and revolver occupy the central upper sidearm row")
+	check(weapon_mounts.all(func(point): return point.y <= standing_eye+1.0),"Every armory weapon is reachable while standing without jumping")
 	check(game.arena.scenery.find_children("WeaponRack*","StaticBody3D",true,false).is_empty(),"Safe zone no longer uses five separate rack walls")
 
 	game.start_solo("defense")
@@ -111,9 +108,9 @@ func run() -> void:
 	var pawn: Dictionary = sim.pawns.solo
 	check(sim.mode == "defense" and not sim.defense.started,"Entering the map does not start waves")
 	check(sim.defense.difficulty == "easy" and is_equal_approx(sim.defense.difficulty_multiplier,.7),"Defense validation runs the Easy difficulty selected before the match")
-	check(pawn.primary == 0 and pawn.secondary == 3 and pawn.slot == 1,"Defense starts with primary, sidearm and melee equipment slots")
-	check(pawn.medkits == 1 and pawn.grenades == 0,"Defense initializes shared medical and grenade inventory")
-	check(pawn.reserves[pawn.primary] == data.defense_full_reserve(pawn.primary) and pawn.reserves[pawn.secondary] == data.defense_full_reserve(pawn.secondary),"Defense firearms start with seventeen reserve magazines")
+	check(pawn.weapon1 == 0 and pawn.weapon2 == 8 and pawn.slot == 1,"Defense starts with two unrestricted guns and the fixed axe slot")
+	check(not pawn.has("medkits") and pawn.grenades == 0,"Medical inventory is absent and grenades wait for wave start")
+	check(pawn.reserves[pawn.weapon1] == data.defense_full_reserve(pawn.weapon1) and pawn.reserves[pawn.weapon2] == data.defense_full_reserve(pawn.weapon2),"Defense firearms start with seventeen reserve magazines")
 	var prestart_shoves: int = pawn.shoves
 	var shove_command: Dictionary = command()
 	shove_command.shove = true
@@ -123,55 +120,34 @@ func run() -> void:
 	sim.submit("solo",command())
 	sim.step(.35)
 	var prestart_shots: int = pawn.shots
-	var prestart_ammo: int = pawn.ammo[pawn.primary]
+	var prestart_ammo: int = pawn.ammo[pawn.weapon1]
 	sim.submit("solo",command(0,false,1,pawn.yaw,pawn.pitch,true))
 	sim.step(.05)
-	check(pawn.shots == prestart_shots+1 and pawn.ammo[pawn.primary] == prestart_ammo-1 and not sim.defense.started,"Rifle fires and consumes ammunition before starting defense")
+	check(pawn.shots == prestart_shots+1 and pawn.ammo[pawn.weapon1] == prestart_ammo-1 and not sim.defense.started,"Rifle fires and consumes ammunition before starting defense")
 	sim.submit("solo",command())
 	sim.step(.15)
-	var reserve_before_auto_reload: int = pawn.reserves[pawn.primary]
-	pawn.ammo[pawn.primary] = 0
-	sim.update_arsenal(pawn,command(pawn.primary),.01)
+	var reserve_before_auto_reload: int = pawn.reserves[pawn.weapon1]
+	pawn.ammo[pawn.weapon1] = 0
+	sim.update_arsenal(pawn,command(pawn.weapon1),.01)
 	check(pawn.reloading,"An empty firearm automatically starts reloading without an R input")
-	sim.update_arsenal(pawn,command(pawn.primary),float(data.weapons[pawn.primary].reloadDuration)+.01)
-	check(pawn.ammo[pawn.primary] == data.weapons[pawn.primary].capacity and pawn.reserves[pawn.primary] == reserve_before_auto_reload-data.weapons[pawn.primary].capacity,"Automatic reload transfers one full magazine from the finite reserve")
-	check(sim.defense.grenade_slots.size() == 1 and sim.defense.medkit_slots.size() == 1,"Solo armory creates one independent grenade and medical slot")
+	sim.update_arsenal(pawn,command(pawn.weapon1),float(data.weapons[pawn.weapon1].reloadDuration)+.01)
+	check(pawn.ammo[pawn.weapon1] == data.weapons[pawn.weapon1].capacity and pawn.reserves[pawn.weapon1] == reserve_before_auto_reload-data.weapons[pawn.weapon1].capacity,"Automatic reload transfers one full magazine from the finite reserve")
+	check(not sim.defense.has("grenade_slots") and not sim.defense.has("medkit_slots"),"Armory contains no grenade or medical supplies")
 	for i in 10:
 		sim.submit("solo",command(0,false,2))
 		sim.step(.05)
 	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Waiting for T keeps timer and spawns stopped")
-	check(pawn.weapon == pawn.secondary and pawn.slot == 2,"Defense uses shared secondary-weapon slot switching")
-	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(0))
-	check(pawn.primary == 0 and pawn.weapon == 0 and pawn.ammo[0] == data.weapons[0].capacity and pawn.reserves[0] == data.defense_full_reserve(0),"Interacting with a wall weapon replaces and fully restocks the primary weapon")
-	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == primary_weapon_indices.size()+sidearm_indices.size(),"A replacement copy appears immediately after a wall weapon pickup")
-	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(7))
-	check(pawn.primary == 0 and pawn.secondary == 2 and pawn.slot == 2 and pawn.weapon == 2,"Picking up the ordinary pistol replaces only the secondary weapon")
-	check(pawn.ammo[2] == data.weapons[2].capacity and pawn.reserves[2] == data.defense_full_reserve(2) and pawn.ammo[3] == 0 and pawn.reserve == pawn.reserves[pawn.primary],"Pistol pickup fills ammunition and preserves the primary reserve")
+	check(pawn.weapon == pawn.weapon2 and pawn.slot == 2,"Defense uses weapon-slot-2 switching")
+	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(3))
+	check(pawn.weapon1 == 0 and pawn.weapon2 == 5 and pawn.weapon == 5,"Picking up a sniper replaces selected weapon slot 2")
+	check(pawn.ammo[5] == data.weapons[5].capacity and pawn.reserves[5] == data.defense_full_reserve(5),"Replacement weapon is fully supplied")
 	for i in 10:
 		sim.submit("solo",command(0,false,1))
 		sim.step(.05)
-	check(pawn.slot == 1 and pawn.weapon == pawn.primary,"Slot 1 switches back to the retained primary weapon")
-	for i in 10:
-		sim.submit("solo",command(0,false,2))
-		sim.step(.05)
-	check(pawn.slot == 2 and pawn.weapon == 2,"Slot 2 switches back to the newly picked up pistol")
-	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(8))
-	check(pawn.primary == 0 and pawn.secondary == 3 and pawn.slot == 2 and pawn.weapon == 3,"Picking up the revolver replaces only the secondary weapon")
-	check(pawn.ammo[3] == data.weapons[3].capacity and pawn.reserves[3] == data.defense_full_reserve(3) and pawn.ammo[2] == 0,"Revolver pickup fills ammunition and clears the replaced pistol")
-	for i in 10:
-		sim.submit("solo",command(0,false,1))
-		sim.step(.05)
-	interact_with(sim,pawn,data.Maps.Defense.GRENADE_MOUNTS[0])
-	check(pawn.grenades == 1,"Grenade pickup supplies one grenade")
-	pawn.grenades = 0
-	interact_with(sim,pawn,data.Maps.Defense.GRENADE_MOUNTS[0])
-	check(pawn.grenades == 1,"Grenade supply can be collected again immediately")
-	pawn.medkits = 0
-	interact_with(sim,pawn,data.Maps.Defense.MEDKIT_MOUNTS[0])
-	check(pawn.medkits == 1,"Medical pickup supplies one kit")
-	pawn.medkits = 0
-	interact_with(sim,pawn,data.Maps.Defense.MEDKIT_MOUNTS[0])
-	check(pawn.medkits == 1,"Medical supply can be collected again immediately")
+	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(2))
+	check(pawn.weapon1 == 7 and pawn.weapon2 == 5 and pawn.weapon == 7,"Flamethrower replaces slot 1 and keeps the sniper in slot 2")
+	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == 4,"Wall guns remain available after pickup")
+	check(not sim.equipment.pickup(pawn,"grenade:0") and not sim.equipment.pickup(pawn,"medkit:0"),"Removed supplies cannot be picked up")
 	var ready_input := command(int(pawn.weapon),false,int(pawn.slot))
 	ready_input.wave_ready = true
 	sim.submit("solo",ready_input)
@@ -185,14 +161,9 @@ func run() -> void:
 	var thrown: Dictionary = sim.defense.projectiles[0]
 	var grenade_view: Node3D = game.arena.scenery.projectile_views.get(thrown.id)
 	check(is_instance_valid(grenade_view) and grenade_view.position.distance_to(thrown.pos) < .001,"Thrown defense grenade has a world model at its projectile position")
-	pawn.hp = 50
-	pawn.combat_timer = 100.0
-	sim.submit("solo",command(int(pawn.weapon),false,5,pawn.yaw,pawn.pitch,true))
-	sim.step(.05)
-	for i in 62:
-		sim.submit("solo",command(int(pawn.weapon),false,5,pawn.yaw,pawn.pitch,false))
+	for i in 40:
+		sim.submit("solo",command(int(pawn.weapon),false,1,pawn.yaw,pawn.pitch,false))
 		sim.step(.05)
-	check(pawn.hp == 100 and pawn.medkits == 0,"Defense uses shared three-second medical treatment logic")
 	check(sim.defense.projectiles.is_empty() and game.arena.scenery.projectile_views.is_empty(),"Exploded defense grenade removes its world model")
 	sim.roster.clear()
 	sim.zombies.clear()
@@ -528,15 +499,8 @@ func run() -> void:
 	sim.add_pawn("two","二号",1)
 	sim.defense.party = sim.pawns.size()
 	sim.defense_director.equipment.initialize()
-	check(sim.defense.grenade_slots.size() == 2 and sim.defense.medkit_slots.size() == 2,"Coop armory creates one grenade and medical slot per player")
-	var coop_pawn: Dictionary = sim.pawns.solo
-	var coop_mount: Vector3 = data.Maps.Defense.GRENADE_MOUNTS[0]
-	coop_pawn.pos = Vector2(coop_mount.x,coop_mount.z-1.65)
-	coop_pawn.height = data.Maps.Defense.height(coop_pawn.pos)
-	coop_pawn.yaw = PI
-	coop_pawn.pitch = atan2(coop_mount.y-(coop_pawn.height+preload("res://scripts/player_body.gd").eye_height(coop_pawn)),1.65)
-	check(sim.defense_director.equipment.pickup(coop_pawn,"grenade:0"),"A coop player can pick one authoritative grenade slot")
-	check(sim.defense_director.equipment.pickup(coop_pawn,"grenade:0") and coop_pawn.grenades == 2,"Coop grenade supply remains available without a refill timer")
+	sim.defense_director.begin_wave()
+	check(sim.pawns.solo.grenades == 3 and sim.pawns.two.grenades == 3,"Wave start refills grenades for every coop player")
 
 	print("DEFENSE VALIDATION: %d checks; %d failures" % [checks,failures])
 	game.queue_free()

@@ -8,7 +8,6 @@ var crystal_light: OmniLight3D
 var crystal_label: Label3D
 var wave_label: Label3D
 var pickup_animation: Node3D
-var armory_supply_views: Dictionary = {}
 var structure_view: Node3D
 
 func beam_between(title: String, a: Vector3, b: Vector3, radius: float, color: String) -> MeshInstance3D:
@@ -124,8 +123,7 @@ func make_safe_zone() -> void:
 		block("ShopFrame%d" % column,Vector3(x,7.2,67.47),Vector3(.12,8.15,.1),"5d4934",false)
 	block("ShopFrameTop",Vector3(0,11.52,67.47),Vector3(25.5,.18,.18),"5d4934",false)
 	block("ShopFrameBottom",Vector3(0,3.08,67.47),Vector3(25.5,.18,.18),"5d4934",false)
-	# Primary weapons occupy two rows; both sidearms share a third central row.
-	# The outer wall sections hold grenade and medical supplies.
+	# Four shared weapon models are reachable from the flat armory floor.
 	for display_index in DefenseLayout.ARMORY_WEAPONS.size():
 		var weapon_index: int = DefenseLayout.ARMORY_WEAPONS[display_index]
 		var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[weapon_index].id)
@@ -143,15 +141,9 @@ func make_safe_zone() -> void:
 		var rack_label = sign_at("E · %s" % Data.weapons[weapon_index].label,Vector3(mount.x,mount.y+.52,67.42),3.6)
 		rack_label.rotation.y = PI
 		rack_label.position.z -= .22
-	var sidearm_label = sign_at("副武器 · 按 2 切换",Vector3(0,8.45,67.42),5.2)
-	sidearm_label.rotation.y = PI
-	sidearm_label.position.z -= .22
-	var grenade_label = sign_at("手雷补给\n无限供应",Vector3(-10.6,7.25,67.42),3.8)
-	grenade_label.rotation.y = PI
-	grenade_label.position.z -= .22
-	var medkit_label = sign_at("医疗包补给\n无限供应",Vector3(10.6,7.25,67.42),3.8)
-	medkit_label.rotation.y = PI
-	medkit_label.position.z -= .22
+	var loadout_label = sign_at("军械库 · 1 / 2 选择武器槽 · E 换枪",Vector3(0,8.45,67.42),5.2)
+	loadout_label.rotation.y = PI
+	loadout_label.position.z -= .22
 	for x in [-9.0,-3.0,3.0,9.0]:
 		var light = OmniLight3D.new()
 		light.position = Vector3(x,6.4,65.8)
@@ -206,20 +198,6 @@ func sync(state: Dictionary) -> void:
 		pickup_animation = preload("res://scripts/interaction_motion.gd").new()
 		add_child(pickup_animation)
 	pickup_animation.sync(state)
-	for kind in ["grenade","medkit"]:
-		var slots: Array = state.get(kind+"_slots",[])
-		var mounts: Array = DefenseLayout.GRENADE_MOUNTS if kind == "grenade" else DefenseLayout.MEDKIT_MOUNTS
-		for index in slots.size():
-			var id: String = kind+"_"+str(index)
-			if not armory_supply_views.has(id):
-				var prop = preload("res://scripts/equipment_props.gd").model(4 if kind == "grenade" else 5)
-				prop.name = "ArmorySupply"+id.capitalize().replace(" ","")
-				add_child(prop)
-				prop.position = mounts[index]
-				prop.rotation.y = PI
-				prop.scale = Vector3.ONE*(2.8 if kind == "grenade" else 1.55)
-				armory_supply_views[id] = prop
-			armory_supply_views[id].visible = true
 	var hp: float = float(state.get("crystal_hp",DefenseLayout.CRYSTAL_MAX_HP))
 	var maximum: float = float(state.get("crystal_max_hp",DefenseLayout.CRYSTAL_MAX_HP))
 	var ratio = clampf(hp/maxf(1,maximum),0,1)

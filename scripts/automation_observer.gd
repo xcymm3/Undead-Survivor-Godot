@@ -61,7 +61,7 @@ func snapshot() -> Dictionary:
 		var p: Dictionary = game.local_pawn()
 		if not p.is_empty():
 			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "wading":p.get("wading",false), "hp": p.hp,
-				"crouch": p.get("crouch",0.0), "eye_height": preload("res://scripts/player_body.gd").eye_height(p), "slot":p.get("slot",0), "primary":p.get("primary",0), "secondary":p.get("secondary",2), "grenades":p.get("grenades",0), "medkits":p.get("medkits",0), "healing":p.get("healing",""), "heal_time":p.get("heal_time",0.0), "weapon": p.weapon, "ammo": p.ammo, "reserves":p.get("reserves",[]), "shots": p.shots, "hits": p.hits,
+				"crouch": p.get("crouch",0.0), "eye_height": preload("res://scripts/player_body.gd").eye_height(p), "slot":p.get("slot",0), "weapon1":p.get("weapon1",0), "weapon2":p.get("weapon2",8), "weapon_slot":p.get("weapon_slot",1), "slot_ammo":p.get("slot_ammo",[]), "slot_reserves":p.get("slot_reserves",[]), "grenades":p.get("grenades",0), "weapon": p.weapon, "ammo": p.ammo, "reserves":p.get("reserves",[]), "shots": p.shots, "hits": p.hits,
 				"combat_timer":p.get("combat_timer",0.0),"regen_credit":p.get("regen_credit",0.0),"shove_cd":p.get("shove_cd",0.0),"shove_gap":p.get("shove_gap",0.0),"shove_count":p.get("shove_count",0),"shove_anim":p.get("shove_anim",0.0),"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
 	return result
 
@@ -86,7 +86,7 @@ func native_smoke() -> void:
 	Input.parse_input_event(event)
 	var p: Dictionary = game.local_pawn()
 	var passed = game.sim.mode == "defense" and game.sim.defense.started and not game.sim.defense.waiting
-	passed = passed and p.primary == 0 and p.shots > 0 and p.ammo[0] < Data.weapons[0].capacity and p.reserve == Data.defense_full_reserve(0) and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
+	passed = passed and p.weapon1 == 0 and p.shots > 0 and p.ammo[0] < Data.weapons[0].capacity and p.reserve == Data.defense_full_reserve(0) and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
 	print("PACKAGED DEFENSE SMOKE: "+("PASS" if passed else "FAIL"))
 	var tree = get_tree()
 	reparent(tree.root)

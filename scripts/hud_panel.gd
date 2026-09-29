@@ -64,8 +64,8 @@ func setup(owner_ui) -> void:
 	equipment_arsenal = VBoxContainer.new()
 	equipment_arsenal.add_theme_constant_override("separation",5)
 	column.add_child(equipment_arsenal)
-	for i in 5:
-		var panel = card(equipment_arsenal,Vector2(174,62 if i < 3 else 36))
+	for i in 4:
+		var panel = card(equipment_arsenal,Vector2(174,62 if i < 3 else 48))
 		var row = HBoxContainer.new()
 		row.add_theme_constant_override("separation",8)
 		panel.add_child(row)
@@ -207,31 +207,31 @@ func sync() -> void:
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "defense":
-		controls_hint.text = "1 主武器 · 2 副武器 · 3 斧 · 4 手雷 · 5 医疗包 · E 拾取/交互"
+		controls_hint.text = "1 武器1 · 2 武器2 · 3 消防斧 · 4 手雷 · E 替换当前武器"
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
 		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 无限备弹" if w.get("infiniteReserve",false) else "R 换弹 · 补给点换枪"
-		if p.slot >= 4:
-			weapon_label.text = "手雷" if p.slot == 4 else "医疗包"
-			ammo_label.text = str(p.grenades if p.slot == 4 else p.medkits)
-			ammo_note.text = "左键投掷 · 1.5 秒引信" if p.slot == 4 else "左键自己 · 右键队友"
+		if p.slot == 4:
+			weapon_label.text = "手雷"
+			ammo_label.text = "%d / 3" % p.grenades
+			ammo_note.text = "左键投掷 · 每波开始补满"
 
 	arsenal.visible = not (int(p.weapon) == 5 and p.get("slot",1) < 4 and ui.game.weapon.ads > .8)
 	var shared_loadout: bool = sim.mode == "defense"
 	equipment_arsenal.visible = shared_loadout and arsenal.visible
 	arsenal.visible = not shared_loadout and arsenal.visible
 	if shared_loadout:
-		for i in 5:
+		for i in 4:
 			var item: Dictionary = equipment_slots[i]
-			var index: int = p.primary if i == 0 else p.secondary if i == 1 else 6
+			var index: int = p.weapon1 if i == 0 else p.weapon2 if i == 1 else 6
 			var selected: bool = p.slot == i+1
-			var available: bool = i < 3 or (p.grenades if i == 3 else p.medkits) > 0
+			var available: bool = i < 3 or p.grenades > 0
 			item.panel.add_theme_stylebox_override("panel",item.selected if selected else item.idle)
-			item.icon.kind = str(Data.weapons[index].id) if i < 3 else "grenade" if i == 3 else "medkit"
+			item.icon.kind = str(Data.weapons[index].id) if i < 3 else "grenade"
 			item.icon.modulate = Color("c7ef8a") if selected and available else Color("f2eedf") if available else Color("647064")
-			item.title.text = str(Data.weapons[index].label) if i < 3 else "手雷" if i == 3 else "医疗包"
-			item.note.visible = i < 3
-			item.note.text = str(Data.weapons[index].tier)+" 级"
-			if i >= 3: item.title.text += ("  %d / %d" % [p.grenades if i == 3 else p.medkits,3 if i == 3 else 1]) if available else "  空"
+			item.title.text = "武器%d\n%s" % [i+1,Data.weapons[index].label] if i < 2 else "消防斧" if i == 2 else "手雷  %d / 3" % p.grenades
+			item.note.visible = true
+			item.note.text = "%d / %d" % [p.slot_ammo[i],p.slot_reserves[i]] if i < 2 else "无需弹药" if i == 2 else "每波开始补满"
+			if i < 2 and Data.weapons[index].get("infiniteAmmo",false): item.note.text = "无需弹药"
 			item.icon.queue_redraw()
 	else:
 		for i in slots.size():

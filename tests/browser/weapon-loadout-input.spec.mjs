@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('real input fires cancels and completes revolver reload', async ({ page }, info) => {
+test('real input fires cancels and completes second-weapon reload', async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('/');
@@ -16,22 +16,26 @@ test('real input fires cancels and completes revolver reload', async ({ page }, 
   await page.keyboard.press('4');
   await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 1);
   await page.keyboard.press('2');
-  await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 3 && window.__survivorSnapshot.player.switch <= 0);
+  await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 8 && window.__survivorSnapshot.player.switch <= 0);
   await page.mouse.click(480, 300);
-  await page.waitForFunction(() => window.__survivorSnapshot.player.ammo[3] === 5);
+  await page.waitForFunction(() => window.__survivorSnapshot.player.ammo[8] === 15);
   await page.keyboard.press('r');
   await page.waitForFunction(() => window.__survivorSnapshot.player.reloading);
   await page.keyboard.press('1');
-  await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.weapon === window.__survivorSnapshot.player.primary);
-  expect(await page.evaluate(() => window.__survivorSnapshot.player.ammo[3])).toBe(5);
+  await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.weapon === window.__survivorSnapshot.player.weapon1);
+  expect(await page.evaluate(() => window.__survivorSnapshot.player.ammo[8])).toBe(15);
   await page.keyboard.press('2');
-  await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 3 && window.__survivorSnapshot.player.switch <= 0);
+  await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 8 && window.__survivorSnapshot.player.switch <= 0);
   await page.keyboard.press('r');
   await page.waitForFunction(() => window.__survivorSnapshot.player.reloading);
-  await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.ammo[3] === 6);
+  await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.ammo[8] === 16);
+  await page.mouse.down({ button: 'middle' }); await page.mouse.up({ button: 'middle' });
+  expect(await page.evaluate(() => window.__survivorSnapshot.player.aim)).toBe(false);
+  await page.keyboard.press('1');
+  await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 0 && window.__survivorSnapshot.player.switch <= 0);
   await page.mouse.down({ button: 'middle' }); await page.mouse.up({ button: 'middle' });
   await page.waitForFunction(() => window.__survivorSnapshot.player.aim);
-  await page.screenshot({ path: info.outputPath('revolver-real-input-aim-after-reload.png'), timeout: 60_000 });
+  await page.screenshot({ path: info.outputPath('second-weapon-real-input-aim-after-reload.png'), timeout: 60_000 });
   await page.mouse.down({ button: 'middle' }); await page.mouse.up({ button: 'middle' });
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });

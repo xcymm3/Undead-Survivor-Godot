@@ -1,7 +1,6 @@
 extends RefCounted
-## Authority-only equipment, pickups, healing and ballistic grenades.
+## Authority-only equipment, pickups and ballistic grenades.
 const MAX_GRENADES = 3
-const HEAL_SECONDS = 3.0
 const GRENADE_FUSE = 1.5
 const GRENADE_RADIUS = 11.0
 const GRENADE_THROW_INTERVAL = 1.0
@@ -35,67 +34,52 @@ func _init(director_node) -> void:
 	director_ref = weakref(director_node)
 
 static func slot_available(p: Dictionary, slot: int) -> bool:
-	return slot >= 1 and slot <= 5 and (slot != 4 or p.get("grenades",0) > 0) and (slot != 5 or p.get("medkits",0) > 0)
+	return slot in [1,2,3] or slot == 4 and p.get("grenades",0) > 0
 
-func heal_target(p: Dictionary, other: bool) -> String:
-	if not other: return p.id if p.hp > 0 and p.hp < 100 else ""
-	var result = ""
-	var best = .75
-	var forward = Vector2(-sin(p.yaw),-cos(p.yaw))
-	for q in sim.pawns.values():
-		if q.id == p.id or q.hp <= 0 or q.hp >= 100 or not director.near(p,q.pos,2.5): continue
-		var dot: float = forward.dot((q.pos-p.pos).normalized())
-		if dot > best:
-			best = dot
-			result = q.id
-	return result
-
-func before_movement(dt: float) -> void:
-	for p in sim.pawns.values(): p.being_healed = false
+func before_movement(_dt: float) -> void:
 	for p in sim.pawns.values():
 		var input: Dictionary = p.input if p.input_age < .5 else {}
 		var requested: int = int(input.get("slot",p.slot))
-		if not slot_available(p,requested): requested = p.slot if slot_available(p,p.slot) else 1
+		if not slot_available(p,requested): requested = p.slot if slot_available(p,p.slot) else int(p.weapon_slot)
 		if requested != p.slot:
 			p.slot = requested
 			p.use_latch = false
-			p.healing = ""
-			p.heal_time = 0.0
 			p.reloading = false
 			p.reload_queued = false
 			p.reload = 0.0
 			p.fire_anim = 0.0
 			sim.melee_swings.erase(p.id)
-		var click: bool = input.get("use_self",false) or input.get("use_other",false)
+		if p.slot in [1,2] and (p.weapon_slot != p.slot or p.weapon != (p.weapon1 if p.slot == 1 else p.weapon2)): select_weapon_slot(p,p.slot)
 		var use: bool = input.get("fire",false)
-		if p.hp <= 0:
-			p.healing = ""
-			p.heal_time = 0.0
-		elif not p.healing.is_empty():
-			var q: Dictionary = sim.pawns.get(p.healing,{})
-			if p.slot != 5 or p.medkits <= 0 or input.is_empty() or q.is_empty() or q.hp <= 0 or q.hp >= 100 or p.hurt_at > p.heal_hurt or (q.id != p.id and not director.near(p,q.pos,2.5)):
-				p.healing = ""
-				p.heal_time = 0.0
-			else:
-				q.being_healed = true
-				p.heal_time += dt
-				if p.heal_time >= HEAL_SECONDS:
-					p.medkits -= 1
-					q.hp = 100
-					p.healing = ""
-					p.heal_time = 0.0
-		elif (click or use and not p.use_latch) and p.interaction == "":
-			if p.slot == 5 and p.medkits > 0:
-				p.healing = heal_target(p,input.get("use_other",false))
-				p.heal_hurt = p.hurt_at
-				p.heal_time = 0.0
-				if not p.healing.is_empty(): sim.pawns[p.healing].being_healed = true
-			elif p.slot == 4 and (input.get("use_self",false) or input.get("fire",false)) and director.state.started and p.grenades > 0:
-				throw_grenade(p)
-		if not slot_available(p,p.slot): p.slot = 1
+		if p.hp > 0 and p.interaction == "" and p.slot == 4 and (input.get("use_self",false) or use and not p.use_latch) and director.state.started:
+			if throw_grenade(p): input["fire"] = false
+		if not slot_available(p,p.slot):
+			p.slot = int(p.weapon_slot)
+			select_weapon_slot(p,p.slot)
 		p.use_latch = use
 		p.input["use_self"] = false
-		p.input["use_other"] = false
+
+func save_weapon_slot(p: Dictionary) -> void:
+	var index: int = p.weapon_slot-1
+	var weapon: int = p.weapon1 if index == 0 else p.weapon2
+	if p.weapon != weapon: return
+	p.slot_ammo[index] = p.ammo[weapon]
+	p.slot_reserves[index] = p.reserves[weapon]
+
+func select_weapon_slot(p: Dictionary, slot: int, save_current := true) -> void:
+	if save_current: save_weapon_slot(p)
+	p.weapon_slot = slot
+	p.weapon = p.weapon1 if slot == 1 else p.weapon2
+	p.requested = p.weapon
+	p.ammo[p.weapon] = p.slot_ammo[slot-1]
+	p.reserves[p.weapon] = p.slot_reserves[slot-1]
+	p.reserve = p.reserves[p.weapon]
+	p.switch = .4
+	p.reloading = false
+	p.reload_queued = false
+	p.reload = 0.0
+	p.aim = false
+	p.trigger = false
 
 func throw_grenade(p: Dictionary) -> bool:
 	if p.grenades <= 0 or sim.elapsed < float(p.get("grenade_ready_at",0.0)): return false

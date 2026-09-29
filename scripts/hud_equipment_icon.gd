@@ -3,7 +3,7 @@ extends Control
 var kind := "rifle"
 
 func _draw() -> void:
-	var item: bool = kind in ["grenade","medkit"]
+	var item: bool = kind == "grenade"
 	var canvas = Vector2(60 if item else 100,50)
 	var factor = minf(size.x/canvas.x,size.y/canvas.y)
 	draw_set_transform((size-canvas*factor)*.5-Vector2(20 if item else 0,0)*factor,0,Vector2.ONE*factor)
@@ -14,11 +14,6 @@ func _draw() -> void:
 			draw_line(Vector2(60,6),Vector2(70,24),white,5)
 			draw_circle(Vector2(49,30),18,white)
 			for y in [23,33]: draw_line(Vector2(35,y),Vector2(63,y),Color(.12,.16,.12),2)
-		"medkit":
-			draw_rect(Rect2(34,3,32,9),white,false,4)
-			draw_style_box(box(),Rect2(23,12,54,36))
-			draw_rect(Rect2(46,19,8,23),white)
-			draw_rect(Rect2(38,27,24,7),white)
 		"axe":
 			draw_line(Vector2(29,46),Vector2(61,5),white,6)
 			draw_colored_polygon(PackedVector2Array([Vector2(48,4),Vector2(65,1),Vector2(80,11),Vector2(71,26),Vector2(58,16)]),white)

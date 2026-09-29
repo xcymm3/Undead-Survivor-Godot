@@ -12,19 +12,12 @@ const ENTRIES = [Vector2(-24,-74),Vector2(-11,-68),Vector2(0,-74),Vector2(11,-68
 const BRIDGE = Rect2(-4,-62,8,34)
 const RAMP = Rect2(-5,-28,10,18)
 const CRYSTAL_MAX_HP = 1500
-const PRIMARY_WEAPONS := [0,1,4,5,7,8,9]
-const SECONDARY_WEAPONS := [2,3]
-const ARMORY_WEAPONS := [0,1,4,5,7,8,9,2,3]
+const ARMORY_WEAPONS := [0,8,7,5]
 const ARMORY_COLUMNS := [-7.2,-2.4,2.4,7.2]
-const ARMORY_ROWS := [4.2,5.65]
-const SIDEARM_HEIGHT := 7.1
-const GRENADE_MOUNTS := [Vector3(-11.2,4.15,67.28),Vector3(-10.0,4.15,67.28),Vector3(-11.2,5.35,67.28),Vector3(-10.0,5.35,67.28)]
-const MEDKIT_MOUNTS := [Vector3(10.0,4.15,67.28),Vector3(11.2,4.15,67.28),Vector3(10.0,5.35,67.28),Vector3(11.2,5.35,67.28)]
+const ARMORY_ROWS := [5.65]
 
 static func weapon_mount(display_index: int) -> Vector3:
-	if display_index >= PRIMARY_WEAPONS.size():
-		return Vector3(ARMORY_COLUMNS[display_index-PRIMARY_WEAPONS.size()+1],SIDEARM_HEIGHT,67.28)
-	return Vector3(ARMORY_COLUMNS[display_index/2],ARMORY_ROWS[display_index%2],67.28)
+	return Vector3(ARMORY_COLUMNS[display_index],ARMORY_ROWS[0],67.28)
 
 static func height(p: Vector2) -> float:
 	if p.y <= RAMP.position.y: return 0.0

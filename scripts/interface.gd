@@ -425,7 +425,7 @@ func show_guide() -> void:
 	var column = panel("武器与操作", "水晶防线 · 无尽防守 · 按 T 开战",1000)
 	current = "guide"
 	paragraph(column,"守住水晶，挑战无尽尸潮。每波开始前按 T；合作模式需要所有玩家重新按 T 准备。波间可以自由补给。",17)
-	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键推击  /  中键切换开镜\n空格跳跃  /  Ctrl 按住蹲下  /  R 换弹  /  1—5 或滚轮切换装备  /  Esc 暂停\n装备：1 主武器 / 2 副武器 / 3 消防斧 / 4 手雷 / 5 医疗包 / E 拾取与交互\n医疗包：左键自己，右键瞄准近处队友；治疗时无法行动。\n连续推击第 3 次后冷却 3.5 秒，准星上方圆环显示恢复进度。",17)
+	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键推击  /  中键切换开镜\n空格跳跃  /  Ctrl 按住蹲下  /  R 换弹  /  1—4 或滚轮切换装备  /  Esc 暂停\n装备：1 武器1 / 2 武器2 / 3 消防斧 / 4 手雷 / E 替换当前武器。\n连续推击第 3 次后冷却 3.5 秒，准星上方圆环显示恢复进度。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation",24)
@@ -436,7 +436,7 @@ func show_guide() -> void:
 		var w: Dictionary = Data.weapons[i]
 		for text in [w.label,w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
 	paragraph(column,"僵尸从对岸五个刷怪点走来。普通僵尸会追击玩家，小鬼与巨人优先攻击水晶；利用推搡与火力保护水晶。",17)
-	paragraph(column,"E 从军械墙换枪或领取补给。武器、手雷与医疗包无限供应；最多携带三枚手雷和一个医疗包。主武器仍需换弹和补给。",17)
+	paragraph(column,"军械库提供步枪、自动霰弹枪、喷火枪和狙击枪。先按 1 或 2 选择槽位，再按 E 换枪并补充弹药；可携带两把任意武器。每波实际开始时，手雷自动补满至 3 枚。",17)
 	button(column,"返回",back,true)
 
 func show_multiplayer() -> void:
@@ -514,7 +514,7 @@ func tick(dt: float) -> void:
 	hurt_flash = maxf(0,hurt_flash-dt)
 	native_hud.sync()
 	var pawn: Dictionary = game.view_pawn()
-	var state = [game.running,current,pawn.get("weapon",-1),pawn.get("slot",1),pawn.get("healing",""),pawn.get("aim",false),game.weapon.ads > .8,pawn.get("shove_cd",0.0),pawn.get("shove_gap",0.0),hit_flash,hurt_flash,pawn.get("damage_hint",0.0),game.yaw,hud.size]
+	var state = [game.running,current,pawn.get("weapon",-1),pawn.get("slot",1),pawn.get("aim",false),game.weapon.ads > .8,pawn.get("shove_cd",0.0),pawn.get("shove_gap",0.0),hit_flash,hurt_flash,pawn.get("damage_hint",0.0),game.yaw,hud.size]
 	if state != overlay_state:
 		overlay_state = state
 		hud.queue_redraw()
@@ -527,7 +527,7 @@ func _draw_hud() -> void:
 	var screen = hud.size
 	var center = screen*.5
 	var w: Dictionary = Data.weapons[int(p.weapon)]
-	var scoped: bool = int(p.weapon) == 5 and p.get("slot",1) < 4 and p.get("healing","").is_empty() and not p.get("being_healed",false) and game.weapon.ads > .8
+	var scoped: bool = int(p.weapon) == 5 and p.get("slot",1) < 4 and game.weapon.ads > .8
 	if scoped:
 		var radius = minf(screen.x,screen.y)*.43
 		var points = PackedVector2Array()

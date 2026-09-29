@@ -24,10 +24,10 @@ test('简单难度下自动霰弹枪防守前八波的独立试玩观察', async
   let sawRegen = false;
   let routeViolation = null;
   let previous = null;
-  const primaryWeapon = 8;
-  const primaryCapacity = 16;
-  const primaryReserve = 272;
-  const rack = { x: 2.4, z: 64.8 };
+  const equippedWeapon = 8;
+  const equippedCapacity = 16;
+  const equippedReserve = 272;
+  const rack = { x: -2.4, z: 64.8 };
   page.on('pageerror', error => errors.push(String(error)));
 
   async function setKey(key, down) {
@@ -92,12 +92,12 @@ test('简单难度下自动霰弹枪防守前八波的独立试玩观察', async
   // camera helper, and hold the real interaction key to equip it.
   await walkTo(rack.x, rack.z);
   await setKey('e', true);
-  await page.waitForFunction(weapon => window.__survivorSnapshot?.player?.primary === weapon, primaryWeapon, { timeout: 10_000 });
+  await page.waitForFunction(weapon => window.__survivorSnapshot?.player?.weapon1 === weapon, equippedWeapon, { timeout: 10_000 });
   await setKey('e', false);
 
-  // Select the primary for the bridge's long firing lane, then enter position.
+  // Select weapon slot 1 for the bridge's long firing lane, then enter position.
   await page.keyboard.press('1');
-  await page.waitForFunction(weapon => window.__survivorSnapshot?.player?.weapon === weapon && window.__survivorSnapshot.player.switch <= 0, primaryWeapon);
+  await page.waitForFunction(weapon => window.__survivorSnapshot?.player?.weapon === weapon && window.__survivorSnapshot.player.switch <= 0, equippedWeapon);
   await page.mouse.down({ button: 'middle' });
   await page.mouse.up({ button: 'middle' });
   await page.waitForFunction(() => window.__survivorSnapshot.player.aim);
@@ -134,8 +134,8 @@ test('简单难度下自动霰弹枪防守前八波的独立试玩观察', async
       }
     }
 
-    const remainingPrimaryAmmo = state.player.ammo[primaryWeapon] + state.player.reserves[primaryWeapon];
-    if (!restocking && state.cleared < 8 && remainingPrimaryAmmo <= primaryCapacity) restocking = true;
+    const remainingWeaponAmmo = state.player.ammo[equippedWeapon] + state.player.reserves[equippedWeapon];
+    if (!restocking && state.cleared < 8 && remainingWeaponAmmo <= equippedCapacity) restocking = true;
     if (restocking) {
       await setFiring(false);
       const atRack = Math.hypot(state.player.x - rack.x, state.player.z - rack.z) < .9;
@@ -146,7 +146,7 @@ test('简单难度下自动霰弹枪防守前八波的独立试玩观察', async
         await stopMoving();
         await setKey('e', true);
       }
-      if (state.player.ammo[primaryWeapon] === primaryCapacity && state.player.reserves[primaryWeapon] === primaryReserve) {
+      if (state.player.ammo[equippedWeapon] === equippedCapacity && state.player.reserves[equippedWeapon] === equippedReserve) {
         await setKey('e', false);
         restocking = false;
       }

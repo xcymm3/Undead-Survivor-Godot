@@ -21,7 +21,7 @@ test('主页只提供水晶防线和难度选择，可直接开始防守', async
   const game = await page.evaluate(() => window.__survivorSnapshot);
   expect(game.mode).toBe('defense');
   expect(game.defense.waiting).toBe(true);
-  expect(game.player.primary).toBe(0);
+  expect(game.player.weapon1).toBe(0);
   expect(game.player.reserves[0]).toBe(510);
   expect(game).not.toHaveProperty('campaign');
   expect(errors).toEqual([]);

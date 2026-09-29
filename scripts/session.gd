@@ -8,7 +8,7 @@ signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-19"
+const PROTOCOL = "undead-survivor-godot-20"
 const PORT = 27777
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"
@@ -33,7 +33,7 @@ var steam_ready = false
 var last_host = 0.0
 var heartbeat = 0.0
 var input_sequences: Dictionary = {}
-var sent_edges = {"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0,"wave_ready":0}
+var sent_edges = {"jump":0,"reload":0,"use_self":0,"shove":0,"wave_ready":0}
 var received_edges: Dictionary = {}
 var send_sequence = 0
 var receive_sequence = -1
@@ -293,7 +293,7 @@ func send_input(command: Dictionary) -> void:
 
 func recover_input_edges(id: String, command: Dictionary) -> Dictionary:
 	var clean = command.duplicate()
-	var previous: Dictionary = received_edges.get(id,{"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0,"wave_ready":0})
+	var previous: Dictionary = received_edges.get(id,{"jump":0,"reload":0,"use_self":0,"shove":0,"wave_ready":0})
 	for action in previous:
 		var sequence = command.get(action+"_seq",0)
 		if not sequence is int or sequence < 0: return {}
@@ -439,18 +439,21 @@ func valid_world(value) -> bool:
 			if not (p.get(field) is float or p.get(field) is int) or not is_finite(p[field]) or p[field] < 0 or p[field] > 3.5: return false
 		if not p.get("shove_count") is int or p.shove_count < 0 or p.shove_count > 2: return false
 		if value.mode == "defense":
-			if not p.has_all(["reserve","primary","secondary","slot","reserves","grenades","healing","heal_time","being_healed","medkits","hint"]): return false
-			for field in ["secondary","slot","grenades"]:
+			if not p.has_all(["reserve","weapon1","weapon2","weapon_slot","slot","reserves","slot_ammo","slot_reserves","grenades","hint"]): return false
+			for field in ["reserve","weapon1","weapon2","weapon_slot","slot","grenades"]:
 				if not p[field] is int: return false
-			if p.secondary not in [2,3] or p.slot < 1 or p.slot > 5 or p.grenades < 0 or p.grenades > 3: return false
-			if not p.healing is String or p.healing.length() > 80 or not p.being_healed is bool: return false
-			if not p.heal_time is float or not is_finite(p.heal_time) or p.heal_time < 0 or p.heal_time > 3: return false
+			if p.weapon1 < 0 or p.weapon1 >= Data.weapons.size() or p.weapon2 < 0 or p.weapon2 >= Data.weapons.size(): return false
+			if p.weapon_slot not in [1,2] or p.slot < 1 or p.slot > 4 or p.grenades < 0 or p.grenades > 3 or p.reserve < 0: return false
 			if not p.reserves is Array or p.reserves.size() != 10: return false
 			for index in 10:
 				if not p.reserves[index] is int or p.reserves[index] < 0 or p.reserves[index] > Data.defense_full_reserve(index): return false
-			for key in ["reserve","primary","medkits"]:
-				if not p[key] is int or p[key] < 0: return false
-			if p.primary not in [0,1,4,5,7,8,9] or p.medkits > 1 or p.reserve > Data.defense_full_reserve(p.primary): return false
+			for field in ["slot_ammo","slot_reserves"]:
+				if not p[field] is Array or p[field].size() != 2: return false
+				for index in 2:
+					var weapon: int = p.weapon1 if index == 0 else p.weapon2
+					var limit: int = int(Data.weapons[weapon].capacity) if field == "slot_ammo" else Data.defense_full_reserve(weapon)
+					if not p[field][index] is int or p[field][index] < 0 or p[field][index] > limit: return false
+			if p.reserve > Data.defense_full_reserve(p.weapon1 if p.weapon_slot == 1 else p.weapon2): return false
 			if not p.hint is String or p.hint.length() > 160: return false
 		if not p.get("crouch",0.0) is float and not p.get("crouch",0.0) is int: return false
 		if not is_finite(p.get("crouch",0.0)) or p.get("crouch",0.0) < 0 or p.get("crouch",0.0) > 1: return false
@@ -519,7 +522,7 @@ func leave() -> void:
 	host_id = ""
 	members.clear()
 	input_sequences.clear()
-	sent_edges = {"jump":0,"reload":0,"use_self":0,"use_other":0,"shove":0,"wave_ready":0}
+	sent_edges = {"jump":0,"reload":0,"use_self":0,"shove":0,"wave_ready":0}
 	received_edges.clear()
 	room_code = ""
 	nonce = ""

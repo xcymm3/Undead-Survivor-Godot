@@ -30,6 +30,9 @@ func begin_wave() -> void:
 	sim.spawned = 0
 	sim.rest = 0.0
 	sim.prepare_wave()
+	for p in sim.pawns.values():
+		p.grenades = equipment.MAX_GRENADES
+		p.grenade_ready_at = 0.0
 	state.started = true
 	state.waiting = false
 	state.ready_players.clear()
@@ -45,7 +48,7 @@ func finish_wave() -> void:
 	sync_world()
 
 func choose_weapon(p: Dictionary, _requested: int) -> int:
-	return p.primary if p.slot == 1 else p.secondary if p.slot == 2 else 6
+	return p.weapon1 if p.slot == 1 else 6 if p.slot == 3 else p.weapon2 if p.slot == 2 else p.weapon
 
 func target(p: Dictionary) -> Dictionary:
 	var supply: Dictionary = equipment.pickup_target(p)
@@ -68,7 +71,7 @@ func interactions(dt: float) -> void:
 		if not input.get("interact",false): p.pickup_latched = false
 		var choice := target(p)
 		p.hint = "E "+choice.label if not choice.is_empty() else "按 T 准备下一波；可在后方军械库整备" if state.waiting else "保护水晶；在后方军械库补给"
-		if p.pickup_latched or not input.get("interact",false) or not p.get("healing","").is_empty() or p.get("being_healed",false): choice = {}
+		if p.pickup_latched or not input.get("interact",false): choice = {}
 		if choice.is_empty():
 			p.interaction = ""
 			p.interact_time = 0.0

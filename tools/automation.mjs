@@ -136,7 +136,7 @@ try {
       'tests/browser/defense.spec.mjs',
       'tests/browser/defense-structures.spec.mjs',
       'tests/browser/enemy-physics.spec.mjs',
-      'tests/browser/revolver-input.spec.mjs',
+      'tests/browser/weapon-loadout-input.spec.mjs',
     ];
     await run('browser-technical', process.execPath, ['node_modules/@playwright/test/cli.js', 'test', ...browserGateSpecs], 1_500_000);
     const browser = JSON.parse(await readFile('artifacts/browser-results.json', 'utf8'));
