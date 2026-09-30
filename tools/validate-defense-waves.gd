@@ -45,6 +45,10 @@ func run() -> void:
 	var composition_valid = true
 	var crawler_free = true
 	var late_special_share = true
+	var advanced_share_valid = true
+	check(Population.COST.cone == 1 and Population.COST.bucket == 1 and "cone" in Population.ORDINARY and "bucket" in Population.ORDINARY and not "cone" in Population.ELITES and not "bucket" in Population.ELITES,"Cones and buckets are ordinary zombies costing one point each")
+	for wave in range(1,31):
+		check(is_equal_approx(Defense.advanced_fraction(wave),.1+minf(9,wave-1)*(.5/9)),"Armored ordinary share rises from ten to sixty percent then caps: wave "+str(wave))
 	for party in range(1,5):
 		for difficulty in Defense.DIFFICULTIES:
 			for wave in [1,2,3,4,5,6,7,8,9,10,11,20,100]:
@@ -54,17 +58,22 @@ func run() -> void:
 				var budget = Defense.budget(wave,party,difficulty)
 				var spent = Population.points(value)
 				var specials = value.filter(func(kind): return kind in Population.ELITES)
+				var common = value.filter(func(kind): return kind in Population.ORDINARY)
+				var advanced_count = common.count("cone")+common.count("bucket")
+				advanced_share_valid = advanced_share_valid and absf(advanced_count-common.size()*Defense.advanced_fraction(wave)) <= 1.5 and absf(common.count("cone")-2*common.count("bucket")) <= 1.0
 				crawler_free = crawler_free and value.all(func(kind): return sim.defense_population_kind(kind) != "crawler")
 				composition_valid = composition_valid and spent <= budget and budget-spent < .75 and Population.points(specials) <= budget*Defense.special_fraction(wave) and value.count("football") == Defense.footballs(wave,party)
 				if wave >= 10: late_special_share = late_special_share and Population.points(specials) >= budget*.48
 	check(composition_valid,"All difficulties and one-to-four players respect the rising special cap and independent bosses")
 	check(late_special_share,"Available elite types use almost half of wave points from wave ten across parties and difficulties")
 	check(crawler_free,"All difficulties, party sizes and sampled early-to-endless waves spawn no crawlers")
+	check(advanced_share_valid,"Ordinary armored body share and the two-to-one cone/bucket ratio hold across waves, difficulties and party sizes")
 	sim.defense_director.begin_wave()
 	var initial_roster: Array = sim.roster.duplicate()
-	check(sim.wave_total == 150 and counts(initial_roster) == {"normal":138,"cone":7,"bucket":5},"Normal solo first wave contains 138 ordinary slots, seven cones and five buckets")
-	check(sim.defense.wave_budget == 138 and Population.points(initial_roster) == 137.5,"First wave spends 137.5 of 138 points, with a 0.5 unspendable remainder")
-	check(planner.batches == 30 and is_equal_approx(planner.interval,1.0) and planner.batch_size == 5,"First wave schedules five bodies every second for thirty batches")
+	var first_plan: Dictionary = planner.describe().duplicate()
+	check(sim.wave_total == 178 and counts(initial_roster) == {"normal":160,"cone":12,"bucket":6},"Normal solo first wave contains 160 normals, twelve cones and six buckets")
+	check(sim.defense.wave_budget == 138 and Population.points(initial_roster) == 138,"First wave spends exactly 138 points")
+	check(planner.batches == 30 and is_equal_approx(planner.interval,1.0) and planner.batch_size == 6,"First wave schedules five or six bodies each second for thirty batches")
 	var before_clock: float = planner.clock
 	sim.defense.waiting = true
 	sim.step(.25)
@@ -93,12 +102,12 @@ func run() -> void:
 		last_id = sim.next_id
 		await physics_frame
 		if sim.roster.is_empty(): break
-	check(sim.spawned == 150 and sim.roster.is_empty() and planner.clock <= 30.02,"Real first-wave simulation releases all enemies by thirty seconds")
+	check(sim.spawned == 178 and sim.roster.is_empty() and planner.clock <= 30.02,"Real first-wave simulation releases all enemies by thirty seconds")
 	var on_time = batches.size() == 30
 	for index in batches.size():
-		on_time = on_time and batches[index].count == 5 and absf(batches[index].time-(index+1)) <= .02
-	check(on_time,"Real releases are thirty five-body batches at one-second intervals")
-	check(counts(all_spawned) == {"normal":138,"cone":7,"bucket":5},"Actual first wave spawns 138 normals, seven cones and five buckets with no crawlers")
+		on_time = on_time and batches[index].count == planner.scheduled_count(index+1)-planner.scheduled_count(index) and absf(batches[index].time-(index+1)) <= .02
+	check(on_time,"Real releases follow all thirty scheduled quotas at one-second intervals")
+	check(counts(all_spawned) == counts(initial_roster),"Actual spawns match the complete ordinary composition with no crawlers")
 	check(safe,"Every newborn position is outside the 2D scenery clearance margin")
 	check(sim.pawns.solo.shots == 0 and sim.pawns.solo.shoves == 0,"The spawn observation performs no player firing or shoving")
 	# An occupied platform must retain its backlog and resume safely later.
@@ -117,7 +126,7 @@ func run() -> void:
 	planner.step(.1,sim.pawns.values())
 	check(sim.spawned == 5 and sim.roster.is_empty(),"Blocked quota resumes after safe ground becomes available")
 	check(sim.zombies.all(func(z): return z.kind == "normal"),"Actual spawner replaces a legacy crawler entry with a normal zombie")
-	var output = {"seed":20260928,"mode":"solo","difficulty":"normal","budget":138,"spent":137.5,"unspent":.5,"plan":{"duration":30,"batches":30,"interval":1,"batch_size":5},"counts":counts(all_spawned),"batches":batches,"spawn_safe":safe,"spawn_issues":spawn_issues,"checks":checks,"failures":failures,"scope":"actual authority physics; no browser, no full wave survival result"}
+	var output = {"seed":20260928,"mode":"solo","difficulty":"normal","budget":138,"spent":Population.points(initial_roster),"unspent":138-Population.points(initial_roster),"plan":first_plan,"counts":counts(all_spawned),"batches":batches,"spawn_safe":safe,"spawn_issues":spawn_issues,"checks":checks,"failures":failures,"scope":"actual authority physics; no browser, no full wave survival result"}
 	DirAccess.make_dir_recursive_absolute("res://artifacts")
 	var file = FileAccess.open("res://artifacts/first-wave-horde.json",FileAccess.WRITE)
 	file.store_string(JSON.stringify(output,"\t"))

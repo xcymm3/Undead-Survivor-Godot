@@ -350,7 +350,7 @@ func run() -> void:
 		reference_random.seed = defense_random.seed
 		var defense_roster: Array = population.roster(current_wave,1,defense_random,"easy")
 		var ordinary_roster: Array = defense_roster.filter(func(kind): return kind != "football")
-		var reference_roster: Array = shared_population.roster(population.budget(current_wave,1,"easy"),population.kinds(current_wave),reference_random,population.special_fraction(current_wave))
+		var reference_roster: Array = shared_population.roster(population.budget(current_wave,1,"easy"),population.kinds(current_wave),reference_random,population.special_fraction(current_wave),population.advanced_fraction(current_wave))
 		exact_wave_budgets = exact_wave_budgets and valid_roster_budget(defense_roster,population.budget(current_wave,1,"easy"),population.special_fraction(current_wave))
 		exact_football_counts = exact_football_counts and defense_roster.count("football") == population.footballs(current_wave,1)
 		shared_rosters = shared_rosters and ordinary_roster == reference_roster

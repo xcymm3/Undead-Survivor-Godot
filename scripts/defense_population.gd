@@ -10,6 +10,8 @@ const MIN_GROWTH = 5
 const FULL_SPECIAL_WAVE = 10
 const INITIAL_SPECIAL_FRACTION = .25
 const FINAL_SPECIAL_FRACTION = .5
+const INITIAL_ADVANCED_FRACTION = .1
+const FINAL_ADVANCED_FRACTION = .6
 const FINAL_BUDGET_MULTIPLIER = .85
 const DIFFICULTIES = ["easy","normal","hard"]
 const DIFFICULTY_MULTIPLIERS = {"easy":.7,"normal":1.0,"hard":1.3}
@@ -29,6 +31,9 @@ static func progression(wave: int) -> float:
 
 static func special_fraction(wave: int) -> float:
 	return lerpf(INITIAL_SPECIAL_FRACTION,FINAL_SPECIAL_FRACTION,progression(wave))
+
+static func advanced_fraction(wave: int) -> float:
+	return lerpf(INITIAL_ADVANCED_FRACTION,FINAL_ADVANCED_FRACTION,progression(wave))
 
 static func budget_multiplier(wave: int) -> float:
 	return lerpf(1.0,FINAL_BUDGET_MULTIPLIER,progression(wave))
@@ -62,7 +67,7 @@ static func kinds(wave: int) -> Array:
 
 static func roster(wave: int, party_size: int, random: RandomNumberGenerator, difficulty := "normal") -> Array:
 	var required_footballs := footballs(wave,party_size)
-	var result: Array = Population.roster(budget(wave,party_size,difficulty),kinds(wave),random,special_fraction(wave))
+	var result: Array = Population.roster(budget(wave,party_size,difficulty),kinds(wave),random,special_fraction(wave),advanced_fraction(wave))
 	# Spread the authored bosses through the ordinary roster so multiplayer
 	# waves do not release all of them together. Bosses spend no threat points.
 	var ordinary_count := result.size()
