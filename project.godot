@@ -57,6 +57,11 @@ crouch={
 "events": [Object(InputEventKey,"physical_keycode":4194326)]
 }
 
+sprint={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":4194325)]
+}
+
 forward={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":87)]

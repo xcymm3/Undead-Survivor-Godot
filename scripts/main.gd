@@ -166,6 +166,7 @@ func reset_game() -> void:
 	effects.clear()
 	enemies.clear()
 	weapon.visible = true
+	weapon.reset_motion()
 	snapshot_timer = 0
 	sound.set_playing(true)
 
@@ -194,7 +195,7 @@ func input_state() -> Dictionary:
 	var enabled = running and not paused and focused and not finished
 	var local: Dictionary = local_pawn() if sim else {}
 	if not local.is_empty() and not Data.ads_enabled(Data.weapons[int(local.weapon)]): aim_held = false
-	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"wave_ready":enabled and Input.is_action_just_pressed("start_wave"),"crouch":enabled and Input.is_action_pressed("crouch"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held,"shove":enabled and shove_pending}
+	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"wave_ready":enabled and Input.is_action_just_pressed("start_wave"),"crouch":enabled and Input.is_action_pressed("crouch"),"sprint":enabled and Input.is_action_pressed("sprint"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held,"shove":enabled and shove_pending}
 	if sim and sim.mode == "defense":
 		if not preload("res://scripts/equipment_core.gd").slot_available(local_pawn(),requested_slot): requested_slot = int(local_pawn().get("slot",1))
 		command.slot = requested_slot

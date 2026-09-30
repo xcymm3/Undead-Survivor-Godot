@@ -5,6 +5,7 @@ const PlayerBody = preload("res://scripts/player_body.gd")
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 const EnemyPopulation = preload("res://scripts/enemy_population.gd")
 const PLAYER_MOVE_SPEED = 4.2
+const PLAYER_SPRINT_MULTIPLIER = 1.6
 const PLAYER_AIR_ACCELERATION = 4.0 # m/s²; input changes velocity gradually.
 const PLAYER_AIR_WISH_SPEED = 1.5 # Cap the velocity projection along air input.
 var player_bodies: Dictionary = {}
@@ -152,7 +153,7 @@ func submit(id: String, input: Dictionary) -> void:
 	clean.yaw = wrapf(clean.yaw,-PI,PI)
 	clean.pitch = clampf(clean.pitch,-deg_to_rad(85),deg_to_rad(85))
 	clean.weapon = clampi(int(clean.weapon),0,9)
-	for key in ["jump","fire","reload","aim","crouch","interact","wave_ready","use_self","shove"]: clean[key] = input.get(key,false) == true
+	for key in ["jump","fire","reload","aim","crouch","sprint","interact","wave_ready","use_self","shove"]: clean[key] = input.get(key,false) == true
 	if equipment:
 		var slot = input.get("slot",pawns[id].slot)
 		if not slot is int or slot < 1 or slot > 4: return
@@ -316,6 +317,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	p.fire_anim = maxf(0,p.fire_anim-dt)
 	p.input_age += dt
 	var input: Dictionary = p.input if p.input_age < .5 else {}
+	p.sprinting = false
 	if p.hp <= 0: return
 	p.yaw = input.get("yaw",p.yaw)
 	p.pitch = input.get("pitch",p.pitch)
@@ -323,7 +325,14 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	body.update_stance(p,input.get("crouch",false),dt)
 	var movement = Vector2(input.get("x",0),input.get("y",0)).limit_length()
 	var wish = Vector2(movement.x*cos(p.yaw)+movement.y*sin(p.yaw), -movement.x*sin(p.yaw)+movement.y*cos(p.yaw))
-	var ground_velocity = wish*PLAYER_MOVE_SPEED*progression.move_multiplier()*lerpf(1.0,.55,p.crouch)
+	var action_busy: bool = p.reloading or p.reload_queued or p.switch > 0 or p.fire_anim > 0 or p.shove_anim > 0
+	for key in ["fire","aim","reload","shove","use_self"]: action_busy = action_busy or input.get(key,false)
+	# Empty guns automatically reload later in this tick; do not run through that action.
+	if p.get("slot",1) in [1,2] and p.ammo[p.weapon] == 0 and p.get("reserves",[]).size() > p.weapon and p.reserves[p.weapon] > 0: action_busy = true
+	if p.get("slot",1) == 4 and p.get("use_latch",false): action_busy = true
+	p.sprinting = input.get("sprint",false) and movement.length_squared() > .0001 and p.crouch < .01 and not p.crouching and not action_busy
+	var move_multiplier = progression.move_multiplier()*(PLAYER_SPRINT_MULTIPLIER if p.sprinting else 1.0)
+	var ground_velocity = wish*PLAYER_MOVE_SPEED*move_multiplier*lerpf(1.0,.55,p.crouch)
 	# Store world-space m/s, so looking around cannot rotate existing momentum.
 	if body.grounded: p.air = ground_velocity
 	if input.get("jump",false) and body.grounded and p.crouch < .1:
@@ -333,7 +342,9 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	while remaining > .00001:
 		var step_time = minf(.01,remaining)
 		remaining -= step_time
-		p.air = ground_velocity if body.grounded else accelerate_in_air(p.air,wish,step_time,progression.move_multiplier())
+		# Air steering must not erase the momentum of a sprinting jump when Shift releases.
+		var air_multiplier = maxf(move_multiplier,p.air.length()/PLAYER_MOVE_SPEED)
+		p.air = ground_velocity if body.grounded else accelerate_in_air(p.air,wish,step_time,air_multiplier)
 		var next: Vector2 = p.pos+p.air*step_time
 		next = next.clamp(map_definition.bounds.position+Vector2.ONE*.95,map_definition.bounds.end-Vector2.ONE*.95)
 		if not can_move(p,next):

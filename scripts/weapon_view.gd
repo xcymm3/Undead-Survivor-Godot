@@ -3,6 +3,8 @@ var models: Array[Node3D] = []
 var animations: Array = []
 var sights: Array[Node3D] = []
 var ads = 0.0
+var sprint_blend = 0.0
+var sprint_phase = 0.0
 var active = 0
 var muzzle: MeshInstance3D
 var axe_pivot: Node3D
@@ -53,10 +55,19 @@ func find_animation(node: Node) -> AnimationPlayer:
 		if found: return found
 	return null
 
+func reset_motion() -> void:
+	ads = 0.0
+	sprint_blend = 0.0
+	sprint_phase = 0.0
+	if models.size() > 3: models[3].reset_motion()
+
 func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-180)) -> void:
 	active = int(p.weapon)
 	var w: Dictionary = Data.weapons[active]
-	ads = move_toward(ads,1.0 if p.aim else 0.0,dt*7)
+	var sprinting: bool = p.get("sprinting",false)
+	ads = move_toward(ads,1.0 if p.aim and not sprinting else 0.0,dt*7)
+	sprint_blend = move_toward(sprint_blend,1.0 if sprinting else 0.0,dt*9)
+	sprint_phase += dt*12.0
 	var hide_scope: bool = w.id == "sniper" and ads > .8
 	for i in models.size(): models[i].visible = i == active and not hide_scope and p.get("pickup_remaining",0.0) <= .08
 	for i in sights.size(): sights[i].visible = i == active and p.get("pickup_remaining",0.0) <= .08
@@ -121,6 +132,12 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		var push = sin((1-p.shove_anim/.32)*PI)
 		position.z -= push*.22
 		rotation.x += push*.2
+	# Carry the gun low and across the body; hands follow their shared weapon root.
+	# The two-foot rhythm adds vertical bounce and a slower lateral sway.
+	if sprint_blend > 0:
+		var bob = Vector3(sin(sprint_phase)*.018,absf(cos(sprint_phase))*.022,sin(sprint_phase*2)*.009)
+		position += (Vector3(.045,-.13,.08)+bob)*sprint_blend
+		quaternion *= Quaternion.from_euler(Vector3(-.38,.42,-.24+sin(sprint_phase)*.04)*sprint_blend)
 	muzzle.global_position = muzzle_position()
 	muzzle.visible = not hide_scope and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") not in ["melee","flame"]
 	muzzle.scale = Vector3.ONE*(2.3 if w.get("kind") == "flame" else 1.0)

@@ -29,7 +29,7 @@ func sync_pose(p: Dictionary, dt: float, elapsed: float, aim: float) -> void:
 		tracked_id = str(p.id)
 		previous_pos = pos
 		previous_angles = angles
-	var speed = minf(5.0,pos.distance_to(previous_pos)/maxf(dt,.001))
+	var speed = minf(12.0,pos.distance_to(previous_pos)/maxf(dt,.001))
 	if preview_speed >= 0: speed = preview_speed
 	motion = lerpf(motion,speed,1-exp(-dt*12))
 	stride += motion*dt*3.1
@@ -48,7 +48,7 @@ func sync_pose(p: Dictionary, dt: float, elapsed: float, aim: float) -> void:
 		cancel_time = maxf(0,cancel_time-dt)
 	var fire = clampf(1-float(p.fire_anim)/Data.weapons[3].fireDuration,0.001,1) if p.fire_anim > 0 else 0.0
 	sample_pose(phase,p.reloading or cancellation,fire,aim,int(p.get("shots",0)))
-	state_name = "reload" if p.reloading or cancellation else "fire" if fire > 0 else "aim" if aim > .5 else "walk" if motion > .1 else "idle"
+	state_name = "reload" if p.reloading or cancellation else "fire" if fire > 0 else "aim" if aim > .5 else "sprint" if p.get("sprinting",false) else "walk" if motion > .1 else "idle"
 	var strength = minf(motion/4.2,1.0)*(1-aim*.88)*(0.2 if p.reloading else 1.0)
 	position = Vector3(sin(stride)*.014,absf(cos(stride))*.013,-absf(sin(stride))*.008)*strength
 	position.y += sin(elapsed*1.7)*.002*(1-aim*.8)

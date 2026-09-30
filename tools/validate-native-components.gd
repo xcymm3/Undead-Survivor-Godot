@@ -471,6 +471,7 @@ func run() -> void:
 	game.sound.clear_effects()
 	check(game.sound.spatial_players.all(func(p): return p.stream == null),"World voice resources clear on scene reset")
 	await validate_air_movement()
+	await load("res://tools/validate-sprint.gd").validate(game,check)
 	await validate_equipment()
 	await validate_inventory()
 	await validate_combat_revision()
