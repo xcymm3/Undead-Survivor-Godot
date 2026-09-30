@@ -39,7 +39,9 @@
 
 本机自动检查必须真正 headless，不打开游戏窗口或干扰桌面。基础通过不等于全量、视觉、实际音效或真人体验验收通过。
 
-设计与验证细节：[地图](docs/MAPS.md)、[增量玩法与商店](docs/INCREMENTAL.md)、[近身战斗](docs/CLOSE_COMBAT.md)、[自动化](docs/AUTOMATION.md)、[按需视觉检查](docs/VISUAL_QA.md)。
+设计与验证细节：[地图](docs/MAPS.md)、[增量玩法与商店](docs/INCREMENTAL.md)、[近身战斗](docs/CLOSE_COMBAT.md)、[武器音效](docs/WEAPON_AUDIO.md)、[自动化](docs/AUTOMATION.md)、[按需视觉检查](docs/VISUAL_QA.md)。
+
+全部枪械使用各自的开火声音，消防斧与喷火枪也有独立音效。枪械和炮塔不显示子弹轨迹，包括霰弹枪的每颗弹丸；开火时保留短促、较小的枪口闪光，弹壳和命中效果仍显示。
 
 ## 资源与许可
 

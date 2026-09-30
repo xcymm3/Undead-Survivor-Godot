@@ -130,31 +130,14 @@ func step_flame(dt: float) -> void:
 		flame_mesh.set_instance_transform(i,Transform3D(basis,p.pos))
 		flame_mesh.set_instance_color(i,color)
 
-func tracer(from: Vector3, to: Vector3, shell := true) -> void:
-	if particles.size() > 380: particles = particles.slice(-370)
-	var length = from.distance_to(to)
-	if length > .001:
-		particles.append({"pos":(from+to)*.5,"velocity":Vector3.ZERO,"life":.045,"color":Color("ffe6ad"),"size":.015,"scale":Vector3(.015,.015,length),"basis":Basis(Quaternion(Vector3.BACK,(to-from).normalized())),"gravity":false})
-	if shell:
-		var right = (to-from).normalized().cross(Vector3.UP)
-		particles.append({"pos":from,"velocity":right*1.8+Vector3.UP*1.2,"life":.85,"color":Color("bb9751"),"size":.03,"scale":Vector3(.03,.025,.085)})
-
-func shotgun(from: Vector3, ends: Array) -> void:
-	# Brief moving streaks follow actual pellet hits instead of a single long laser beam.
-	if particles.size() > 360: particles = particles.slice(-350)
-	for end: Vector3 in ends:
-		var distance = from.distance_to(end)
-		if distance <= .001: continue
-		var direction = (end-from).normalized()
-		var streak = minf(.35,distance)
-		particles.append({"pos":from+direction*streak*.5,"velocity":direction*350,
-			"life":minf(.07,(distance-streak*.5)/350),"color":Color("b9b5a0"),"size":.004,
-			"scale":Vector3(.004,.004,streak),"basis":Basis(Quaternion(Vector3.BACK,direction)),"gravity":false})
-	# One cartridge per shot, regardless of pellet count.
-	if not ends.is_empty():
-		var right = (ends[0]-from).normalized().cross(Vector3.UP)
-		particles.append({"pos":from,"velocity":right*1.8+Vector3.UP*1.2,"life":.85,
-			"color":Color("ad4833"),"size":.035,"scale":Vector3(.035,.035,.08)})
+func eject_shell(from: Vector3, direction: Vector3, shotgun := false) -> void:
+	# Ballistics are invisible. Only a single spent casing leaves the weapon;
+	# muzzle flashes are attached to the first-person, partner and turret models.
+	if particles.size() >= 384: particles.pop_front()
+	var right = direction.normalized().cross(Vector3.UP)
+	particles.append({"pos":from,"velocity":right*1.8+Vector3.UP*1.2,"life":.85,
+		"color":Color("ad4833") if shotgun else Color("bb9751"),"size":.03,
+		"scale":Vector3(.035,.035,.08) if shotgun else Vector3(.03,.025,.085)})
 
 func step(dt: float) -> void:
 	step_flame(dt)

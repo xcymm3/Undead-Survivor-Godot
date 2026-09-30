@@ -36,8 +36,8 @@ func _ready() -> void:
 			child.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			child.layers = 2
 	var sphere = SphereMesh.new()
-	sphere.radius = .032
-	sphere.height = .08
+	sphere.radius = .025
+	sphere.height = .06
 	muzzle = MeshInstance3D.new()
 	muzzle.mesh = sphere
 	var material = StandardMaterial3D.new()
@@ -45,6 +45,7 @@ func _ready() -> void:
 	material.albedo_color = Color(1,.73,.27)
 	muzzle.material_override = material
 	muzzle.layers = 2
+	muzzle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(muzzle)
 	muzzle.visible = false
 
@@ -139,8 +140,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		position += (Vector3(.045,-.13,.08)+bob)*sprint_blend
 		quaternion *= Quaternion.from_euler(Vector3(-.38,.42,-.24+sin(sprint_phase)*.04)*sprint_blend)
 	muzzle.global_position = muzzle_position()
-	muzzle.visible = not hide_scope and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") not in ["melee","flame"]
-	muzzle.scale = Vector3.ONE*(2.3 if w.get("kind") == "flame" else 1.0)
+	muzzle.visible = not hide_scope and p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") == "gun"
 
 static func sample_axe(pivot: Node3D, progress: float) -> void:
 	# Sweep the grip and head together from upper right toward lower left and forward.

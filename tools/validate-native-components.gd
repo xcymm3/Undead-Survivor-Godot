@@ -470,7 +470,7 @@ func run() -> void:
 	fullscreen.physical_keycode = KEY_F11
 	fullscreen.pressed = true
 	check(fullscreen.is_action_pressed("fullscreen"),"Fullscreen default maps to F11")
-	game.sound.play_at("gun",Vector3(7,2,-8))
+	game.sound.play_at(game.sound.weapon_cue(0),Vector3(7,2,-8))
 	check(game.sound.spatial_players[0].global_position == Vector3(7,2,-8),"World audio retains the event position")
 	check(game.sound.spatial_players[0].max_distance > 0,"World audio has distance attenuation")
 	check(game.sound.streams.has("wave-horn") and not game.sound.streams.has("campaign-growl") and not game.sound.streams.has("campaign-winch"),"Defense retains the wave horn and removes night-only cues")
@@ -492,6 +492,8 @@ func run() -> void:
 	validate_sight_only_changes()
 	load("res://tools/validate-weapon-models.gd").validate(game,check)
 	await load("res://tools/validate-loadout.gd").validate(game,check)
+	load("res://tools/validate-weapon-audio.gd").validate(game,check)
+	load("res://tools/validate-weapon-feedback.gd").validate(game,check)
 	validate_buffer()
 	var session = root.get_node("Session")
 	var packet = {"type":"probe","state":{"test":123}}

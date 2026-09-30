@@ -42,6 +42,7 @@ func setup(p: Dictionary) -> void:
 	flash_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	flash_material.albedo_color = Color(1,.73,.27)
 	flash.material_override = flash_material
+	flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	flash.visible = false
 	add_child(flash)
 	held = Node3D.new()
@@ -139,7 +140,7 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 			var hand_position = skeleton.global_transform*skeleton.get_bone_global_pose(hand).origin
 			held.global_position += hand_position-grip
 	flash.global_position = muzzle_position()
-	flash.visible = p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.05 and w.get("kind","gun") != "melee"
+	flash.visible = p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") == "gun"
 
 func muzzle_position() -> Vector3:
 	if gun_model and Data.weapons[weapon_index].id == "revolver":

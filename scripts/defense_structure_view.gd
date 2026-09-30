@@ -164,8 +164,9 @@ func create_actor(item: Dictionary) -> Dictionary:
 		box(pitch,"SensorMount",Vector3(-.23,.2,-.12),Vector3(.15,.14,.37),"2d3832")
 		var lens = box(pitch,"Sensor",Vector3(-.23,.12,-.34),Vector3(.12,.12,.03),"67d4b2")
 		lens.material_override = material("67d4b2",true)
-		var flash = box(pitch,"MuzzleFlash",Vector3(0,0,-1.04),Vector3(.19,.19,.23),"ffcc67")
+		var flash = box(pitch,"MuzzleFlash",Vector3(0,0,-1.04),Vector3(.07,.07,.10),"ffcc67")
 		flash.material_override = material("ffcc67",true)
+		flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		flash.visible = false
 		actor.yaw = yaw
 		actor.pitch = pitch
@@ -245,7 +246,7 @@ func sync(state: Dictionary) -> void:
 			actor.yaw.rotation.z = collapse*1.1
 			actor.yaw.position = Vector3(collapse*.48,1.55-collapse*.95,0)
 			actor.pitch.rotation.x = item.pitch-collapse*.35
-			actor.flash.visible = item.hp > 0 and clock-item.get("fired_at",-1.0) < .055
+			actor.flash.visible = item.hp > 0 and clock >= item.get("fired_at",-1.0) and clock-item.get("fired_at",-1.0) < .035
 			actor.pitch.position.z = .045*maxf(0,1-(clock-item.get("fired_at",-1.0))/.12) if item.hp > 0 else 0.0
 		else:
 			actor.intact.visible = not damaged

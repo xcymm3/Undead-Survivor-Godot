@@ -1,4 +1,5 @@
 extends Node
+const WEAPON_GAINS = {"rifle":-10.0,"p90":-12.0,"pistol":-10.0,"revolver":-8.0,"shotgun":-8.0,"sniper":-8.0,"axe":-9.0,"flamethrower":-16.0,"auto-shotgun":-10.0,"heavy-machine-gun":-12.0}
 var streams: Dictionary = {}
 var players: Array[AudioStreamPlayer] = []
 var music: AudioStreamPlayer
@@ -8,6 +9,19 @@ var spatial_index = 0
 var music_position = 0.0
 var step_clock = 0.0
 var step_due: Dictionary = {}
+
+func weapon_cue(weapon_index: int) -> String:
+	if weapon_index < 0 or weapon_index >= Data.weapons.size(): return ""
+	return "weapon-"+str(Data.weapons[weapon_index].id)
+
+func weapon_gain(weapon_index: int) -> float:
+	# Fast weapons overlap more voices; give each report enough headroom.
+	if weapon_index < 0 or weapon_index >= Data.weapons.size(): return -10.0
+	return float(WEAPON_GAINS.get(Data.weapons[weapon_index].id,-10.0))
+
+func cue_pitch(cue: String) -> float:
+	if cue.begins_with("weapon-"): return randf_range(.985,1.015)
+	return randf_range(.95,1.05) if cue == "reload" else 1.0
 
 func sync_enemy_steps(enemies: Array, listener: Vector3, dt: float) -> void:
 	step_clock += dt
@@ -25,7 +39,10 @@ func sync_enemy_steps(enemies: Array, listener: Vector3, dt: float) -> void:
 
 func _ready() -> void:
 	for cue in ["grenade-throw","grenade-fuse"]: streams[cue] = load("res://assets/audio/%s.wav" % cue)
-	for cue in ["enemy-step-0","enemy-step-1","rear-warning","shove","shove-hit","enemy-windup","enemy-impact","enemy-miss","grenade-explosion","wave-horn","victory","music","gun","flame","axe","reload","hurt","failure","death-0","death-1","death-2","cone-false","cone-true","bucket-false","bucket-true","shield-false","shield-true","football-false","football-true"]:
+	for weapon_index in Data.weapons.size():
+		var cue = weapon_cue(weapon_index)
+		streams[cue] = load("res://assets/audio/%s.wav" % cue)
+	for cue in ["enemy-step-0","enemy-step-1","rear-warning","shove","shove-hit","enemy-windup","enemy-impact","enemy-miss","grenade-explosion","wave-horn","victory","music","reload","hurt","failure","death-0","death-1","death-2","cone-false","cone-true","bucket-false","bucket-true","shield-false","shield-true","football-false","football-true"]:
 		streams[cue] = load("res://assets/audio/%s.wav" % cue)
 	for i in range(24):
 		var player = AudioStreamPlayer.new()
@@ -60,7 +77,7 @@ func play(cue: String, gain := -9.0) -> void:
 	index += 1
 	player.stream = streams[cue]
 	player.volume_db = gain
-	player.pitch_scale = randf_range(.95,1.05) if cue in ["gun","flame","reload"] else 1.0
+	player.pitch_scale = cue_pitch(cue)
 	if playback_enabled(): player.play()
 
 func play_at(cue: String, position: Vector3, gain := -9.0) -> void:
@@ -76,7 +93,7 @@ func play_at(cue: String, position: Vector3, gain := -9.0) -> void:
 	player.global_position = position
 	player.stream = streams[cue]
 	player.volume_db = gain
-	player.pitch_scale = randf_range(.95,1.05) if cue in ["gun","flame","reload"] else 1.0
+	player.pitch_scale = cue_pitch(cue)
 	if playback_enabled(): player.play()
 
 func playback_enabled() -> bool:

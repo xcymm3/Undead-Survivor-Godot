@@ -327,8 +327,8 @@ func handle_effects(events: Array) -> void:
 			"crystal_hit":
 				sound.play_at("enemy-impact",event.position,-7)
 			"turret_shot":
-				effects.tracer(event.from,event.to)
-				sound.play_at("gun",event.from,-12)
+				effects.eject_shell(event.from,event.to-event.from)
+				sound.play_at(sound.weapon_cue(0),event.from,-12)
 			"structure_hit":
 				effects.burst(event.position,true,false)
 				sound.play_at("enemy-impact",event.position,-10)
@@ -346,9 +346,10 @@ func handle_effects(events: Array) -> void:
 				var index = clampi(int(event.get("weapon",0)),0,9)
 				var w: Dictionary = Data.weapons[index]
 				var kind: String = w.get("kind","gun")
-				var cue = "axe" if kind == "melee" else "flame" if kind == "flame" else "gun"
-				if event.player == Session.local_id: sound.play(cue,-10)
-				else: sound.play_at(cue,event.from,-10)
+				var cue: String = sound.weapon_cue(index)
+				var gain: float = sound.weapon_gain(index)
+				if event.player == Session.local_id: sound.play(cue,gain)
+				else: sound.play_at(cue,event.from,gain)
 				var visual_origin: Vector3 = event.from
 				var viewed: Dictionary = view_pawn()
 				if not viewed.is_empty() and event.player == viewed.id:
@@ -361,8 +362,7 @@ func handle_effects(events: Array) -> void:
 					if not arena.surface_hit(event.from,visual_origin).is_empty(): visual_origin = event.from
 					effects.flame(visual_origin,event.to)
 				elif kind == "gun":
-					if event.has("pellet_ends"): effects.shotgun(visual_origin,event.pellet_ends)
-					else: effects.tracer(visual_origin,event.to,w.id != "revolver")
+					if w.id != "revolver": effects.eject_shell(visual_origin,event.to-event.from,w.id in ["shotgun","auto-shotgun"])
 			"blood", "death":
 				effects.burst(event.position)
 				if event.get("player") == Session.local_id: ui.hit_flash = .12
