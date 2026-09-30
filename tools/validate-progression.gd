@@ -153,6 +153,7 @@ func run() -> void:
 	check(sim.coin_drops.is_empty() and sim.progression.data.coins == coins_before+3,"Cosmetic pickup removal cannot pay coins again")
 	p.ammo[0] = 7
 	p.reserves[0] = 23
+	p.reserves[3] = 204
 	sim.equipment.save_weapon_slot(p)
 	sim.defense_director.begin_wave()
 	check(p.hp == 110 and p.ammo[0] == 7 and p.reserves[0] == 23,"New wave fully heals but preserves spent firearm inventory")
@@ -165,9 +166,12 @@ func run() -> void:
 	sim.step(.02)
 	sim.defense_director.finish_wave()
 	check(sim.progression.data.diamonds == diamonds+1 and sim.cleared == 1,"Successful wave rewards exactly one diamond, even if completion is repeated")
+	check(p.ammo[0] == 7 and p.reserves[0] == 83 and p.reserves[3] == 216 and p.slot_reserves == [83,216] and p.reserve == 83,"Clear rewards two reserve magazines once for both guns, above capacity without filling the magazine")
+	sim.equipment.select_weapon_slot(p,2)
+	check(p.reserves[3] == 216 and p.reserve == 216,"Switching guns preserves above-capacity wave ammunition")
 	check(not sim.purchase_upgrade("rifle",p),"Shop stays closed after clearing a wave")
 	sim.defense_director.begin_wave()
-	check(manager.find("bridge_gate").hp == 1100 and p.grenades == 2 and p.reserves[0] == 23,"Next wave restores purchased buildings and grenades, never ammunition")
+	check(manager.find("bridge_gate").hp == 1100 and p.grenades == 2 and p.reserves[0] == 83 and p.reserves[3] == 216,"Next wave restores purchased buildings and grenades without granting ammunition again")
 	var permanent = sim.progression.data.duplicate(true)
 	game.start_solo("defense",42)
 	await physics_frame
@@ -179,11 +183,13 @@ func run() -> void:
 	sim.roster.clear()
 	sim.step(.02)
 	check(sim.progression.data.diamonds == diamonds+2,"Replaying wave one earns another diamond")
+	check(p.reserves[0] == 1080 and p.reserves[3] == 216,"A new match can earn the same first-wave ammo reward again")
 	sim.defense_director.begin_wave()
 	sim.roster.clear()
 	sim.defense.crystal_hp = 0
 	sim.step(.02)
 	check(sim.failed and sim.progression.data.diamonds == diamonds+2,"A failed wave awards no diamond")
+	check(p.reserves[0] == 1080 and p.reserves[3] == 216,"A failed wave awards no ammunition")
 	game.ui.native_hud.sync()
 	check(game.ui.native_hud.currency_label.text.contains(str(sim.progression.data.coins)),"Top-right HUD shows permanent currency")
 	game.return_home()

@@ -424,7 +424,7 @@ func show_guide() -> void:
 	var column = panel("武器与操作", "水晶防线 · 无尽防守 · 按 T 开战",1000)
 	current = "guide"
 	paragraph(column,"守住水晶，挑战无尽尸潮。第一波开始前靠近右侧商店按 E 升级；按 T 开波后，本局商店关闭。每清完一波获得 1 颗钻石，重开后可继续获取。",17)
-	paragraph(column,"WASD 移动 / Shift 疾跑 / 鼠标瞄准 / 左键攻击 / 右键推击 / 中键开镜\n空格跳跃 / Ctrl 蹲下 / R 换弹 / 1—4 或滚轮切换装备 / Esc 暂停\n1 步枪 / 2 左轮 / 3 消防斧 / 4 手雷 / E 商店 / T 开波\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。两把枪的弹药本局不补充，使用消防斧节省弹药。",17)
+	paragraph(column,"WASD 移动 / Shift 疾跑 / 鼠标瞄准 / 左键攻击 / 右键推击 / 中键开镜\n空格跳跃 / Ctrl 蹲下 / R 换弹 / 1—4 或滚轮切换装备 / Esc 暂停\n1 步枪 / 2 左轮 / 3 消防斧 / 4 手雷 / E 商店 / T 开波\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。每次清波两把枪各获得 2 个备弹夹，备弹可超上限，使用消防斧节省弹药。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation",24)
@@ -502,7 +502,7 @@ func show_shop(feedback := "") -> void:
 		game.resume_game()
 		return
 	var profile = game.sim.progression
-	var column = panel("幸存者商店", "升级和建筑永久保存 · 第一波开始后本局关闭 · 弹药仅重开时恢复",820)
+	var column = panel("幸存者商店", "升级和建筑永久保存 · 第一波开始后本局关闭 · 清波各补 2 备弹夹",820)
 	current = "shop"
 	column.add_child(label("金币 %d    钻石 %d" % [profile.data.coins,profile.data.diamonds],24,RUST))
 	var tabs = HBoxContainer.new()
@@ -543,7 +543,7 @@ func shop_description(profile, id: String) -> String:
 		"strong": return "最大生命 %d · 脱战 5 秒后每秒回复 %d 生命 · 每级 +10 生命、+1 回复" % [profile.max_health(),profile.level(id)]
 		"precise": return "爆头倍率 +%d%% · 每级 +10%%" % (profile.level(id)*10)
 		"swift": return "移速 +%d%% · 每级 +5%%" % (profile.level(id)*5)
-		"supply": return "开局备弹 +%d%% · 每级 +10%% · 波间不补弹" % (profile.level(id)*10)
+		"supply": return "开局备弹 +%d%% · 每级 +10%% · 清波固定补 2 备弹夹" % (profile.level(id)*10)
 	return ""
 
 func show_result() -> void:

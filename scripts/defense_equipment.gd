@@ -41,6 +41,14 @@ func initialize() -> void:
 	director.state.pickup_motion = []
 	director.state.pickup_serial = 0
 
+func award_wave_ammo(p: Dictionary) -> void:
+	# Add to reserve only, including the stowed gun; preserve magazines and reloads.
+	for index in 2:
+		var weapon: int = p.weapon1 if index == 0 else p.weapon2
+		p.reserves[weapon] += int(Data.weapons[weapon].capacity)*2
+		p.slot_reserves[index] = p.reserves[weapon]
+	p.reserve = p.reserves[p.weapon]
+
 func aimed_score(p: Dictionary, point: Vector3) -> float:
 	var forward = Vector3(-sin(p.yaw)*cos(p.pitch),sin(p.pitch),-cos(p.yaw)*cos(p.pitch))
 	var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)

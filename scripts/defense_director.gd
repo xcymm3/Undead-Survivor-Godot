@@ -52,10 +52,11 @@ func finish_wave() -> void:
 	if not rewarded_waves.has(sim.wave) and state.started and not state.waiting and not sim.failed and state.crystal_hp > 0 and sim.roster.is_empty() and sim.alive_count() == 0:
 		rewarded_waves[sim.wave] = true
 		sim.progression.award_wave(sim.wave)
+		for p in sim.pawns.values(): equipment.award_wave_ammo(p)
 	state.waiting = true
 	state.wave = sim.wave+1
 	state.ready_players.clear()
-	state.objective = "第 %d 波已清除 · 钻石 +1 · 按 T 开始第 %d 波" % [sim.wave,state.wave]
+	state.objective = "第 %d 波已清除 · 钻石 +1 · 两把枪各补 2 备弹夹 · 按 T 开始第 %d 波" % [sim.wave,state.wave]
 	sync_world()
 
 func choose_weapon(p: Dictionary, _requested: int) -> int:
@@ -80,7 +81,7 @@ func interactions(dt: float) -> void:
 		p.input["wave_ready"] = false
 		if not input.get("interact",false): p.pickup_latched = false
 		var choice := target(p)
-		p.hint = "E "+choice.label if not choice.is_empty() else "水晶后方商店升级 · 按 T 开始第一波" if not state.started else "商店已关闭 · 按 T 开始下一波" if state.waiting else "保护水晶 · 弹药本局不补充"
+		p.hint = "E "+choice.label if not choice.is_empty() else "水晶后方商店升级 · 按 T 开始第一波" if not state.started else "商店已关闭 · 按 T 开始下一波" if state.waiting else "保护水晶 · 清波后两把枪各补 2 备弹夹"
 		if p.pickup_latched or not input.get("interact",false): choice = {}
 		if choice.is_empty():
 			p.interaction = ""
