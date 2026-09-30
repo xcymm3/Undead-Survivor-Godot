@@ -181,10 +181,10 @@ func validate_flame() -> void:
 	var initial_hp: Array = sim.zombies.map(func(enemy): return enemy.hp)
 	sim.fire(p,root.get_node("Data").weapons[7])
 	check(sim.zombies[0].hp < initial_hp[0] and sim.zombies[1].hp < initial_hp[1],"Flame covers off-axis enemies and penetrates the front row")
-	p.pos = Vector2(28,6)
-	p.yaw = -PI/2
+	p.pos = root.get_node("Data").Maps.Defense.SPAWN
+	p.yaw = PI
 	sim.zombies.clear()
-	sim.spawn(Vector2(31.5,6),"normal")
+	sim.spawn(p.pos+Vector2(0,7),"normal")
 	before = sim.zombies[0].hp
 	sim.fire(p,root.get_node("Data").weapons[7])
 	check(sim.zombies[0].hp == before,"Widened flame cannot damage enemies through the armory wall")
@@ -212,10 +212,10 @@ func validate_sniper_penetration() -> void:
 	for index in 4:
 		var expected: float = float(w.damage)*pow(.8,index) if index < 3 else 0.0
 		check(is_equal_approx(2000-sim.zombies[index].hp,expected),"Sniper front-to-back attenuation and three-target limit "+str(index))
-	p.pos = Vector2(28,6)
-	p.yaw = -PI/2
+	p.pos = root.get_node("Data").Maps.Defense.SPAWN
+	p.yaw = PI
 	sim.zombies.clear()
-	sim.spawn(Vector2(31.5,6),"normal")
+	sim.spawn(p.pos+Vector2(0,7),"normal")
 	var health: float = sim.zombies[0].hp
 	sim.fire(p,w)
 	check(sim.zombies[0].hp == health,"Sniper cannot penetrate the armory wall")
@@ -1057,8 +1057,9 @@ func validate_equipment() -> void:
 		p.input = {"yaw":0.0,"pitch":0.0}
 		var old_hp: int = p.hp
 		sim.zombies.clear()
-		sim.spawn(Vector2(31.5,6),"normal")
-		equipment.explode({"owner":p.id,"pos":Vector3(28,4,6)})
+		var shop_spawn: Vector2 = root.get_node("Data").Maps.Defense.SPAWN
+		sim.spawn(shop_spawn+Vector2(0,7),"normal")
+		equipment.explode({"owner":p.id,"pos":Vector3(shop_spawn.x,4,shop_spawn.y)})
 		check(sim.zombies[0].hp > 0,"Armory wall blocks grenade blast damage")
 		sim.zombies.clear()
 		sim.spawn(Vector2(8,28.7),"normal")

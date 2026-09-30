@@ -80,7 +80,7 @@ func interactions(dt: float) -> void:
 		p.input["wave_ready"] = false
 		if not input.get("interact",false): p.pickup_latched = false
 		var choice := target(p)
-		p.hint = "E "+choice.label if not choice.is_empty() else "靠近右侧商店升级 · 按 T 开始第一波" if not state.started else "商店已关闭 · 按 T 开始下一波" if state.waiting else "保护水晶 · 弹药本局不补充"
+		p.hint = "E "+choice.label if not choice.is_empty() else "水晶后方商店升级 · 按 T 开始第一波" if not state.started else "商店已关闭 · 按 T 开始下一波" if state.waiting else "保护水晶 · 弹药本局不补充"
 		if p.pickup_latched or not input.get("interact",false): choice = {}
 		if choice.is_empty():
 			p.interaction = ""

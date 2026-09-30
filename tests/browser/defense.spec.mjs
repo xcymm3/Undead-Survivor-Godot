@@ -37,7 +37,7 @@ test('吊桥水晶防守使用真实输入换装并按 T 开战', async ({ page 
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.x > 5.7);
   await page.keyboard.up('d');
   await page.keyboard.down('w');
-  await page.waitForFunction(() => window.__survivorSnapshot?.player?.z < 50.5);
+	await page.waitForFunction(() => window.__survivorSnapshot?.player?.z < 33.5);
   await page.keyboard.up('w');
   await page.keyboard.press('3');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 3 && window.__survivorSnapshot?.player?.weapon === 6);

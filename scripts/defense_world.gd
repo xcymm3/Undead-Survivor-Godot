@@ -111,8 +111,8 @@ func make_ramp() -> void:
 
 func make_safe_zone() -> void:
 	var previous_children = get_children()
-	var local_front = 67.85+DefenseLayout.SAFE_ZONE.position.x-DefenseLayout.ARMORY_WALL_X
-	var local_back = 67.85+DefenseLayout.SAFE_ZONE.end.x-DefenseLayout.ARMORY_WALL_X
+	var local_front = 67.85+DefenseLayout.SAFE_ZONE.position.y-DefenseLayout.SHOP_WALL_Z
+	var local_back = 67.85+DefenseLayout.SAFE_ZONE.end.y-DefenseLayout.SHOP_WALL_Z
 	var local_center = (local_front+local_back)/2
 	var depth = local_back-local_front
 	block("SafeZoneFloor",Vector3(0,3.035,local_center),Vector3(26,.06,depth),"314c45",false)
@@ -147,7 +147,7 @@ func make_safe_zone() -> void:
 	var status = sign_at("营业中 · 靠近按 E",Vector3(0,5.6,65.35),4.6)
 	status.name = "ShopStatus"
 	status.rotation.y = PI
-	# Build the familiar wall display locally, then rotate it to face the field.
+	# Place the shop behind the crystal, facing the field.
 	# Transform every visual and native collider together; no desktop render path.
 	var placement = DefenseLayout.armory_transform()
 	for child in get_children():

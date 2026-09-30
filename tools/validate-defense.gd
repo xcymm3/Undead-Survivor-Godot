@@ -50,11 +50,11 @@ func run() -> void:
 	var layout = data.Maps.Defense
 	check(is_equal_approx(layout.PLATEAU.size.y,82.0*2.0/3.0) and is_equal_approx(layout.BOUNDS.end.y,layout.PLATEAU.end.y),"Plateau and world boundary shorten to two thirds of the original length")
 	check(layout.CRYSTAL == layout.PLATEAU.get_center(),"Crystal occupies the exact centre of the flat plateau")
-	check(layout.SAFE_ZONE.position.x > 0 and layout.SAFE_ZONE.get_center().y < layout.CRYSTAL.y and layout.SAFE_ZONE.has_point(layout.SPAWN),"Armory and player spawn occupy the right side toward the bridge")
+	check(layout.SAFE_ZONE.get_center().x == layout.CRYSTAL.x and layout.SPAWN == layout.SAFE_ZONE.get_center() and layout.SPAWN.y > layout.CRYSTAL.y,"Shop is directly behind the crystal and spawn is its exact center")
 	check(game.arena.obstacles.size() >= 5,"Chasm, ramp shelves and rear safe zone participate in navigation")
 	check(not game.arena.clear(Vector2(12,-70),Vector2(12,0)),"Chasm prevents routes that bypass the bridge")
 	check(not game.arena.clear(Vector2(12,-20),Vector2(12,0)),"Ramp-side shelves cannot bypass the central climb")
-	check(not game.arena.clear(Vector2(17,6),Vector2(25,6)),"Zombies cannot enter the side armory safe zone")
+	check(not game.arena.clear(Vector2(0,layout.SAFE_ZONE.position.y-2),layout.SPAWN),"Zombies cannot enter the rear shop safe zone")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Bridge and ramp form one open approach lane")
 	check(not game.arena.clear(Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997),data.Maps.Defense.CRYSTAL),"Crystal body blocks enemy navigation")
 	check(game.arena.scenery.find_children("CrystalPedestal","*",true,false).is_empty(),"Crystal pedestal has been removed")
@@ -84,9 +84,9 @@ func run() -> void:
 	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Environmental cover preserves the central bridge, ramp and field lane")
 	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).is_empty(),"Shop removes all free weapon racks")
-	check(game.arena.scenery.find_children("ShopCounter","StaticBody3D",true,false).size() == 1 and game.arena.scenery.has_node("ShopStatus"),"Right-wall shop has a physical counter and open/closed status")
+	check(game.arena.scenery.find_children("ShopCounter","StaticBody3D",true,false).size() == 1 and game.arena.scenery.has_node("ShopStatus"),"Rear shop has a physical counter and open/closed status")
 	var shop_walls = game.arena.scenery.find_children("WeaponShopWall","StaticBody3D",true,false)
-	check(shop_walls.size() == 1 and is_equal_approx(shop_walls[0].position.x+.325,30.9),"Shop remains flush with the right perimeter")
+	check(shop_walls.size() == 1 and shop_walls[0].position.x == 0 and is_equal_approx(shop_walls[0].position.z+.325,layout.PLATEAU.end.y),"Shop is centered and flush with the rear perimeter")
 
 	game.start_solo("defense")
 	await physics_frame
