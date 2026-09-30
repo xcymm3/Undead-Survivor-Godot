@@ -7,6 +7,10 @@ const INITIAL_GROWTH = 31
 const GROWTH_DECAY = .92
 const GROWTH_OFFSET = 3
 const MIN_GROWTH = 5
+const FULL_SPECIAL_WAVE = 10
+const INITIAL_SPECIAL_FRACTION = .25
+const FINAL_SPECIAL_FRACTION = .5
+const FINAL_BUDGET_MULTIPLIER = .85
 const DIFFICULTIES = ["easy","normal","hard"]
 const DIFFICULTY_MULTIPLIERS = {"easy":.7,"normal":1.0,"hard":1.3}
 const DIFFICULTY_LABELS = {"easy":"简单","normal":"普通","hard":"困难"}
@@ -19,6 +23,15 @@ static func difficulty_multiplier(value: String) -> float:
 
 static func difficulty_label(value: String) -> String:
 	return str(DIFFICULTY_LABELS[normalize_difficulty(value)])
+
+static func progression(wave: int) -> float:
+	return clampf(float(wave-1)/float(FULL_SPECIAL_WAVE-1),0.0,1.0)
+
+static func special_fraction(wave: int) -> float:
+	return lerpf(INITIAL_SPECIAL_FRACTION,FINAL_SPECIAL_FRACTION,progression(wave))
+
+static func budget_multiplier(wave: int) -> float:
+	return lerpf(1.0,FINAL_BUDGET_MULTIPLIER,progression(wave))
 
 static func base_budget(wave: int) -> int:
 	var target_wave = maxi(1,wave)
@@ -34,7 +47,7 @@ static func base_budget(wave: int) -> int:
 	return total
 
 static func normal_budget(wave: int, party_size: int) -> int:
-	return roundi(base_budget(wave)*Population.party_multiplier(party_size))
+	return roundi(base_budget(wave)*Population.party_multiplier(party_size)*budget_multiplier(wave))
 
 static func budget(wave: int, party_size: int, difficulty := "normal") -> int:
 	return roundi(normal_budget(wave,party_size)*difficulty_multiplier(difficulty))
@@ -49,7 +62,7 @@ static func kinds(wave: int) -> Array:
 
 static func roster(wave: int, party_size: int, random: RandomNumberGenerator, difficulty := "normal") -> Array:
 	var required_footballs := footballs(wave,party_size)
-	var result: Array = Population.roster(budget(wave,party_size,difficulty),kinds(wave),random)
+	var result: Array = Population.roster(budget(wave,party_size,difficulty),kinds(wave),random,special_fraction(wave))
 	# Spread the authored bosses through the ordinary roster so multiplayer
 	# waves do not release all of them together. Bosses spend no threat points.
 	var ordinary_count := result.size()

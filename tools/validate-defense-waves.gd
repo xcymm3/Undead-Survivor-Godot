@@ -44,9 +44,10 @@ func run() -> void:
 		check(complete and previous == count and planner.scheduled_count(29.999) < count and planner.scheduled_count(30) == count,"Dynamic batches release all %d bodies at thirty seconds without oversized bursts" % count)
 	var composition_valid = true
 	var crawler_free = true
+	var late_special_share = true
 	for party in range(1,5):
 		for difficulty in Defense.DIFFICULTIES:
-			for wave in [1,2,3,4,5,6,7,8,9,20,100]:
+			for wave in [1,2,3,4,5,6,7,8,9,10,11,20,100]:
 				var random = RandomNumberGenerator.new()
 				random.seed = 20260928+wave
 				var value = Defense.roster(wave,party,random,difficulty)
@@ -54,8 +55,10 @@ func run() -> void:
 				var spent = Population.points(value)
 				var specials = value.filter(func(kind): return kind in Population.ELITES)
 				crawler_free = crawler_free and value.all(func(kind): return sim.defense_population_kind(kind) != "crawler")
-				composition_valid = composition_valid and spent <= budget and budget-spent < .75 and Population.points(specials) <= budget*.25 and value.count("football") == Defense.footballs(wave,party)
-	check(composition_valid,"All difficulties and one-to-four players respect ordinary 0.75 cost, special 25 percent cap and independent bosses")
+				composition_valid = composition_valid and spent <= budget and budget-spent < .75 and Population.points(specials) <= budget*Defense.special_fraction(wave) and value.count("football") == Defense.footballs(wave,party)
+				if wave >= 10: late_special_share = late_special_share and Population.points(specials) >= budget*.48
+	check(composition_valid,"All difficulties and one-to-four players respect the rising special cap and independent bosses")
+	check(late_special_share,"Available elite types use almost half of wave points from wave ten across parties and difficulties")
 	check(crawler_free,"All difficulties, party sizes and sampled early-to-endless waves spawn no crawlers")
 	sim.defense_director.begin_wave()
 	var initial_roster: Array = sim.roster.duplicate()
