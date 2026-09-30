@@ -354,7 +354,7 @@ func validate_interaction_motion() -> void:
 	var p: Dictionary = game.local_pawn()
 	check(sim.shop_available(p),"Spawn is within reach of the pre-wave shop")
 	check(game.open_shop() and game.paused and game.ui.current == "shop","Shop opens as a paused native Control panel")
-	check(game.ui.menu.find_children("Purchase_*","Button",true,false).size() == 7,"Coin shop exposes seven permanent upgrades")
+	check(game.ui.menu.find_children("Purchase_*","Button",true,false).size() == 11,"Coin shop exposes equipment, two turrets, two gates and three mines")
 	game.resume_game()
 	p.input = {"interact":true}
 	p.input_age = 0.0

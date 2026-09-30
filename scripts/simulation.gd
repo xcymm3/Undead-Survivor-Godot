@@ -706,8 +706,8 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			var victims: Array = pawns.values()
 			if mode == "defense" and defense.get("crystal_hp",0) > 0: victims.append(crystal_target())
 			victims.append_array(defense_director.structures.targets(z.pos))
-			var gate: Dictionary = defense_director.structures.find("bridge_gate")
-			if gate.hp > 0: victims.append(defense_director.structures.target(gate,z.pos))
+			for item in defense.structures:
+				if item.kind == "gate" and item.hp > 0: victims.append(defense_director.structures.target(item,z.pos))
 			for victim in victims:
 				if mode == "defense" and z.kind == "giant" and victim.id != "crystal" and victim.id != z.target: continue
 				if z.kind != "giant" and victim.id != z.target: continue

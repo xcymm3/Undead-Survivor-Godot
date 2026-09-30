@@ -21,7 +21,10 @@ static func initial_state() -> Array:
 		var point = Vector2(-6.3 if index == 0 else 6.3,-6.0)
 		result.append({"id":"turret_left" if index == 0 else "turret_right","kind":"turret","pos":point,"height":Layout.height(point),"hp":200,"max_hp":200,"cooldown":0.0,"yaw":0.0,"pitch":0.0,"shots":0,"destroyed_at":-1.0})
 	result.append({"id":"bridge_gate","kind":"gate","pos":Vector2(0,Layout.RAMP.end.y),"height":3.0,"hp":1000,"max_hp":1000,"destroyed_at":-1.0})
+	result.append({"id":"bridge_entry_gate","kind":"gate","pos":Vector2(0,Layout.BRIDGE.end.y),"height":0.0,"hp":1000,"max_hp":1000,"destroyed_at":-1.0})
 	result.append({"id":"crystal_mine","kind":"mine","pos":Layout.CRYSTAL+Vector2(0,-8),"height":3.0,"hp":1,"max_hp":1,"triggered":false,"fuse":MINE_DELAY,"spent":false})
+	for entry in [["ramp_mine",Vector2(0,(Layout.RAMP.position.y+Layout.RAMP.end.y)/2)],["gate_mine",Vector2(0,Layout.RAMP.end.y+4)]]:
+		result.append({"id":entry[0],"kind":"mine","pos":entry[1],"height":Layout.height(entry[1]),"hp":1,"max_hp":1,"triggered":false,"fuse":MINE_DELAY,"spent":false})
 	return result
 
 func _init(owner) -> void:
@@ -31,7 +34,7 @@ func _init(owner) -> void:
 func reset_wave() -> void:
 	director.state["structures"] = initial_state()
 	for item in director.state.structures:
-		item["owned"] = item.kind == "mine" or sim.progression.owned(item.id)
+		item["owned"] = sim.progression.owned(item.id)
 		if item.kind == "gate": item.max_hp = roundi(item.max_hp*sim.progression.building_multiplier(item.id))
 		item.hp = item.max_hp if item.owned else 0
 		if item.kind == "turret": item["damage_multiplier"] = sim.progression.building_multiplier(item.id)
@@ -59,12 +62,17 @@ func targets(from: Vector2) -> Array:
 	return result
 
 func barrier(from: Vector2, destination: Vector2) -> Dictionary:
-	var gate = find("bridge_gate")
-	# Navigation still knows the route behind the gate. It must attack this
-	# obstruction rather than fail A* or select a target through it.
-	if gate.hp > 0 and sim.arena.segment_rect(from,destination,bounds(gate).grow(.95)):
-		return target(gate,from)
-	return {}
+	var selected: Dictionary = {}
+	var nearest = INF
+	# Parallel, equally wide gates share the lane. Attack the first live gate
+	# on the segment, then the next one after it breaks, regardless of list order.
+	for item in director.state.structures:
+		if item.kind != "gate" or item.hp <= 0: continue
+		var distance: float = from.distance_squared_to(item.pos)
+		if distance < nearest and sim.arena.segment_rect(from,destination,bounds(item).grow(.95)):
+			selected = target(item,from)
+			nearest = distance
+	return selected
 
 func contact_radius(target_data: Dictionary, enemy_kind: String) -> float:
 	return maxf(Data.contact(enemy_kind),1.5 if target_data.structure_kind == "gate" else 1.8)
@@ -96,7 +104,7 @@ func step(dt: float) -> void:
 			step_turret(item,dt)
 
 func step_mine(item: Dictionary, dt: float) -> void:
-	if item.spent: return
+	if not item.get("owned",false) or item.spent: return
 	if not item.triggered:
 		for z in sim.zombies:
 			if z.hp > 0 and z.pos.distance_to(item.pos) <= MINE_TRIGGER_RADIUS:
@@ -153,14 +161,16 @@ func step_turret(item: Dictionary, dt: float) -> void:
 	sim.events.append({"kind":"turret_shot","from":origin,"to":end})
 
 static func valid_state(value) -> bool:
-	if not value is Array or value.size() != 4: return false
 	var expected = initial_state()
+	if not value is Array or value.size() != expected.size(): return false
 	for index in expected.size():
 		var item = value[index]
 		var base: Dictionary = expected[index]
 		if not item is Dictionary or not item.has_all(base.keys()): return false
-		if item.id != base.id or item.kind != base.kind or item.pos != base.pos or item.height != base.height or item.max_hp != base.max_hp: return false
-		if not item.hp is int or item.hp < 0 or item.hp > base.max_hp: return false
+		if item.id != base.id or item.kind != base.kind or item.pos != base.pos or item.height != base.height or not item.get("owned") is bool: return false
+		var maximum = roundi(base.max_hp*pow(1.1,48)) if item.kind == "gate" else int(base.max_hp)
+		if not item.max_hp is int or item.max_hp < base.max_hp or item.max_hp > maximum: return false
+		if not item.hp is int or item.hp < 0 or item.hp > item.max_hp or (not item.owned and item.hp != 0): return false
 		for key in ["cooldown","yaw","pitch","destroyed_at","fuse"]:
 			if item.has(key) and (not (item[key] is int or item[key] is float) or not is_finite(float(item[key]))): return false
 		if item.kind == "mine" and (not item.triggered is bool or not item.spent is bool or item.fuse < 0 or item.fuse > MINE_DELAY): return false

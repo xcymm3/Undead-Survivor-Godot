@@ -107,6 +107,8 @@ func create_actor(item: Dictionary) -> Dictionary:
 	add_child(root)
 	var actor = {"root":root,"parts":[]}
 	if item.kind == "mine":
+		if item.pos.y > Structures.Layout.RAMP.position.y and item.pos.y < Structures.Layout.RAMP.end.y:
+			root.rotation.x = -atan2(3.0,Structures.Layout.RAMP.size.y)
 		cylinder(root,"BuriedPlate",Vector3(0,.05,0),.46,.08,"4a4c33")
 		cylinder(root,"PressureCap",Vector3(0,.105,0),.28,.045,"777958")
 		var led = box(root,"FuseLight",Vector3(.18,.14,.1),Vector3(.075,.025,.075),"d94b30")
@@ -222,12 +224,11 @@ func sync(state: Dictionary) -> void:
 	for item in state.get("structures",Structures.initial_state()):
 		var actor: Dictionary = actors.get(item.id,{})
 		if actor.is_empty(): actor = create_actor(item)
-		actor.root.visible = item.get("owned",false) if item.kind != "mine" else not item.spent
+		actor.root.visible = item.get("owned",false) and (item.kind != "mine" or not item.spent)
 		if item.kind != "mine" and not actor.root.visible:
 			actor.body.collision_layer = 0
 			continue
 		if item.kind == "mine":
-			actor.root.visible = not item.spent
 			actor.led.visible = item.triggered and fmod(item.fuse,.4) < .2
 			continue
 		actor.body.collision_layer = 1 if item.hp > 0 else 0

@@ -28,9 +28,14 @@ func run() -> void:
 		check(profile.purchase("grenade") and profile.grenade_capacity() == count,"Grenade capacity increases to "+str(count))
 	check(not profile.purchase("grenade") and profile.cost("grenade") == -1,"Grenade capacity cannot exceed five")
 	for id in Store.BUILDINGS:
+		check(profile.cost(id) == (80 if id in Store.GATES else 100),"Each building uses its confirmed manufacturing price: "+id)
 		check(not profile.owned(id) and profile.purchase(id) and profile.owned(id),"Manufacturing grants persistent ownership: "+id)
 		var first: int = profile.cost(id)
 		check(profile.purchase(id) and profile.cost(id) == first*2 and is_equal_approx(profile.building_multiplier(id),1.1),"Building upgrade compounds and doubles cost: "+id)
+	for id in Store.MINES:
+		var coins: int = profile.data.coins
+		check(not profile.owned(id) and profile.cost(id) == 100 and profile.purchase(id) and profile.data.coins == coins-100,"Mine permanently costs exactly one hundred coins: "+id)
+		check(profile.owned(id) and profile.level(id) == 0 and profile.cost(id) == -1 and not profile.purchase(id),"Owned mines cannot be bought again or upgraded: "+id)
 	for id in Store.TALENTS:
 		profile.data.diamonds = 55
 		for rank in range(1,11):
@@ -52,6 +57,28 @@ func run() -> void:
 	var recovered = Store.new(path)
 	check(recovered.data.coins == 80 and recovered.level("rifle") == 1 and not recovered.notice.is_empty(),"Corrupt primary save recovers the last complete backup")
 	check(recovered.save() and Store.new(path).data.coins == 80,"Recovered state repairs the primary save")
+	var legacy: Dictionary = Store.defaults()
+	legacy.version = 1
+	legacy.erase("mines")
+	legacy.buildings.erase("bridge_entry_gate")
+	legacy.coins = 321
+	legacy.diamonds = 7
+	legacy.weapons.rifle = 3
+	legacy.talents.strong = 2
+	legacy.buildings.bridge_gate = {"owned":true,"level":2}
+	check(Store.valid(legacy),"Version-one progress is still recognized before migration")
+	var legacy_file = FileAccess.open(path,FileAccess.WRITE)
+	legacy_file.store_string(JSON.stringify(legacy))
+	legacy_file.close()
+	var migrated = Store.new(path)
+	check(migrated.data.version == 2 and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
+	check(migrated.owned("crystal_mine") and not migrated.owned("ramp_mine") and not migrated.owned("gate_mine") and not migrated.owned("bridge_entry_gate"),"Old free mine is retained while new defenses require purchase")
+	check(migrated.dirty and migrated.save() and Store.new(path).data == migrated.data,"Migrated progress persists and reloads without repeating migration")
+	var corrupt_primary = FileAccess.open(path,FileAccess.WRITE)
+	corrupt_primary.store_string("{broken")
+	corrupt_primary.close()
+	var legacy_backup = Store.new(path)
+	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == 2 and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
 	for suffix in ["",".tmp",".bak"]:
 		if FileAccess.file_exists(path+suffix): DirAccess.remove_absolute(path+suffix)
 	var malformed = Store.defaults()
@@ -63,6 +90,9 @@ func run() -> void:
 	malformed = Store.defaults()
 	malformed.weapons.rifle = "10"
 	check(not Store.valid(malformed),"Invalid save field types are rejected")
+	malformed = Store.defaults()
+	malformed.mines.ramp_mine = 1
+	check(not Store.valid(malformed),"Mine ownership must be boolean in version-two progress")
 	var unwritable = Store.new()
 	unwritable.path = OS.get_cache_dir().path_join("missing-"+str(Time.get_ticks_usec())+"/progress.json")
 	unwritable.data.coins = 100
@@ -78,9 +108,14 @@ func run() -> void:
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
-	check(sim.defense.structures.filter(func(item): return item.kind != "mine").all(func(item): return item.hp == 0 and not item.owned),"Fresh player owns no turrets or gate")
+	check(sim.defense.structures.all(func(item): return item.hp == 0 and not item.owned),"Fresh player owns no turrets, gates or mines")
 	var view = game.arena.scenery.structure_view
 	check(not view.actors.turret_left.root.visible and view.actors.turret_left.body.collision_layer == 0 and not view.actors.bridge_gate.root.visible,"Unowned buildings are invisible and have no collision")
+	check(not view.actors.bridge_entry_gate.root.visible and view.actors.bridge_entry_gate.body.collision_layer == 0 and Store.MINES.all(func(id): return not view.actors[id].root.visible),"Unbought bridge-end gate and all three mines stay absent")
+	sim.spawn(sim.defense_director.structures.find("ramp_mine").pos,"normal")
+	sim.defense_director.structures.step_mine(sim.defense_director.structures.find("ramp_mine"),10)
+	check(not sim.defense_director.structures.find("ramp_mine").triggered and sim.zombies[-1].hp > 0,"An unowned mine cannot trigger or damage enemies")
+	sim.zombies.clear()
 	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).is_empty() and game.arena.scenery.has_node("ShopCounter"),"Armory gun racks are replaced by the shop counter")
 	p.hp = 50
 	sim.update_defense_regen(p,100)
@@ -102,9 +137,13 @@ func run() -> void:
 	check(p.reserves[0] == 1020 and p.reserves[3] == 204,"Repeated Supply purchases retain exact reserve rounding")
 	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),132) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),290.4),"Player damage combines weapon and headshot talent upgrades")
 	check(sim.purchase_upgrade("grenade",p) and p.grenades == 2 and p.grenade_capacity == 2,"Capacity purchase immediately grants its extra grenade")
+	check(sim.purchase_upgrade("bridge_entry_gate",p) and sim.purchase_upgrade("bridge_entry_gate",p),"New bridge-end gate can be bought and independently upgraded")
+	for id in Store.MINES:
+		check(sim.purchase_upgrade(id,p) and view.actors[id].root.visible and not sim.purchase_upgrade(id,p),"Shop buys and reveals each mine once without an upgrade: "+id)
 	check(sim.purchase_upgrade("turret_left",p) and sim.purchase_upgrade("turret_left",p) and sim.purchase_upgrade("bridge_gate",p) and sim.purchase_upgrade("bridge_gate",p),"Buildings can be manufactured then upgraded")
 	var manager = sim.defense_director.structures
 	check(manager.find("bridge_gate").max_hp == 1100 and is_equal_approx(manager.find("turret_left").damage_multiplier,1.1) and manager.find("turret_right").hp == 0,"Purchased building upgrades affect only their owned targets")
+	check(manager.find("bridge_entry_gate").max_hp == 1100 and sim.progression.cost("bridge_entry_gate") == 80,"Bridge-end gate has its own upgrade level and doubled next upgrade price")
 	check(view.actors.turret_left.root.visible and view.actors.turret_left.body.collision_layer == 1 and view.actors.bridge_gate.root.visible,"Manufacturing creates visible native building collision")
 	var turret: Dictionary = manager.find("turret_left")
 	sim.spawn(turret.pos+Vector2(0,4),"normal")

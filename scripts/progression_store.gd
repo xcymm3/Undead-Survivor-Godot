@@ -3,7 +3,10 @@ extends RefCounted
 const MAX_CURRENCY = 9000000000000000
 const WEAPONS = ["rifle","revolver","axe"]
 const TALENTS = ["strong","precise","swift","supply"]
-const BUILDINGS = ["turret_left","turret_right","bridge_gate"]
+const LEGACY_BUILDINGS = ["turret_left","turret_right","bridge_gate"]
+const GATES = ["bridge_gate","bridge_entry_gate"]
+const BUILDINGS = ["turret_left","turret_right","bridge_gate","bridge_entry_gate"]
+const MINES = ["crystal_mine","ramp_mine","gate_mine"]
 const COIN_REWARDS = {"normal":1,"crawler":1,"cone":2,"bucket":3,"imp":3,"shield":5,"berserker":10,"giant":10,"football":20}
 var path = ""
 var dirty = false
@@ -11,7 +14,7 @@ var notice = ""
 var data: Dictionary = defaults()
 
 static func defaults() -> Dictionary:
-	return {"version":1,"coins":0,"diamonds":0,"grenade_level":0,"weapons":{"rifle":0,"revolver":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0}},"best_wave":0,"cleared_total":0}
+	return {"version":2,"coins":0,"diamonds":0,"grenade_level":0,"weapons":{"rifle":0,"revolver":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
 
 func _init(save_path := "") -> void:
 	path = save_path
@@ -21,7 +24,7 @@ static func bounded_integer(value, maximum: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and value >= 0 and value <= maximum and float(value) == floor(float(value))
 
 static func valid(value) -> bool:
-	if not value is Dictionary or not value.has_all(defaults().keys()) or value.version != 1: return false
+	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,2) or value.version < 1: return false
 	for key in ["coins","diamonds","best_wave","cleared_total"]:
 		if not bounded_integer(value[key],MAX_CURRENCY): return false
 	if not bounded_integer(value.grenade_level,4): return false
@@ -30,9 +33,13 @@ static func valid(value) -> bool:
 		if not value.weapons.has(key) or not bounded_integer(value.weapons[key],48): return false
 	for key in TALENTS:
 		if not value.talents.has(key) or not bounded_integer(value.talents[key],10): return false
-	for key in BUILDINGS:
+	for key in LEGACY_BUILDINGS if value.version == 1 else BUILDINGS:
 		var entry = value.buildings.get(key)
 		if not entry is Dictionary or not entry.has_all(["owned","level"]) or not entry.owned is bool or not bounded_integer(entry.level,48) or (not entry.owned and entry.level != 0): return false
+	if value.version == 2:
+		if not value.get("mines") is Dictionary: return false
+		for key in MINES:
+			if not value.mines.get(key) is bool: return false
 	return true
 
 func read_save(file_path: String) -> Dictionary:
@@ -40,7 +47,14 @@ func read_save(file_path: String) -> Dictionary:
 	var parser = JSON.new()
 	if parser.parse(FileAccess.get_file_as_string(file_path)) != OK: return {}
 	var parsed = parser.data
-	return parsed if valid(parsed) else {}
+	if not valid(parsed): return {}
+	# JSON numbers deserialize as floats. Restore validated integer fields before
+	# migration so a second reload has exactly the same permanent state.
+	for key in ["version","coins","diamonds","best_wave","cleared_total","grenade_level"]: parsed[key] = int(parsed[key])
+	for key in WEAPONS: parsed.weapons[key] = int(parsed.weapons[key])
+	for key in TALENTS: parsed.talents[key] = int(parsed.talents[key])
+	for key in LEGACY_BUILDINGS if parsed.version == 1 else BUILDINGS: parsed.buildings[key].level = int(parsed.buildings[key].level)
+	return parsed
 
 func load_save() -> void:
 	var loaded = read_save(path)
@@ -52,7 +66,15 @@ func load_save() -> void:
 		elif FileAccess.file_exists(path):
 			notice = "存档无法读取，已保留原文件并启用新进度。"
 			DirAccess.copy_absolute(path,path+".corrupt-"+str(Time.get_unix_time_from_system()))
-	if not loaded.is_empty(): data = loaded
+	if not loaded.is_empty():
+		data = loaded
+		if data.version == 1:
+			# The old mine was free. Preserve its ownership once when migrating.
+			data.version = 2
+			data.buildings.bridge_entry_gate = {"owned":false,"level":0}
+			data.mines = defaults().mines
+			data.mines.crystal_mine = true
+			dirty = true
 
 func save() -> bool:
 	if path.is_empty() or not dirty: return true
@@ -93,6 +115,7 @@ func level(id: String) -> int:
 	return 0
 
 func owned(id: String) -> bool:
+	if id in MINES: return data.mines[id]
 	return id in BUILDINGS and data.buildings[id].owned
 
 func currency(id: String) -> String:
@@ -100,13 +123,14 @@ func currency(id: String) -> String:
 
 func cost(id: String) -> int:
 	var base = 20
+	if id in MINES: return -1 if owned(id) else 100
 	if id in TALENTS: return level(id)+1 if level(id) < 10 else -1
 	if id == "grenade":
 		if level(id) >= 4: return -1
 		base = 30
 	elif id in BUILDINGS:
-		if not owned(id): return 80 if id == "bridge_gate" else 100
-		base = 40 if id == "bridge_gate" else 50
+		if not owned(id): return 80 if id in GATES else 100
+		base = 40 if id in GATES else 50
 	elif id not in WEAPONS: return -1
 	var price = float(base)*pow(2,level(id))
 	return int(price) if level(id) < 48 and price <= MAX_CURRENCY else -1
@@ -120,6 +144,7 @@ func purchase(id: String) -> bool:
 	if id in WEAPONS: data.weapons[id] = level(id)+1
 	elif id in TALENTS: data.talents[id] = level(id)+1
 	elif id == "grenade": data.grenade_level = level(id)+1
+	elif id in MINES: data.mines[id] = true
 	elif id in BUILDINGS:
 		if owned(id): data.buildings[id].level = level(id)+1
 		else: data.buildings[id].owned = true

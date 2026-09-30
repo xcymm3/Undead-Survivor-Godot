@@ -511,7 +511,7 @@ func show_shop(feedback := "") -> void:
 	button(tabs,"钻石 · 永久天赋",func(): shop_tab = "diamonds"; show_shop(),shop_tab == "diamonds")
 	button(tabs,"完成整备 · 返回战场",func(): game.resume_game())
 	if not feedback.is_empty(): paragraph(column,feedback,17,RUST)
-	var entries = [["rifle","步枪伤害"],["revolver","左轮伤害"],["axe","消防斧伤害"],["grenade","手雷容量"],["turret_left","左炮塔"],["turret_right","右炮塔"],["bridge_gate","栅栏门"]] if shop_tab == "coins" else [["strong","强壮"],["precise","精准"],["swift","迅捷"],["supply","补给"]]
+	var entries = [["rifle","步枪伤害"],["revolver","左轮伤害"],["axe","消防斧伤害"],["grenade","手雷容量"],["turret_left","左炮塔"],["turret_right","右炮塔"],["bridge_gate","高地栅栏门"],["bridge_entry_gate","桥尾栅栏门"],["ramp_mine","缓坡中段地雷"],["gate_mine","高地栅栏后地雷"],["crystal_mine","水晶前地雷"]] if shop_tab == "coins" else [["strong","强壮"],["precise","精准"],["swift","迅捷"],["supply","补给"]]
 	for entry in entries:
 		var id: String = entry[0]
 		var row = HBoxContainer.new()
@@ -520,11 +520,16 @@ func show_shop(feedback := "") -> void:
 		var detail = VBoxContainer.new()
 		detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(detail)
-		detail.add_child(label(entry[1]+(" · 等级 %d / 10" % profile.level(id) if id in profile.TALENTS else " · 未制造" if id in profile.BUILDINGS and not profile.owned(id) else " · 等级 %d" % profile.level(id)),20))
+		var status = " · 等级 %d" % profile.level(id)
+		if id in profile.TALENTS: status = " · 等级 %d / 10" % profile.level(id)
+		elif id in profile.MINES: status = " · 已购买" if profile.owned(id) else " · 未购买"
+		elif id in profile.BUILDINGS and not profile.owned(id): status = " · 未制造"
+		detail.add_child(label(entry[1]+status,20))
 		paragraph(detail,shop_description(profile,id),15,Color("687264"))
 		var price: int = profile.cost(id)
 		var currency_name = "钻石" if profile.currency(id) == "diamonds" else "金币"
-		var caption = "已满级" if price < 0 else "%s · %d %s" % ["制造" if id in profile.BUILDINGS and not profile.owned(id) else "升级",price,currency_name]
+		var action = "购买" if id in profile.MINES else "制造" if id in profile.BUILDINGS and not profile.owned(id) else "升级"
+		var caption = ("已购买" if id in profile.MINES else "已满级") if price < 0 else "%s · %d %s" % [action,price,currency_name]
 		var purchase = button(row,caption,game.buy_upgrade.bind(id))
 		purchase.name = "Purchase_"+id
 		purchase.custom_minimum_size.x = 195
@@ -537,7 +542,8 @@ func shop_description(profile, id: String) -> String:
 		var index: int = {"rifle":0,"revolver":3,"axe":6}[id]
 		return "伤害 %.1f → %.1f · 每次 +10%%，下次价格翻倍" % [Data.weapons[index].damage*profile.weapon_multiplier(id),Data.weapons[index].damage*profile.weapon_multiplier(id)*1.1]
 	if id == "grenade": return "持有上限 %d / 5 · 每次 +1 · 每波开始补满" % profile.grenade_capacity()
-	if id == "bridge_gate": return "耐久 %d · 升级 +10%% · 每波恢复初始状态" % roundi(1000*profile.building_multiplier(id))
+	if id in profile.MINES: return "永久购买 · 无升级 · 每波恢复 · 僵尸触发后 1.5 秒爆炸"
+	if id in profile.GATES: return "耐久 %d · 升级 +10%% · 每波恢复初始状态" % roundi(1000*profile.building_multiplier(id))
 	if id in profile.BUILDINGS: return "每发伤害 %.1f · 升级伤害 +10%% · 每波恢复初始状态" % (60*profile.building_multiplier(id))
 	match id:
 		"strong": return "最大生命 %d · 脱战 5 秒后每秒回复 %d 生命 · 每级 +10 生命、+1 回复" % [profile.max_health(),profile.level(id)]

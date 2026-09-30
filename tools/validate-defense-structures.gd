@@ -17,8 +17,10 @@ func _initialize() -> void:
 
 func fresh():
 	# Combat fixtures explicitly own buildings; normal fresh progress owns none.
-	for id in ["turret_left","turret_right","bridge_gate"]:
+	for id in game.get_node("/root/Progress").store.BUILDINGS:
 		game.get_node("/root/Progress").store.data.buildings[id].owned = true
+	for id in game.get_node("/root/Progress").store.MINES:
+		game.get_node("/root/Progress").store.data.mines[id] = true
 	game.start_solo("defense",42)
 	game.running = false
 	game.sim.defense.started = true
@@ -44,9 +46,22 @@ func run() -> void:
 	var sim = fresh()
 	await physics_frame
 	var manager = sim.defense_director.structures
-	check(sim.defense.structures.size() == 4,"Match starts with two turrets, one gate and one mine")
+	check(sim.defense.structures.size() == 7,"Layout contains two turrets, two gates and three mines")
 	check(manager.find("turret_left").hp == 200 and manager.find("turret_right").hp == 200,"Both turrets have 200 health")
 	check(manager.find("bridge_gate").hp == 1000,"Bridge gate starts with 1000 health")
+	var layout = data.Maps.Defense
+	check(manager.find("bridge_entry_gate").pos == Vector2(0,layout.BRIDGE.end.y) and manager.find("bridge_entry_gate").height == 0,"New gate stands at the bridge end beside the ramp")
+	check(manager.find("ramp_mine").pos.y == -19 and manager.find("ramp_mine").height == 1.5 and manager.find("gate_mine").pos.y == -6,"New mines stand between the gates and behind the upper gate")
+	check(is_equal_approx(game.arena.scenery.structure_view.actors.ramp_mine.root.rotation.x,-atan2(3,18)),"Ramp mine follows the shared terrain slope")
+	check(manager.barrier(Vector2(0,-35),layout.CRYSTAL).id == "bridge_entry_gate","Incoming enemies choose the lower gate before the upper gate")
+	check(manager.barrier(Vector2(0,5),Vector2(0,-35)).id == "bridge_gate","Reverse approaches choose the upper gate first")
+	manager.damage("bridge_entry_gate",1000)
+	check(manager.barrier(Vector2(0,-35),layout.CRYSTAL).id == "bridge_gate","Breaking the lower gate exposes the upper gate")
+	check(game.arena.clear(Vector2(0,-30),Vector2(0,-26)),"Broken lower gate immediately removes navigation collision")
+	manager.damage("bridge_gate",1000)
+	check(manager.barrier(Vector2(0,-35),layout.CRYSTAL).is_empty(),"Breaking both gates removes both interception targets")
+	manager.reset_wave()
+	sim.defense_director.sync_world()
 	check(Structures.MINE_DELAY == Equipment.GRENADE_FUSE,"Mine uses the grenade's exact fuse duration")
 	check(Structures.valid_state(sim.defense.structures),"Initial structure snapshot passes validation")
 	for item in sim.defense.structures:
@@ -175,6 +190,25 @@ func run() -> void:
 			sim.update_zombie(z,sim.choose_zombie_target(z,sim.pawns.values()),.05)
 		check(z.pos.y > gate.pos.y+1 and game.arena.clear(gate.pos+Vector2(0,-2),gate.pos+Vector2(0,2)),"%s passes through after the gate is destroyed" % kind)
 	# Native capsule checks: walk is blocked, jump clears the low full-width gate.
+	for kind in data.enemies.keys():
+		sim = fresh()
+		await physics_frame
+		manager = sim.defense_director.structures
+		var lower_gate: Dictionary = manager.find("bridge_entry_gate")
+		sim.spawn(lower_gate.pos+Vector2(0,-4),kind)
+		var z: Dictionary = sim.zombies[-1]
+		var blocked = true
+		for i in 160:
+			sim.elapsed += .05
+			sim.update_zombie(z,sim.choose_zombie_target(z,sim.pawns.values()),.05)
+			blocked = blocked and z.pos.y < lower_gate.pos.y
+		check(lower_gate.hp < 1000 and blocked,"%s attacks the bridge-end gate without crossing it" % kind)
+		manager.damage(lower_gate.id,1000)
+		await physics_frame
+		for i in 80:
+			sim.elapsed += .05
+			sim.update_zombie(z,sim.choose_zombie_target(z,sim.pawns.values()),.05)
+		check(z.pos.y > lower_gate.pos.y+1 and sim.choose_zombie_target(z,sim.pawns.values()).id == "bridge_gate","%s crosses a broken lower gate then targets the upper gate" % kind)
 	sim = fresh()
 	await physics_frame
 	var p: Dictionary = sim.pawns.solo
@@ -197,6 +231,26 @@ func run() -> void:
 	check(p.pos.y > -9,"Player jumps over the gate using normal jump input (pos=%s height=%.2f)" % [p.pos,p.height])
 	check(game.arena.surface_hit(Vector3(0,4.7,-12),Vector3(0,4.7,-8)).is_empty(),"Standing gunfire passes above the gate")
 	check(not game.arena.surface_hit(Vector3(0,3.55,-12),Vector3(0,3.55,-8)).is_empty(),"Low bullets collide with the gate rather than passing through gaps")
+	sim = fresh()
+	await physics_frame
+	p = sim.pawns.solo
+	p.pos = Vector2(0,-30)
+	p.height = 0.0
+	p.velocity = 0.0
+	for i in 50:
+		sim.submit("solo",{"y":1,"slot":1})
+		sim.update_pawn(p,.02)
+	check(p.pos.y < -28.3,"Native player walking is blocked by the bridge-end gate")
+	p.pos = Vector2(0,-30.2)
+	p.height = 0.0
+	p.velocity = 0.0
+	for i in 10:
+		sim.submit("solo",{"slot":1})
+		sim.update_pawn(p,.02)
+	for i in 85:
+		sim.submit("solo",{"y":1,"slot":1,"jump":i == 0})
+		sim.update_pawn(p,.02)
+	check(p.pos.y > -27,"Native player jumps across the bridge-end gate onto the ramp")
 	# Mine explosion and grenade explosion are numerically identical.
 	sim = fresh()
 	await physics_frame
@@ -269,7 +323,7 @@ func run() -> void:
 	snapshot.defense.structures[0].hp = 201
 	check(not root.get_node("Session").valid_world(snapshot),"Malformed structure health is rejected by network validation")
 	game.start_solo("defense",42)
-	check(game.sim.defense.structures == owned_initial(),"Starting a new match restores purchased buildings and the free mine")
+	check(game.sim.defense.structures == owned_initial(),"Starting a new match restores all purchased buildings and mines")
 	sim = fresh()
 	await physics_frame
 	manager = sim.defense_director.structures
@@ -289,6 +343,19 @@ func run() -> void:
 	sim.zombies.clear()
 	manager.step(Equipment.GRENADE_FUSE)
 	check(mine.spent,"A primed mine finishes its fuse even if the wave enters preparation")
+	for id in ["ramp_mine","gate_mine"]:
+		sim = fresh()
+		await physics_frame
+		manager = sim.defense_director.structures
+		mine = manager.find(id)
+		sim.spawn(mine.pos,"normal")
+		manager.step_mine(mine,.02)
+		check(mine.triggered and not mine.spent and mine.fuse == Equipment.GRENADE_FUSE,"Purchased mine arms with the grenade fuse: "+id)
+		manager.step_mine(mine,Equipment.GRENADE_FUSE)
+		sim.defense_director.sync_world()
+		check(mine.spent and sim.zombies[-1].hp <= 0 and not game.arena.scenery.structure_view.actors[id].root.visible,"Purchased mine detonates once and disappears: "+id)
+		sim.defense_director.begin_wave()
+		check(manager.find(id).hp == 1 and not manager.find(id).spent and not manager.find(id).triggered and game.arena.scenery.structure_view.actors[id].root.visible,"Next wave restores the purchased mine: "+id)
 	print("DEFENSE STRUCTURES: %d checks; %d failures" % [checks,failures])
 	game.queue_free()
 	quit(1 if failures else 0)
