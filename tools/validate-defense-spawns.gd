@@ -24,10 +24,12 @@ func run() -> void:
 	game.set_physics_process(false)
 	var arena = game.arena
 	var layout = data.Maps.Defense
-	check(not layout.enemy_spawn_allowed(Vector2(0,-62)) and not layout.enemy_spawn_allowed(Vector2(0,-69.9)),"Bridge mouth and its eight-metre approach are excluded")
-	check(layout.enemy_spawn_allowed(Vector2(0,-70)) and layout.enemy_spawn_allowed(Vector2(20,-65)),"Distant centre and side-bank ground remain available")
+	check(layout.ENEMY_SPAWN_REGION.size == Vector2(96,96),"Far bank is a ninety-six-metre square")
+	check(not layout.enemy_spawn_allowed(Vector2(0,-62)) and not layout.enemy_spawn_allowed(Vector2(0,-93.9)) and not layout.enemy_spawn_allowed(Vector2(31,-63)),"Circular thirty-two-metre bridge-start exclusion rejects front and side births")
+	check(layout.enemy_spawn_allowed(Vector2(0,-94)) and layout.enemy_spawn_allowed(Vector2(33,-64)),"Ground on and outside the circular exclusion remains eligible")
 	check(not layout.enemy_spawn_allowed(Vector2(0,-60)) and not layout.enemy_spawn_allowed(Vector2(0,20)),"Bridge deck and crystal bank cannot be spawn ground")
-	check(arena.scenery.find_children("FarSpawn*","Node3D",true,false).is_empty(),"Spawn platform has no added roof, walls or mist")
+	check(arena.scenery.find_children("FarForestTrunk*","StaticBody3D",true,false).size() >= 70 and arena.scenery.find_children("FarForestBoulder*","StaticBody3D",true,false).size() >= 20,"Spawn bank contains distributed woodland and boulders")
+	check(arena.scenery.get_node("FarForestLeaves").multimesh.instance_count >= 200 and arena.scenery.get_node("FarForestUndergrowth").multimesh.instance_count >= 70,"Foliage and undergrowth are batched rather than individually drawn")
 	check(arena.scenery.get_node_or_null("FarBridgePlayerBarrier") == null,"Bridge mouth has no player-only barrier")
 	check(arena.surface_hit(Vector3(0,10,-72),Vector3(0,5,-72)).is_empty(),"Spawn platform remains open above")
 	var goal = Vector2(0,-59.5)
@@ -45,13 +47,40 @@ func run() -> void:
 	var distinct = {}
 	for point in entries: distinct[point] = true
 	check(distinct.size() == entries.size(),"Spawn coordinates vary continuously instead of repeating five points")
-	check(entries.any(func(p): return p.x < -20) and entries.any(func(p): return p.x > 20) and entries.any(func(p): return p.y > -68) and entries.any(func(p): return p.y < -74),"Sampling covers both sides and the near and far parts of the far bank")
+	check(entries.any(func(p): return p.x < -35) and entries.any(func(p): return p.x > 35) and entries.any(func(p): return p.y > -100) and entries.any(func(p): return p.y < -140),"Sampling covers the enlarged bank's side and rear regions")
 	var saved_seed: int = planner.spawn_random.seed
 	planner.spawn_random.seed = 19457
 	var first: Vector2 = planner.random_point()
 	planner.spawn_random.seed = 19457
 	check(first == planner.random_point(),"Placement uses reproducible seeded randomness")
 	planner.spawn_random.seed = saved_seed
+	var hidden: Array[Vector2] = []
+	for point in entries:
+		if planner.hidden_from_players(point,"normal",sim.pawns.values()): hidden.append(point)
+	check(hidden.size() >= 20,"Woodland supplies many reachable births hidden from the starting player")
+	var p: Dictionary = sim.pawns.solo
+	var original_pos: Vector2 = p.pos
+	var original_height: float = p.height
+	p.pos = Vector2(0,-66)
+	p.height = 0
+	var bridge_hidden = entries.filter(func(point): return planner.hidden_from_players(point,"giant",[p]))
+	check(bridge_hidden.size() >= 10,"Even a bridge-side observer has hidden positions for tall zombies")
+	p.pos = original_pos
+	p.height = original_height
+	# Completely exposed candidates keep their quota until cover is available.
+	var saved_check = planner.spawn_region
+	var exposed = Vector2(44,-66)
+	planner.spawn_region = Rect2(exposed-Vector2.ONE*.01,Vector2.ONE*.02)
+	p.pos = Vector2(43,-70)
+	p.height = 0
+	check(not planner.hidden_from_players(exposed,"normal",[p]),"Direct sight rejects an exposed birth")
+	planner.reset(1)
+	sim.roster = ["normal"]
+	planner.step(30,[p])
+	check(sim.spawned == 0 and sim.roster.size() == 1,"An exposed field retains its pending birth quota")
+	planner.spawn_region = saved_check
+	p.pos = original_pos
+	p.height = original_height
 	# Check real movement from a distributed subset, in addition to path queries.
 	entries = entries.slice(0,12)
 	for index in entries.size():
@@ -63,7 +92,7 @@ func run() -> void:
 		sim.spawn(point,"normal")
 		var zombie: Dictionary = sim.zombies[0]
 		var stayed_on_route := true
-		for tick in 180:
+		for tick in 600:
 			sim.elapsed += .1
 			sim.move_zombie(zombie,goal,4.9,.1,zombie.pos.distance_to(goal),data.contact(zombie.kind))
 			stayed_on_route = stayed_on_route and arena.clear(zombie.pos,zombie.pos)

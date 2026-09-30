@@ -186,7 +186,7 @@ func run() -> void:
 	check(sim.defense.crystal_hp < crystal_before and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Diagonal attackers surround and damage the crystal")
 	# Every enemy archetype must reach and damage the crystal from each open face.
 	for kind in ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football"]:
-		for entry in [Vector2(0,data.Maps.Defense.CRYSTAL.y-6.0),Vector2(-5,data.Maps.Defense.CRYSTAL.y+0.0),Vector2(5,data.Maps.Defense.CRYSTAL.y+0.0),Vector2(0,data.Maps.Defense.CRYSTAL.y+4.0)]:
+		for entry in [data.Maps.Defense.CRYSTAL+Vector2(0,-6),data.Maps.Defense.CRYSTAL+Vector2(-5,0),data.Maps.Defense.CRYSTAL+Vector2(5,0),data.Maps.Defense.CRYSTAL+Vector2(0,4),data.Maps.Defense.CRYSTAL+Vector2(-4,-4),data.Maps.Defense.CRYSTAL+Vector2(4,-4),data.Maps.Defense.CRYSTAL+Vector2(-4,4),data.Maps.Defense.CRYSTAL+Vector2(4,4)]:
 			sim.zombies.clear()
 			sim.paths.clear()
 			sim.crowd_buckets.clear()

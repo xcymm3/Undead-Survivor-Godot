@@ -158,8 +158,11 @@ func _ready() -> void:
 	DefenseEnvironment.build(self)
 	# 二维寻路必须把深谷视为不可走区域。缓坡侧平台是玩家的防坠
 	# 落脚点，但也设为导航禁区，保证所有敌人仍只能经中央缓坡靠近水晶。
-	obstacles.append({"minX":-32.0,"maxX":-4.0,"minZ":-62.0,"maxZ":-28.0})
-	obstacles.append({"minX":4.0,"maxX":32.0,"minZ":-62.0,"maxZ":-28.0})
+	obstacles.append({"minX":DefenseLayout.BOUNDS.position.x,"maxX":-4.0,"minZ":-62.0,"maxZ":-28.0})
+	obstacles.append({"minX":4.0,"maxX":DefenseLayout.BOUNDS.end.x,"minZ":-62.0,"maxZ":-28.0})
+	# The expanded far bank does not add walkable ground beside the original plateau.
+	obstacles.append({"minX":DefenseLayout.BOUNDS.position.x,"maxX":DefenseLayout.PLATEAU.position.x,"minZ":-28.0,"maxZ":DefenseLayout.BOUNDS.end.y})
+	obstacles.append({"minX":DefenseLayout.PLATEAU.end.x,"maxX":DefenseLayout.BOUNDS.end.x,"minZ":-28.0,"maxZ":DefenseLayout.BOUNDS.end.y})
 	obstacles.append({"minX":-32.0,"maxX":-5.5,"minZ":-28.0,"maxZ":-10.0})
 	obstacles.append({"minX":5.5,"maxX":32.0,"minZ":-28.0,"maxZ":-10.0})
 	# The side armory remains enemy-safe while leaving the central field open.

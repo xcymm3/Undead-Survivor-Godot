@@ -21,7 +21,8 @@ func _ready() -> void:
 	multimesh.instance_count = CAPACITY
 	multimesh.visible_instance_count = 0
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	custom_aabb = AABB(Vector3(-40,-10,-90),Vector3(80,45,150))
+	var bounds = Data.Maps.Defense.BOUNDS.grow(12)
+	custom_aabb = AABB(Vector3(bounds.position.x,-10,bounds.position.y),Vector3(bounds.size.x,45,bounds.size.y))
 
 func sync(drops: Array) -> void:
 	if not multimesh: return

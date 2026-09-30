@@ -93,7 +93,7 @@ func run() -> void:
 			new_kinds.append(z.original)
 			all_spawned.append(z.original)
 			positions.append({"x":z.pos.x,"z":z.pos.y})
-			var newborn_safe: bool = sim.arena.clear(z.pos,z.pos) and root.get_node("Data").Maps.Defense.enemy_spawn_allowed(z.pos)
+			var newborn_safe: bool = sim.arena.clear(z.pos,z.pos) and root.get_node("Data").Maps.Defense.enemy_spawn_allowed(z.pos) and planner.hidden_from_players(z.pos,z.kind,sim.pawns.values())
 			safe = safe and newborn_safe
 			if not newborn_safe:
 				spawn_issues.append({"id":z.id,"kind":z.original,"time":planner.clock,"pos":str(z.pos)})
@@ -116,7 +116,7 @@ func run() -> void:
 	sim.roster = ["crawler","normal","normal","normal","normal"]
 	sim.zombies.clear()
 	var saved_region: Rect2 = planner.spawn_region
-	var blocked_point = Vector2(0,-74)
+	var blocked_point = Vector2(-10,-105)
 	planner.spawn_region = Rect2(blocked_point-Vector2.ONE*.05,Vector2.ONE*.1)
 	sim.spawn(blocked_point,"normal")
 	planner.step(30,sim.pawns.values())

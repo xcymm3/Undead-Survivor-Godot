@@ -597,8 +597,19 @@ func approach_goal(z: Dictionary, target: Dictionary) -> Vector2:
 	if target.get("is_crystal",false):
 		var offset: Vector2 = z.pos-target.pos
 		if offset.length_squared() < .0001: offset = Vector2(0,-1)
-		# Stay inside attack range even when the map centre has fractional metres.
-		return target.pos+offset.normalized()*Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS*.98
+		var radius: float = Data.Maps.Defense.CRYSTAL_CONTACT_RADIUS*.98
+		var approach: Vector2 = offset.normalized()*radius
+		var goal: Vector2 = target.pos+approach
+		if not arena.clear(goal,goal):
+			# The crystal's rectangular navigation margin extends beyond melee
+			# range at its corners. Approach an open face inside attack range,
+			# rather than leaving A* to project an unreachable diagonal endpoint.
+			var axis = 0 if absf(offset.x) >= absf(offset.y) else 1
+			var edge: float = Data.Maps.Defense.CRYSTAL_RADIUS+.95+.025
+			var side_limit = sqrt(maxf(0,radius*radius-edge*edge))
+			approach[axis] = signf(offset[axis])*edge
+			approach[1-axis] = clampf(approach[1-axis],-side_limit,side_limit)
+		return target.pos+approach
 	if target.get("is_structure",false):
 		var offset: Vector2 = z.pos-target.pos
 		if offset.length_squared() < .0001: offset = Vector2(0,-1)

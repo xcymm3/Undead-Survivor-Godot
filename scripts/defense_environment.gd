@@ -120,12 +120,13 @@ static func build_base(world: Node3D) -> void:
 	var road = surface_material(world,"road","514c40","817761",.52,.96,.04)
 	var cliff = surface_material(world,"cliff","303733","5c6258",.44,.99,.18)
 	var riverbed = surface_material(world,"riverbed","101d21","293a3a",.38,.96,.10)
-	textured_block(world,"RiverBed",Vector3(0,-8.5,-45),Vector3(64,1,34),riverbed,true,false)
-	var water = world.block("Water",Vector3(0,-7.92,-45),Vector3(64,.08,34),"245d68",false)
+	textured_block(world,"RiverBed",Vector3(0,-8.5,-45),Vector3(world.Layout.BOUNDS.size.x,1,34),riverbed,true,false)
+	var water = world.block("Water",Vector3(0,-7.92,-45),Vector3(world.Layout.BOUNDS.size.x,.08,34),"245d68",false)
 	var water_material = ShaderMaterial.new()
 	water_material.shader = load("res://scripts/river_water.gdshader")
 	apply_material(water,water_material)
-	textured_block(world,"FarCliff",Vector3(0,-.5,-70),Vector3(64,1,16),soil,true,false)
+	var far_bank: Rect2 = world.Layout.ENEMY_SPAWN_REGION
+	textured_block(world,"FarCliff",Vector3(far_bank.get_center().x,-.5,far_bank.get_center().y),Vector3(far_bank.size.x,1,far_bank.size.y),soil,true,false)
 	textured_block(world,"DefensePlateau",Vector3(0,1.5,world.Layout.PLATEAU.get_center().y),Vector3(64,3,world.Layout.PLATEAU.size.y),grass,true,false)
 	textured_block(world,"ApproachRoad",Vector3(0,3.035,(world.Layout.RAMP.end.y+world.Layout.CRYSTAL.y)/2),Vector3(11,.07,world.Layout.CRYSTAL.y-world.Layout.RAMP.end.y),road,false)
 	# Exposed strata and talus make both bridge-side drops read as natural cliffs.
@@ -157,9 +158,11 @@ static func build_boundaries(world: Node3D) -> void:
 	# Side walls stop at the chasm. The bridge flanks remain exposed cliff edges,
 	# while every playable outer edge is visibly and physically enclosed.
 	for x in [-31.45,31.45]:
-		make_wall_run(world,Vector3(x,4.1,-70),Vector3(1.1,2.2,16),false)
 		make_wall_run(world,Vector3(x,4.1,(world.Layout.BOUNDS.end.y-28)/2),Vector3(1.1,2.2,world.Layout.BOUNDS.end.y+28),false)
-	make_wall_run(world,Vector3(0,2.1,-77.45),Vector3(64,3.2,1.1),true)
+	var far_bank: Rect2 = world.Layout.ENEMY_SPAWN_REGION
+	for x in [far_bank.position.x+.55,far_bank.end.x-.55]:
+		make_wall_run(world,Vector3(x,1.1,far_bank.get_center().y),Vector3(1.1,2.2,far_bank.size.y),false)
+	make_wall_run(world,Vector3(0,1.6,far_bank.position.y+.55),Vector3(far_bank.size.x,3.2,1.1),true)
 	make_wall_run(world,Vector3(0,4.1,world.Layout.BOUNDS.end.y-.55),Vector3(64,2.2,1.1),true)
 
 static func build_ramp_fill(world: Node3D) -> StaticBody3D:
@@ -277,3 +280,4 @@ static func decorate(world: Node3D) -> void:
 	build_ramp_detail(world)
 	build_cover(world)
 	build_vegetation(world)
+	preload("res://scripts/defense_spawn_forest.gd").new(world).build()

@@ -16,10 +16,36 @@ var batch_size = 0
 var retries_at = 0.0
 var spawn_region: Rect2
 var spawn_random = RandomNumberGenerator.new()
+var reachable = PackedByteArray()
+var grid_width = 0
+const SIGHT_MASK = 1 | preload("res://scripts/defense_spawn_forest.gd").SIGHT_LAYER
 
 func _init(owner) -> void:
 	owner_ref = weakref(owner)
 	spawn_region = sim.map_definition.spawn_region
+	build_reachability()
+
+func build_reachability() -> void:
+	var grid = sim.arena.grid
+	grid_width = grid.region.size.x
+	reachable.resize(grid_width*grid.region.size.y)
+	reachable.fill(0)
+	var start: Vector2i = sim.arena.nearest_cell(Layout.ENEMY_BRIDGE_START+Vector2(0,-2))
+	if start.x < 0: return
+	var queue: Array[Vector2i] = [start]
+	reachable[start.y*grid_width+start.x] = 1
+	var head = 0
+	while head < queue.size():
+		var cell = queue[head]
+		head += 1
+		for offset in [Vector2i.LEFT,Vector2i.RIGHT,Vector2i.UP,Vector2i.DOWN]:
+			var next: Vector2i = cell+offset
+			if not grid.is_in_boundsv(next) or grid.is_point_solid(next): continue
+			if grid.get_point_position(next).y >= Layout.BRIDGE.position.y: continue
+			var index: int = next.y*grid_width+next.x
+			if reachable[index] == 1: continue
+			reachable[index] = 1
+			queue.append(next)
 
 func reset(count: int) -> void:
 	clock = 0.0
@@ -44,9 +70,22 @@ func random_point() -> Vector2:
 
 func ground_clear(point: Vector2) -> bool:
 	if not Layout.enemy_spawn_allowed(point) or not sim.arena.clear(point,point): return false
-	# Check connectivity on the existing shared navigation, without building
-	# extra grids. The approach point is on the far bank before the bridge.
-	return not sim.arena.path_to(point,Vector2(0,Layout.BRIDGE.position.y-2)).is_empty()
+	# A one-time flood fill replaces per-candidate A* on the larger woodland bank.
+	var grid = sim.arena.grid
+	var cell = Vector2i(((point-grid.offset)/grid.cell_size).round())
+	return grid.is_in_boundsv(cell) and reachable[cell.y*grid_width+cell.x] == 1 and sim.arena.clear(point,grid.get_point_position(cell))
+
+func hidden_from_players(point: Vector2, kind: String, living: Array) -> bool:
+	var ground = Layout.height(point)
+	var scale: float = Data.enemy_scale(kind)
+	for p in living:
+		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
+		# Check feet, torso and head, including the taller special types. Requiring
+		# real cover is stricter than merely spawning behind the current camera.
+		for height in [.25*scale,1.1*scale,2.1*scale]:
+			var query = PhysicsRayQueryParameters3D.create(eye,Vector3(point.x,ground+height,point.y),SIGHT_MASK)
+			if sim.arena.get_world_3d().direct_space_state.intersect_ray(query).is_empty(): return false
+	return true
 
 func step(dt: float, living: Array) -> void:
 	clock += dt
@@ -66,7 +105,9 @@ func step(dt: float, living: Array) -> void:
 		if not Layout.enemy_spawn_allowed(point) or near_occupied(occupied,point): continue
 		if living.any(func(p): return p.pos.distance_squared_to(point) < 64): continue
 		if not ground_clear(point): continue
-		sim.spawn(point,sim.defense_population_kind(sim.roster[0]))
+		var kind: String = sim.defense_population_kind(sim.roster[0])
+		if not hidden_from_players(point,kind,living): continue
+		sim.spawn(point,kind)
 		sim.roster.remove_at(0)
 		sim.spawned += 1
 		released += 1

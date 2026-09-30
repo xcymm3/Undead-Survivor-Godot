@@ -2,7 +2,6 @@ extends RefCounted
 ## “断崖吊桥”防守地图的共享尺寸、目标点与高度函数。
 const ID = "graypine_defense"
 const PLATEAU = Rect2(-32,-10,64,82.0*2.0/3.0)
-const BOUNDS = Rect2(-32,-78,64,PLATEAU.end.y+78)
 const CRYSTAL = Vector2(0,PLATEAU.position.y+PLATEAU.size.y/2)
 const CRYSTAL_RADIUS = 1.05
 const CRYSTAL_CONTACT_RADIUS = 2.3 # Crystal body plus enemy navigation clearance.
@@ -12,8 +11,10 @@ const SPAWN = SAFE_ZONE.position+SAFE_ZONE.size/2
 const SHOP_WALL_Z = PLATEAU.end.y-.325
 const SHOP_POINT = Vector2(0,SHOP_WALL_Z-2.35)
 const BRIDGE = Rect2(-4,-62,8,34)
-const ENEMY_SPAWN_REGION = Rect2(BOUNDS.position,Vector2(BOUNDS.size.x,BRIDGE.position.y-BOUNDS.position.y))
-const ENEMY_BRIDGE_SPAWN_DISTANCE = 8.0
+const ENEMY_SPAWN_REGION = Rect2(-48,BRIDGE.position.y-96,96,96)
+const BOUNDS = Rect2(ENEMY_SPAWN_REGION.position,Vector2(96,PLATEAU.end.y-ENEMY_SPAWN_REGION.position.y))
+const ENEMY_BRIDGE_START = Vector2(0,BRIDGE.position.y)
+const ENEMY_BRIDGE_SPAWN_DISTANCE = 32.0
 const RAMP = Rect2(-5,-28,10,18)
 const CRYSTAL_MAX_HP = 1500
 const ARMORY_WEAPONS := [0,8,7,5]
@@ -42,5 +43,4 @@ static func in_safe_zone(p: Vector2) -> bool:
 
 static func enemy_spawn_allowed(p: Vector2) -> bool:
 	if not ENEMY_SPAWN_REGION.has_point(p): return false
-	var mouth = Vector2(clampf(p.x,BRIDGE.position.x,BRIDGE.end.x),BRIDGE.position.y)
-	return p.distance_squared_to(mouth) >= ENEMY_BRIDGE_SPAWN_DISTANCE*ENEMY_BRIDGE_SPAWN_DISTANCE
+	return p.distance_squared_to(ENEMY_BRIDGE_START) >= ENEMY_BRIDGE_SPAWN_DISTANCE*ENEMY_BRIDGE_SPAWN_DISTANCE
