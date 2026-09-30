@@ -8,10 +8,11 @@
 npm run verify
 ```
 
-基础检查包含版本一致性、Godot 资源导入和原生组件断言。根据改动范围，可额外运行一个专项：
+基础检查包含版本一致性、Godot 资源导入、原生组件断言和增量进度/存档专项。根据改动范围，可额外运行一个专项：
 
 ```powershell
 ./tools/validate-headless.ps1 -Mode Defense
+./tools/validate-headless.ps1 -Mode Progression
 ./tools/validate-headless.ps1 -Mode DefenseSpawns
 ./tools/validate-headless.ps1 -Mode DefenseWaves -TimeoutSeconds 600
 ./tools/validate-headless.ps1 -Mode SpreadBallistics

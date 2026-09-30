@@ -6,7 +6,7 @@ test('real input fires cancels and completes second-weapon reload', async ({ pag
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   expect(await page.evaluate(() => window.__survivorSnapshot.map_id)).toBe('graypine_defense');
-  for (const text of ['单人防守']) {
+  for (const text of ['开始防守']) {
     const button = await page.evaluate(text => window.__survivorSnapshot.buttons.find(b => b.text === text && !b.disabled), text);
     expect(button).toBeTruthy();
     const canvas = await page.locator('canvas').boundingBox();
@@ -14,23 +14,24 @@ test('real input fires cancels and completes second-weapon reload', async ({ pag
   }
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense');
   await page.keyboard.press('4');
-  await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 1);
+  await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 4);
   await page.keyboard.press('2');
-  await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 8 && window.__survivorSnapshot.player.switch <= 0);
+  await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 3 && window.__survivorSnapshot.player.switch <= 0);
   await page.mouse.click(480, 300);
-  await page.waitForFunction(() => window.__survivorSnapshot.player.ammo[8] === 15);
+  await page.waitForFunction(() => window.__survivorSnapshot.player.ammo[3] === 5);
   await page.keyboard.press('r');
   await page.waitForFunction(() => window.__survivorSnapshot.player.reloading);
   await page.keyboard.press('1');
   await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.weapon === window.__survivorSnapshot.player.weapon1);
-  expect(await page.evaluate(() => window.__survivorSnapshot.player.ammo[8])).toBe(15);
+  expect(await page.evaluate(() => window.__survivorSnapshot.player.ammo[3])).toBe(5);
   await page.keyboard.press('2');
-  await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 8 && window.__survivorSnapshot.player.switch <= 0);
+  await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 3 && window.__survivorSnapshot.player.switch <= 0);
   await page.keyboard.press('r');
   await page.waitForFunction(() => window.__survivorSnapshot.player.reloading);
-  await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.ammo[8] === 16);
+  await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.ammo[3] === 6);
   await page.mouse.down({ button: 'middle' }); await page.mouse.up({ button: 'middle' });
-  expect(await page.evaluate(() => window.__survivorSnapshot.player.aim)).toBe(false);
+  await page.waitForFunction(() => window.__survivorSnapshot.player.aim);
+  await page.mouse.down({ button: 'middle' }); await page.mouse.up({ button: 'middle' });
   await page.keyboard.press('1');
   await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 0 && window.__survivorSnapshot.player.switch <= 0);
   await page.mouse.down({ button: 'middle' }); await page.mouse.up({ button: 'middle' });

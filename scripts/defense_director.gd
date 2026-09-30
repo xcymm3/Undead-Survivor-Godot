@@ -1,5 +1,5 @@
 extends RefCounted
-## Authority-only defense interactions, armory inventory and preparation state.
+## Single-player preparation, shop access and wave rewards.
 const Layout = preload("res://scripts/defense_layout.gd")
 var owner_ref: WeakRef
 var sim:
@@ -7,6 +7,7 @@ var sim:
 var state: Dictionary
 var equipment
 var structures
+var rewarded_waves: Dictionary = {}
 
 func _init(world) -> void:
 	owner_ref = weakref(world)
@@ -32,12 +33,13 @@ func begin_wave() -> void:
 	sim.prepare_wave()
 	structures.reset_wave()
 	for p in sim.pawns.values():
-		p.hp = 100
+		p.hp = p.max_hp
 		p.regen_credit = 0.0
+		p.combat_remaining = 0.0
 		p.damage_hint = 0.0
 		p.damage_dir = Vector2.ZERO
 		p.damage_rear = false
-		p.grenades = equipment.MAX_GRENADES
+		p.grenades = sim.progression.grenade_capacity()
 		p.grenade_ready_at = 0.0
 	state.started = true
 	state.waiting = false
@@ -47,18 +49,20 @@ func begin_wave() -> void:
 	sync_world()
 
 func finish_wave() -> void:
+	if not rewarded_waves.has(sim.wave) and state.started and not state.waiting and not sim.failed and state.crystal_hp > 0 and sim.roster.is_empty() and sim.alive_count() == 0:
+		rewarded_waves[sim.wave] = true
+		sim.progression.award_wave(sim.wave)
 	state.waiting = true
 	state.wave = sim.wave+1
 	state.ready_players.clear()
-	state.objective = "第 %d 波已清除 · 按 T 准备第 %d 波 (0/%d)" % [sim.wave,state.wave,sim.pawns.size()]
+	state.objective = "第 %d 波已清除 · 钻石 +1 · 按 T 开始第 %d 波" % [sim.wave,state.wave]
 	sync_world()
 
 func choose_weapon(p: Dictionary, _requested: int) -> int:
 	return p.weapon1 if p.slot == 1 else 6 if p.slot == 3 else p.weapon2 if p.slot == 2 else p.weapon
 
 func target(p: Dictionary) -> Dictionary:
-	var supply: Dictionary = equipment.pickup_target(p)
-	if not supply.is_empty(): return supply
+	if sim.shop_available(p): return {"id":"shop","label":"打开商店（本局开波后关闭）","seconds":0.0}
 	return {}
 
 func interactions(dt: float) -> void:
@@ -76,7 +80,7 @@ func interactions(dt: float) -> void:
 		p.input["wave_ready"] = false
 		if not input.get("interact",false): p.pickup_latched = false
 		var choice := target(p)
-		p.hint = "E "+choice.label if not choice.is_empty() else "按 T 准备下一波；可在后方军械库整备" if state.waiting else "保护水晶；在后方军械库补给"
+		p.hint = "E "+choice.label if not choice.is_empty() else "靠近右侧商店升级 · 按 T 开始第一波" if not state.started else "商店已关闭 · 按 T 开始下一波" if state.waiting else "保护水晶 · 弹药本局不补充"
 		if p.pickup_latched or not input.get("interact",false): choice = {}
 		if choice.is_empty():
 			p.interaction = ""
@@ -88,7 +92,9 @@ func interactions(dt: float) -> void:
 		p.interact_time += dt
 		p.hint = "%s %.1f/%.1f 秒" % [choice.label,p.interact_time,choice.seconds]
 		if p.interact_time < float(choice.seconds): continue
-		equipment.pickup(p,choice.id)
+		if choice.id == "shop":
+			p.pickup_latched = true
+			sim.events.append({"kind":"shop_open","player":p.id})
 		p.interaction = ""
 		p.interact_time = 0.0
 	for p in sim.pawns.values(): p.input.interact = false

@@ -36,6 +36,7 @@ var death_timer = 0.0
 var draw_timer = 0.0
 var display_buffer = preload("res://scripts/snapshot_buffer.gd").new()
 var pixelation: ColorRect
+var coins
 
 func _ready() -> void:
 	RenderingServer.render_loop_enabled = focused and not software_qa()
@@ -44,6 +45,8 @@ func _ready() -> void:
 	add_child(arena)
 	enemies = EnemyView.new()
 	add_child(enemies)
+	coins = preload("res://scripts/coin_view.gd").new()
+	add_child(coins)
 	camera = Camera3D.new()
 	camera.near = .04
 	camera.far = 250
@@ -98,19 +101,18 @@ func _ready() -> void:
 	if "--defense" in args:
 		Data.settings.map_id = "graypine_defense"
 		start_solo("defense")
-	if "--lan-host" in args: Session.host_lan("房主")
-	for arg in args:
-		if arg.begins_with("--lan-join="): Session.join_lan(arg.trim_prefix("--lan-join="),"队友")
 	if Data.automation:
 		var observer = preload("res://scripts/automation_observer.gd").new()
 		observer.game = self
 		add_child(observer)
 
 func start_solo(mode: String = "defense", random_seed := -1) -> void:
+	Progress.store.save()
 	Session.leave()
 	reset_game()
 	load_map(Data.settings.map_id)
 	sim = Simulation.new(arena)
+	sim.progression = Progress.store
 	sim.defense_difficulty = Data.settings.defense_difficulty
 	sim.add_pawn("solo","幸存者",0)
 	sim.pawns.solo.pos = arena.definition.spawn
@@ -121,6 +123,7 @@ func start_solo(mode: String = "defense", random_seed := -1) -> void:
 	resume_game()
 
 func start_coop() -> void:
+	if not Data.automation: return
 	reset_game()
 	load_map(Session.map_id)
 	yaw = arena.definition.yaw
@@ -273,6 +276,7 @@ func _process(dt: float) -> void:
 			equipment_prop.position = Vector3(.24,-.20,-.55)
 	if equipment_prop: equipment_prop.visible = not finished
 	enemies.sync(visible_zombies,visual_time,false)
+	coins.sync(sim.coin_drops)
 	effects.step(dt)
 	for id in sim.pawns:
 		if id == Session.local_id:
@@ -305,6 +309,9 @@ func _process(dt: float) -> void:
 func handle_effects(events: Array) -> void:
 	for event in events:
 		if not event is Dictionary or not event.has("kind"): continue
+		if event.kind == "shop_open":
+			if event.player == Session.local_id: open_shop()
+			continue
 		match event.kind:
 			"shove":
 				if event.player == Session.local_id:
@@ -374,6 +381,7 @@ func handle_effects(events: Array) -> void:
 
 func finish_run() -> void:
 	if finished: return
+	Progress.store.save()
 	reset_mouse_buttons()
 	finished = true
 	death_timer = 1.3 if sim.won else 0.0
@@ -402,6 +410,7 @@ func resume_game() -> void:
 	sound.set_playing(true)
 
 func return_home() -> void:
+	if Progress.store: Progress.store.save()
 	display_buffer.clear()
 	if sound: sound.clear_effects()
 	reset_mouse_buttons()
@@ -415,6 +424,7 @@ func return_home() -> void:
 	if weapon: weapon.visible = false
 	if equipment_prop: equipment_prop.visible = false
 	if enemies: enemies.clear()
+	if coins: coins.sync([])
 	for partner in partners.values(): partner.queue_free()
 	partners.clear()
 	if sound: sound.set_playing(false)
@@ -546,6 +556,7 @@ func _focus_gained() -> void:
 
 func quit_game() -> void:
 	Data.save()
+	Progress.store.save()
 	Session.leave()
 	get_tree().quit()
 
@@ -562,3 +573,17 @@ func select_defense_difficulty(id: String) -> void:
 	Data.settings.defense_difficulty = DefensePopulation.normalize_difficulty(id)
 	Data.save()
 	ui.show_home()
+
+func open_shop() -> bool:
+	if not running or not sim or finished or not sim.shop_available(local_pawn()): return false
+	reset_mouse_buttons()
+	paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	sound.set_playing(false)
+	ui.show_shop()
+	return true
+
+func buy_upgrade(id: String) -> void:
+	if not sim or ui.current != "shop": return
+	var purchased: bool = sim.purchase_upgrade(id,local_pawn())
+	ui.show_shop("购买成功，进度已保存" if purchased else sim.progression.notice if not sim.progression.notice.is_empty() else "无法购买：金币/钻石不足或商店已关闭")

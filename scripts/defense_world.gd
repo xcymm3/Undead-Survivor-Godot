@@ -120,37 +120,19 @@ func make_safe_zone() -> void:
 	for z in [local_front,local_back]: block("SafeLine",Vector3(0,3.075,z),Vector3(26,.08,.12),"7bd8aa",false)
 	var shop_wall = block("WeaponShopWall",Vector3(0,7.2,67.85),Vector3(25.5,8.8,.65),"493a2d",true,false)
 	shop_wall.set_meta("environment_feature","weapon_shop_wall")
-	for row in DefenseLayout.ARMORY_ROWS.size():
-		block("ShopRail%d" % row,Vector3(0,DefenseLayout.ARMORY_ROWS[row],67.48),Vector3(23.8,.08,.1),"a7bbb0",false)
 	# Narrow trim breaks up the wood surface while preserving one continuous wall.
 	for column in range(6):
 		var x = -10.625+column*4.25
 		block("ShopFrame%d" % column,Vector3(x,7.2,67.47),Vector3(.12,8.15,.1),"5d4934",false)
 	block("ShopFrameTop",Vector3(0,11.52,67.47),Vector3(25.5,.18,.18),"5d4934",false)
 	block("ShopFrameBottom",Vector3(0,3.08,67.47),Vector3(25.5,.18,.18),"5d4934",false)
-	# Four shared weapon models are reachable from the flat armory floor.
-	for display_index in DefenseLayout.ARMORY_WEAPONS.size():
-		var weapon_index: int = DefenseLayout.ARMORY_WEAPONS[display_index]
-		var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[weapon_index].id)
-		add_child(model)
-		model.name = "WeaponDisplay%02d" % (display_index+1)
-		model.set_meta("weapon_display_index",weapon_index)
-		var mount = Vector3(DefenseLayout.ARMORY_COLUMNS[display_index],DefenseLayout.ARMORY_ROWS[0],67.28)
-		model.set_meta("mount_height",mount.y)
-		model.set_meta("mount_x",mount.x)
-		model.rotation.y = PI/2
-		var bounds = posed_bounds(model)
-		var factor = minf(2.0/maxf(bounds.size.x,.01),.44/maxf(bounds.size.y,.01))
-		model.scale *= factor
-		model.position = mount-bounds.get_center()*factor
-		var rack_label = sign_at("E · %s" % Data.weapons[weapon_index].label,Vector3(mount.x,mount.y+.52,67.42),3.6)
-		rack_label.rotation.y = PI
-		rack_label.position.z -= .22
-	var loadout_label = sign_at("军械库 · 1 / 2 选择武器槽 · E 换枪",Vector3(0,8.45,67.42),5.2)
-	loadout_label.rotation.y = PI
-	loadout_label.position.z -= .22
-	loadout_label.rotation.y = PI
-	loadout_label.position.z -= .22
+	block("ShopCounter",Vector3(0,3.45,65.5),Vector3(8,.9,1.6),"43544a",true,false)
+	block("ShopCounterTop",Vector3(0,3.94,65.5),Vector3(8.2,.08,1.7),"b2a77b",false)
+	block("ShopTerminal",Vector3(0,4.45,65.55),Vector3(1.1,.8,.3),"263e37",false)
+	var screen = block("ShopScreen",Vector3(0,4.48,65.35),Vector3(.88,.55,.04),"79cca5",false)
+	screen.set_meta("shop_terminal",true)
+	var upgrade_label = sign_at("金币 · 装备 / 防御升级     钻石 · 永久天赋",Vector3(0,8.45,67.2),8.0)
+	upgrade_label.rotation.y = PI
 	for x in [-9.0,-3.0,3.0,9.0]:
 		var light = OmniLight3D.new()
 		light.position = Vector3(x,6.4,65.8)
@@ -159,9 +141,12 @@ func make_safe_zone() -> void:
 		light.omni_range = 10.0
 		light.shadow_enabled = true
 		add_child(light)
-	var zone_label = sign_at("水晶防线军械库 · E 拾取 · 武器即时补货",Vector3(0,10.25,67.45),13.5)
+	var zone_label = sign_at("幸存者商店 · 仅第一波开始前开放",Vector3(0,10.25,67.2),13.5)
 	zone_label.rotation.y = PI
 	zone_label.position.z -= .22
+	var status = sign_at("营业中 · 靠近按 E",Vector3(0,5.6,65.35),4.6)
+	status.name = "ShopStatus"
+	status.rotation.y = PI
 	# Build the familiar wall display locally, then rotate it to face the field.
 	# Transform every visual and native collider together; no desktop render path.
 	var placement = DefenseLayout.armory_transform()
@@ -204,6 +189,10 @@ func _ready() -> void:
 	set_meta("navigation_obstacles",obstacles)
 
 func sync(state: Dictionary) -> void:
+	var status = get_node_or_null("ShopStatus")
+	if status:
+		status.text = "本局已关闭 · 重开后整备" if state.get("started",false) else "营业中 · 靠近按 E"
+		status.modulate = Color("e98065") if state.get("started",false) else Color("a2efc9")
 	if is_instance_valid(structure_view): structure_view.sync(state)
 	sync_projectiles(state)
 	if not is_instance_valid(pickup_animation):

@@ -21,6 +21,8 @@ var defense: Dictionary = {}
 var defense_replica: Dictionary = {}
 var defense_difficulty = "normal"
 var equipment
+var progression = preload("res://scripts/progression_store.gd").new()
+var coin_drops: Array = []
 var won = false
 var elapsed = 0.0
 var wave = 1
@@ -56,7 +58,7 @@ const ATTACK_TURN_SPEED = 2.09439510239 # 120 degrees per second
 const IMP_SPEED_MULTIPLIER = 1.296 # Existing 1.08 speed increased by 20 percent.
 const BERSERKER_RAGE_SPEED = 7.2
 const FOOTBALL_CHARGE_SPEED = 12.0
-const DEFENSE_REGEN_RATE = 1.0
+const COMBAT_REGEN_DELAY = 5.0
 const DEFENSE_FALL_HEIGHT = -3.5
 const DEFENSE_FALL_DAMAGE = 10
 
@@ -101,6 +103,7 @@ func start(_game_mode: String = "defense") -> void:
 	mode = "defense"
 	defense_difficulty = DefensePopulation.normalize_difficulty(defense_difficulty)
 	zombies.clear()
+	coin_drops.clear()
 	paths.clear()
 	roster.clear()
 	wave_total = 0
@@ -163,6 +166,7 @@ func submit(id: String, input: Dictionary) -> void:
 
 func step(dt: float) -> void:
 	events.clear()
+	step_coins(dt)
 	if failed or won: return
 	for id in player_bodies.keys():
 		if not pawns.has(id):
@@ -291,14 +295,14 @@ func can_move(p: Dictionary, point: Vector2) -> bool:
 		if point.distance_to(z.pos) < Data.contact(z.kind) and point.distance_to(z.pos) < p.pos.distance_to(z.pos)-.00001: return false
 	return true
 
-static func accelerate_in_air(horizontal: Vector2, wish: Vector2, dt: float) -> Vector2:
+static func accelerate_in_air(horizontal: Vector2, wish: Vector2, dt: float, multiplier := 1.0) -> Vector2:
 	var strength = minf(wish.length(),1.0)
 	if strength <= .00001: return horizontal
 	var direction = wish.normalized()
-	var available = PLAYER_AIR_WISH_SPEED*strength-horizontal.dot(direction)
+	var available = PLAYER_AIR_WISH_SPEED*multiplier*strength-horizontal.dot(direction)
 	if available <= 0.0: return horizontal
 	var acceleration = minf(available,PLAYER_AIR_ACCELERATION*strength*dt)
-	return (horizontal+direction*acceleration).limit_length(PLAYER_MOVE_SPEED)
+	return (horizontal+direction*acceleration).limit_length(PLAYER_MOVE_SPEED*multiplier)
 
 func update_pawn(p: Dictionary, dt: float) -> void:
 	p.damage_hint = maxf(0,p.get("damage_hint",0.0)-dt)
@@ -319,7 +323,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	body.update_stance(p,input.get("crouch",false),dt)
 	var movement = Vector2(input.get("x",0),input.get("y",0)).limit_length()
 	var wish = Vector2(movement.x*cos(p.yaw)+movement.y*sin(p.yaw), -movement.x*sin(p.yaw)+movement.y*cos(p.yaw))
-	var ground_velocity = wish*PLAYER_MOVE_SPEED*lerpf(1.0,.55,p.crouch)
+	var ground_velocity = wish*PLAYER_MOVE_SPEED*progression.move_multiplier()*lerpf(1.0,.55,p.crouch)
 	# Store world-space m/s, so looking around cannot rotate existing momentum.
 	if body.grounded: p.air = ground_velocity
 	if input.get("jump",false) and body.grounded and p.crouch < .1:
@@ -329,7 +333,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	while remaining > .00001:
 		var step_time = minf(.01,remaining)
 		remaining -= step_time
-		p.air = ground_velocity if body.grounded else accelerate_in_air(p.air,wish,step_time)
+		p.air = ground_velocity if body.grounded else accelerate_in_air(p.air,wish,step_time,progression.move_multiplier())
 		var next: Vector2 = p.pos+p.air*step_time
 		next = next.clamp(map_definition.bounds.position+Vector2.ONE*.95,map_definition.bounds.end-Vector2.ONE*.95)
 		if not can_move(p,next):
@@ -360,6 +364,7 @@ func recover_defense_fall(p: Dictionary, body) -> void:
 	body.velocity = Vector3.ZERO
 	body.grounded = false
 	p.hp = maxi(0,p.hp-DEFENSE_FALL_DAMAGE)
+	enter_combat(p)
 	p.protection = .65
 	p.damage_dir = Vector2.ZERO
 	p.damage_rear = false
@@ -372,14 +377,61 @@ func recover_defense_fall(p: Dictionary, body) -> void:
 func update_defense_regen(p: Dictionary, dt: float) -> void:
 	if mode != "defense" or p.hp <= 0:
 		return
-	if p.hp >= 100 or dt <= 0:
-		if p.hp >= 100: p.regen_credit = 0.0
+	var previous: float = p.get("combat_remaining",0.0)
+	p.combat_remaining = maxf(0,previous-dt)
+	var healing_time = maxf(0,dt-previous)
+	var maximum: int = p.get("max_hp",100)
+	if p.hp >= maximum or healing_time <= 0 or progression.regen_rate() <= 0:
+		if p.hp >= maximum or progression.regen_rate() <= 0: p.regen_credit = 0.0
 		return
-	p.regen_credit = float(p.get("regen_credit",0.0))+dt*DEFENSE_REGEN_RATE
+	p.regen_credit = float(p.get("regen_credit",0.0))+healing_time*progression.regen_rate()
 	var healed: int = floori(p.regen_credit)
 	if healed <= 0: return
-	p.hp = mini(100,p.hp+healed)
-	p.regen_credit = 0.0 if p.hp == 100 else p.regen_credit-healed
+	p.hp = mini(maximum,p.hp+healed)
+	p.regen_credit = 0.0 if p.hp == maximum else p.regen_credit-healed
+
+func enter_combat(p: Dictionary) -> void:
+	p.combat_remaining = COMBAT_REGEN_DELAY
+	p.regen_credit = 0.0
+
+func weapon_damage(w: Dictionary, head: bool) -> float:
+	var amount: float = float(w.damage)*progression.weapon_multiplier(str(w.id))
+	return amount*float(w.get("headshotMultiplier",1 if w.get("kind","gun") == "melee" else 2))*progression.head_multiplier() if head else amount
+
+func step_coins(dt: float) -> void:
+	for drop in coin_drops:
+		drop.age += dt
+		var owner: Dictionary = pawns.get(drop.owner,{})
+		if owner.is_empty():
+			drop.age = 5.0
+			continue
+		var destination = Vector3(owner.pos.x,owner.height+1.05,owner.pos.y)
+		if drop.age < .15: drop.pos.y += dt*1.5
+		else: drop.pos = drop.pos.move_toward(destination,dt*(7.0+drop.pos.distance_to(destination)*4.0))
+		if drop.pos.distance_squared_to(destination) < .09: drop.age = 5.0
+	coin_drops = coin_drops.filter(func(drop): return drop.age < 5.0)
+
+func shop_available(p: Dictionary) -> bool:
+	return defense_director != null and not defense.started and not failed and not won and p.get("hp",0) > 0 and defense_director.near(p,Data.Maps.Defense.SHOP_POINT,4.0)
+
+func purchase_upgrade(id: String, p: Dictionary) -> bool:
+	if not shop_available(p): return false
+	var old_health = progression.max_health()
+	var old_reserve = progression.reserve_multiplier()
+	var old_grenades = progression.grenade_capacity()
+	if not progression.purchase(id): return false
+	p.max_hp = progression.max_health()
+	p.hp = mini(p.max_hp,p.hp+p.max_hp-old_health)
+	p.grenade_capacity = progression.grenade_capacity()
+	p.grenades += p.grenade_capacity-old_grenades
+	for index in [0,3]:
+		p.reserves[index] += roundi(Data.defense_full_reserve(index)*progression.reserve_multiplier())-roundi(Data.defense_full_reserve(index)*old_reserve)
+	equipment.save_weapon_slot(p)
+	# The other firearm slot also tracks its increased reserve.
+	p.slot_reserves = [p.reserves[0],p.reserves[3]]
+	defense_director.structures.reset_wave()
+	defense_director.sync_world()
+	return true
 
 func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	advance_arsenal(p,input,dt)
@@ -468,6 +520,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
 	if won or p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
 	p.hp = maxi(0,p.hp-amount)
+	enter_combat(p)
 	# Give the rear-hit cue time to be actionable under overlapping melee attacks.
 	p.protection = .65
 	if defense_director: p.hurt_at = elapsed
@@ -493,6 +546,7 @@ func try_shove(p: Dictionary) -> bool:
 	if p.hp <= 0 or p.shove_cd > 0 or p.shove_gap > 0 or p.switch > 0: return false
 	if equipment and (p.slot == 3 or p.interaction != ""): return false
 	p.shoves = p.get("shoves",0)+1
+	enter_combat(p)
 	p.shove_gap = SHOVE_INTERVAL
 	p.shove_anim = .32
 	p.fire_anim = 0.0
@@ -769,6 +823,10 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		kills += 1
 		p.kills += 1
 		paths.erase(z.id)
+		var reward = progression.award_kill(str(z.get("original",z.kind)))
+		var receiver = str(p.id) if pawns.has(p.id) else str(pawns.keys()[0]) if not pawns.is_empty() else ""
+		coin_drops.append({"owner":receiver,"pos":Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+.7,z.pos.y),"age":0.0,"value":reward})
+		if coin_drops.size() > 512: coin_drops.pop_front()
 		events.append({"kind":"death","player":p.id,"position":position})
 	else:
 		# Small displacement is independent of shove velocity/time and stun duration.
@@ -838,11 +896,12 @@ func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 				if not swing.landed:
 					p.hits += 1
 					swing.landed = true
-				hit_enemy(z,w.damage*(w.get("headshotMultiplier",1) if hit.head else 1),hit.armor,p,origin+direction*hit.distance)
+				hit_enemy(z,weapon_damage(w,hit.head),hit.armor,p,origin+direction*hit.distance)
 				break
 	if progress >= MELEE_END: melee_swings.erase(p.id)
 
 func fire(p: Dictionary, w: Dictionary) -> void:
+	enter_combat(p)
 	if w.get("kind","gun") == "melee":
 		melee_swings[p.id] = {"weapon":p.weapon,"progress":0.0,"damaged":{},"landed":false}
 		var origin = Vector3(p.pos.x,p.height+PlayerBody.eye_height(p)-.5,p.pos.y)
@@ -907,7 +966,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 			if (w.get("piercing",false) or weapon_kind == "melee") and damaged.has(hit.z.id): continue
 			damaged[hit.z.id] = true
 			landed = true
-			var amount: float = w.damage*(w.get("headshotMultiplier",2) if hit.head else 1)
+			var amount: float = weapon_damage(w,hit.head)
 			if shotgun:
 				amount *= shotgun_damage_scale(w,hit.distance)*penetration
 				# Capture armor before damage can break it; the same pellet stays blocked.

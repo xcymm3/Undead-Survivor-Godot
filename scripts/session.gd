@@ -50,6 +50,7 @@ func is_host() -> bool:
 	return active and local_id == host_id
 
 func enable_steam() -> bool:
+	if not Data.automation: return false # Multiplayer is unavailable in the incremental release.
 	if steam_ready: return true
 	if not Engine.has_singleton("Steam"):
 		status = "Steam 需要 GodotSteam 4.5 引擎；双击 start-steam.cmd 可启动"
@@ -73,6 +74,7 @@ func enable_steam() -> bool:
 	return true
 
 func host_lan(player_name: String) -> void:
+	if not Data.automation: return
 	leave()
 	peer = ENetMultiplayerPeer.new()
 	var err = peer.create_server(PORT,3,2)
@@ -96,6 +98,7 @@ func host_lan(player_name: String) -> void:
 	changed.emit()
 
 func join_lan(address: String, player_name: String) -> void:
+	if not Data.automation: return
 	leave()
 	var parts = address.strip_edges().split(":")
 	var port = int(parts[1]) if parts.size() > 1 else PORT

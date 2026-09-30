@@ -12,6 +12,8 @@ func _ready() -> void:
 
 func stage() -> void:
 	Data.settings.map_id = "graypine_defense"
+	if "--qa-defense-structures-intact" in OS.get_cmdline_user_args() or "--qa-defense-structures-damaged" in OS.get_cmdline_user_args():
+		for id in ["turret_left","turret_right","bridge_gate"]: Progress.store.data.buildings[id].owned = true
 	game.start_solo("defense")
 	await get_tree().process_frame
 	game.running = false

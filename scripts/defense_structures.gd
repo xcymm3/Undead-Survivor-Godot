@@ -26,10 +26,15 @@ static func initial_state() -> Array:
 
 func _init(owner) -> void:
 	director_ref = weakref(owner)
-	director.state["structures"] = initial_state()
+	reset_wave()
 
 func reset_wave() -> void:
 	director.state["structures"] = initial_state()
+	for item in director.state.structures:
+		item["owned"] = item.kind == "mine" or sim.progression.owned(item.id)
+		if item.kind == "gate": item.max_hp = roundi(item.max_hp*sim.progression.building_multiplier(item.id))
+		item.hp = item.max_hp if item.owned else 0
+		if item.kind == "turret": item["damage_multiplier"] = sim.progression.building_multiplier(item.id)
 	# Restored obstacles invalidate routes cached while the gate was destroyed.
 	sim.paths.clear()
 
@@ -142,7 +147,7 @@ func step_turret(item: Dictionary, dt: float) -> void:
 			shot_distance = hit.distance
 	var end = origin+direction*shot_distance
 	if not shot.is_empty():
-		sim.hit_enemy(shot.z,float(rifle.damage)*TURRET_DAMAGE_MULTIPLIER,shot.armor,{"id":item.id,"kills":0},end)
+		sim.hit_enemy(shot.z,float(rifle.damage)*TURRET_DAMAGE_MULTIPLIER*item.get("damage_multiplier",1.0),shot.armor,{"id":item.id,"kills":0},end)
 	item.shots += 1
 	item["fired_at"] = float(director.state.prop_clock)
 	sim.events.append({"kind":"turret_shot","from":origin,"to":end})

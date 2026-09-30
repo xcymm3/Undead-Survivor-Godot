@@ -30,6 +30,7 @@ func _ready() -> void:
 	call_deferred("stage")
 
 func stage() -> void:
+	for id in ["turret_left","turret_right","bridge_gate"]: Progress.store.data.buildings[id].owned = true
 	game.start_solo("defense",42)
 	await get_tree().physics_frame
 	game.sim.roster.clear()

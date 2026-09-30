@@ -14,6 +14,7 @@ var message = ""
 var portraits: Dictionary = {}
 var native_hud
 var overlay_state: Array = []
+var shop_tab = "coins"
 const INK = Color("303a33")
 const PAPER = Color("f0ece2")
 const RUST = Color("ae573b")
@@ -245,6 +246,8 @@ func show_home() -> void:
 	menu.add_child(map_panel)
 	map_panel.add_child(label("战场 · "+game.arena.definition.title,26,Color("fff7e8")))
 	map_panel.add_child(label(game.arena.definition.subtitle,16,Color("c8c5b8")))
+	map_panel.add_child(label("永久进度 · 金币 %d · 钻石 %d · 最佳第 %d 波" % [Progress.store.data.coins,Progress.store.data.diamonds,Progress.store.data.best_wave],17,Color("e9cf8d")))
+	if not Progress.store.notice.is_empty(): map_panel.add_child(label(Progress.store.notice,16,Color("e9b79a")))
 	var difficulty_row = HBoxContainer.new()
 	difficulty_row.name = "DifficultySelection"
 	difficulty_row.add_theme_constant_override("separation",8)
@@ -273,7 +276,7 @@ func show_home() -> void:
 	actions.custom_minimum_size.x = 340
 	actions.add_theme_constant_override("separation",14)
 	menu.add_child(actions)
-	for item in [["单人防守",func(): game.start_solo("defense")],["多人模式",show_multiplayer]]:
+	for item in [["开始防守",func(): game.start_solo("defense")]]:
 		var option = button(actions,item[0],item[1])
 		option.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		option.custom_minimum_size.y = 76
@@ -328,10 +331,6 @@ func back() -> void:
 func show_settings() -> void:
 	var column = panel("战场设置", "声音、操控与画质会保存到本机",700,true)
 	current = "settings"
-	settings_heading(column,"联机")
-	settings_toggle(column,"显示客机网络状态",Data.settings.network_stats,func(value):
-		Data.settings.network_stats = value
-		Data.save())
 	settings_heading(column,"操控")
 	column.add_child(label("鼠标灵敏度",18,SETTINGS_INK))
 	var row = HBoxContainer.new()
@@ -424,22 +423,26 @@ func show_settings() -> void:
 func show_guide() -> void:
 	var column = panel("武器与操作", "水晶防线 · 无尽防守 · 按 T 开战",1000)
 	current = "guide"
-	paragraph(column,"守住水晶，挑战无尽尸潮。每波开始前按 T；合作模式需要所有玩家重新按 T 准备。波间可以自由补给。",17)
-	paragraph(column,"WASD 移动  /  鼠标瞄准  /  左键攻击  /  右键推击  /  中键切换开镜\n空格跳跃  /  Ctrl 按住蹲下  /  R 换弹  /  1—4 或滚轮切换装备  /  Esc 暂停\n装备：1 武器1 / 2 武器2 / 3 消防斧 / 4 手雷 / E 替换当前武器。\n连续推击第 3 次后冷却 3.5 秒，准星上方圆环显示恢复进度。",17)
+	paragraph(column,"守住水晶，挑战无尽尸潮。第一波开始前靠近右侧商店按 E 升级；按 T 开波后，本局商店关闭。每清完一波获得 1 颗钻石，重开后可继续获取。",17)
+	paragraph(column,"WASD 移动 / 鼠标瞄准 / 左键攻击 / 右键推击 / 中键开镜\n空格跳跃 / Ctrl 蹲下 / R 换弹 / 1—4 或滚轮切换装备 / Esc 暂停\n1 步枪 / 2 左轮 / 3 消防斧 / 4 手雷 / E 商店 / T 开波\n连续推击第 3 次后冷却 3.5 秒。两把枪的弹药本局不补充，使用消防斧节省弹药。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation",24)
 	grid.add_theme_constant_override("v_separation",12)
 	column.add_child(grid)
 	for heading in ["武器","等级","弹量","伤害 / 次","装填"]: grid.add_child(label(heading,16,RUST))
-	for i in Data.weapons.size():
+	for i in [0,3,6]:
 		var w: Dictionary = Data.weapons[i]
 		for text in [w.label,w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
-	paragraph(column,"僵尸从对岸随机地点走来，出生位置远离桥口。水晶位于高地中心，军械库在靠桥方向的右侧墙边；利用推搡与火力保护水晶。",17)
-	paragraph(column,"军械库提供步枪、自动霰弹枪、喷火枪和狙击枪。先按 1 或 2 选择槽位，再按 E 换枪并补充弹药；可携带两把任意武器。每波实际开始时，手雷自动补满至 3 枚。",17)
+	paragraph(column,"击杀会掉落自动飞向玩家的金币，特殊僵尸奖励更高。金币、钻石、升级和已购建筑永久保存；重新开始只重置波次、生命和战场。",17)
+	paragraph(column,"每波开始回满生命、手雷与已购建筑状态。没有强壮天赋时不会缓慢回血；学习后停止攻击和受伤 5 秒开始恢复。商店升级手雷容量，初始 1 枚，最多 5 枚。",17)
 	button(column,"返回",back,true)
 
 func show_multiplayer() -> void:
+	show_home()
+	return
+
+func show_legacy_multiplayer() -> void:
 	var column = panel("合作守卫", "水晶防线 · 房主模拟战斗 · 全员按 T 开始每波",850)
 	current = "multiplayer"
 	if OS.has_feature("web"):
@@ -493,6 +496,55 @@ func show_multiplayer() -> void:
 		button(lan,"创建局域网房间",func(): Session.host_lan(player_name))
 		button(lan,"加入局域网",func(): Session.join_lan(address,player_name))
 	button(column,"返回",func(): Session.leave(); show_home())
+
+func show_shop(feedback := "") -> void:
+	if not game.sim or not game.sim.shop_available(game.local_pawn()):
+		game.resume_game()
+		return
+	var profile = game.sim.progression
+	var column = panel("幸存者商店", "升级和建筑永久保存 · 第一波开始后本局关闭 · 弹药仅重开时恢复",820)
+	current = "shop"
+	column.add_child(label("金币 %d    钻石 %d" % [profile.data.coins,profile.data.diamonds],24,RUST))
+	var tabs = HBoxContainer.new()
+	column.add_child(tabs)
+	button(tabs,"金币 · 装备与防御",func(): shop_tab = "coins"; show_shop(),shop_tab == "coins")
+	button(tabs,"钻石 · 永久天赋",func(): shop_tab = "diamonds"; show_shop(),shop_tab == "diamonds")
+	button(tabs,"完成整备 · 返回战场",func(): game.resume_game())
+	if not feedback.is_empty(): paragraph(column,feedback,17,RUST)
+	var entries = [["rifle","步枪伤害"],["revolver","左轮伤害"],["axe","消防斧伤害"],["grenade","手雷容量"],["turret_left","左炮塔"],["turret_right","右炮塔"],["bridge_gate","栅栏门"]] if shop_tab == "coins" else [["strong","强壮"],["precise","精准"],["swift","迅捷"],["supply","补给"]]
+	for entry in entries:
+		var id: String = entry[0]
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation",16)
+		column.add_child(row)
+		var detail = VBoxContainer.new()
+		detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(detail)
+		detail.add_child(label(entry[1]+(" · 等级 %d / 10" % profile.level(id) if id in profile.TALENTS else " · 未制造" if id in profile.BUILDINGS and not profile.owned(id) else " · 等级 %d" % profile.level(id)),20))
+		paragraph(detail,shop_description(profile,id),15,Color("687264"))
+		var price: int = profile.cost(id)
+		var currency_name = "钻石" if profile.currency(id) == "diamonds" else "金币"
+		var caption = "已满级" if price < 0 else "%s · %d %s" % ["制造" if id in profile.BUILDINGS and not profile.owned(id) else "升级",price,currency_name]
+		var purchase = button(row,caption,game.buy_upgrade.bind(id))
+		purchase.name = "Purchase_"+id
+		purchase.custom_minimum_size.x = 195
+		purchase.disabled = price < 0 or profile.data[profile.currency(id)] < price
+		if price >= 0 and purchase.disabled: purchase.tooltip_text = currency_name+"不足"
+	button(column,"完成整备 · 返回战场",func(): game.resume_game(),true)
+
+func shop_description(profile, id: String) -> String:
+	if id in profile.WEAPONS:
+		var index: int = {"rifle":0,"revolver":3,"axe":6}[id]
+		return "伤害 %.1f → %.1f · 每次 +10%%，下次价格翻倍" % [Data.weapons[index].damage*profile.weapon_multiplier(id),Data.weapons[index].damage*profile.weapon_multiplier(id)*1.1]
+	if id == "grenade": return "持有上限 %d / 5 · 每次 +1 · 每波开始补满" % profile.grenade_capacity()
+	if id == "bridge_gate": return "耐久 %d · 升级 +10%% · 每波恢复初始状态" % roundi(1000*profile.building_multiplier(id))
+	if id in profile.BUILDINGS: return "每发伤害 %.1f · 升级伤害 +10%% · 每波恢复初始状态" % (60*profile.building_multiplier(id))
+	match id:
+		"strong": return "最大生命 %d · 脱战 5 秒后每秒回复 %d 生命 · 每级 +10 生命、+1 回复" % [profile.max_health(),profile.level(id)]
+		"precise": return "爆头倍率 +%d%% · 每级 +10%%" % (profile.level(id)*10)
+		"swift": return "移速 +%d%% · 每级 +5%%" % (profile.level(id)*5)
+		"supply": return "开局备弹 +%d%% · 每级 +10%% · 波间不补弹" % (profile.level(id)*10)
+	return ""
 
 func show_result() -> void:
 	var sim = game.sim

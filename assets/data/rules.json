@@ -93,7 +93,7 @@
         -0.41
       ],
       "tier": "B",
-      "infiniteReserve": true,
+      "infiniteReserve": false,
       "adsSpread": 0.004
     },
     {

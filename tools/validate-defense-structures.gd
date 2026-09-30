@@ -16,11 +16,21 @@ func _initialize() -> void:
 	call_deferred("run")
 
 func fresh():
+	# Combat fixtures explicitly own buildings; normal fresh progress owns none.
+	for id in ["turret_left","turret_right","bridge_gate"]:
+		game.get_node("/root/Progress").store.data.buildings[id].owned = true
 	game.start_solo("defense",42)
 	game.running = false
 	game.sim.defense.started = true
 	game.sim.defense.waiting = false
 	return game.sim
+
+func owned_initial() -> Array:
+	var expected: Array = Structures.initial_state()
+	for item in expected:
+		item["owned"] = true
+		if item.kind == "turret": item["damage_multiplier"] = 1.0
+	return expected
 
 func run() -> void:
 	Structures = load("res://scripts/defense_structures.gd")
@@ -239,7 +249,7 @@ func run() -> void:
 	sim.paths["stale_route"] = [Vector2.ZERO]
 	var crystal_hp: int = sim.defense.crystal_hp
 	sim.defense_director.begin_wave()
-	check(sim.defense.structures == Structures.initial_state() and sim.paths.is_empty(),"Wave start restores every structure's complete initial state and clears cached routes")
+	check(sim.defense.structures == owned_initial() and sim.paths.is_empty(),"Wave start restores owned structures and clears cached routes")
 	check(sim.defense.crystal_hp == crystal_hp,"Wave start preserves crystal durability")
 	var view = game.arena.scenery.structure_view
 	check(view.actors.bridge_gate.body.collision_layer == 1 and view.actors.bridge_gate.panel.rotation.x == 0,"Authority restores gate collision and upright appearance")
@@ -248,7 +258,7 @@ func run() -> void:
 	snapshot = sim.snapshot()
 	check(root.get_node("Session").valid_world(snapshot),"Coop world packet accepts restored structure state")
 	replica.apply_snapshot(snapshot)
-	check(replica.defense_state().structures == Structures.initial_state() and view.actors.bridge_gate.body.collision_layer == 1,"Client snapshot restores buildings and gate collision for the new wave")
+	check(replica.defense_state().structures == owned_initial() and view.actors.bridge_gate.body.collision_layer == 1,"Client snapshot restores buildings and gate collision for the new wave")
 	sim.zombies.clear()
 	mine = manager.find("crystal_mine")
 	sim.spawn(mine.pos,"normal")
@@ -259,7 +269,7 @@ func run() -> void:
 	snapshot.defense.structures[0].hp = 201
 	check(not root.get_node("Session").valid_world(snapshot),"Malformed structure health is rejected by network validation")
 	game.start_solo("defense",42)
-	check(game.sim.defense.structures == Structures.initial_state(),"Starting a new match also restores the four structures")
+	check(game.sim.defense.structures == owned_initial(),"Starting a new match restores purchased buildings and the free mine")
 	sim = fresh()
 	await physics_frame
 	manager = sim.defense_director.structures

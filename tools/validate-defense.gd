@@ -83,29 +83,10 @@ func run() -> void:
 	check(vegetation_count >= 20,"Defense terrain has distributed vegetation detail")
 	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Environmental cover preserves the central bridge, ramp and field lane")
-	var weapon_displays = game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false)
-	var armory_weapon_indices := [0,8,7,5]
-	check(weapon_displays.size() == 4,"Armory displays only rifle, automatic shotgun, flamethrower and sniper")
-	var displayed_weapon_indices: Array = weapon_displays.map(func(node): return int(node.get_meta("weapon_display_index")))
-	displayed_weapon_indices.sort()
-	check(displayed_weapon_indices == [0,5,7,8],"Armory contains exactly the four allowed guns")
+	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).is_empty(),"Shop removes all free weapon racks")
+	check(game.arena.scenery.find_children("ShopCounter","StaticBody3D",true,false).size() == 1 and game.arena.scenery.has_node("ShopStatus"),"Right-wall shop has a physical counter and open/closed status")
 	var shop_walls = game.arena.scenery.find_children("WeaponShopWall","StaticBody3D",true,false)
-	check(shop_walls.size() == 1,"Safe zone uses one continuous physical shop wall")
-	var shop_shape = shop_walls[0].find_children("*","CollisionShape3D",true,false)[0] as CollisionShape3D
-	check(is_equal_approx(shop_walls[0].position.x+.325,30.9) and absf(shop_walls[0].basis.z.x) > .99,"Armory wall sits flush against the right perimeter and faces the field")
-	check(shop_shape and shop_shape.shape is BoxShape3D and shop_shape.shape.size.y >= 8.8,"Weapon shop wall is at least twice its previous height")
-	var weapon_mounts: Array = weapon_displays.map(func(node): return Vector2(float(node.get_meta("mount_x")),float(node.get_meta("mount_height"))))
-	var columns: Array = []
-	for point in weapon_mounts:
-		if not columns.has(point.x): columns.append(point.x)
-	columns.sort()
-	var separated = true
-	for index in range(1,columns.size()): separated = separated and columns[index]-columns[index-1] >= 4.79
-	check(columns.size() == 4 and separated,"Weapon displays use four generously spaced columns")
-	check(weapon_mounts.all(func(point): return is_equal_approx(point.y,data.Maps.Defense.ARMORY_ROWS[0])),"Four weapon displays share a reachable row")
-	var standing_eye = data.Maps.Defense.height(Vector2(0,60))+preload("res://scripts/player_body.gd").eye_height({"crouch":0.0})
-	check(weapon_mounts.all(func(point): return point.y <= standing_eye+1.0),"Every armory weapon is reachable while standing without jumping")
-	check(game.arena.scenery.find_children("WeaponRack*","StaticBody3D",true,false).is_empty(),"Safe zone no longer uses five separate rack walls")
+	check(shop_walls.size() == 1 and is_equal_approx(shop_walls[0].position.x+.325,30.9),"Shop remains flush with the right perimeter")
 
 	game.start_solo("defense")
 	await physics_frame
@@ -113,8 +94,8 @@ func run() -> void:
 	var pawn: Dictionary = sim.pawns.solo
 	check(sim.mode == "defense" and not sim.defense.started,"Entering the map does not start waves")
 	check(sim.defense.difficulty == "easy" and is_equal_approx(sim.defense.difficulty_multiplier,.7),"Defense validation runs the Easy difficulty selected before the match")
-	check(pawn.weapon1 == 0 and pawn.weapon2 == 8 and pawn.slot == 1,"Defense starts with two unrestricted guns and the fixed axe slot")
-	check(not pawn.has("medkits") and pawn.grenades == 0,"Medical inventory is absent and grenades wait for wave start")
+	check(pawn.weapon1 == 0 and pawn.weapon2 == 3 and pawn.slot == 1,"Defense starts with fixed rifle, revolver and axe slots")
+	check(not pawn.has("medkits") and pawn.grenades == 1,"Medical inventory is absent and new players carry one grenade")
 	check(pawn.reserves[pawn.weapon1] == data.defense_full_reserve(pawn.weapon1) and pawn.reserves[pawn.weapon2] == data.defense_full_reserve(pawn.weapon2),"Defense firearms start with seventeen reserve magazines")
 	var prestart_shoves: int = pawn.shoves
 	var shove_command: Dictionary = command()
@@ -143,16 +124,9 @@ func run() -> void:
 		sim.step(.05)
 	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Waiting for T keeps timer and spawns stopped")
 	check(pawn.weapon == pawn.weapon2 and pawn.slot == 2,"Defense uses weapon-slot-2 switching")
-	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(3))
-	check(pawn.weapon1 == 0 and pawn.weapon2 == 5 and pawn.weapon == 5,"Picking up a sniper replaces selected weapon slot 2")
-	check(pawn.ammo[5] == data.weapons[5].capacity and pawn.reserves[5] == data.defense_full_reserve(5),"Replacement weapon is fully supplied")
-	for i in 10:
-		sim.submit("solo",command(0,false,1))
-		sim.step(.05)
-	interact_with(sim,pawn,data.Maps.Defense.weapon_mount(2))
-	check(pawn.weapon1 == 7 and pawn.weapon2 == 5 and pawn.weapon == 7,"Flamethrower replaces slot 1 and keeps the sniper in slot 2")
-	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).size() == 4,"Wall guns remain available after pickup")
-	check(not sim.equipment.pickup(pawn,"grenade:0") and not sim.equipment.pickup(pawn,"medkit:0"),"Removed supplies cannot be picked up")
+	check(sim.shop_available(pawn),"Shop is available from the spawn before wave one")
+	check(not sim.equipment.pickup(pawn,"weapon:5") and not sim.equipment.pickup(pawn,"weapon:7"),"Removed weapon racks cannot exchange the fixed loadout")
+	check(pawn.weapon1 == 0 and pawn.weapon2 == 3,"Invalid pickups preserve fixed weapons")
 	var ready_input := command(int(pawn.weapon),false,int(pawn.slot))
 	ready_input.wave_ready = true
 	sim.submit("solo",ready_input)
@@ -289,36 +263,44 @@ func run() -> void:
 	for i in 50: sim.step(.1)
 	check(sim.defense.crystal_hp < crystal_before and pawn.hp == 100 and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Zombie continues attacking crystal while player stands behind it")
 
-	# Falling costs health; passive regeneration continues immediately in combat.
+	# No baseline regeneration; the Strong talent enables delayed healing.
 	sim.zombies.clear()
 	pawn.pos = Vector2(14,-45)
 	pawn.height = -6.0
 	pawn.hp = 100
 	pawn.protection = 0.0
 	sim.step(.02)
-	check(pawn.pos.distance_to(Data.Maps.Defense.FALL_RETURN) < .01 and pawn.hp == 90 and absf(pawn.height-3.0) < .01,"Falling returns the player beside the crystal and removes ten health")
-	pawn.regen_credit = 0.0
+	check(pawn.pos.distance_to(data.Maps.Defense.FALL_RETURN) < .01 and pawn.hp == 90 and absf(pawn.height-3.0) < .01,"Falling returns the player and removes ten health")
 	for i in 20: sim.update_pawn(pawn,.05)
-	check(pawn.hp == 91,"Defense regeneration restores one health per second immediately after falling")
+	check(pawn.hp == 90,"Players without Strong cannot regenerate after falling")
+	sim.progression.data.talents.strong = 1
+	pawn.max_hp = 110
 	pawn.hp = 80
-	pawn.regen_credit = 0.0
+	sim.enter_combat(pawn)
+	sim.update_defense_regen(pawn,5.0)
+	check(pawn.hp == 80,"Strong waits five full seconds before healing")
+	sim.update_defense_regen(pawn,1.0)
+	check(pawn.hp == 81,"Rank-one Strong heals one health per second out of combat")
 	var shots_before: int = pawn.shots
 	for i in 80:
 		sim.submit(pawn.id,command(int(pawn.weapon),false,int(pawn.slot),0.0,0.0,true))
 		sim.update_pawn(pawn,.05)
-	check(pawn.shots > shots_before and pawn.hp == 84,"Continuous live firing does not interrupt four seconds of passive healing")
+	check(pawn.shots > shots_before and pawn.hp == 81,"Continuous live firing prevents Strong healing")
 	pawn.regen_credit = .75
 	pawn.protection = 0.0
 	var hurt_hp: int = pawn.hp
-	check(sim.damage_pawn(pawn,{"pos":pawn.pos+Vector2(0,1)},10),"Regeneration regression applies real enemy damage")
+	check(sim.damage_pawn(pawn,{"pos":pawn.pos+Vector2(0,1),"id":99},10),"Regeneration regression applies real enemy damage")
 	sim.update_defense_regen(pawn,.25)
-	check(pawn.hp == hurt_hp-9,"Taking damage preserves partial healing and does not postpone regeneration")
-	pawn.hp = 99
+	check(pawn.hp == hurt_hp-10 and pawn.regen_credit == 0,"Damage clears partial healing and restarts the delay")
+	pawn.hp = 109
+	pawn.combat_remaining = 0
 	sim.update_defense_regen(pawn,2.0)
-	check(pawn.hp == 100 and pawn.regen_credit == 0,"Passive healing caps at full health without banking surplus")
+	check(pawn.hp == 110 and pawn.regen_credit == 0,"Strong healing caps at the upgraded maximum")
 	pawn.hp = 0
 	sim.update_defense_regen(pawn,10.0)
-	check(pawn.hp == 0,"Passive healing does not revive a dead player during a wave")
+	check(pawn.hp == 0,"Strong does not revive a dead player")
+	sim.progression.data.talents.strong = 0
+	pawn.max_hp = 100
 	pawn.hp = 100
 
 	# Stress crowd separation on both narrow sections without attack handling.
@@ -531,7 +513,7 @@ func run() -> void:
 	sim.defense.party = sim.pawns.size()
 	sim.defense_director.equipment.initialize()
 	sim.defense_director.begin_wave()
-	check(sim.pawns.solo.grenades == 3 and sim.pawns.two.grenades == 3,"Wave start refills grenades for every coop player")
+	check(sim.pawns.solo.grenades == 1 and sim.pawns.two.grenades == 1,"Wave start refills grenades for every coop player")
 
 	print("DEFENSE VALIDATION: %d checks; %d failures" % [checks,failures])
 	game.queue_free()

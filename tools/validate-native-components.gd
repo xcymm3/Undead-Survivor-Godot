@@ -346,19 +346,16 @@ func validate_interaction_motion() -> void:
 	var sim = game.sim
 	var d = sim.defense_director
 	var p: Dictionary = game.local_pawn()
-	var point: Vector3 = root.get_node("Data").Maps.Defense.weapon_mount(1)
-	p.pos = Vector2(point.x-1.65,point.z)
-	p.yaw = -PI/2
-	p.pitch = atan2(point.y-p.height-preload("res://scripts/player_body.gd").eye_height(p),1.65)
-	var old: int = p.weapon1
-	check(d.equipment.pickup(p,"weapon:8"),"Armory gun exchange starts a native pickup animation")
-	var motion: Dictionary = d.state.pickup_motion[-1]
-	check(motion.old == old and motion.weapon == 8 and p.switch >= .65,"Gun exchange records both models and blocks immediate shooting")
-	var copy: Dictionary = bytes_to_var(var_to_bytes(sim.snapshot()))
-	check(copy.defense.pickup_motion[-1].id == motion.id,"Pickup animation identity survives network snapshot serialization")
-	p.input = {}
-	d.interactions(.7)
-	check(p.pickup_remaining == 0,"Pickup animation completes on authority clock")
+	check(sim.shop_available(p),"Spawn is within reach of the pre-wave shop")
+	check(game.open_shop() and game.paused and game.ui.current == "shop","Shop opens as a paused native Control panel")
+	check(game.ui.menu.find_children("Purchase_*","Button",true,false).size() == 7,"Coin shop exposes seven permanent upgrades")
+	game.resume_game()
+	p.input = {"interact":true}
+	p.input_age = 0.0
+	d.interactions(.01)
+	check(sim.events.any(func(event): return event.kind == "shop_open"),"E interaction requests the shop at the spawn-side counter")
+	d.begin_wave()
+	check(not game.open_shop(),"Starting wave one closes the shop")
 
 func _initialize() -> void:
 	call_deferred("run")
@@ -749,7 +746,7 @@ func validate_close_combat() -> void:
 		sim.update_arsenal(p,{"weapon":gun},.1)
 		check(p.reloading and is_equal_approx(p.reload,.1),"Reload clock advances during shove gun "+str(gun))
 		sim.update_arsenal(p,{"weapon":gun},.11)
-		check(p.ammo[gun] > 0 and (p.reserves[gun] == 10 if gun == 3 else p.ammo[gun]+p.reserves[gun] == 10),"Reload transfers rounds exactly once gun "+str(gun))
+		check(p.ammo[gun] > 0 and p.ammo[gun]+p.reserves[gun] == 10,"Reload transfers rounds exactly once gun "+str(gun))
 	p.weapon1 = saved.weapon1
 	p.weapon = p.weapon1
 	p.requested = p.weapon1
@@ -1006,9 +1003,9 @@ func validate_inventory() -> void:
 	p.reserves[3] = 0
 	p.switch = 0.0
 	sim.update_arsenal(p,{"reload":true},.01)
-	check(p.reloading,"Either weapon slot supports a revolver with zero reserve")
+	check(not p.reloading,"Empty finite-reserve revolver cannot reload from zero rounds")
 	sim.update_arsenal(p,{},2.0)
-	check(p.ammo[3] == 6 and p.reserves[3] == 0,"Infinite reserve refills six chambers without negative inventory")
+	check(p.ammo[3] == 0 and p.reserves[3] == 0,"Empty revolver does not create ammunition")
 	p.grenades = 0
 	p.input = {"slot":4}
 	p.input_age = 0.0

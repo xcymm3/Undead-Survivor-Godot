@@ -8,11 +8,12 @@ test('主页只提供水晶防线和难度选择，可直接开始防守', async
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   const home = await page.evaluate(() => window.__survivorSnapshot);
   expect(home.map_id).toBe('graypine_defense');
+  expect(home.buttons.some(button => button.text.includes('多人'))).toBe(false);
   expect(home.buttons.some(button => /灰松夜路|保卫水晶/.test(button.text))).toBe(false);
   for (const difficulty of ['简单 · 70%', '普通 · 100%', '困难 · 130%']) {
     expect(home.buttons.some(button => button.text.includes(difficulty))).toBe(true);
   }
-  const button = home.buttons.find(button => button.text === '单人防守' && !button.disabled);
+  const button = home.buttons.find(button => button.text === '开始防守' && !button.disabled);
   expect(button).toBeTruthy();
   const canvas = await page.locator('canvas').boundingBox();
   await page.mouse.click(canvas.x + (button.x + button.width / 2) * canvas.width / 1440,

@@ -1,6 +1,6 @@
 extends RefCounted
 ## Authority-only equipment, pickups and ballistic grenades.
-const MAX_GRENADES = 3
+const MAX_GRENADES = 5
 const GRENADE_FUSE = 1.5
 const GRENADE_RADIUS = 11.0
 const GRENADE_THROW_INTERVAL = 1.0
@@ -84,6 +84,7 @@ func select_weapon_slot(p: Dictionary, slot: int, save_current := true) -> void:
 func throw_grenade(p: Dictionary) -> bool:
 	if p.grenades <= 0 or sim.elapsed < float(p.get("grenade_ready_at",0.0)): return false
 	p.grenades -= 1
+	sim.enter_combat(p)
 	p.grenade_ready_at = sim.elapsed+GRENADE_THROW_INTERVAL
 	# Equipment is processed before movement commits this input's view direction.
 	var yaw: float = p.input.get("yaw",p.yaw)

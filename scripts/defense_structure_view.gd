@@ -222,6 +222,10 @@ func sync(state: Dictionary) -> void:
 	for item in state.get("structures",Structures.initial_state()):
 		var actor: Dictionary = actors.get(item.id,{})
 		if actor.is_empty(): actor = create_actor(item)
+		actor.root.visible = item.get("owned",false) if item.kind != "mine" else not item.spent
+		if item.kind != "mine" and not actor.root.visible:
+			actor.body.collision_layer = 0
+			continue
 		if item.kind == "mine":
 			actor.root.visible = not item.spent
 			actor.led.visible = item.triggered and fmod(item.fuse,.4) < .2

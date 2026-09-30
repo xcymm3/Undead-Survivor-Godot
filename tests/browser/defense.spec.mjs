@@ -17,7 +17,7 @@ test('吊桥水晶防守使用真实输入换装并按 T 开战', async ({ page 
   await page.waitForFunction(() => window.__survivorSnapshot?.map_id === 'graypine_defense');
   await clickButton(page, '简单 · 70%');
   await page.screenshot({ path: info.outputPath('defense-home.png') });
-  await clickButton(page, '单人防守');
+  await clickButton(page, '开始防守');
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense' && window.__survivorSnapshot?.running);
   let state = await snapshot(page);
   expect(state.defense.difficulty).toBe('easy');
@@ -25,11 +25,14 @@ test('吊桥水晶防守使用真实输入换装并按 T 开战', async ({ page 
   expect(state.defense.started).toBe(false);
   expect(state.elapsed).toBe(0);
   expect(state.player.weapon1).toBe(0);
-  expect(state.player.weapon2).toBe(8);
+  expect(state.player.weapon2).toBe(3);
   expect(state.player.medkits).toBeUndefined();
-  expect(state.player.grenades).toBe(0);
+  expect(state.player.grenades).toBe(1);
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => window.__survivorSnapshot.menu === 'shop');
+  await clickButton(page, '完成整备');
   await page.keyboard.press('2');
-  await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 2 && window.__survivorSnapshot?.player?.weapon === 8);
+  await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 2 && window.__survivorSnapshot?.player?.weapon === 3);
   await page.keyboard.down('d');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.x > 5.7);
   await page.keyboard.up('d');
@@ -44,7 +47,7 @@ test('吊桥水晶防守使用真实输入换装并按 T 开战', async ({ page 
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });
   state = await snapshot(page);
   expect(state.defense.waiting).toBe(false);
-  expect(state.player.grenades).toBe(3);
+  expect(state.player.grenades).toBe(1);
   expect(state.defense.ready_players).toEqual([]);
   await page.waitForFunction(() => window.__survivorSnapshot?.enemies?.length > 0, null, { timeout: 10_000 });
   state = await snapshot(page);
@@ -55,7 +58,7 @@ test('吊桥水晶防守使用真实输入换装并按 T 开战', async ({ page 
   await page.keyboard.press('4');
   await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 4);
   await page.mouse.click(480, 300);
-  await page.waitForFunction(() => window.__survivorSnapshot.player.grenades === 2);
+  await page.waitForFunction(() => window.__survivorSnapshot.player.grenades === 0);
   await page.keyboard.press('1');
   await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 1 && window.__survivorSnapshot.player.weapon === 0);
   await page.screenshot({ path: info.outputPath('defense-wave-started.png') });

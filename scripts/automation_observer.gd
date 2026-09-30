@@ -40,6 +40,7 @@ func snapshot() -> Dictionary:
 			result.buttons.append({"text": node.text, "x": rect.position.x, "y": rect.position.y,
 				"width": rect.size.x, "height": rect.size.y, "disabled": node.disabled})
 	if game.sim:
+		result.progress = game.sim.progression.data
 		result.mode = game.sim.mode
 		result.defense = game.sim.defense_state()
 		result.won = game.sim.won
@@ -57,7 +58,7 @@ func snapshot() -> Dictionary:
 		var p: Dictionary = game.local_pawn()
 		if not p.is_empty():
 			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "wading":p.get("wading",false), "hp": p.hp,
-				"crouch": p.get("crouch",0.0), "eye_height": preload("res://scripts/player_body.gd").eye_height(p), "slot":p.get("slot",0), "weapon1":p.get("weapon1",0), "weapon2":p.get("weapon2",8), "weapon_slot":p.get("weapon_slot",1), "slot_ammo":p.get("slot_ammo",[]), "slot_reserves":p.get("slot_reserves",[]), "grenades":p.get("grenades",0), "weapon": p.weapon, "ammo": p.ammo, "reserves":p.get("reserves",[]), "shots": p.shots, "hits": p.hits,
+				"crouch": p.get("crouch",0.0), "eye_height": preload("res://scripts/player_body.gd").eye_height(p), "slot":p.get("slot",0), "weapon1":p.get("weapon1",0), "weapon2":p.get("weapon2",3), "weapon_slot":p.get("weapon_slot",1), "slot_ammo":p.get("slot_ammo",[]), "slot_reserves":p.get("slot_reserves",[]), "grenades":p.get("grenades",0), "grenade_capacity":p.get("grenade_capacity",1), "max_hp":p.get("max_hp",100), "weapon": p.weapon, "ammo": p.ammo, "reserves":p.get("reserves",[]), "shots": p.shots, "hits": p.hits,
 				"regen_credit":p.get("regen_credit",0.0),"shove_cd":p.get("shove_cd",0.0),"shove_gap":p.get("shove_gap",0.0),"shove_count":p.get("shove_count",0),"shove_anim":p.get("shove_anim",0.0),"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
 	return result
 

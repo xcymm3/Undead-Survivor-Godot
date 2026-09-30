@@ -11,6 +11,7 @@ const FALL_RETURN = CRYSTAL+Vector2(-6,3)
 const SAFE_ZONE = Rect2(18,-7,12.9,26)
 const ARMORY_WALL_X = 30.575 # Flush against the inner face of the right perimeter.
 const ARMORY_CENTER_Z = 6.0
+const SHOP_POINT = Vector2(28.7,6.0)
 const BRIDGE = Rect2(-4,-62,8,34)
 const ENEMY_SPAWN_REGION = Rect2(BOUNDS.position,Vector2(BOUNDS.size.x,BRIDGE.position.y-BOUNDS.position.y))
 const ENEMY_BRIDGE_SPAWN_DISTANCE = 8.0
