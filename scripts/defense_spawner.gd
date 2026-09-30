@@ -18,6 +18,7 @@ var spawn_region: Rect2
 var spawn_random = RandomNumberGenerator.new()
 var reachable = PackedByteArray()
 var grid_width = 0
+var sight_profiles: Dictionary = {}
 const SIGHT_MASK = 1 | preload("res://scripts/defense_spawn_forest.gd").SIGHT_LAYER
 
 func _init(owner) -> void:
@@ -75,16 +76,48 @@ func ground_clear(point: Vector2) -> bool:
 	var cell = Vector2i(((point-grid.offset)/grid.cell_size).round())
 	return grid.is_in_boundsv(cell) and reachable[cell.y*grid_width+cell.x] == 1 and sim.arena.clear(point,grid.get_point_position(cell))
 
+func sight_profile(kind: String) -> PackedVector2Array:
+	if sight_profiles.has(kind): return sight_profiles[kind]
+	# Build once per kind. Radial widths cover any initial facing, including
+	# outstretched hands, shields and hats; small margins allow idle sway.
+	var feet = Vector2(.3,.25)
+	var shoulders = Vector2(.35,1.1)
+	var head = Vector2(.25,1.8)
+	var top = 0.0
+	for part in Data.parts:
+		if part.has("kind") and part.kind != kind: continue
+		var center: Vector3 = Data.v3(part.position)
+		var edge: Vector3 = center.abs()+Data.v3(part.size)*.5
+		var width = Vector2(edge.x,edge.z).length()
+		top = maxf(top,edge.y)
+		if part.get("head",false):
+			if width > head.x: head = Vector2(width,center.y)
+		elif absf(float(part.get("limb",0.0))) >= 1:
+			if width > feet.x: feet = Vector2(width,center.y)
+		elif width > shoulders.x: shoulders = Vector2(width,center.y)
+	var profile = PackedVector2Array([Vector2(0,.25),Vector2(0,1.1),Vector2(0,top+.08)])
+	for edge in [shoulders,head,feet]:
+		profile.append(Vector2(-edge.x-.12,edge.y))
+		profile.append(Vector2(edge.x+.12,edge.y))
+	var scale: float = Data.enemy_scale(kind)
+	for index in profile.size(): profile[index] *= scale
+	sight_profiles[kind] = profile
+	return profile
+
 func hidden_from_players(point: Vector2, kind: String, living: Array) -> bool:
 	var ground = Layout.height(point)
-	var scale: float = Data.enemy_scale(kind)
+	var profile = sight_profile(kind)
+	var space = sim.arena.get_world_3d().direct_space_state
 	for p in living:
 		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
-		# Check feet, torso and head, including the taller special types. Requiring
-		# real cover is stricter than merely spawning behind the current camera.
-		for height in [.25*scale,1.1*scale,2.1*scale]:
-			var query = PhysicsRayQueryParameters3D.create(eye,Vector3(point.x,ground+height,point.y),SIGHT_MASK)
-			if sim.arena.get_world_3d().direct_space_state.intersect_ray(query).is_empty(): return false
+		var toward: Vector2 = (point-p.pos).normalized()
+		var side = Vector3(-toward.y,0,toward.x)
+		# A hidden centre is insufficient: a tall hat or either shoulder can
+		# protrude. Nine bounded rays test the silhouette and fail early.
+		for sample in profile:
+			var target = Vector3(point.x,ground+sample.y,point.y)+side*sample.x
+			var query = PhysicsRayQueryParameters3D.create(eye,target,SIGHT_MASK)
+			if space.intersect_ray(query).is_empty(): return false
 	return true
 
 func step(dt: float, living: Array) -> void:

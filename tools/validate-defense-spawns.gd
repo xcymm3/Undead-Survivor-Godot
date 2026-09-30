@@ -81,6 +81,42 @@ func run() -> void:
 	planner.spawn_region = saved_check
 	p.pos = original_pos
 	p.height = original_height
+	# Independent geometry fixtures: all three old centre rays are blocked,
+	# but the actual hat tip or shoulder remains visible around the cover.
+	var silhouette_point = Vector2(44,-74)
+	p.pos = Vector2(44,-64)
+	p.height = 0
+	var cover = StaticBody3D.new()
+	cover.collision_layer = planner.SIGHT_MASK
+	cover.collision_mask = 0
+	cover.position = Vector3(44,1.1,-72)
+	var cover_shape = CollisionShape3D.new()
+	var cover_box = BoxShape3D.new()
+	cover_box.size = Vector3(6,2.2,.25)
+	cover_shape.shape = cover_box
+	cover.add_child(cover_shape)
+	arena.add_child(cover)
+	await physics_frame
+	var eye = Vector3(44,1.7,-64)
+	var space = arena.get_world_3d().direct_space_state
+	var centre_blocked = true
+	for height in [.25,1.1,2.1]:
+		centre_blocked = centre_blocked and not space.intersect_ray(PhysicsRayQueryParameters3D.create(eye,Vector3(44,height,-74),planner.SIGHT_MASK)).is_empty()
+	check(centre_blocked and planner.hidden_from_players(silhouette_point,"normal",[p]),"Low cover hides the normal body and all three former centre rays")
+	check(space.intersect_ray(PhysicsRayQueryParameters3D.create(eye,Vector3(44,2.81,-74),planner.SIGHT_MASK)).is_empty(),"Cone tip is physically visible above the low cover")
+	check(not planner.hidden_from_players(silhouette_point,"cone",[p]) and not planner.hidden_from_players(silhouette_point,"bucket",[p]),"Exposed cone and bucket tops reject births despite hidden body centres")
+	cover_box.size = Vector3(.35,4,.25)
+	cover.position.y = 2
+	await physics_frame
+	centre_blocked = true
+	for height in [.25,1.1,2.1]:
+		centre_blocked = centre_blocked and not space.intersect_ray(PhysicsRayQueryParameters3D.create(eye,Vector3(44,height,-74),planner.SIGHT_MASK)).is_empty()
+	check(centre_blocked and space.intersect_ray(PhysicsRayQueryParameters3D.create(eye,Vector3(44.54,1.3,-74),planner.SIGHT_MASK)).is_empty(),"Narrow cover hides centre rays while leaving the actual shoulder exposed")
+	check(not planner.hidden_from_players(silhouette_point,"normal",[p]),"Exposed shoulder rejects a birth behind narrow cover")
+	cover.free()
+	await physics_frame
+	p.pos = original_pos
+	p.height = original_height
 	# Check real movement from a distributed subset, in addition to path queries.
 	entries = entries.slice(0,12)
 	for index in entries.size():
