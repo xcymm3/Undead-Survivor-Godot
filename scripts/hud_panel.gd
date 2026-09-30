@@ -218,7 +218,7 @@ func sync() -> void:
 	if sim.mode == "defense":
 		controls_hint.text = "1 步枪 · 2 左轮 · 3 消防斧 · 4 手雷 · E 商店 · T 开波"
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
-		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 本局不补弹"
+		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 清波 +2 备弹夹"
 		if p.slot == 4:
 			weapon_label.text = "手雷"
 			ammo_label.text = "%d / %d" % [p.grenades,p.grenade_capacity]
