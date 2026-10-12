@@ -37,13 +37,14 @@ func run() -> void:
 	game.set_physics_process(false)
 	var sim = fresh()
 	await physics_frame
-	# Player starts in the shop's non-navigable safe zone.
-	sim.spawn(Vector2(0,32),"normal")
+	# The shop is ordinary walkable terrain, including pursuit of its occupant.
+	var layout = root.get_node("Data").Maps.Defense
+	sim.spawn(Vector2(0,layout.SHOP_AREA.position.y-.5),"normal")
 	var z: Dictionary = sim.zombies[-1]
 	for tick in 100:
 		sim.elapsed += .05
 		sim.update_zombie(z,sim.choose_zombie_target(z,sim.pawns.values()),.05)
-	check(z.pos.y > 32,"Starting shop player attracts an enemy to the safe-zone boundary (pos=%s)" % z.pos)
+	check(layout.SHOP_AREA.has_point(z.pos) and sim.pawns.solo.hp < 100,"Enemy enters shop and damages its starting player (pos=%s)" % z.pos)
 	# Sample actual seeded spawn candidates and execute their paths, not just A* queries.
 	sim = fresh()
 	await physics_frame
@@ -103,6 +104,23 @@ func run() -> void:
 			z.attack_time = 0
 			var idle: Transform3D = view.root_transform(z,sim.elapsed,true,0)
 			check(recovery.basis.orthonormalized().get_rotation_quaternion().angle_to(idle.basis.orthonormalized().get_rotation_quaternion()) < .01,"%s direction %d attack pose returns smoothly to idle" % [kind,index])
+	# The crystal is stationary too: verify every approach and whole attack cycles.
+	for kind in ["normal","imp","giant"]:
+		for index in 8:
+			sim = fresh()
+			await physics_frame
+			sim.defense.crystal_hp = 100000
+			var direction = Vector2(cos(index*TAU/8),sin(index*TAU/8))
+			sim.spawn(layout.CRYSTAL+direction*5,kind)
+			z = sim.zombies[-1]
+			var first_attack = Vector2.INF
+			var excursion := 0.0
+			for tick in 240:
+				sim.elapsed += .05
+				sim.update_zombie(z,sim.crystal_target(),.05)
+				if z.attack_time > 0 and first_attack == Vector2.INF: first_attack = z.pos
+				if first_attack != Vector2.INF: excursion = maxf(excursion,z.pos.distance_to(first_attack))
+			check(sim.defense.crystal_hp < 100000 and excursion < .03,"%s crystal direction %d attacks without retreat/advance oscillation (travel=%.3f)" % [kind,index,excursion])
 	sim = fresh()
 	await physics_frame
 	var pawn: Dictionary = sim.pawns.solo

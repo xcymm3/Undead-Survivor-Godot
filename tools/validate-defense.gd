@@ -50,11 +50,11 @@ func run() -> void:
 	var layout = data.Maps.Defense
 	check(is_equal_approx(layout.PLATEAU.size.y,82.0*2.0/3.0) and is_equal_approx(layout.BOUNDS.end.y,layout.PLATEAU.end.y),"Plateau and world boundary shorten to two thirds of the original length")
 	check(layout.CRYSTAL == layout.PLATEAU.get_center(),"Crystal occupies the exact centre of the flat plateau")
-	check(layout.SAFE_ZONE.get_center().x == layout.CRYSTAL.x and layout.SPAWN == layout.SAFE_ZONE.get_center() and layout.SPAWN.y > layout.CRYSTAL.y,"Shop is directly behind the crystal and spawn is its exact center")
-	check(game.arena.obstacles.size() >= 5,"Chasm, ramp shelves and rear safe zone participate in navigation")
+	check(layout.SHOP_AREA.get_center().x == layout.CRYSTAL.x and layout.SPAWN == layout.SHOP_AREA.get_center() and layout.SPAWN.y > layout.CRYSTAL.y,"Shop is directly behind the crystal and spawn is its exact center")
+	check(game.arena.obstacles.size() >= 5,"Chasm, ramp shelves and solid shop furniture participate in navigation")
 	check(not game.arena.clear(Vector2(12,-70),Vector2(12,0)),"Chasm prevents routes that bypass the bridge")
 	check(not game.arena.clear(Vector2(12,-20),Vector2(12,0)),"Ramp-side shelves cannot bypass the central climb")
-	check(not game.arena.clear(Vector2(0,layout.SAFE_ZONE.position.y-2),layout.SPAWN),"Zombies cannot enter the rear shop safe zone")
+	check(game.arena.clear(Vector2(0,layout.SHOP_AREA.position.y-2),layout.SPAWN),"Zombies can enter the shop through its central aisle")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Bridge and ramp form one open approach lane")
 	check(not game.arena.clear(Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997),data.Maps.Defense.CRYSTAL),"Crystal body blocks enemy navigation")
 	check(game.arena.scenery.find_children("CrystalPedestal","*",true,false).is_empty(),"Crystal pedestal has been removed")
@@ -288,7 +288,7 @@ func run() -> void:
 	for i in 80:
 		sim.submit(pawn.id,command(int(pawn.weapon),false,int(pawn.slot),0.0,0.0,true))
 		sim.update_pawn(pawn,.05)
-	check(pawn.shots > shots_before and pawn.hp == 81,"Continuous live firing prevents Strong healing")
+	check(pawn.shots > shots_before and pawn.hp == 85,"Continuous live firing permits Strong healing without incoming damage")
 	pawn.regen_credit = .75
 	pawn.protection = 0.0
 	var hurt_hp: int = pawn.hp
