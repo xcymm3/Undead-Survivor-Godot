@@ -264,7 +264,7 @@ func show_home() -> void:
 	var edition = label("断崖防线  /  TEN WAVES • ONE LAST STAND",17,Color("adba9c"))
 	edition.position = Vector2(58,42)
 	stage.add_child(edition)
-	var version = label("v"+str(ProjectSettings.get_setting("application/config/version","2.1.0")),16,Color("adba9c"))
+	var version = label("v"+str(ProjectSettings.get_setting("application/config/version","2.2.0")),16,Color("adba9c"))
 	version.position = Vector2(1290,42)
 	stage.add_child(version)
 	var title = preload("res://scripts/menu_title.gd").new()
