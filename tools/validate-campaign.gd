@@ -47,7 +47,7 @@ func run() -> void:
 	data.test_money = true
 	game.start_solo("defense",20261012)
 	await physics_frame
-	check(game.sim.progression.data.coins == 1000000000,"Test-money checkbox configures one billion coins on entry")
+	check(game.sim.progression.data.coins == 1000000000 and game.sim.progression.data.diamonds == 10000,"Test-money checkbox configures one billion coins and ten thousand diamonds on entry")
 	game.return_home()
 	data.test_money = false
 	game.select_save_slot(1)

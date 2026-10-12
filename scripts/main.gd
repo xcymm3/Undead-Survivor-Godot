@@ -117,6 +117,7 @@ func start_solo(mode: String = "defense", random_seed := -1) -> void:
 	sim.progression = Progress.store
 	if Data.test_money:
 		sim.progression.data.coins = 1000000000
+		sim.progression.data.diamonds = 10000
 		sim.progression.dirty = true
 		sim.progression.save()
 	sim.defense_difficulty = Data.settings.defense_difficulty
