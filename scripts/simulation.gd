@@ -38,6 +38,9 @@ var failed = false
 var cause = "zombie"
 var culprit = -1
 var random = RandomNumberGenerator.new()
+var earned_coins = 0
+var earned_diamonds = 0
+var boss_victory = false
 var paths: Dictionary = {}
 var crowd_buckets: Dictionary = {}
 # Authority-only swing history; clients receive the resulting damage and animation.
@@ -104,6 +107,9 @@ func start(_game_mode: String = "defense") -> void:
 	mode = "defense"
 	defense_difficulty = DefensePopulation.normalize_difficulty(defense_difficulty)
 	zombies.clear()
+	earned_coins = 0
+	earned_diamonds = 0
+	boss_victory = false
 	coin_drops.clear()
 	paths.clear()
 	roster.clear()
@@ -134,7 +140,8 @@ func spawn(pos: Vector2, kind: String) -> void:
 	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"spawn_wave":wave,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
 	if kind == "crawler": zombies[-1].chase_speed *= .85
 	if kind == "dancer":
-		zombies[-1].chase_speed = 2.1
+		zombies[-1].chase_speed *= .5
+		zombies[-1].max_hp = health
 		zombies[-1].summon_clock = preload("res://scripts/dancer_boss.gd").INTERVAL
 		zombies[-1].dance_remaining = 0.0
 		zombies[-1].summon_roster = []
@@ -283,11 +290,12 @@ func target_by_id(id: String) -> Dictionary:
 func damage_crystal(z: Dictionary, amount: int) -> bool:
 	if mode != "defense" or defense.get("crystal_hp",0) <= 0: return false
 	defense.crystal_hp = maxi(0,int(defense.crystal_hp)-amount)
+	if defense.crystal_hp == 0: defense["crystal_broken_at"] = defense.prop_clock
 	defense.objective = "水晶遭到攻击 · 剩余 %d / %d" % [defense.crystal_hp,defense.crystal_max_hp]
 	defense.wave = wave
 	arena.sync_defense(defense)
 	events.append({"kind":"crystal_hit","position":Vector3(Data.Maps.Defense.CRYSTAL.x,5.0,Data.Maps.Defense.CRYSTAL.y)})
-	if defense.crystal_hp <= 0: culprit = int(z.id)
+	if defense.crystal_hp <= 0: culprit = int(z.get("id",-1))
 	return true
 
 func damage_target(target: Dictionary, z: Dictionary, amount: int) -> bool:
@@ -315,6 +323,14 @@ static func accelerate_in_air(horizontal: Vector2, wish: Vector2, dt: float, mul
 
 func update_pawn(p: Dictionary, dt: float) -> void:
 	p.damage_hint = maxf(0,p.get("damage_hint",0.0)-dt)
+	p["healing_flash"] = maxf(0,p.get("healing_flash",0.0)-dt)
+	if mode == "defense" and defense.get("started",false) and p.hp > 0:
+		if p.grenades < p.grenade_capacity:
+			p.grenade_replenish = float(p.get("grenade_replenish",15.0))-dt
+			while p.grenade_replenish <= 0 and p.grenades < p.grenade_capacity:
+				p.grenades += 1
+				p.grenade_replenish += 15.0
+		else: p.grenade_replenish = 15.0
 	p.shove_cd = maxf(0,p.get("shove_cd",0.0)-dt)
 	p.shove_gap = maxf(0,p.get("shove_gap",0.0)-dt)
 	p.shove_anim = maxf(0,p.get("shove_anim",0.0)-dt)
@@ -406,7 +422,13 @@ func update_defense_regen(p: Dictionary, dt: float) -> void:
 	p.regen_credit = float(p.get("regen_credit",0.0))+healing_time*progression.regen_rate()
 	var healed: int = floori(p.regen_credit)
 	if healed <= 0: return
+	var before_hp: int = p.hp
 	p.hp = mini(maximum,p.hp+healed)
+	if p.hp > before_hp:
+		p["healing_flash"] = .9
+		if float(p.get("heal_cue_at",-10.0)) <= elapsed:
+			p["heal_cue_at"] = elapsed+3.0
+			events.append({"kind":"heal","player":p.id})
 	p.regen_credit = 0.0 if p.hp == maximum else p.regen_credit-healed
 
 func enter_combat(p: Dictionary) -> void:
@@ -523,7 +545,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 				p.ammo[p.weapon] = mini(int(w.capacity),p.ammo[p.weapon]+loaded)
 				if equipment and not w.get("infiniteReserve",false): p.reserves[p.weapon] -= loaded
 				p.reload = w.reloadDuration
-				events.append({"kind":"reload","player":p.id})
+				events.append({"kind":"reload","player":p.id,"weapon":p.weapon})
 				if p.ammo[p.weapon] >= w.capacity or (equipment and p.reserves[p.weapon] <= 0): p.reloading = false
 			else:
 				var loaded = mini(int(w.capacity)-p.ammo[p.weapon],p.reserves[p.weapon]) if equipment and not w.get("infiniteReserve",false) else int(w.capacity)-p.ammo[p.weapon]
@@ -543,7 +565,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.reloading = true
 		p.reload_queued = false
 		p.aim = false
-		events.append({"kind":"reload","player":p.id})
+		events.append({"kind":"reload","player":p.id,"weapon":p.weapon})
 		return
 	var trigger: bool = input.get("fire",false) and (not equipment or p.interaction == "")
 	if trigger and (w.automatic or not p.trigger) and p.cooldown <= 0 and p.fire_anim <= .00001:
@@ -872,6 +894,18 @@ func stun(z: Dictionary, duration: float) -> void:
 	z.charge_cooldown = 3.2
 	z.attack_time = 0.0
 
+func complete_boss_victory(p: Dictionary) -> void:
+	if boss_victory: return
+	boss_victory = true
+	roster.clear()
+	for enemy in zombies:
+		if enemy.kind == "dancer": enemy.summon_roster.clear()
+		if enemy.hp > 0: hit_enemy(enemy,enemy.hp+1,true,p,Vector3(enemy.pos.x,3,enemy.pos.y))
+	defense_director.reward_finished_waves()
+	won = true
+	defense.objective = "游戏通关 · 舞王已击败"
+	defense_director.sync_world()
+
 func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary, position: Vector3, push_origin := Vector2.INF) -> void:
 	if z.hp <= 0: return
 	var charging_on_hit: bool = z.kind == "football" and z.state == "charging"
@@ -901,6 +935,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		p.kills += 1
 		paths.erase(z.id)
 		var reward = progression.award_kill(str(z.get("original",z.kind)))
+		earned_coins += reward
 		var receiver = str(p.id) if pawns.has(p.id) else str(pawns.keys()[0]) if not pawns.is_empty() else ""
 		var origin = Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+.7,z.pos.y)
 		var coin_random = RandomNumberGenerator.new()
@@ -909,6 +944,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		coin_drops.append({"owner":receiver,"pos":origin,"origin":origin,"scatter":Vector3(cos(angle)*.65,0,sin(angle)*.65),"arrival":0.0,"age":0.0,"value":reward})
 		if coin_drops.size() > 512: coin_drops.pop_front()
 		events.append({"kind":"death","player":p.id,"position":position})
+		if z.get("original",z.kind) == "dancer": complete_boss_victory(p)
 	else:
 		# Small displacement is independent of shove velocity/time and stun duration.
 		# A pellet/flame tick cannot multiply displacement within the same volley.

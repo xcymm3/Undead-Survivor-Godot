@@ -20,6 +20,7 @@ func initialize() -> void:
 		p.hp = p.max_hp
 		p.combat_remaining = 0.0
 		p.grenade_ready_at = 0.0
+		p.grenade_replenish = 15.0
 		p.use_latch = false
 		p.pickup_latched = false
 		p.hurt_at = -100.0

@@ -214,8 +214,10 @@ func run() -> void:
 	p.reserves[0] = 23
 	p.reserves[3] = 204
 	sim.equipment.save_weapon_slot(p)
+	p.hp = 63
+	p.grenades = 0
 	sim.defense_director.begin_wave()
-	check(p.hp == 110 and p.ammo[0] == 7 and p.reserves[0] == 23,"New wave fully heals but preserves spent firearm inventory")
+	check(p.hp == 63 and p.grenades == 0 and p.ammo[0] == 7 and p.reserves[0] == 23,"New wave preserves health and spent equipment")
 	var money: int = sim.progression.data.coins
 	check(not sim.purchase_upgrade("rifle",p) and sim.progression.data.coins == money,"Active-wave shop transactions are rejected")
 	manager.damage("bridge_gate",1100)
@@ -230,7 +232,7 @@ func run() -> void:
 	check(p.reserves[3] == 216 and p.reserve == 216,"Switching guns preserves above-capacity wave ammunition")
 	check(not sim.purchase_upgrade("rifle",p),"Shop stays closed after clearing a wave")
 	sim.defense_director.begin_wave()
-	check(manager.find("bridge_gate").hp == 0 and p.grenades == 2 and p.reserves[0] == 83 and p.reserves[3] == 216,"Next wave preserves destroyed buildings and restores grenades without extra ammunition")
+	check(manager.find("bridge_gate").hp == 0 and p.grenades == 0 and p.reserves[0] == 83 and p.reserves[3] == 216,"Next wave preserves destroyed buildings and spent grenades without extra ammunition")
 	var permanent = sim.progression.data.duplicate(true)
 	game.start_solo("defense",42)
 	await physics_frame

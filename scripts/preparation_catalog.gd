@@ -27,6 +27,7 @@ static func targets(sim) -> Array:
 	return result
 
 static func focus(sim, p: Dictionary) -> Dictionary:
+	if sim.defense.get("started",false): return {}
 	if p.get("hp",0) <= 0: return {}
 	var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 	var direction = Basis.from_euler(Vector3(p.pitch,p.yaw,0))*Vector3.FORWARD

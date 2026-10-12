@@ -34,17 +34,7 @@ func begin_wave() -> void:
 	sim.spawned = 0
 	sim.rest = 0.0
 	sim.prepare_wave()
-	structures.reset_mines()
 	launched_waves[sim.wave] = true
-	for p in sim.pawns.values():
-		p.hp = p.max_hp
-		p.regen_credit = 0.0
-		p.combat_remaining = 0.0
-		p.damage_hint = 0.0
-		p.damage_dir = Vector2.ZERO
-		p.damage_rear = false
-		p.grenades = sim.progression.grenade_capacity()
-		p.grenade_ready_at = 0.0
 	state.started = true
 	state["wave_started_at"] = sim.elapsed
 	state["next_wave_at"] = -1.0
@@ -65,6 +55,7 @@ func reward_finished_waves() -> void:
 		if sim.zombies.any(func(z): return z.hp > 0 and int(z.get("spawn_wave",sim.wave)) == generation): continue
 		rewarded_waves[generation] = true
 		sim.progression.award_wave(generation)
+		sim.earned_diamonds += 1
 		for p in sim.pawns.values(): equipment.award_wave_ammo(p)
 		sim.cleared = rewarded_waves.size()
 

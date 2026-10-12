@@ -43,7 +43,7 @@ func run() -> void:
 	game.set_process(false)
 	game.set_physics_process(false)
 	check(game.ui.menu.has_node("InfiniteCoins") or game.ui.menu.find_child("InfiniteCoins",true,false) != null,"Homepage exposes the test-money checkbox")
-	check(game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text.contains("切换存档")),"Homepage exposes save-slot selection")
+	check(game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text.begins_with("存档 ")),"Homepage exposes save-slot selection")
 	data.test_money = true
 	game.start_solo("defense",20261012)
 	await physics_frame
@@ -141,7 +141,7 @@ func run() -> void:
 	sim.zombies.clear()
 	sim.spawn(Vector2(8,23),"dancer")
 	var boss: Dictionary = sim.zombies[-1]
-	check(is_equal_approx(boss.chase_speed,2.1),"Dancing boss moves slowly")
+	check(boss.chase_speed >= 2.3 and boss.chase_speed <= 2.6,"Dancing boss uses half the ordinary movement speed")
 	Boss.step(sim,9.9)
 	check(boss.dance_remaining == 0 and boss.summon_roster.is_empty(),"Boss cannot summon before ten seconds")
 	Boss.step(sim,.11)
@@ -172,7 +172,7 @@ func run() -> void:
 	Boss.step(sim,20)
 	check(sim.zombies.size() == count,"Dead boss cannot summon more zombies")
 	sim.step(.02)
-	check(not sim.won and sim.wave == 10,"Killing the boss alone does not ignore remaining summoned enemies")
+	check(sim.won and sim.wave == 10 and sim.zombies.all(func(z): return z.hp <= 0),"Boss death immediately clears the army and wins")
 	for enemy in sim.zombies: enemy.hp = 0
 	sim.step(.02)
 	check(sim.won and sim.wave == 10 and sim.cleared == 10,"Clearing the final wave wins and never creates wave eleven")

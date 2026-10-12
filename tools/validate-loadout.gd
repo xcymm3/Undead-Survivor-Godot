@@ -38,20 +38,21 @@ static func validate(game, check: Callable) -> void:
 	p.hp = 35
 	p.grenades = 0
 	sim.defense_director.begin_wave()
-	check.call(p.hp == 100 and p.grenades == 1,"Wave start restores health and the purchased grenade capacity")
+	check.call(p.hp == 35 and p.grenades == 0,"Wave start preserves health and grenade stock")
 	check.call(p.slot_ammo == [29,6] and p.slot_reserves == [510,97],"Wave start never refills firearm ammunition")
 	p.input = {"yaw":0.0,"pitch":0.0}
+	p.grenades = 1
 	check.call(equipment.throw_grenade(p) and p.grenades == 0,"Throwing consumes the initial one-grenade stock")
 	sim.defense_director.finish_wave()
 	check.call(p.grenades == 0,"Entering the next preparation does not refill grenades")
 	p.pos = game.get_node("/root/Data").Maps.Defense.SPAWN
 	check.call(not sim.shop_available(p),"Shop remains closed between later waves")
 	sim.defense_director.begin_wave()
-	check.call(p.grenades == 1 and p.slot_ammo == [29,6] and p.slot_reserves == [510,97],"Later waves refill only grenades, never firearm rounds")
+	check.call(p.grenades == 0 and p.slot_ammo == [29,6] and p.slot_reserves == [510,97],"Later waves preserve grenades and firearm rounds")
 	game.ui.native_hud.sync()
 	check.call(game.ui.native_hud.equipment_slots.size() == 4,"HUD exposes four fixed equipment slots")
 	check.call(game.ui.native_hud.equipment_slots[0].title.text == "步枪" and game.ui.native_hud.equipment_slots[1].title.text == "左轮手枪","HUD names both fixed guns")
-	check.call(game.ui.native_hud.equipment_slots[2].title.text == "消防斧" and game.ui.native_hud.equipment_slots[3].title.text == "手雷  1 / 1","HUD displays axe and current grenade capacity")
+	check.call(game.ui.native_hud.equipment_slots[2].title.text == "消防斧" and game.ui.native_hud.equipment_slots[3].title.text == "手雷  0 / 1","HUD displays axe and current grenade capacity")
 	game.start_solo("defense",71245)
 	p = game.local_pawn()
 	check.call(p.slot_ammo == [30,6] and p.slot_reserves == [510,102],"Restarting a run restores both firearms")
