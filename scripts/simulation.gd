@@ -291,7 +291,7 @@ func damage_crystal(z: Dictionary, amount: int) -> bool:
 	return true
 
 func damage_target(target: Dictionary, z: Dictionary, amount: int) -> bool:
-	if target.get("is_structure",false) or target.get("is_crystal",false): return defense_director.structures.damage(target.id,amount)
+	if target.get("is_structure",false): return defense_director.structures.damage(target.id,amount)
 	if target.get("is_crystal",false):
 		return damage_crystal(z,amount)
 	return damage_pawn(target,z,amount)
@@ -585,7 +585,6 @@ func try_shove(p: Dictionary) -> bool:
 	if p.hp <= 0 or p.shove_cd > 0 or p.shove_gap > 0 or p.switch > 0: return false
 	if equipment and (p.slot == 3 or p.interaction != ""): return false
 	p.shoves = p.get("shoves",0)+1
-	enter_combat(p)
 	p.shove_gap = SHOVE_INTERVAL
 	p.shove_anim = .32
 	p.fire_anim = 0.0
@@ -790,7 +789,7 @@ func advance_attack(z: Dictionary, target: Dictionary, speed: float, dt: float, 
 	z.heading = rotate_toward(z.heading,desired_heading,ATTACK_TURN_SPEED*dt)
 	# Static defenses are attacked from a planted stance. Advancing into their
 	# clearance margin made the next chase cycle pull the attacker back out.
-	if target.get("is_structure",false): return
+	if target.get("is_structure",false) or target.get("is_crystal",false): return
 	var direction = Vector2(sin(z.heading),cos(z.heading))
 	var travel: float = minf(speed*dt,maxf(0,offset.length()-contact*.88))
 	if travel <= 0: return
@@ -983,7 +982,6 @@ func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 	if progress >= MELEE_END: melee_swings.erase(p.id)
 
 func fire(p: Dictionary, w: Dictionary) -> void:
-	enter_combat(p)
 	if w.get("kind","gun") == "melee":
 		melee_swings[p.id] = {"weapon":p.weapon,"progress":0.0,"damaged":{},"landed":false}
 		var origin = Vector3(p.pos.x,p.height+PlayerBody.eye_height(p)-.5,p.pos.y)

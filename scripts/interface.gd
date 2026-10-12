@@ -450,7 +450,7 @@ func show_guide() -> void:
 		var w: Dictionary = Data.weapons[i]
 		for text in [w.label,w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
 	paragraph(column,"击杀会掉落自动飞向玩家的金币，特殊僵尸奖励更高。金币、钻石、升级和已购建筑永久保存；重新开始只重置波次、生命和战场。",17)
-	paragraph(column,"每波开始回满生命与手雷，炮塔和栅栏的损伤保留，毁坏后本局不复活。没有强壮天赋时不会缓慢回血；学习后停止攻击和受伤 5 秒开始恢复。首页可切换三个独立存档，并勾选测试金币。",17)
+	paragraph(column,"每波开始回满生命与手雷，炮塔和栅栏的损伤保留，毁坏后本局不复活。没有强壮天赋时不会缓慢回血；学习后连续 5 秒未受伤开始恢复，期间可以攻击。商店也可被僵尸进入。首页可切换三个独立存档，并勾选测试金币。",17)
 	button(column,"返回",back,true)
 
 func show_multiplayer() -> void:

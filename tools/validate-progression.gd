@@ -175,9 +175,19 @@ func run() -> void:
 	check(p.hp == 51,"Taking damage restarts the five-second delay")
 	sim.fire(p,data.weapons[0])
 	sim.update_defense_regen(p,4.9)
-	check(p.hp == 51,"Attacking also restarts the combat delay")
+	check(p.hp == 55,"Attacking permits healing after five seconds without incoming damage")
 	sim.update_defense_regen(p,2)
-	check(p.hp == 52,"Healing resumes after the remaining combat delay")
+	check(p.hp == 57,"Healing continues while attacking")
+	p.combat_remaining = 2.0
+	p.switch = 0.0
+	p.shove_cd = 0.0
+	p.shove_gap = 0.0
+	p.slot = 1
+	sim.fire(p,data.weapons[6])
+	check(sim.try_shove(p) and p.combat_remaining == 2.0,"Axe swings and successful shoves do not reset the damage-only healing delay")
+	p.grenades = 1
+	p.grenade_ready_at = 0
+	check(sim.equipment.throw_grenade(p) and p.combat_remaining == 2.0,"Successful grenade throws do not reset the damage-only healing delay")
 	p.hp = 109
 	p.combat_remaining = 0
 	sim.update_defense_regen(p,10)
