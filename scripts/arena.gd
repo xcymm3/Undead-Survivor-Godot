@@ -23,6 +23,7 @@ func _ready() -> void:
 	environment.environment = Environment.new()
 	environment.environment.background_mode = Environment.BG_COLOR
 	environment.environment.background_color = definition.sky
+	environment.environment.background_color = Color("080d1c")
 	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.environment.ambient_light_color = Color("e0ecde")
 	environment.environment.ambient_light_energy = .35
@@ -30,15 +31,16 @@ func _ready() -> void:
 	environment.environment.fog_enabled = true
 	environment.environment.fog_light_color = definition.fog
 	environment.environment.fog_density = .018
-	environment.environment.ambient_light_color = Color("b9d5c5")
-	environment.environment.ambient_light_energy = .58
-	environment.environment.fog_density = .0045
+	environment.environment.ambient_light_color = Color("7796c7")
+	environment.environment.ambient_light_energy = .22
+	environment.environment.fog_light_color = Color("101a2b")
+	environment.environment.fog_density = .006
 	add_child(environment)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52,-35,0)
-	sun.light_color = definition.sun
+	sun.light_color = Color("a8c5ef")
 	sun.light_energy = .8
-	sun.light_energy = 1.15
+	sun.light_energy = .27
 	sun.rotation_degrees = Vector3(-48,-18,0)
 	sun.shadow_enabled = Data.settings.quality > 0
 	sun.directional_shadow_max_distance = 65
