@@ -18,6 +18,10 @@ func _ready() -> void:
 		var overview = preload("res://scripts/qa_defense_overview.gd").new()
 		overview.game = game
 		add_child(overview)
+	if "--qa-preparation-review" in OS.get_cmdline_user_args() and OS.has_feature("web"):
+		var fixture = preload("res://scripts/qa_preparation_review.gd").new()
+		fixture.game = game
+		add_child(fixture)
 	if "--qa-autoaim" in OS.get_cmdline_user_args():
 		aim_assist = preload("res://scripts/qa_aim_assist.gd").new()
 		aim_assist.game = game
@@ -59,16 +63,24 @@ func snapshot() -> Dictionary:
 		if not p.is_empty():
 			result.player = {"x": p.pos.x, "z": p.pos.y, "height": p.height, "grounded":p.get("grounded",false), "wading":p.get("wading",false), "hp": p.hp,
 				"crouch": p.get("crouch",0.0), "eye_height": preload("res://scripts/player_body.gd").eye_height(p), "slot":p.get("slot",0), "weapon1":p.get("weapon1",0), "weapon2":p.get("weapon2",3), "weapon_slot":p.get("weapon_slot",1), "slot_ammo":p.get("slot_ammo",[]), "slot_reserves":p.get("slot_reserves",[]), "grenades":p.get("grenades",0), "grenade_capacity":p.get("grenade_capacity",1), "max_hp":p.get("max_hp",100), "weapon": p.weapon, "ammo": p.ammo, "reserves":p.get("reserves",[]), "shots": p.shots, "hits": p.hits,
-				"regen_credit":p.get("regen_credit",0.0),"shove_cd":p.get("shove_cd",0.0),"shove_gap":p.get("shove_gap",0.0),"shove_count":p.get("shove_count",0),"shove_anim":p.get("shove_anim",0.0),"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
+				"focus":p.get("focus",{}),"interaction":p.get("interaction",""),"interact_time":p.get("interact_time",0.0),"regen_credit":p.get("regen_credit",0.0),"shove_cd":p.get("shove_cd",0.0),"shove_gap":p.get("shove_gap",0.0),"shove_count":p.get("shove_count",0),"shove_anim":p.get("shove_anim",0.0),"reloading": p.reloading, "aim": p.aim, "fire_anim":p.fire_anim, "switch":p.switch}
 	return result
 
 func native_smoke() -> void:
 	# Packaged-EXE validation: same scene, real input path, no renderer or Steam login.
 	game.start_solo("defense")
 	await get_tree().create_timer(.2).timeout
-	Input.action_press("start_wave")
-	await get_tree().create_timer(.1).timeout
-	Input.action_release("start_wave")
+	var alarm = preload("res://scripts/preparation_catalog.gd").stations()[-1].position
+	var local = game.local_pawn()
+	local.pos = Vector2(alarm.x,alarm.z-2)
+	local.height = 3
+	local.yaw = PI
+	local.pitch = -.2
+	game.yaw = game.local_pawn().yaw
+	game.pitch = game.local_pawn().pitch
+	Input.action_press("interact")
+	await get_tree().create_timer(1.5).timeout
+	Input.action_release("interact")
 	Input.action_press("forward")
 	await get_tree().create_timer(.2).timeout
 	Input.action_release("forward")

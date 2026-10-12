@@ -3,18 +3,16 @@ extends MultiMeshInstance3D
 const CAPACITY = 512
 
 func _ready() -> void:
-	var coin = CylinderMesh.new()
-	coin.top_radius = .14
-	coin.bottom_radius = .14
-	coin.height = .055
-	coin.radial_segments = 8
+	var coin = preload("res://scripts/currency_art.gd").mesh()
 	var material = StandardMaterial3D.new()
-	material.albedo_color = Color("ffce48")
-	material.metallic = .65
+	material.albedo_texture = preload("res://scripts/currency_art.gd").coin()
+	material.metallic = .5
+	material.roughness = .32
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.emission_enabled = true
 	material.emission = Color("d39117")
-	material.emission_energy_multiplier = .5
-	coin.material = material
+	material.emission_energy_multiplier = .15
+	coin.surface_set_material(0,material)
 	multimesh = MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = coin

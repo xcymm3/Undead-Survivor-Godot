@@ -15,6 +15,7 @@ var network_label: Label
 var network_detail: Label
 var network_card: PanelContainer
 var currency_label: Label
+var diamond_label: Label
 var health_row: HBoxContainer
 var cards: Dictionary = {}
 var slots: Array[Label] = []
@@ -122,7 +123,21 @@ func setup(owner_ui) -> void:
 	wallet.offset_left = -238
 	wallet.offset_right = -28
 	wallet.offset_top = 28
-	currency_label = text(column_in(wallet),21)
+	var wallet_column = column_in(wallet)
+	for currency in ["coins","diamonds"]:
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation",10)
+		wallet_column.add_child(row)
+		var icon = TextureRect.new()
+		icon.name = "CoinIcon" if currency == "coins" else "DiamondIcon"
+		icon.texture = preload("res://scripts/currency_art.gd").coin() if currency == "coins" else preload("res://scripts/currency_art.gd").diamond()
+		icon.custom_minimum_size = Vector2(32,32)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		row.add_child(icon)
+		var number = text(row,24)
+		if currency == "coins": currency_label = number
+		else: diamond_label = number
 	resized.connect(layout)
 	layout()
 	ignore_mouse(self)
@@ -192,7 +207,8 @@ func sync() -> void:
 	visible = ui.game.running and ui.game.sim != null
 	if not visible: return
 	var sim = ui.game.sim
-	currency_label.text = "金币  %d\n钻石  %d" % [sim.progression.data.coins,sim.progression.data.diamonds]
+	currency_label.text = str(sim.progression.data.coins)
+	diamond_label.text = str(sim.progression.data.diamonds)
 	var p: Dictionary = ui.game.view_pawn()
 	if p.is_empty(): return
 	wave_label.text = "第 %02d 波" % sim.wave
@@ -216,7 +232,8 @@ func sync() -> void:
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "defense":
-		controls_hint.text = "1 步枪 · 2 左轮 · 3 消防斧 · 4 手雷 · E 商店 · T 开波"
+		controls_hint.text = "1 步枪 · 2 左轮 · 3 消防斧 · 4 手雷 · 长按 E 交互"
+		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id)+1]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
 		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 清波 +2 备弹夹"
 		if p.slot == 4:
@@ -267,7 +284,7 @@ func sync() -> void:
 	rest_label.visible = sim.rest > 0
 	if rest_label.visible: rest_label.text = "整波清除 · 全员恢复   %.1f 秒后继续" % sim.rest
 	if sim.mode == "defense":
-		rest_label.visible = true
+		rest_label.visible = false
 		rest_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		rest_label.add_theme_stylebox_override("normal",style(Color(.04,.055,.05,.8),8))
 		rest_label.text = str(defense.get("objective",""))+"\n"+str(p.get("hint",""))

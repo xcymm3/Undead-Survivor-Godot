@@ -14,7 +14,6 @@ var message = ""
 var portraits: Dictionary = {}
 var native_hud
 var overlay_state: Array = []
-var shop_tab = "coins"
 const INK = Color("303a33")
 const PAPER = Color("f0ece2")
 const RUST = Color("ae573b")
@@ -335,7 +334,6 @@ func show_pause() -> void:
 	var column = panel("休息片刻", "合作对局仍在进行" if Session.playing else "行动计时已暂停",560)
 	current = "pause"
 	button(column,"继续游戏",func(): game.resume_game(),true)
-	if game.sim and not game.sim.defense.started: button(column,"开始进攻",game.start_attack,true)
 	if not Session.playing: button(column,"重新开始",func(): game.start_solo(game.sim.mode))
 	button(column,"设置",show_settings)
 	button(column,"武器与操作",show_guide)
@@ -440,8 +438,8 @@ func show_settings() -> void:
 func show_guide() -> void:
 	var column = panel("武器与操作", "水晶防线 · 十波连续进攻",1000)
 	current = "guide"
-	paragraph(column,"战前在水晶后方商店按 E 购买装备与建筑，靠近已造炮塔或栅栏按 E 升级。点击开始进攻后，本局商店关闭；每波投放完就自动接下一波。每清完所属波次的敌人获得 1 颗钻石、两把枪各 2 个备弹夹。第十波击败舞王并清除全部敌人后通关。",17)
-	paragraph(column,"WASD 移动 / Shift 疾跑 / 鼠标瞄准 / 左键攻击 / 右键推击 / 中键开镜\n空格跳跃 / Ctrl 蹲下 / R 换弹 / 1—4 或滚轮切换装备 / Esc 暂停\n1 步枪 / 2 左轮 / 3 消防斧 / 4 手雷 / E 商店 / T 开波\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。每次清波两把枪各获得 2 个备弹夹，备弹可超上限，使用消防斧节省弹药。",17)
+	paragraph(column,"战前靠近并瞄准展台或施工点，长按 E 升级或建造。长按警报器启动进攻后，展台关闭；每波投放完就自动接下一波。每清完所属波次的敌人获得 1 颗钻石、两把枪各 2 个备弹夹。第十波击败舞王并清除全部敌人后通关。",17)
+	paragraph(column,"WASD 移动 / Shift 疾跑 / 鼠标瞄准 / 左键攻击 / 右键推击 / 中键开镜\n空格跳跃 / Ctrl 蹲下 / R 换弹 / 1—4 或滚轮切换装备 / Esc 暂停\n1 步枪 / 2 左轮 / 3 消防斧 / 4 手雷 / E 长按交互\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。每次清波两把枪各获得 2 个备弹夹，备弹可超上限，使用消防斧节省弹药。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation",24)
@@ -513,74 +511,6 @@ func show_legacy_multiplayer() -> void:
 		button(lan,"创建局域网房间",func(): Session.host_lan(player_name))
 		button(lan,"加入局域网",func(): Session.join_lan(address,player_name))
 	button(column,"返回",func(): Session.leave(); show_home())
-
-func show_preparation() -> void:
-	var column = panel("战前准备","十波连续进攻 · 第十波舞王最终战",680)
-	current = "preparation"
-	paragraph(column,"进入战场后可在商店购买装备与建筑；已建造的炮塔、栅栏需靠近后按 E 升级。每波投放结束立即接下一波，建筑在战斗中毁坏后不再复活。")
-	button(column,"进入战场整备",func(): game.resume_game(),true)
-	button(column,"开始进攻",game.start_attack,true)
-	button(column,"返回主菜单",func(): game.return_home())
-
-func show_building(id: String, feedback := "") -> void:
-	if not game.sim or not game.sim.building_available(id,game.local_pawn()):
-		game.resume_game()
-		return
-	var profile = game.sim.progression
-	var gate: bool = id in profile.GATES
-	var column = panel("栅栏门升级" if gate else "炮塔升级","战前就地升级 · 已制造建筑 · 永久保存",640)
-	current = "building"
-	column.add_child(label("金币 %d · 等级 %d" % [profile.data.coins,profile.level(id)],24))
-	paragraph(column,shop_description(profile,id))
-	if not feedback.is_empty(): paragraph(column,feedback,17,RUST)
-	var price: int = profile.cost(id)
-	var purchase = button(column,"升级 +10%% · %d 金币" % price if price >= 0 else "已满级",game.buy_upgrade.bind(id),true)
-	purchase.name = "Purchase_"+id
-	purchase.disabled = price < 0 or profile.data.coins < price
-	button(column,"返回战场整备",func(): game.resume_game())
-	button(column,"开始进攻",game.start_attack)
-
-func show_shop(feedback := "") -> void:
-	if not game.sim or not game.sim.shop_available(game.local_pawn()):
-		game.resume_game()
-		return
-	var profile = game.sim.progression
-	var column = panel("幸存者商店", "升级和建筑永久保存 · 第一波开始后本局关闭 · 清波各补 2 备弹夹",820)
-	current = "shop"
-	column.add_child(label("金币 %d    钻石 %d" % [profile.data.coins,profile.data.diamonds],24,RUST))
-	var tabs = HBoxContainer.new()
-	column.add_child(tabs)
-	button(tabs,"金币 · 装备与防御",func(): shop_tab = "coins"; show_shop(),shop_tab == "coins")
-	button(tabs,"钻石 · 永久天赋",func(): shop_tab = "diamonds"; show_shop(),shop_tab == "diamonds")
-	button(tabs,"完成整备 · 返回战场",func(): game.resume_game())
-	if not feedback.is_empty(): paragraph(column,feedback,17,RUST)
-	var entries = [["rifle","步枪伤害"],["revolver","左轮伤害"],["axe","消防斧伤害"],["grenade","手雷容量"],["turret_left","左炮塔"],["turret_right","右炮塔"],["bridge_gate","高地栅栏门"],["bridge_entry_gate","桥尾栅栏门"],["ramp_mine","缓坡中段地雷"],["gate_mine","高地栅栏后地雷"],["crystal_mine","水晶前地雷"]] if shop_tab == "coins" else [["strong","强壮"],["precise","精准"],["swift","迅捷"],["supply","补给"]]
-	for entry in entries:
-		var id: String = entry[0]
-		var row = HBoxContainer.new()
-		row.add_theme_constant_override("separation",16)
-		column.add_child(row)
-		var detail = VBoxContainer.new()
-		detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(detail)
-		var status = " · 等级 %d" % profile.level(id)
-		if id in profile.TALENTS: status = " · 等级 %d / 10" % profile.level(id)
-		elif id in profile.MINES: status = " · 已购买" if profile.owned(id) else " · 未购买"
-		elif id in profile.BUILDINGS and not profile.owned(id): status = " · 未制造"
-		detail.add_child(label(entry[1]+status,20))
-		paragraph(detail,shop_description(profile,id),15,Color("687264"))
-		var price: int = profile.cost(id)
-		if id in profile.BUILDINGS and profile.owned(id): price = -1
-		var currency_name = "钻石" if profile.currency(id) == "diamonds" else "金币"
-		var action = "购买" if id in profile.MINES else "制造" if id in profile.BUILDINGS and not profile.owned(id) else "升级"
-		var caption = ("靠近建筑按 E 升级" if id in profile.BUILDINGS else "已购买" if id in profile.MINES else "已满级") if price < 0 else "%s · %d %s" % [action,price,currency_name]
-		var purchase = button(row,caption,game.buy_upgrade.bind(id))
-		purchase.name = "Purchase_"+id
-		purchase.custom_minimum_size.x = 195
-		purchase.disabled = price < 0 or profile.data[profile.currency(id)] < price
-		if price >= 0 and purchase.disabled: purchase.tooltip_text = currency_name+"不足"
-	button(column,"完成整备 · 返回战场",func(): game.resume_game(),true)
-	button(column,"开始进攻",game.start_attack)
 
 func shop_description(profile, id: String) -> String:
 	if id in profile.WEAPONS:

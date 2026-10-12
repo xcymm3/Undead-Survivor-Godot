@@ -442,9 +442,8 @@ func shop_available(p: Dictionary) -> bool:
 	return defense_director != null and not defense.started and not failed and not won and p.get("hp",0) > 0 and defense_director.near(p,Data.Maps.Defense.SHOP_POINT,4.0)
 
 func purchase_upgrade(id: String, p: Dictionary) -> bool:
-	var onsite: bool = building_available(id,p)
-	if not shop_available(p) and not onsite: return false
-	if id in progression.BUILDINGS and progression.owned(id) and not onsite: return false
+	var focus: Dictionary = preload("res://scripts/preparation_catalog.gd").focus(self,p)
+	if focus.is_empty() or focus.id != id or not preload("res://scripts/preparation_catalog.gd").available(self,id): return false
 	var old_health = progression.max_health()
 	var old_reserve = progression.reserve_multiplier()
 	var old_grenades = progression.grenade_capacity()

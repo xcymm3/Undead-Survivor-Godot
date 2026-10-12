@@ -1,4 +1,5 @@
 extends SceneTree
+const Fixture = preload("res://tools/preparation-fixture.gd")
 const Store = preload("res://scripts/progression_store.gd")
 var checks = 0
 var failures = 0
@@ -116,43 +117,38 @@ func run() -> void:
 	sim.defense_director.structures.step_mine(sim.defense_director.structures.find("ramp_mine"),10)
 	check(not sim.defense_director.structures.find("ramp_mine").triggered and sim.zombies[-1].hp > 0,"An unowned mine cannot trigger or damage enemies")
 	sim.zombies.clear()
-	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).is_empty() and game.arena.scenery.has_node("ShopCounter"),"Armory gun racks are replaced by the shop counter")
+	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).is_empty() and game.arena.scenery.has_node("PreparationWorld/Station_rifle"),"Armory gun racks are replaced by the shop counter")
 	p.hp = 50
 	sim.update_defense_regen(p,100)
 	check(p.hp == 50,"No Strong talent means no automatic healing")
 	sim.progression.data.coins = 10000
 	sim.progression.data.diamonds = 100
-	check(game.open_shop() and game.paused,"Pre-wave shop is reachable from spawn")
-	var rifle_button = game.ui.menu.find_child("Purchase_rifle",true,false)
-	rifle_button.pressed.emit()
-	check(sim.progression.level("rifle") == 1 and game.ui.menu.find_child("Purchase_rifle",true,false).text.contains("40"),"Native shop purchase updates permanent damage level and next price")
-	game.ui.shop_tab = "diamonds"
-	game.ui.show_shop()
-	check(game.ui.menu.find_children("Purchase_*","Button",true,false).size() == 4,"Diamond tab exposes exactly four talents")
-	game.ui.menu.find_child("Purchase_strong",true,false).pressed.emit()
-	check(sim.progression.level("strong") == 1 and p.max_hp == 110 and p.hp == 60,"Native Strong purchase raises maximum and current health by ten")
-	check(sim.purchase_upgrade("precise",p) and sim.purchase_upgrade("swift",p) and sim.purchase_upgrade("supply",p),"All four talents are available in preparation")
+	check(not game.paused and game.ui.current.is_empty(),"Preparation remains in the world")
+	check(Fixture.buy(sim,p,"rifle") and sim.progression.cost("rifle") == 40,"Rifle station updates permanent level and next price")
+	check(game.arena.scenery.preparation.stations.has("strong"),"Four talents have physical stations")
+	check(Fixture.buy(sim,p,"strong") and sim.progression.level("strong") == 1 and p.max_hp == 110 and p.hp == 60,"Medical station raises maximum and current health")
+	check(Fixture.buy(sim,p,"precise") and Fixture.buy(sim,p,"swift") and Fixture.buy(sim,p,"supply"),"Each talent upgrades at its own station")
 	check(p.reserves[0] == 561 and p.reserves[3] == 112,"Supply increases both finite reserves")
-	for rank in range(2,11): check(sim.purchase_upgrade("supply",p),"Additional Supply purchase "+str(rank))
+	for rank in range(2,11): check(Fixture.buy(sim,p,"supply"),"Additional Supply purchase "+str(rank))
 	check(p.reserves[0] == 1020 and p.reserves[3] == 204,"Repeated Supply purchases retain exact reserve rounding")
 	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),132) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),290.4),"Player damage combines weapon and headshot talent upgrades")
-	check(sim.purchase_upgrade("grenade",p) and p.grenades == 2 and p.grenade_capacity == 2,"Capacity purchase immediately grants its extra grenade")
-	check(sim.purchase_upgrade("bridge_entry_gate",p),"New bridge-end gate can be bought")
+	check(Fixture.buy(sim,p,"grenade") and p.grenades == 2 and p.grenade_capacity == 2,"Capacity purchase immediately grants its extra grenade")
+	check(Fixture.buy(sim,p,"bridge_entry_gate"),"New bridge-end gate can be bought")
 	var shop_position: Vector2 = p.pos
 	var shop_height: float = p.height
 	p.pos = Vector2(0,-26)
 	p.height = data.Maps.Defense.height(p.pos)
-	check(sim.purchase_upgrade("bridge_entry_gate",p),"Bridge-end gate upgrades beside its built position")
+	check(Fixture.buy(sim,p,"bridge_entry_gate"),"Bridge-end gate upgrades beside its built position")
 	p.pos = shop_position
 	p.height = shop_height
 	for id in Store.MINES:
-		check(sim.purchase_upgrade(id,p) and view.actors[id].root.visible and not sim.purchase_upgrade(id,p),"Shop buys and reveals each mine once without an upgrade: "+id)
+		check(Fixture.buy(sim,p,id) and view.actors[id].root.visible and not Fixture.buy(sim,p,id),"Shop buys and reveals each mine once without an upgrade: "+id)
 	for id in ["turret_left","bridge_gate"]:
-		check(sim.purchase_upgrade(id,p),"Buildings can be manufactured: "+id)
+		check(Fixture.buy(sim,p,id),"Buildings can be manufactured: "+id)
 		var item: Dictionary = sim.defense_director.structures.find(id)
 		p.pos = item.pos+Vector2(0,2)
 		p.height = data.Maps.Defense.height(p.pos)
-		check(sim.purchase_upgrade(id,p),"Buildings upgrade only beside their built position: "+id)
+		check(Fixture.buy(sim,p,id),"Buildings upgrade only beside their built position: "+id)
 		p.pos = shop_position
 		p.height = shop_height
 	var manager = sim.defense_director.structures
@@ -200,7 +196,7 @@ func run() -> void:
 	sim.hit_enemy(z,10000,false,p,Vector3(12,4,25))
 	check(sim.progression.data.coins == coins_before+3 and sim.coin_drops.size() == 1,"A kill pays its original tier exactly once")
 	var initial_coin: Vector3 = sim.coin_drops[0].pos
-	sim.step_coins(.2)
+	sim.step_coins(.9)
 	check(sim.coin_drops[0].pos.distance_to(Vector3(p.pos.x,p.height+1.05,p.pos.y)) < initial_coin.distance_to(Vector3(p.pos.x,p.height+1.05,p.pos.y)),"Coin magnet moves the drop toward the player")
 	sim.step_coins(5)
 	check(sim.coin_drops.is_empty() and sim.progression.data.coins == coins_before+3,"Cosmetic pickup removal cannot pay coins again")
@@ -211,7 +207,7 @@ func run() -> void:
 	sim.defense_director.begin_wave()
 	check(p.hp == 110 and p.ammo[0] == 7 and p.reserves[0] == 23,"New wave fully heals but preserves spent firearm inventory")
 	var money: int = sim.progression.data.coins
-	check(not sim.purchase_upgrade("rifle",p) and not game.open_shop() and sim.progression.data.coins == money,"Active-wave shop transactions are rejected")
+	check(not sim.purchase_upgrade("rifle",p) and sim.progression.data.coins == money,"Active-wave shop transactions are rejected")
 	manager.damage("bridge_gate",1100)
 	sim.roster.clear()
 	sim.zombies.clear()

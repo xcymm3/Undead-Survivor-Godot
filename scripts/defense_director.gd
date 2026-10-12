@@ -69,10 +69,7 @@ func choose_weapon(p: Dictionary, _requested: int) -> int:
 	return p.weapon1 if p.slot == 1 else 6 if p.slot == 3 else p.weapon2 if p.slot == 2 else p.weapon
 
 func target(p: Dictionary) -> Dictionary:
-	for item in state.structures:
-		if sim.building_available(item.id,p): return {"id":item.id,"label":"升级炮塔" if item.kind == "turret" else "升级栅栏门","seconds":0.0}
-	if sim.shop_available(p): return {"id":"shop","label":"打开商店（本局开波后关闭）","seconds":0.0}
-	return {}
+	return preload("res://scripts/preparation_catalog.gd").focus(sim,p)
 
 func interactions(dt: float) -> void:
 	state.party = sim.pawns.size()
@@ -85,11 +82,12 @@ func interactions(dt: float) -> void:
 			motion.pitch = owner.pitch
 	for p in sim.pawns.values():
 		var input: Dictionary = p.input if p.input_age < .5 else {}
-		if state.waiting and input.get("wave_ready",false) and not state.ready_players.has(p.id): state.ready_players.append(p.id)
 		p.input["wave_ready"] = false
 		if not input.get("interact",false): p.pickup_latched = false
 		var choice := target(p)
-		p.hint = "E "+choice.label if not choice.is_empty() else "战前准备 · 点击开始进攻" if not state.started else "尸潮连续逼近 · 清波补充弹药 · 第十波最终战"
+		p["focus"] = choice
+		p.hint = ""
+		if not choice.is_empty() and not preload("res://scripts/preparation_catalog.gd").available(sim,choice.id): choice = {}
 		if p.pickup_latched or not input.get("interact",false): choice = {}
 		if choice.is_empty():
 			p.interaction = ""
@@ -99,23 +97,20 @@ func interactions(dt: float) -> void:
 			p.interaction = choice.id
 			p.interact_time = 0.0
 		p.interact_time += dt
-		p.hint = "%s %.1f/%.1f 秒" % [choice.label,p.interact_time,choice.seconds]
-		if p.interact_time < float(choice.seconds): continue
-		if choice.id == "shop":
-			p.pickup_latched = true
-			sim.events.append({"kind":"shop_open","player":p.id})
+		if p.interact_time < preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS: continue
+		p.pickup_latched = true
+		if choice.id == "alarm":
+			begin_wave()
 		else:
-			p.pickup_latched = true
-			sim.events.append({"kind":"structure_open","player":p.id,"id":choice.id})
+			var purchased: bool = sim.purchase_upgrade(choice.id,p)
+			p["work_feedback"] = "完成" if purchased else sim.progression.notice if not sim.progression.notice.is_empty() else "钻石不足" if choice.id in sim.progression.TALENTS else "金币不足"
+			p["work_feedback_id"] = choice.id
+			p["work_feedback_until"] = state.prop_clock+1.5
+			if purchased: sim.events.append({"kind":"world_upgrade","id":choice.id,"position":choice.position,"player":p.id})
 		p.interaction = ""
 		p.interact_time = 0.0
 	for p in sim.pawns.values(): p.input.interact = false
-	if state.waiting:
-		state.ready_players = state.ready_players.filter(func(id): return sim.pawns.has(id))
-		if not sim.pawns.is_empty() and sim.pawns.keys().all(func(id): return state.ready_players.has(id)):
-			begin_wave()
-		else:
-			state.objective = "战前准备 · 点击开始进攻 · 共十波"
+	if state.waiting: state.objective = "战前准备"
 	sync_world()
 
 func sync_world() -> void:

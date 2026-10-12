@@ -6,6 +6,11 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      visual_only:
+        description: '仅执行整备场景隔离截图，不打包 EXE'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,7 +20,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  preparation-visual:
+    if: inputs.visual_only == true
+    uses: ./.github/workflows/preparation-visual.yml
   verify-and-package:
+    if: inputs.visual_only != true
     name: 技术门禁 → EXE 验收 → 打包
     runs-on: windows-2022
     timeout-minutes: 60

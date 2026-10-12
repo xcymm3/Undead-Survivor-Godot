@@ -84,7 +84,7 @@ func run() -> void:
 	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Environmental cover preserves the central bridge, ramp and field lane")
 	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).is_empty(),"Shop removes all free weapon racks")
-	check(game.arena.scenery.find_children("ShopCounter","StaticBody3D",true,false).size() == 1 and game.arena.scenery.has_node("ShopStatus"),"Rear shop has a physical counter and open/closed status")
+	check(game.arena.scenery.has_node("PreparationWorld/Station_rifle") and game.arena.scenery.find_children("Label3D","Label3D",true,false).is_empty(),"Rear shop has physical display stations without persistent signs")
 	var shop_walls = game.arena.scenery.find_children("WeaponShopWall","StaticBody3D",true,false)
 	check(shop_walls.size() == 1 and shop_walls[0].position.x == 0 and is_equal_approx(shop_walls[0].position.z+.325,layout.PLATEAU.end.y),"Shop is centered and flush with the rear perimeter")
 
@@ -122,16 +122,17 @@ func run() -> void:
 	for i in 10:
 		sim.submit("solo",command(0,false,2))
 		sim.step(.05)
-	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Waiting for T keeps timer and spawns stopped")
+	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Preparation keeps timer and spawns stopped")
 	check(pawn.weapon == pawn.weapon2 and pawn.slot == 2,"Defense uses weapon-slot-2 switching")
 	check(sim.shop_available(pawn),"Shop is available from the spawn before wave one")
 	check(not sim.equipment.pickup(pawn,"weapon:5") and not sim.equipment.pickup(pawn,"weapon:7"),"Removed weapon racks cannot exchange the fixed loadout")
 	check(pawn.weapon1 == 0 and pawn.weapon2 == 3,"Invalid pickups preserve fixed weapons")
-	var ready_input := command(int(pawn.weapon),false,int(pawn.slot))
-	ready_input.wave_ready = true
-	sim.submit("solo",ready_input)
-	sim.step(.02)
-	check(sim.defense.started and not sim.defense.waiting and sim.rest == 0 and not sim.roster.is_empty(),"T starts wave one immediately without a countdown")
+	var fixture = preload("res://tools/preparation-fixture.gd")
+	fixture.face(sim,pawn,"alarm")
+	fixture.hold(sim,pawn,1.3)
+	pawn.pos = Vector2(0,10)
+	pawn.height = 3
+	check(sim.defense.started and not sim.defense.waiting and sim.rest == 0 and not sim.roster.is_empty(),"Holding the alarm starts wave one immediately without a countdown")
 	check(sim.wave == 1 and sim.events.filter(func(event): return event.kind == "wave_start").size() == 1,"Crystal defense sounds one low horn when wave one begins")
 	var grenades_before: int = pawn.grenades
 	sim.submit("solo",command(int(pawn.weapon),false,4,pawn.yaw,pawn.pitch,true))
@@ -150,7 +151,7 @@ func run() -> void:
 	check(sim.cleared == 1 and sim.rest == 0 and sim.wave == 2 and not sim.defense.waiting and sim.defense.ready_players.is_empty(),"Completed deployment automatically starts wave two")
 	for i in 60: sim.step(.1)
 	check(sim.wave == 2 and not sim.defense.waiting and sim.spawned > 0,"Wave two deploys automatically without further ready input")
-	sim.submit("solo",ready_input)
+	sim.submit("solo",{"wave_ready":true})
 	sim.step(.02)
 	check(sim.wave == 2 and not sim.defense.waiting and not sim.events.any(func(event): return event.kind == "wave_start"),"Legacy ready input cannot restart an active wave")
 
@@ -461,7 +462,7 @@ func run() -> void:
 	pawn.pos = Vector2(6,data.Maps.Defense.CRYSTAL.y+3.0)
 	var failure_ready := command()
 	failure_ready.wave_ready = true
-	sim.submit("solo",failure_ready)
+	sim.defense_director.begin_wave()
 	sim.step(.02)
 	sim.damage_crystal({"id":77},Data.Maps.Defense.CRYSTAL_MAX_HP)
 	sim.step(.02)

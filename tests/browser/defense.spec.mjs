@@ -9,7 +9,7 @@ async function clickButton(page, text) {
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
 }
 
-test('吊桥水晶防守使用真实输入换装并点击开始进攻', async ({ page }, info) => {
+test('吊桥水晶防守使用真实输入换装并长按警报器开始进攻', async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('/');
@@ -28,25 +28,27 @@ test('吊桥水晶防守使用真实输入换装并点击开始进攻', async ({
   expect(state.player.weapon2).toBe(3);
   expect(state.player.medkits).toBeUndefined();
   expect(state.player.grenades).toBe(1);
-  await page.keyboard.press('e');
-  await page.waitForFunction(() => window.__survivorSnapshot.menu === 'shop');
-  await clickButton(page, '完成整备');
+  expect(state.menu).toBe('');
+  expect(state.paused).toBe(false);
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 2 && window.__survivorSnapshot?.player?.weapon === 3);
-  await page.keyboard.down('d');
-  await page.waitForFunction(() => window.__survivorSnapshot?.player?.x > 5.7);
-  await page.keyboard.up('d');
+  await page.keyboard.down('a');
+  await page.waitForFunction(() => window.__survivorSnapshot?.player?.x < -3.8);
+  await page.keyboard.up('a');
   await page.keyboard.down('w');
-	await page.waitForFunction(() => window.__survivorSnapshot?.player?.z < 33.5);
+  await page.waitForFunction(() => window.__survivorSnapshot?.player?.z < 34.5);
   await page.keyboard.up('w');
   await page.keyboard.press('3');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 3 && window.__survivorSnapshot?.player?.weapon === 6);
   await page.keyboard.press('1');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 1 && window.__survivorSnapshot?.player?.weapon === 0);
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'pause');
-  await clickButton(page, '开始进攻');
+  // Pitch down slightly through actual canvas mouse input, then hold at the alarm.
+  await page.mouse.move(480, 300);
+  await page.mouse.move(480, 350, { steps: 4 });
+  await page.waitForFunction(() => window.__survivorSnapshot.player.focus?.id === 'alarm');
+  await page.keyboard.down('e');
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });
+  await page.keyboard.up('e');
   state = await snapshot(page);
   expect(state.defense.waiting).toBe(false);
   expect(state.player.grenades).toBe(1);

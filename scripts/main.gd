@@ -125,9 +125,6 @@ func start_solo(mode: String = "defense", random_seed := -1) -> void:
 	if random_seed >= 0: sim.random.seed = random_seed
 	sim.start(mode)
 	resume_game()
-	if not Data.automation:
-		pause_game()
-		ui.show_preparation()
 
 func start_coop() -> void:
 	if not Data.automation: return
@@ -285,6 +282,7 @@ func _process(dt: float) -> void:
 	if equipment_prop: equipment_prop.visible = not finished
 	enemies.sync(visible_zombies,visual_time,false)
 	coins.sync(sim.coin_drops)
+	if arena.scenery.has_method("sync_focus"): arena.scenery.sync_focus(sim,p)
 	effects.step(dt)
 	for id in sim.pawns:
 		if id == Session.local_id:
@@ -317,13 +315,10 @@ func _process(dt: float) -> void:
 func handle_effects(events: Array) -> void:
 	for event in events:
 		if not event is Dictionary or not event.has("kind"): continue
-		if event.kind == "shop_open":
-			if event.player == Session.local_id: open_shop()
-			continue
-		if event.kind == "structure_open":
-			if event.player == Session.local_id: open_building(event.id)
-			continue
 		match event.kind:
+			"world_upgrade":
+				sound.play_at("reload",event.position,-12)
+				effects.burst(event.position,true,false)
 			"disco":
 				sound.play_at("disco",event.position,-8)
 			"shove":
@@ -595,34 +590,9 @@ func select_save_slot(index: int) -> void:
 		return
 	start_solo("defense")
 
-func open_shop() -> bool:
-	if not running or not sim or finished or not sim.shop_available(local_pawn()): return false
-	reset_mouse_buttons()
-	paused = true
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	sound.set_playing(false)
-	ui.show_shop()
-	return true
-
 func start_attack() -> void:
 	if not sim or finished or sim.defense.started: return
 	sim.events.clear()
 	sim.defense_director.begin_wave()
 	handle_effects(sim.events)
 	resume_game()
-
-func open_building(id: String) -> bool:
-	if not sim or finished or not sim.building_available(id,local_pawn()): return false
-	reset_mouse_buttons()
-	paused = true
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	sound.set_playing(false)
-	ui.show_building(id)
-	return true
-
-func buy_upgrade(id: String) -> void:
-	if not sim or ui.current not in ["shop","building"]: return
-	var purchased: bool = sim.purchase_upgrade(id,local_pawn())
-	var feedback = "购买成功，进度已保存" if purchased else sim.progression.notice if not sim.progression.notice.is_empty() else "无法购买：货币不足或已离开整备范围"
-	if ui.current == "building": ui.show_building(id,feedback)
-	else: ui.show_shop(feedback)

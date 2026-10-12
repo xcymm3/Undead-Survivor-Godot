@@ -5,8 +5,7 @@ const DefenseEnvironment = preload("res://scripts/defense_environment.gd")
 var crystal: Node3D
 var crystal_core: MeshInstance3D
 var crystal_light: OmniLight3D
-var crystal_label: Label3D
-var wave_label: Label3D
+var preparation: Node3D
 var pickup_animation: Node3D
 var structure_view: Node3D
 
@@ -66,7 +65,6 @@ func make_crystal() -> void:
 	crystal_light.omni_range = 13.0
 	crystal_light.shadow_enabled = true
 	crystal.add_child(crystal_light)
-	crystal_label = sign_at("水晶 1500 / 1500",Vector3(DefenseLayout.CRYSTAL.x,7.8,DefenseLayout.CRYSTAL.y),4.6)
 
 func make_bridge() -> void:
 	# 连续碰撞板负责角色行走；独立木板、桥塔和垂索塑造吊桥轮廓。
@@ -110,48 +108,15 @@ func make_ramp() -> void:
 		block("RampMark",Vector3(0,y+.28,z),Vector3(9.7,.06,.18),"8b7654",false)
 
 func make_safe_zone() -> void:
-	var previous_children = get_children()
-	var local_front = 67.85+DefenseLayout.SAFE_ZONE.position.y-DefenseLayout.SHOP_WALL_Z
-	var local_back = 67.85+DefenseLayout.SAFE_ZONE.end.y-DefenseLayout.SHOP_WALL_Z
-	var local_center = (local_front+local_back)/2
-	var depth = local_back-local_front
-	block("SafeZoneFloor",Vector3(0,3.035,local_center),Vector3(26,.06,depth),"314c45",false)
-	for x in [-13.0,13.0]: block("SafeLine",Vector3(x,3.075,local_center),Vector3(.12,.08,depth),"7bd8aa",false)
-	for z in [local_front,local_back]: block("SafeLine",Vector3(0,3.075,z),Vector3(26,.08,.12),"7bd8aa",false)
-	var shop_wall = block("WeaponShopWall",Vector3(0,7.2,67.85),Vector3(25.5,8.8,.65),"493a2d",true,false)
-	shop_wall.set_meta("environment_feature","weapon_shop_wall")
-	# Narrow trim breaks up the wood surface while preserving one continuous wall.
-	for column in range(6):
-		var x = -10.625+column*4.25
-		block("ShopFrame%d" % column,Vector3(x,7.2,67.47),Vector3(.12,8.15,.1),"5d4934",false)
-	block("ShopFrameTop",Vector3(0,11.52,67.47),Vector3(25.5,.18,.18),"5d4934",false)
-	block("ShopFrameBottom",Vector3(0,3.08,67.47),Vector3(25.5,.18,.18),"5d4934",false)
-	block("ShopCounter",Vector3(0,3.45,65.5),Vector3(8,.9,1.6),"43544a",true,false)
-	block("ShopCounterTop",Vector3(0,3.94,65.5),Vector3(8.2,.08,1.7),"b2a77b",false)
-	block("ShopTerminal",Vector3(0,4.45,65.55),Vector3(1.1,.8,.3),"263e37",false)
-	var screen = block("ShopScreen",Vector3(0,4.48,65.35),Vector3(.88,.55,.04),"79cca5",false)
-	screen.set_meta("shop_terminal",true)
-	var upgrade_label = sign_at("金币 · 装备 / 防御升级     钻石 · 永久天赋",Vector3(0,8.45,67.2),8.0)
-	upgrade_label.rotation.y = PI
-	for x in [-9.0,-3.0,3.0,9.0]:
-		var light = OmniLight3D.new()
-		light.position = Vector3(x,6.4,65.8)
-		light.light_color = Color("d8ebd0")
-		light.light_energy = 4.0
-		light.omni_range = 10.0
-		light.shadow_enabled = true
-		add_child(light)
-	var zone_label = sign_at("幸存者商店 · 仅第一波开始前开放",Vector3(0,10.25,67.2),13.5)
-	zone_label.rotation.y = PI
-	zone_label.position.z -= .22
-	var status = sign_at("营业中 · 靠近按 E",Vector3(0,5.6,65.35),4.6)
-	status.name = "ShopStatus"
-	status.rotation.y = PI
-	# Place the shop behind the crystal, facing the field.
-	# Transform every visual and native collider together; no desktop render path.
-	var placement = DefenseLayout.armory_transform()
-	for child in get_children():
-		if child not in previous_children and child is Node3D: child.transform = placement*child.transform
+	var safe = DefenseLayout.SAFE_ZONE
+	block("SafeZoneFloor",Vector3(0,3.035,safe.get_center().y),Vector3(26,.06,safe.size.y),"314c45",false)
+	block("WeaponShopWall",Vector3(0,6,DefenseLayout.SHOP_WALL_Z),Vector3(25.5,6,.65),"493a2d",true,false)
+	preparation = preload("res://scripts/preparation_world.gd").new()
+	preparation.name = "PreparationWorld"
+	add_child(preparation)
+
+func sync_focus(sim, pawn: Dictionary) -> void:
+	if preparation: preparation.sync_focus(sim,pawn)
 
 func _ready() -> void:
 	# 深谷、坡地与高地保持原有玩法尺寸，环境模块只提升表面与边界表现。
@@ -180,7 +145,6 @@ func _ready() -> void:
 	DefenseEnvironment.decorate(self)
 	for p in [DefenseLayout.CRYSTAL+Vector2(-12,-3),DefenseLayout.CRYSTAL+Vector2(13,-4)]:
 		block("CrystalGuard",Vector3(p.x,4.0,p.y),Vector3(3.5,2,1.2),"46534a")
-	wave_label = sign_at("战前准备 · 共十波",Vector3(6,6.5,DefenseLayout.CRYSTAL.y+3),5.7)
 	for p in [Vector3(-4.2,5.5,-62),Vector3(4.2,5.5,-62),Vector3(-4.2,5.5,-28),Vector3(4.2,5.5,-28),Vector3(-11,6,DefenseLayout.CRYSTAL.y+2),Vector3(11,6,DefenseLayout.CRYSTAL.y+2)]:
 		var light = OmniLight3D.new()
 		light.position = p
@@ -192,10 +156,7 @@ func _ready() -> void:
 	set_meta("navigation_obstacles",obstacles)
 
 func sync(state: Dictionary) -> void:
-	var status = get_node_or_null("ShopStatus")
-	if status:
-		status.text = "本局已关闭 · 重开后整备" if state.get("started",false) else "营业中 · 靠近按 E"
-		status.modulate = Color("e98065") if state.get("started",false) else Color("a2efc9")
+	if preparation: preparation.sync(state)
 	if is_instance_valid(structure_view): structure_view.sync(state)
 	sync_projectiles(state)
 	if not is_instance_valid(pickup_animation):
@@ -208,5 +169,3 @@ func sync(state: Dictionary) -> void:
 	crystal.scale = Vector3.ONE*lerpf(.88,1.0,ratio)
 	crystal_light.light_energy = lerpf(.35,5.0,ratio)
 	crystal_light.light_color = Color("f05d4f") if ratio < .3 else Color("65dff2")
-	crystal_label.text = "水晶 %d / %d" % [ceili(hp),ceili(maximum)]
-	wave_label.text = "战前准备 · 点击开始进攻" if not state.get("started",false) else "第 %d / 10 波" % state.get("wave",1)

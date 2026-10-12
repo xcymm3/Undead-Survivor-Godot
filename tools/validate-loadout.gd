@@ -45,7 +45,7 @@ static func validate(game, check: Callable) -> void:
 	sim.defense_director.finish_wave()
 	check.call(p.grenades == 0,"Entering the next preparation does not refill grenades")
 	p.pos = game.get_node("/root/Data").Maps.Defense.SPAWN
-	check.call(not sim.shop_available(p) and not game.open_shop(),"Shop remains closed between later waves")
+	check.call(not sim.shop_available(p),"Shop remains closed between later waves")
 	sim.defense_director.begin_wave()
 	check.call(p.grenades == 1 and p.slot_ammo == [29,6] and p.slot_reserves == [510,97],"Later waves refill only grenades, never firearm rounds")
 	game.ui.native_hud.sync()

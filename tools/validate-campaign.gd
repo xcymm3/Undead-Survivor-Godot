@@ -1,5 +1,6 @@
 extends SceneTree
 const Store = preload("res://scripts/progression_store.gd")
+const Fixture = preload("res://tools/preparation-fixture.gd")
 const Boss = preload("res://scripts/dancer_boss.gd")
 var checks = 0
 var failures = 0
@@ -57,26 +58,24 @@ func run() -> void:
 	var environment = game.arena.find_children("*","WorldEnvironment",true,false)[0].environment
 	check(environment.background_color.v < .2 and environment.ambient_light_energy <= .25 and game.arena.sun.light_energy < .4,"Native terrain uses night sky and moonlit exposure")
 	check(game.sound.streams.disco.get_length() >= 2.99 and game.sound.streams.disco.get_length() <= 3.01,"Boss has an independent three-second disco resource")
-	game.ui.show_preparation()
-	check(game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text == "开始进攻"),"Preparation offers a visible first-wave start button")
+	check(not game.paused and game.ui.current.is_empty(),"Preparation is directly controllable without a start popup")
 	sim.progression.data.coins = 1000
-	check(sim.purchase_upgrade("turret_left",p),"Shop manufactures a turret before combat")
-	check(not sim.purchase_upgrade("turret_left",p),"Built turret cannot upgrade remotely from the shop")
-	var turret: Dictionary = sim.defense_director.structures.find("turret_left")
-	p.pos = turret.pos+Vector2(0,2)
-	p.height = 3
-	sim.events.clear()
-	sim.submit(p.id,{"interact":true})
-	sim.defense_director.interactions(.016)
-	check(sim.events.any(func(event): return event.kind == "structure_open" and event.id == "turret_left"),"Authority E interaction beside a built turret requests its upgrade panel")
-	game.handle_effects(sim.events)
-	check(game.ui.current == "building", "Near a built turret the native upgrade panel opens")
-	check(sim.progression.cost("turret_left") == 20 and sim.purchase_upgrade("turret_left",p) and sim.progression.cost("turret_left") == 40 and is_equal_approx(turret.damage_multiplier,1.1),"Onsite turret upgrades use gun prices and ten percent damage growth")
+	check(Fixture.buy(sim,p,"turret_left"),"Turret can be built at its construction point")
 	p.pos = data.Maps.Defense.SPAWN
-	check(sim.purchase_upgrade("bridge_gate",p),"Shop can manufacture a gate")
+	check(not sim.purchase_upgrade("turret_left",p),"Built turret cannot upgrade remotely")
+	var turret: Dictionary = sim.defense_director.structures.find("turret_left")
+	Fixture.face(sim,p,"turret_left")
+	sim.events.clear()
+	Fixture.hold(sim,p,1.3)
+	check(sim.events.any(func(event): return event.kind == "world_upgrade" and event.id == "turret_left"),"Onsite E hold generates workshop feedback")
+	game.handle_effects(sim.events)
+	check(game.ui.current.is_empty() and not game.paused,"Onsite upgrade keeps the player in the world")
+	check(sim.progression.cost("turret_left") == 40 and is_equal_approx(turret.damage_multiplier,1.1),"Onsite upgrade adds ten percent and doubles price")
+	p.pos = data.Maps.Defense.SPAWN
+	check(Fixture.buy(sim,p,"bridge_gate"),"Shop can manufacture a gate")
 	var gate: Dictionary = sim.defense_director.structures.find("bridge_gate")
 	p.pos = gate.pos+Vector2(0,2)
-	check(sim.purchase_upgrade("bridge_gate",p) and gate.max_hp == 1100 and sim.progression.cost("bridge_gate") == 40,"Gate onsite upgrades increase durability and double the gun-equivalent price")
+	check(Fixture.buy(sim,p,"bridge_gate") and gate.max_hp == 1100 and sim.progression.cost("bridge_gate") == 40,"Gate onsite upgrades increase durability and double the gun-equivalent price")
 	check(not sim.building_available("turret_right",p),"Unbuilt structures cannot expose upgrades")
 	p.pos = data.Maps.Defense.SPAWN
 	p.height = 3

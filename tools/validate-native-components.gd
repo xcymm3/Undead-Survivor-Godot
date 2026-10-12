@@ -352,16 +352,47 @@ func validate_interaction_motion() -> void:
 	var sim = game.sim
 	var d = sim.defense_director
 	var p: Dictionary = game.local_pawn()
-	check(sim.shop_available(p),"Spawn is within reach of the pre-wave shop")
-	check(game.open_shop() and game.paused and game.ui.current == "shop","Shop opens as a paused native Control panel")
-	check(game.ui.menu.find_children("Purchase_*","Button",true,false).size() == 11,"Coin shop exposes equipment, two turrets, two gates and three mines")
-	game.resume_game()
-	p.input = {"interact":true}
-	p.input_age = 0.0
+	var fixture = preload("res://tools/preparation-fixture.gd")
+	check(not game.paused and game.ui.current.is_empty(),"Preparation begins directly in the world without a modal")
+	check(game.arena.scenery.preparation.stations.size() == 9,"Eight equipment and talent stations plus one alarm exist")
+	check(game.arena.scenery.find_children("*","Label3D",true,false).size() == 1,"Only the context-sensitive borderless scene label remains")
+	fixture.face(sim,p,"rifle")
+	game.arena.scenery.sync_focus(sim,p)
+	check(game.arena.scenery.preparation.focus_label.visible,"Nearby aimed station shows its details")
+	p.yaw += PI
+	game.arena.scenery.sync_focus(sim,p)
+	check(not game.arena.scenery.preparation.focus_label.visible and not sim.purchase_upgrade("rifle",p),"Looking away hides details and rejects purchases")
+	fixture.face(sim,p,"rifle")
+	sim.progression.data.coins = 100
+	fixture.hold(sim,p,.6)
+	check(sim.progression.level("rifle") == 0 and p.interaction == "rifle","Short E hold advances work without spending")
+	p.yaw += PI
+	fixture.hold(sim,p,.1)
+	check(p.interact_time == 0 and p.interaction.is_empty(),"Turning away cancels incomplete work")
+	fixture.face(sim,p,"rifle")
+	fixture.hold(sim,p,.6)
+	fixture.hold(sim,p,.7)
+	check(sim.progression.level("rifle") == 1 and not game.paused,"Completed E hold upgrades without opening a menu")
+	fixture.hold(sim,p,2)
+	check(sim.progression.level("rifle") == 1,"Holding E cannot repeatedly purchase")
+	p.input = {"interact":false}
 	d.interactions(.01)
-	check(sim.events.any(func(event): return event.kind == "shop_open"),"E interaction requests the shop at the spawn-side counter")
-	d.begin_wave()
-	check(not game.open_shop(),"Starting wave one closes the shop")
+	sim.progression.data.coins = 0
+	fixture.hold(sim,p,1.3)
+	check(sim.progression.level("rifle") == 1 and p.work_feedback == "金币不足","Insufficient money produces feedback without purchase")
+	var blocker = game.arena.scenery.block("WorkOccluder",Vector3(p.pos.x,4.4,p.pos.y+.8),Vector3(1.5,2,.2),"454545",true,false)
+	await physics_frame
+	check(preload("res://scripts/preparation_catalog.gd").focus(sim,p).is_empty(),"A physical obstruction hides the aimed station")
+	blocker.queue_free()
+	await physics_frame
+	fixture.face(sim,p,"alarm")
+	p.input = {"interact":false}
+	d.interactions(.01)
+	fixture.hold(sim,p,1.3)
+	check(sim.defense.started,"The world alarm starts the attack")
+	check(game.arena.scenery.preparation.stations.rifle.cover.visible and not game.arena.scenery.preparation.stations.rifle.prop.visible,"Attack physically closes station covers and hides goods")
+	check(game.ui.native_hud.find_child("CoinIcon",true,false).texture != null and game.ui.native_hud.find_child("DiamondIcon",true,false).texture != null,"Wallet uses distinct coin and diamond icons")
+	check(not sim.purchase_upgrade("rifle",p),"Starting wave one closes transactions")
 
 func _initialize() -> void:
 	call_deferred("run")
