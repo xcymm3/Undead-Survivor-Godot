@@ -33,7 +33,7 @@ jobs:
           New-Item -ItemType Directory -Force build/web | Out-Null
           & ./.runtime/Godot_v4.5.2-stable_win64_console.exe --headless --audio-driver Dummy --path . --export-release 'Web QA'
           if ($LASTEXITCODE -ne 0) { throw 'Web export failed' }
-      - run: npx playwright test tests/browser/preparation-review.spec.mjs tests/browser/defense.spec.mjs
+      - run: npx playwright test tests/browser/campaign-review.spec.mjs tests/browser/defense.spec.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

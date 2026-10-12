@@ -22,6 +22,10 @@ func _ready() -> void:
 		var fixture = preload("res://scripts/qa_preparation_review.gd").new()
 		fixture.game = game
 		add_child(fixture)
+	if "--qa-campaign-review" in OS.get_cmdline_user_args() and OS.has_feature("web"):
+		var fixture = preload("res://scripts/qa_campaign_review.gd").new()
+		fixture.game = game
+		add_child(fixture)
 	if "--qa-autoaim" in OS.get_cmdline_user_args():
 		aim_assist = preload("res://scripts/qa_aim_assist.gd").new()
 		aim_assist.game = game

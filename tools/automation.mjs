@@ -112,6 +112,8 @@ try {
   if (!/INCREMENTAL PROGRESSION: \d+ checks; 0 failures/.test(progression)) throw new Error('Missing incremental progression check marker.');
   const campaign = await run('ten-wave-campaign', engine, [...godotArgs, '--script', 'res://tools/validate-campaign.gd', '--', '--silent', '--automation']);
   if (!/CAMPAIGN VALIDATION: \d+ checks; 0 failures/.test(campaign)) throw new Error('Missing ten-wave campaign check marker.');
+  const feedback = await run('campaign-feedback', engine, [...godotArgs, '--script', 'res://tools/validate-campaign-feedback.gd', '--', '--silent', '--automation']);
+  if (!/CAMPAIGN FEEDBACK: \d+ checks; 0 failures/.test(feedback)) throw new Error('Missing campaign feedback check marker.');
 
   if (full) {
     const navigation = await powershell('navigation-regressions', 'tools/validate-headless.ps1', ['-Mode', 'NavigationRegressions'], 300_000);
