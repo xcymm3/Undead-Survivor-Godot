@@ -9,6 +9,8 @@ var obstacles: Array = []
 var collision_buckets: Dictionary = {}
 var structure_state: Array = []
 var grid = AStarGrid2D.new()
+var static_solid = PackedByteArray()
+var navigation_structures: Array = []
 var scenery: Node3D
 var sun: DirectionalLight3D
 const CELL = .65
@@ -57,10 +59,15 @@ func build_grid() -> void:
 	grid.offset = bounds.position
 	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
 	grid.update()
+	static_solid.resize(grid.region.size.x*grid.region.size.y)
 	for y in grid.region.size.y:
 		for x in grid.region.size.x:
 			var p = bounds.position+Vector2(x,y)*CELL
-			grid.set_point_solid(Vector2i(x,y), not clear(p,p))
+			# Whole grid cells must clear geometry, including diagonal edges.
+			var margin = Vector2.ONE*(CELL*.5+.001)
+			var solid = not clear(p-margin,p+margin) or not clear(p+Vector2(-margin.x,margin.y),p+Vector2(margin.x,-margin.y))
+			static_solid[y*grid.region.size.x+x] = int(solid)
+			grid.set_point_solid(Vector2i(x,y),solid)
 
 func segment_rect(a: Vector2, b: Vector2, rect: Rect2) -> bool:
 	var near = 0.0
@@ -102,6 +109,8 @@ func endpoint_link(a: Vector2, b: Vector2) -> bool:
 	# across free physical space, never through a wall or a closed door.
 	if clear(a,a): return false
 	if not bounds.has_point(a) or not bounds.has_point(b): return false
+	for item in structure_state:
+		if item.hp > 0 and item.kind != "mine" and segment_rect(a,b,preload("res://scripts/defense_structures.gd").bounds(item)): return false
 	for obstacle in obstacles:
 		if segment_rect(a,b,Rect2(obstacle.minX,obstacle.minZ,obstacle.maxX-obstacle.minX,obstacle.maxZ-obstacle.minZ)): return false
 	return true
@@ -127,7 +136,10 @@ func path_to(a: Vector2, b: Vector2) -> PackedVector2Array:
 	var start = nearest_cell(a)
 	var end = nearest_cell(b)
 	if start.x < 0 or end.x < 0: return PackedVector2Array()
-	return grid.get_point_path(start,end)
+	var route = grid.get_point_path(start,end)
+	# Grid centers are intermediate points, never the final melee position.
+	if not route.is_empty() and clear(route[-1],b): route.append(b)
+	return route
 
 func surface_hit(origin: Vector3, end: Vector3, ignore_structure := "") -> Dictionary:
 	var query = PhysicsRayQueryParameters3D.create(origin,end,1)
@@ -138,4 +150,21 @@ func surface_hit(origin: Vector3, end: Vector3, ignore_structure := "") -> Dicti
 
 func sync_defense(state: Dictionary) -> void:
 	structure_state = state.get("structures",[])
+	var active: Array = []
+	for item in structure_state:
+		if item.hp > 0 and item.kind != "mine": active.append(item.id)
+	if active != navigation_structures:
+		navigation_structures = active
+		for y in grid.region.size.y:
+			for x in grid.region.size.x:
+				grid.set_point_solid(Vector2i(x,y),static_solid[y*grid.region.size.x+x] != 0)
+		for item in structure_state:
+			if not item.id in active: continue
+			var rect: Rect2 = preload("res://scripts/defense_structures.gd").bounds(item).grow(.95+CELL*.5+.001)
+			var first = Vector2i(((rect.position-bounds.position)/CELL).floor())
+			var last = Vector2i(((rect.end-bounds.position)/CELL).ceil())
+			for y in range(first.y,last.y+1):
+				for x in range(first.x,last.x+1):
+					var cell = Vector2i(x,y)
+					if grid.is_in_boundsv(cell) and rect.has_point(grid.get_point_position(cell)): grid.set_point_solid(cell,true)
 	scenery.sync(state)

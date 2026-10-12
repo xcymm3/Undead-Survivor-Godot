@@ -644,7 +644,22 @@ func approach_goal(z: Dictionary, target: Dictionary) -> Vector2:
 		if offset.length_squared() < .0001: offset = Vector2(0,-1)
 		# Stop slightly inside attack range, still outside the navigation margin.
 		# Exact boundary placement can round just beyond the melee comparison.
-		return target.pos+offset.normalized()*defense_director.structures.contact_radius(target,z.kind)*.98
+		var radius: float = defense_director.structures.contact_radius(target,z.kind)*.98
+		if target.structure_kind == "gate":
+			return target.pos+Vector2(0,-radius if offset.y <= 0 else radius)
+		var approach: Vector2 = offset.normalized()*radius
+		var goal: Vector2 = target.pos+approach
+		if not arena.clear(goal,goal):
+			var axis = 0 if absf(offset.x) >= absf(offset.y) else 1
+			var edge = .65+.95+.025
+			var side_limit = sqrt(maxf(0,radius*radius-edge*edge))
+			approach[axis] = signf(offset[axis])*edge
+			approach[1-axis] = clampf(approach[1-axis],-side_limit,side_limit)
+		return target.pos+approach
+	if mode == "defense" and Data.Maps.Defense.SAFE_ZONE.has_point(target.pos):
+		# The player can stand in the shop, but enemies wait outside its front.
+		var safe: Rect2 = Data.Maps.Defense.SAFE_ZONE
+		return Vector2(clampf(target.pos.x,safe.position.x+.5,safe.end.x-.5),safe.position.y-.98)
 	if distance > 24: return target.pos
 	# Stable per-enemy offsets avoid a shared chase point; navigation validates each slot.
 	var sector = fmod(z.id*2.399963,TAU)
@@ -777,6 +792,9 @@ func advance_attack(z: Dictionary, target: Dictionary, speed: float, dt: float, 
 	if dt <= 0 or offset.length_squared() <= .0001: return
 	var desired_heading: float = atan2(offset.x,offset.y)
 	z.heading = rotate_toward(z.heading,desired_heading,ATTACK_TURN_SPEED*dt)
+	# Static defenses are attacked from a planted stance. Advancing into their
+	# clearance margin made the next chase cycle pull the attacker back out.
+	if target.get("is_structure",false): return
 	var direction = Vector2(sin(z.heading),cos(z.heading))
 	var travel: float = minf(speed*dt,maxf(0,offset.length()-contact*.88))
 	if travel <= 0: return
@@ -807,7 +825,8 @@ func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance
 			cached.goal = goal
 			paths[z.id] = cached
 		var route: PackedVector2Array = cached.path
-		while route.size() > 1 and z.pos.distance_to(route[0]) < .4: route.remove_at(0)
+		# Skip only reachable waypoints; a nearby corner cannot be cut through.
+		while route.size() > 1 and arena.clear(z.pos,route[1]): route.remove_at(0)
 		cached.path = route
 		if route.is_empty(): return
 		waypoint = route[0]
@@ -822,9 +841,11 @@ func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance
 				var offset: Vector2 = z.pos-other.pos
 				var d = offset.length_squared()
 				if d > .001 and d < radius*radius: separation += offset.normalized()*(radius-sqrt(d))
+	var route_direction = direction
 	direction = (direction+separation.limit_length(.75)).normalized()
 	var old_position: Vector2 = z.pos
-	var travel: float = minf(speed*dt,maxf(0,distance-contact*.88))
+	# A detour must continue even when Euclidean target distance is small.
+	var travel: float = minf(speed*dt,waypoint.distance_to(z.pos)) if stop_at_waypoint or not cached.get("direct",false) else minf(speed*dt,maxf(0,distance-contact*.88))
 	if stop_at_waypoint: travel = minf(travel,waypoint.distance_to(z.pos))
 	var next: Vector2 = z.pos+direction*travel
 	if arena.clear(z.pos,next): z.pos = next
@@ -833,6 +854,12 @@ func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance
 		if arena.clear(z.pos,x): z.pos = x
 		var y = Vector2(z.pos.x,next.y)
 		if arena.clear(z.pos,y): z.pos = y
+		# Separation is advisory. When it presses against a rail/rock, preserve
+		# forward progress along the route instead of remaining pinned forever.
+		if z.pos.distance_squared_to(old_position) < .000001:
+			var forward: Vector2 = old_position+route_direction*travel
+			if arena.clear(old_position,forward): z.pos = forward
+			else: cached.until = 0.0
 	z.gait = z.get("gait",0.0)+z.pos.distance_to(old_position)*2.3
 	z.move_speed = z.pos.distance_to(old_position)/maxf(dt,.001)
 	if direction.length_squared() > .01: z.heading = atan2(direction.x,direction.y)

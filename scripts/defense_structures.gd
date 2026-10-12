@@ -75,7 +75,8 @@ static func bounds(item: Dictionary) -> Rect2:
 
 func target(item: Dictionary, from: Vector2) -> Dictionary:
 	var point: Vector2 = item.pos
-	if item.kind == "gate": point.x = clampf(from.x,-GATE_WIDTH*.5+.25,GATE_WIDTH*.5-.25)
+	# Aim at the walkable bridge lane, not the gate ends above the side shelves.
+	if item.kind == "gate": point.x = clampf(from.x,-2.7,2.7)
 	return {"id":item.id,"pos":point,"height":item.height,"hp":item.hp,"is_structure":true,"structure_kind":item.kind}
 
 func targets(from: Vector2) -> Array:
@@ -92,7 +93,10 @@ func barrier(from: Vector2, destination: Vector2) -> Dictionary:
 	for item in director.state.structures:
 		if item.kind != "gate" or item.hp <= 0: continue
 		var distance: float = from.distance_squared_to(item.pos)
-		if distance < nearest and sim.arena.segment_rect(from,destination,bounds(item).grow(.95)):
+		# Every cross-bank route uses this lane, even if its straight line misses
+		# the gate. Off-centre forest births must attack the first gate as well.
+		var crosses_lane = (from.y-item.pos.y)*(destination.y-item.pos.y) < 0
+		if distance < nearest and (crosses_lane or sim.arena.segment_rect(from,destination,bounds(item).grow(.95))):
 			selected = target(item,from)
 			nearest = distance
 	return selected
