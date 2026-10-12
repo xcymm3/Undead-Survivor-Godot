@@ -91,9 +91,9 @@ func make_ramp() -> void:
 		block("RampMark",Vector3(0,y+.28,z),Vector3(9.7,.06,.18),"8b7654",false)
 
 func make_safe_zone() -> void:
-	var safe = DefenseLayout.SAFE_ZONE
+	var safe = DefenseLayout.SHOP_AREA
 	block("SafeZoneFloor",Vector3(0,3.035,safe.get_center().y),Vector3(26,.06,safe.size.y),"314c45",false)
-	block("WeaponShopWall",Vector3(0,6,DefenseLayout.SHOP_WALL_Z),Vector3(25.5,6,.65),"493a2d",true,false)
+	block("WeaponShopWall",Vector3(0,6,DefenseLayout.SHOP_WALL_Z),Vector3(25.5,6,.65),"493a2d",true,true)
 	preparation = preload("res://scripts/preparation_world.gd").new()
 	preparation.name = "PreparationWorld"
 	add_child(preparation)
@@ -113,9 +113,6 @@ func _ready() -> void:
 	obstacles.append({"minX":DefenseLayout.PLATEAU.end.x,"maxX":DefenseLayout.BOUNDS.end.x,"minZ":-28.0,"maxZ":DefenseLayout.BOUNDS.end.y})
 	obstacles.append({"minX":-32.0,"maxX":-5.5,"minZ":-28.0,"maxZ":-10.0})
 	obstacles.append({"minX":5.5,"maxX":32.0,"minZ":-28.0,"maxZ":-10.0})
-	# The side armory remains enemy-safe while leaving the central field open.
-	var safe = DefenseLayout.SAFE_ZONE
-	obstacles.append({"minX":safe.position.x,"maxX":safe.end.x,"minZ":safe.position.y,"maxZ":safe.end.y})
 	make_bridge()
 	make_ramp()
 	make_safe_zone()

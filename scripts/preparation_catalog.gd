@@ -9,7 +9,7 @@ static func stations() -> Array:
 	var ids = ["rifle","revolver","axe","grenade","strong","precise","swift","supply"]
 	for i in ids.size():
 		result.append({"id":ids[i],"position":Vector3([-9.0,-3.0,3.0,9.0][i%4],4.15,Layout.SHOP_WALL_Z-2.3 if i < 4 else Layout.SHOP_WALL_Z-7.5),"radius":.85,"range":3.2})
-	result.append({"id":"alarm","position":Vector3(-4,4.15,Layout.SAFE_ZONE.position.y-2),"radius":.7,"range":3.2})
+	result.append({"id":"alarm","position":Vector3(-4,4.15,Layout.SHOP_AREA.position.y-2),"radius":.7,"range":3.2})
 	return result
 
 static func targets(sim) -> Array:

@@ -656,10 +656,6 @@ func approach_goal(z: Dictionary, target: Dictionary) -> Vector2:
 			approach[axis] = signf(offset[axis])*edge
 			approach[1-axis] = clampf(approach[1-axis],-side_limit,side_limit)
 		return target.pos+approach
-	if mode == "defense" and Data.Maps.Defense.SAFE_ZONE.has_point(target.pos):
-		# The player can stand in the shop, but enemies wait outside its front.
-		var safe: Rect2 = Data.Maps.Defense.SAFE_ZONE
-		return Vector2(clampf(target.pos.x,safe.position.x+.5,safe.end.x-.5),safe.position.y-.98)
 	if distance > 24: return target.pos
 	# Stable per-enemy offsets avoid a shared chase point; navigation validates each slot.
 	var sector = fmod(z.id*2.399963,TAU)

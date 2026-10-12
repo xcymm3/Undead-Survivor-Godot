@@ -54,6 +54,8 @@ func build_station(entry: Dictionary) -> void:
 	var before = get_children()
 	block("StationFoot",Vector3(p.x,3.13,p.z),Vector3(2.2,.26,1.5),"303c3b",false)
 	block("StationDesk",Vector3(p.x,3.52,p.z),Vector3(1.9,.65,1.25),"66513b",true,false)
+	# Enemies can enter the shop; only actual solid furniture blocks their route.
+	get_parent().obstacles.append({"minX":p.x-.95,"maxX":p.x+.95,"minZ":p.z-.625,"maxZ":p.z+.625})
 	block("StationTop",Vector3(p.x,3.89,p.z),Vector3(2.12,.1,1.4),"b5a581",false)
 	block("StationTrim",Vector3(p.x,3.95,p.z+.67),Vector3(2.12,.06,.07),"d1b060",false)
 	for child in get_children():

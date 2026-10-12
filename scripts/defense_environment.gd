@@ -241,12 +241,12 @@ static func build_cover(world: Node3D) -> void:
 		var entry: Array = rocks[index]
 		var position: Vector3 = entry[0]
 		if position.z >= -10: position.z = world.Layout.plateau_depth(position.z)
-		if world.Layout.SAFE_ZONE.grow(2).has_point(Vector2(position.x,position.z)): continue
+		if world.Layout.SHOP_AREA.grow(2).has_point(Vector2(position.x,position.z)): continue
 		make_rock(world,"FieldBoulder%02d" % index,position,entry[1],entry[2],true,true)
 	# Small companion stones break up the unmistakable single-primitive silhouette.
 	for point in [Vector3(-23,3.35,-1),Vector3(24,3.32,5),Vector3(-20,3.34,15),Vector3(21,3.34,22),Vector3(-25,3.34,33),Vector3(24,3.34,41)]:
 		point.z = world.Layout.plateau_depth(point.z)
-		if world.Layout.SAFE_ZONE.grow(1).has_point(Vector2(point.x,point.z)): continue
+		if world.Layout.SHOP_AREA.grow(1).has_point(Vector2(point.x,point.z)): continue
 		make_rock(world,"ScatterStone",point,Vector3(1.25,.72,1.0),point.x*4.0,false,false)
 
 static func build_vegetation(world: Node3D) -> void:
@@ -261,7 +261,7 @@ static func build_vegetation(world: Node3D) -> void:
 	for index in patches.size():
 		var point: Vector2 = patches[index]
 		if point.y >= -10: point.y = world.Layout.plateau_depth(point.y)
-		if world.Layout.SAFE_ZONE.has_point(point): continue
+		if world.Layout.SHOP_AREA.has_point(point): continue
 		make_grass_tuft(world,point,world.Layout.height(point)+.03,"526448" if index%3 else "6c7350")
 
 static func decorate_existing(world: Node3D) -> void:

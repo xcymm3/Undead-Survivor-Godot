@@ -6,8 +6,8 @@ const CRYSTAL = Vector2(0,PLATEAU.position.y+PLATEAU.size.y/2)
 const CRYSTAL_RADIUS = 1.05
 const CRYSTAL_CONTACT_RADIUS = 2.3 # Crystal body plus enemy navigation clearance.
 const FALL_RETURN = CRYSTAL+Vector2(-6,3)
-const SAFE_ZONE = Rect2(-13,PLATEAU.end.y-10,26,10)
-const SPAWN = SAFE_ZONE.position+SAFE_ZONE.size/2
+const SHOP_AREA = Rect2(-13,PLATEAU.end.y-10,26,10)
+const SPAWN = SHOP_AREA.position+SHOP_AREA.size/2
 const SHOP_WALL_Z = PLATEAU.end.y-.325
 const SHOP_POINT = Vector2(0,SHOP_WALL_Z-2.35)
 const BRIDGE = Rect2(-4,-62,8,34)
@@ -38,8 +38,8 @@ static func height(p: Vector2) -> float:
 		return 3.0*(p.y-RAMP.position.y)/RAMP.size.y if p.x >= RAMP.position.x and p.x <= RAMP.end.x else 0.0
 	return 3.0
 
-static func in_safe_zone(p: Vector2) -> bool:
-	return SAFE_ZONE.has_point(p)
+static func in_shop(p: Vector2) -> bool:
+	return SHOP_AREA.has_point(p)
 
 static func enemy_spawn_allowed(p: Vector2) -> bool:
 	if not ENEMY_SPAWN_REGION.has_point(p): return false
