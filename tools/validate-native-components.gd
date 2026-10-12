@@ -397,6 +397,7 @@ func validate_interaction_motion() -> void:
 	d.interactions(.01)
 	fixture.hold(sim,p,1.3)
 	check(sim.defense.started,"The world alarm starts the attack")
+	check(preload("res://scripts/preparation_catalog.gd").targets(sim).size() == 10,"Closed empty construction sites do not expose invisible interaction targets")
 	check(game.arena.scenery.preparation.stations.rifle.cover.visible and not game.arena.scenery.preparation.stations.rifle.prop.visible,"Attack physically closes station covers and hides goods")
 	check(game.ui.native_hud.find_child("CoinIcon",true,false).texture != null and game.ui.native_hud.find_child("DiamondIcon",true,false).texture != null,"Wallet uses distinct coin and diamond icons")
 	check(not sim.purchase_upgrade("rifle",p),"Starting wave one closes transactions")

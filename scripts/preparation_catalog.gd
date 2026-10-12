@@ -15,6 +15,8 @@ static func stations() -> Array:
 static func targets(sim) -> Array:
 	var result: Array = stations()
 	for item in sim.defense.get("structures",[]):
+		if not item.get("owned",false) and sim.defense.started: continue
+		if item.kind == "mine" and item.get("spent",false): continue
 		var point: Vector3 = Vector3(item.pos.x,item.height+.7,item.pos.y)
 		# Gate interaction is on its near post; no walking through steel to reach its centre.
 		if item.kind == "gate": point.x = -4.65
@@ -60,7 +62,9 @@ static func description(sim, id: String) -> String:
 		var index: int = {"rifle":0,"revolver":3,"axe":6}[id]
 		detail = "伤害 %s" % number(sim.arena.get_node("/root/Data").weapons[index].damage*profile.weapon_multiplier(id))
 	elif id == "grenade": detail = "容量 %d / 5" % profile.grenade_capacity()
-	elif id in profile.MINES: return "地雷\n"+("已布置" if profile.owned(id) else cost_text)
+	elif id in profile.MINES:
+		var item = sim.defense_director.structures.find(id)
+		return "地雷\n"+("已触发" if item.get("triggered",false) else "已布置") if profile.owned(id) else "地雷\n"+cost_text
 	elif id in profile.BUILDINGS:
 		if not profile.owned(id): return NAMES[id]+"\n建造\n"+cost_text
 		var item = sim.defense_director.structures.find(id)
