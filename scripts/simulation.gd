@@ -417,13 +417,25 @@ func step_coins(dt: float) -> void:
 	for drop in coin_drops:
 		drop.age += dt
 		var owner: Dictionary = pawns.get(drop.owner,{})
+		if owner.is_empty() or owner.get("hp",0) <= 0:
+			var living: Array = pawns.values().filter(func(p): return p.hp > 0)
+			if not living.is_empty():
+				owner = living[0]
+				drop.owner = owner.id
 		if owner.is_empty():
 			drop.age = 5.0
 			continue
 		var destination = Vector3(owner.pos.x,owner.height+1.05,owner.pos.y)
-		if drop.age < .15: drop.pos.y += dt*1.5
-		else: drop.pos = drop.pos.move_toward(destination,dt*(7.0+drop.pos.distance_to(destination)*4.0))
-		if drop.pos.distance_squared_to(destination) < .09: drop.age = 5.0
+		if drop.age < .45:
+			var t: float = drop.age/.45
+			drop.pos = drop.origin+drop.scatter*t+Vector3.UP*sin(t*PI)*.9
+		else:
+			var t: float = clampf((drop.age-.45)/1.1,0,1)
+			var start: Vector3 = drop.origin+drop.scatter
+			var curve: Vector3 = (start+destination)*.5+Vector3.UP*1.8
+			drop.pos = start.lerp(curve,t).lerp(curve.lerp(destination,t),t)
+			drop.arrival = smoothstep(.8,1.0,t)
+		if drop.age >= .45 and drop.pos.distance_squared_to(destination) < .09: drop.age = 5.0
 	coin_drops = coin_drops.filter(func(drop): return drop.age < 5.0)
 
 func shop_available(p: Dictionary) -> bool:
@@ -865,7 +877,11 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		paths.erase(z.id)
 		var reward = progression.award_kill(str(z.get("original",z.kind)))
 		var receiver = str(p.id) if pawns.has(p.id) else str(pawns.keys()[0]) if not pawns.is_empty() else ""
-		coin_drops.append({"owner":receiver,"pos":Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+.7,z.pos.y),"age":0.0,"value":reward})
+		var origin = Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+.7,z.pos.y)
+		var coin_random = RandomNumberGenerator.new()
+		coin_random.seed = z.id*104729+7841
+		var angle = coin_random.randf()*TAU
+		coin_drops.append({"owner":receiver,"pos":origin,"origin":origin,"scatter":Vector3(cos(angle)*.65,0,sin(angle)*.65),"arrival":0.0,"age":0.0,"value":reward})
 		if coin_drops.size() > 512: coin_drops.pop_front()
 		events.append({"kind":"death","player":p.id,"position":position})
 	else:
