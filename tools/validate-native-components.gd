@@ -355,6 +355,23 @@ func validate_interaction_motion() -> void:
 	var fixture = preload("res://tools/preparation-fixture.gd")
 	check(not game.paused and game.ui.current.is_empty(),"Preparation begins directly in the world without a modal")
 	check(game.arena.scenery.preparation.stations.size() == 9,"Eight equipment and talent stations plus one alarm exist")
+	var scenery = game.arena.scenery
+	var visual_state = sim.defense.duplicate(true)
+	visual_state.prop_clock = 0.0
+	scenery.sync(visual_state)
+	var crystal_body_pose: Transform3D = scenery.get_node("CrystalBody").transform
+	var display_pose: Basis = scenery.preparation.stations.rifle.prop.basis
+	visual_state.prop_clock = 9.0
+	scenery.sync(visual_state)
+	check(is_equal_approx(scenery.crystal.rotation.y,PI/2) and not scenery.preparation.stations.rifle.prop.basis.is_equal_approx(display_pose),"Crystal and weapon displays advance their slow rotation animations")
+	check(scenery.get_node("CrystalBody").transform.is_equal_approx(crystal_body_pose),"Cosmetic crystal rotation does not move authoritative collision")
+	visual_state.prop_clock = 36.0
+	scenery.sync(visual_state)
+	check(is_zero_approx(scenery.crystal.rotation.y),"Crystal rotation loops every thirty-six seconds")
+	visual_state.prop_clock = 40.0
+	scenery.sync(visual_state)
+	check(scenery.preparation.stations.rifle.prop.basis.is_equal_approx(display_pose),"Display rotation loops every forty seconds")
+	scenery.sync(sim.defense)
 	for id in ["rifle","revolver","axe"]:
 		var station: Dictionary = game.arena.scenery.preparation.stations[id]
 		var bounds: AABB = preload("res://scripts/world_geometry.gd").posed_bounds(station.prop.get_child(0))

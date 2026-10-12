@@ -18,6 +18,7 @@ static func targets(sim) -> Array:
 		if not item.get("owned",false) and sim.defense.started: continue
 		if item.kind == "mine" and item.get("spent",false): continue
 		var point: Vector3 = Vector3(item.pos.x,item.height+.7,item.pos.y)
+		if item.kind == "turret" and item.get("owned",false): point.y = item.height+1.25
 		# Gate interaction is on its near post; no walking through steel to reach its centre.
 		if item.kind == "gate": point.x = -4.65
 		result.append({"id":item.id,"position":point,"radius":.8,"range":3.2})

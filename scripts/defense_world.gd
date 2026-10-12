@@ -40,28 +40,11 @@ func make_crystal() -> void:
 	body.add_child(shape)
 	add_child(body)
 	obstacles.append({"minX":DefenseLayout.CRYSTAL.x-DefenseLayout.CRYSTAL_RADIUS,"maxX":DefenseLayout.CRYSTAL.x+DefenseLayout.CRYSTAL_RADIUS,"minZ":DefenseLayout.CRYSTAL.y-DefenseLayout.CRYSTAL_RADIUS,"maxZ":DefenseLayout.CRYSTAL.y+DefenseLayout.CRYSTAL_RADIUS})
-	for side in [-1.0,1.0]:
-		var cone = MeshInstance3D.new()
-		var mesh = CylinderMesh.new()
-		mesh.top_radius = 0.0 if side > 0 else 1.05
-		mesh.bottom_radius = 1.05 if side > 0 else 0.0
-		mesh.height = 2.5
-		mesh.radial_segments = 6
-		cone.mesh = mesh
-		cone.position.y = 1.7+side*1.15
-		crystal.add_child(cone)
-		if side > 0: crystal_core = cone
-	var glow = StandardMaterial3D.new()
-	glow.albedo_color = Color("7ee6ff")
-	glow.emission_enabled = true
-	glow.emission = Color("38bddd")
-	glow.emission_energy_multiplier = 2.7
-	for child in crystal.get_children():
-		if child is MeshInstance3D: child.material_override = glow
+	crystal_core = preload("res://scripts/crystal_art.gd").build(crystal)
 	crystal_light = OmniLight3D.new()
 	crystal_light.position = Vector3(0,2.3,0)
 	crystal_light.light_color = Color("65dff2")
-	crystal_light.light_energy = 5.0
+	crystal_light.light_energy = 2.4
 	crystal_light.omni_range = 13.0
 	crystal_light.shadow_enabled = true
 	crystal.add_child(crystal_light)
@@ -166,6 +149,9 @@ func sync(state: Dictionary) -> void:
 	var hp: float = float(state.get("crystal_hp",DefenseLayout.CRYSTAL_MAX_HP))
 	var maximum: float = float(state.get("crystal_max_hp",DefenseLayout.CRYSTAL_MAX_HP))
 	var ratio = clampf(hp/maxf(1,maximum),0,1)
+	var clock: float = float(state.get("prop_clock",0.0))
+	crystal.rotation.y = fmod(clock,preload("res://scripts/crystal_art.gd").PERIOD)*TAU/preload("res://scripts/crystal_art.gd").PERIOD
+	crystal.position.y = 3.0+sin(clock*TAU/6.0)*.045
 	crystal.scale = Vector3.ONE*lerpf(.88,1.0,ratio)
-	crystal_light.light_energy = lerpf(.35,5.0,ratio)
+	crystal_light.light_energy = lerpf(.35,2.4,ratio)
 	crystal_light.light_color = Color("f05d4f") if ratio < .3 else Color("65dff2")

@@ -106,7 +106,7 @@ func build_station(entry: Dictionary) -> void:
 	light.light_energy = 1.1
 	light.omni_range = 3.8
 	root.add_child(light)
-	stations[entry.id] = {"root":root,"prop":prop,"cover":cover,"light":light}
+	stations[entry.id] = {"root":root,"prop":prop,"cover":cover,"light":light,"display_basis":prop.basis}
 	if entry.id == "alarm":
 		alarm_light = light
 		light.light_color = Color("72e6b0")
@@ -145,6 +145,8 @@ func sync(state: Dictionary) -> void:
 		station.cover.visible = closed and id != "alarm"
 		station.prop.visible = not closed or id == "alarm"
 		station.light.light_energy = 0.0 if closed else 1.1
+		if id in ["rifle","revolver","axe"]:
+			station.prop.basis = Basis(Vector3.UP,float(state.get("prop_clock",0.0))*TAU/40.0)*station.display_basis
 	if alarm_light:
 		alarm_light.light_color = Color("ff654b") if closed else Color("72e6b0")
 		alarm_light.light_energy = 1.5 if closed else 1.1
