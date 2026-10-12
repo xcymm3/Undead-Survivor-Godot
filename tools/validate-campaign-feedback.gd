@@ -86,6 +86,17 @@ func run() -> void:
 	game.return_home()
 	check(game.ui.menu.has_node("HomeStage/GameTitle"),"Home uses the central game title and bottom action layout")
 	check(game.ui.menu.get_node("HomeStage/CrystalSigil").size == Vector2(80,80),"Home crystal emblem stays inside its title-free reserved space")
+	check(game.ui.menu.get_child(0) is TextureRect and game.ui.menu.get_child(0).texture is GradientTexture2D,"Home restores the original translucent battlefield backdrop")
+	check(game.sound.streams.has("menu-hover") and game.sound.streams["menu-hover"].get_length() < .1,"Home hover cue is a short bounded audio tick")
+	var home_buttons = game.ui.menu.find_children("*","Button",true,false)
+	var start_button = home_buttons.filter(func(n): return n.text == "开始防守")[0]
+	var voices = game.sound.index
+	start_button.mouse_entered.emit()
+	await create_timer(.18).timeout
+	check(start_button.scale.x > 1.05 and game.sound.index == voices+1,"Home hover enlarges the button and emits one cue")
+	start_button.mouse_exited.emit()
+	await create_timer(.18).timeout
+	check(start_button.scale.is_equal_approx(Vector2.ONE),"Home hover exit restores its size")
 	game.ui.show_settings()
 	await process_frame
 	await process_frame

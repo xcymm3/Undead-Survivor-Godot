@@ -8,8 +8,14 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
-	if scenario in ["home","settings"]:
+	if scenario in ["home","home_hover","settings"]:
 		game.ui.show_home()
+		if scenario == "home_hover":
+			var buttons = game.ui.menu.find_children("*","Button",true,false)
+			for item in buttons:
+				if item.text == "开始防守":
+					item.mouse_entered.emit()
+					await get_tree().create_timer(.16).timeout
 		if scenario == "settings": game.ui.show_settings()
 	else:
 		game.start_solo("defense",42)

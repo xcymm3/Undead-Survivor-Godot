@@ -232,6 +232,18 @@ func settings_heading(parent: VBoxContainer, text: String) -> void:
 	parent.add_child(separator)
 	parent.add_child(label(text,20,SETTINGS_INK))
 
+func home_button(parent: Node, text: String, callback: Callable, primary := false) -> Button:
+	var node = preload("res://scripts/menu_button.gd").new()
+	node.text = text
+	node.primary = primary
+	node.custom_minimum_size.y = 48
+	node.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	parent.add_child(node)
+	node.pressed.connect(callback)
+	node.mouse_entered.connect(func():
+		if not node.disabled: game.sound.play("menu-hover",-18))
+	return node
+
 func show_home() -> void:
 	clear_menu()
 	current = "home"
@@ -255,18 +267,14 @@ func show_home() -> void:
 	var version = label("v"+str(ProjectSettings.get_setting("application/config/version","2.1.0")),16,Color("adba9c"))
 	version.position = Vector2(1290,42)
 	stage.add_child(version)
-	var title = label("UNDEAD\nSURVIVOR",98,Color("e9e2c7"))
+	var title = preload("res://scripts/menu_title.gd").new()
 	var display_font = FontVariation.new()
 	display_font.base_font = font
-	display_font.variation_embolden = 1.2
-	title.add_theme_font_override("font",display_font)
+	display_font.variation_embolden = 3.5
+	title.display_font = display_font
 	title.name = "GameTitle"
-	title.position = Vector2(190,184)
-	title.size = Vector2(1060,280)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_constant_override("line_spacing",-16)
-	title.add_theme_color_override("font_outline_color",Color("0b1715"))
-	title.add_theme_constant_override("outline_size",12)
+	title.position = Vector2(140,175)
+	title.size = Vector2(1160,310)
 	stage.add_child(title)
 	var subtitle = label("守住水晶，击败舞王",25,Color("bccaab"))
 	subtitle.position = Vector2(300,505)
@@ -286,7 +294,7 @@ func show_home() -> void:
 	setup.add_theme_constant_override("separation",12)
 	stage.add_child(setup)
 	for entry in [["easy","简单"],["normal","普通"],["hard","困难"]]:
-		var option = button(setup,("◆ " if Data.settings.defense_difficulty == entry[0] else "")+entry[1],game.select_defense_difficulty.bind(entry[0]))
+		var option = home_button(setup,("◆ " if Data.settings.defense_difficulty == entry[0] else "")+entry[1],game.select_defense_difficulty.bind(entry[0]))
 		option.custom_minimum_size = Vector2(135,44)
 	var money = CheckBox.new()
 	money.name = "InfiniteCoins"
@@ -299,10 +307,10 @@ func show_home() -> void:
 	actions.add_theme_constant_override("separation",14)
 	stage.add_child(actions)
 	for item in [["开始防守",func(): game.start_solo("defense")],["设置",show_settings],["武器与操作",show_guide],["退出游戏",func(): game.quit_game()]]:
-		var option = button(actions,item[0],item[1],item[0] == "开始防守")
+		var option = home_button(actions,item[0],item[1],item[0] == "开始防守")
 		option.custom_minimum_size = Vector2(214,76)
 		option.add_theme_font_size_override("font_size",25)
-	var save = button(stage,"存档 %d" % (Progress.active_slot+1),show_save_slots)
+	var save = home_button(stage,"存档 %d" % (Progress.active_slot+1),show_save_slots)
 	save.position = Vector2(56,725)
 	save.custom_minimum_size = Vector2(168,76)
 	var profile = label("金币 %d   ◆ 钻石 %d   最佳第 %d 波" % [Progress.store.data.coins,Progress.store.data.diamonds,Progress.store.data.best_wave],17,Color("b6c3a5"))

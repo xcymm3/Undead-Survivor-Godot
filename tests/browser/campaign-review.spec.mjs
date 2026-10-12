@@ -4,7 +4,7 @@ test('战斗反馈、主页、设置与失败镜头隔离截图',async({page},in
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
  page.on('console',message=>{if(/^(SCRIPT ERROR|ERROR):/.test(message.text()))errors.push(message.text());});
  await page.setViewportSize({width:1440,height:900});
- for(const scenario of ['crystal_half','crystal_broken','heal','boss','home','failure_player','failure_crystal','settings']){
+ for(const scenario of ['crystal_half','crystal_broken','heal','boss','home','home_hover','failure_player','failure_crystal','settings']){
   await page.goto(`/?campaignReview=${scenario}`);
   await page.waitForFunction(()=>window.__campaignReviewReady,null,{timeout:90000});
   const state=await page.evaluate(()=>window.__campaignReviewReady);
@@ -12,9 +12,9 @@ test('战斗反馈、主页、设置与失败镜头隔离截图',async({page},in
   if(scenario==='crystal_broken')expect(state.fragments).toBe(true);
   if(scenario==='boss')expect(state.boss).toContain('62450');
   if(scenario.startsWith('failure'))expect(state.menu).not.toBe('result');
-  if(scenario==='home')expect(state.menu).toBe('home');
+  if(scenario.startsWith('home'))expect(state.menu).toBe('home');
   if(scenario==='settings')expect(state.menu).toBe('settings');
-  if(!['home','settings'].includes(scenario))expect(state.focus_visible).toBe(false);
+  if(!['home','home_hover','settings'].includes(scenario))expect(state.focus_visible).toBe(false);
   const file=info.outputPath(`${scenario}.png`);
   await page.screenshot({path:file,timeout:60000});
   await info.attach(scenario,{path:file,contentType:'image/png'});
