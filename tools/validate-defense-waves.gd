@@ -62,18 +62,18 @@ func run() -> void:
 				var advanced_count = common.count("cone")+common.count("bucket")
 				advanced_share_valid = advanced_share_valid and absf(advanced_count-common.size()*Defense.advanced_fraction(wave)) <= 1.5 and absf(common.count("cone")-2*common.count("bucket")) <= 1.0
 				crawler_free = crawler_free and value.all(func(kind): return sim.defense_population_kind(kind) != "crawler")
-				composition_valid = composition_valid and spent <= budget and budget-spent < .75 and Population.points(specials) <= budget*Defense.special_fraction(wave) and value.count("football") == Defense.footballs(wave,party)
-				if wave >= 10: late_special_share = late_special_share and Population.points(specials) >= budget*.48
-	check(composition_valid,"All difficulties and one-to-four players respect the rising special cap and independent bosses")
-	check(late_special_share,"Available elite types use almost half of wave points from wave ten across parties and difficulties")
+				composition_valid = composition_valid and spent <= budget and Population.points(common) <= budget*.5 and budget*.5-Population.points(common) < 1 and Population.points(specials) <= budget*.5 and value.count("football") == Defense.footballs(wave,party)
+				if wave >= 3: late_special_share = late_special_share and budget*.5-Population.points(specials) < 4
+	check(composition_valid,"All difficulties and one-to-four players respect the fixed fifty percent special cap and independent bosses")
+	check(late_special_share,"Available elite pools leave less than one cheapest elite unspent")
 	check(crawler_free,"All difficulties, party sizes and sampled early-to-endless waves spawn no crawlers")
 	check(advanced_share_valid,"Ordinary armored body share and the two-to-one cone/bucket ratio hold across waves, difficulties and party sizes")
 	sim.defense_director.begin_wave()
 	var initial_roster: Array = sim.roster.duplicate()
 	var first_plan: Dictionary = planner.describe().duplicate()
-	check(sim.wave_total == 178 and counts(initial_roster) == {"normal":160,"cone":12,"bucket":6},"Normal solo first wave contains 160 normals, twelve cones and six buckets")
-	check(sim.defense.wave_budget == 138 and Population.points(initial_roster) == 138,"First wave spends exactly 138 points")
-	check(planner.batches == 30 and is_equal_approx(planner.interval,1.0) and planner.batch_size == 6,"First wave schedules five or six bodies each second for thirty batches")
+	check(sim.wave_total == 69 and counts(initial_roster) == {"normal":62,"cone":5,"bucket":2},"Normal solo first wave contains 62 normals, five cones and two buckets")
+	check(sim.defense.wave_budget == 138 and Population.points(initial_roster) == 69,"First wave spends only its 69-point ordinary half")
+	check(planner.batches == 14 and is_equal_approx(planner.interval,30.0/14) and planner.batch_size == 5,"Reduced first wave schedules fourteen batches over thirty seconds")
 	var before_clock: float = planner.clock
 	sim.defense.waiting = true
 	sim.step(.25)
@@ -102,11 +102,12 @@ func run() -> void:
 		last_id = sim.next_id
 		await physics_frame
 		if sim.roster.is_empty(): break
-	check(sim.spawned == 178 and sim.roster.is_empty() and planner.clock <= 30.02,"Real first-wave simulation releases all enemies by thirty seconds")
-	var on_time = batches.size() == 30
+	check(sim.spawned == 69 and sim.roster.is_empty() and planner.clock <= 30.02,"Real first-wave simulation releases its ordinary half by thirty seconds")
+	var on_time = batches.size() == planner.batches
 	for index in batches.size():
-		on_time = on_time and batches[index].count == planner.scheduled_count(index+1)-planner.scheduled_count(index) and absf(batches[index].time-(index+1)) <= .02
-	check(on_time,"Real releases follow all thirty scheduled quotas at one-second intervals")
+		var scheduled = (index+1)*planner.interval
+		on_time = on_time and batches[index].count == planner.scheduled_count(scheduled)-planner.scheduled_count(index*planner.interval) and absf(batches[index].time-scheduled) <= .02
+	check(on_time,"Real releases follow the reduced population's evenly spaced thirty-second plan")
 	check(counts(all_spawned) == counts(initial_roster),"Actual spawns match the complete ordinary composition with no crawlers")
 	check(safe,"Every newborn position is outside the 2D scenery clearance margin")
 	check(sim.pawns.solo.shots == 0 and sim.pawns.solo.shoves == 0,"The spawn observation performs no player firing or shoving")

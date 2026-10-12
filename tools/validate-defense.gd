@@ -15,7 +15,9 @@ func valid_roster_budget(value: Array, budget: int, fraction: float) -> bool:
 	var population = preload("res://scripts/enemy_population.gd")
 	var spent: float = population.points(value)
 	var specials: Array = value.filter(func(kind): return kind in population.ELITES)
-	return spent <= budget and budget-spent < .75 and population.points(specials) <= budget*fraction
+	var common: Array = value.filter(func(kind): return kind in population.ORDINARY)
+	var common_budget = budget*(1-fraction)
+	return spent <= budget and population.points(common) <= common_budget and common_budget-population.points(common) < 1 and population.points(specials) <= budget*fraction
 
 func command(weapon := 0, interact := false, slot := 1, yaw := 0.0, pitch := 0.0, fire := false) -> Dictionary:
 	return {"x":0.0,"y":0.0,"yaw":yaw,"pitch":pitch,"weapon":weapon,"slot":slot,"interact":interact,"crouch":false,"jump":false,"reload":false,"fire":fire,"use_self":fire,"aim":false,"shove":false}
@@ -330,7 +332,7 @@ func run() -> void:
 	check(crowd_safe,"Crowd separation cannot push zombies off the bridge or around the ramp")
 
 	# Quarter-point costs spend the budget without exceeding either pool;
-	# an unspendable remainder is less than one ordinary body (0.75 points).
+	# each pool keeps its own unspendable remainder; absent elites never refill commons.
 	var population = preload("res://scripts/defense_population.gd")
 	var shared_population = preload("res://scripts/enemy_population.gd")
 	sim.wave = 1
@@ -339,7 +341,7 @@ func run() -> void:
 	for sample in 200:
 		sim.prepare_wave()
 		exact_sample_budgets = exact_sample_budgets and valid_roster_budget(sim.roster,population.budget(1,1,"easy"),population.special_fraction(1))
-	check(exact_sample_budgets,"Easy rosters respect the quarter-point budget and twenty-five percent special cap")
+	check(exact_sample_budgets,"Easy rosters respect the quarter-point budget and fixed fifty percent special cap")
 	var variants: Array = []
 	for slot in 200: variants.append(sim.defense_population_kind("normal"))
 	check(variants.count("normal") == 200 and sim.defense_population_kind("crawler") == "normal","All ordinary slots remain normal and legacy crawler slots are replaced")
@@ -376,10 +378,10 @@ func run() -> void:
 	for current_wave in range(1,31):
 		var fraction: float = population.special_fraction(current_wave)
 		var multiplier: float = population.budget_multiplier(current_wave)
-		special_ramp_valid = special_ramp_valid and is_equal_approx(fraction,.25+minf(9,current_wave-1)*(.25/9)) and fraction <= .5
+		special_ramp_valid = special_ramp_valid and is_equal_approx(fraction,.5)
 		reduced_budgets_valid = reduced_budgets_valid and is_equal_approx(multiplier,1.0-minf(9,current_wave-1)*(.15/9)) and population.budget(current_wave,1,"normal") <= population.base_budget(current_wave)
 		if current_wave > 1: reduced_budgets_valid = reduced_budgets_valid and population.budget(current_wave,1,"normal") < population.base_budget(current_wave)
-	check(special_ramp_valid and population.special_fraction(10) == .5,"Special point cap rises from 25 to 50 percent by wave ten and stays capped")
+	check(special_ramp_valid and population.special_fraction(10) == .5,"Special point cap remains fifty percent on every wave")
 	check(reduced_budgets_valid and is_equal_approx(population.budget_multiplier(10),.85),"Total points fall gradually to 85 percent of the former budget from wave ten")
 	var decreasing_growth = true
 	var previous_growth = 31

@@ -1,7 +1,7 @@
 extends RefCounted
 ## Quarter-point accounting keeps ordinary discounts exact without float drift.
 const POINT_SCALE = 4
-const COST = {"normal":.75,"crawler":.75,"cone":1,"bucket":1,"imp":4,"shield":6,"berserker":12,"giant":12}
+const COST = {"normal":1,"crawler":1,"cone":1,"bucket":1,"imp":4,"shield":6,"berserker":12,"giant":12}
 const ORDINARY = ["normal","cone","bucket"]
 const ELITES = ["imp","shield","berserker","giant"]
 const PARTY_MULTIPLIER = [1.0,1.2,1.4,1.6]
@@ -21,10 +21,11 @@ static func point_units(roster: Array) -> int:
 static func points(roster: Array) -> float:
 	return float(point_units(roster))/POINT_SCALE
 
-static func roster(budget: int, kinds: Array, random: RandomNumberGenerator, fraction := .25, advanced_fraction := 0.0) -> Array:
+static func roster(budget: int, kinds: Array, random: RandomNumberGenerator, fraction := .5, advanced_fraction := 0.0) -> Array:
 	var result: Array = []
 	var total_units = budget*POINT_SCALE
-	var allowance = floori(total_units*clampf(fraction,0,1))
+	var special_units = floori(total_units*clampf(fraction,0,1))
+	var allowance = special_units
 	var pool: Array = []
 	for kind in kinds:
 		if kind in ELITES and not pool.has(kind): pool.append(kind)
@@ -38,9 +39,9 @@ static func roster(budget: int, kinds: Array, random: RandomNumberGenerator, fra
 			allowance -= cost
 			spent += cost
 		if spent == 0: break
-	var used = point_units(result)
 	var ordinary_units = roundi(COST.normal*POINT_SCALE)
-	var remaining = maxi(0,total_units-used)
+	var remaining = maxi(0,total_units-special_units)
+	# Keep the two pools separate, even when no elite kind is unlocked.
 	var ratio = clampf(advanced_fraction,0,1) if "cone" in kinds and "bucket" in kinds else 0.0
 	# Find the largest common horde matching the requested body-count share.
 	# Both armored common types cost one point; rounding is in bodies, not points.

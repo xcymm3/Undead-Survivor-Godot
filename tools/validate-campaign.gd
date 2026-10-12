@@ -149,7 +149,7 @@ func run() -> void:
 	var ordinary: Array = boss.summon_roster.filter(func(kind): return kind in Store.COIN_REWARDS and kind in preload("res://scripts/enemy_population.gd").ORDINARY)
 	var specials: Array = boss.summon_roster.filter(func(kind): return kind in preload("res://scripts/enemy_population.gd").ELITES)
 	var population = preload("res://scripts/enemy_population.gd")
-	check(population.points(ordinary) <= 25 and 25-population.points(ordinary) < .75 and population.points(specials) <= 25 and 25-population.points(specials) < 4,"Summons respect separate ordinary and special twenty-five-point pools")
+	check(population.points(ordinary) <= 25 and 25-population.points(ordinary) < 1 and population.points(specials) <= 25 and 25-population.points(specials) < 4,"Summons respect separate ordinary and special twenty-five-point pools")
 	var boss_point: Vector2 = boss.pos
 	sim.update_zombie(boss,sim.crystal_target(),.5)
 	check(boss.pos == boss_point and boss.move_speed == 0,"Boss neither walks nor attacks during the summoning dance")

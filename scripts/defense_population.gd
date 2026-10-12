@@ -8,8 +8,7 @@ const GROWTH_DECAY = .92
 const GROWTH_OFFSET = 3
 const MIN_GROWTH = 5
 const FULL_SPECIAL_WAVE = 10
-const INITIAL_SPECIAL_FRACTION = .25
-const FINAL_SPECIAL_FRACTION = .5
+const SPECIAL_FRACTION = .5
 const INITIAL_ADVANCED_FRACTION = .1
 const FINAL_ADVANCED_FRACTION = .6
 const FINAL_BUDGET_MULTIPLIER = .85
@@ -29,8 +28,8 @@ static func difficulty_label(value: String) -> String:
 static func progression(wave: int) -> float:
 	return clampf(float(wave-1)/float(FULL_SPECIAL_WAVE-1),0.0,1.0)
 
-static func special_fraction(wave: int) -> float:
-	return lerpf(INITIAL_SPECIAL_FRACTION,FINAL_SPECIAL_FRACTION,progression(wave))
+static func special_fraction(_wave: int) -> float:
+	return SPECIAL_FRACTION
 
 static func advanced_fraction(wave: int) -> float:
 	return lerpf(INITIAL_ADVANCED_FRACTION,FINAL_ADVANCED_FRACTION,progression(wave))

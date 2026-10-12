@@ -229,7 +229,7 @@ func validate_crawler() -> void:
 	for i in 20:
 		check(sim.defense_population_kind("normal") == "normal","Ordinary slot remains normal without crawler conversion "+str(i))
 	check(sim.defense_population_kind("crawler") == "normal" and sim.defense_population_kind("football") == "football","Legacy crawler slot becomes normal and boss retains its kind")
-	check(preload("res://scripts/enemy_population.gd").COST.crawler == .75,"Crawler shares the ordinary cost of three quarters of a point")
+	check(preload("res://scripts/enemy_population.gd").COST.crawler == 1,"Legacy crawler alias shares the ordinary one-point cost")
 	var population = preload("res://scripts/enemy_population.gd")
 	var defense_population = preload("res://scripts/defense_population.gd")
 	check(population.COST.cone == 1 and population.COST.bucket == 1 and not population.ELITES.has("cone") and not population.ELITES.has("bucket"),"Armored common zombies cost one point and do not spend the special pool")
