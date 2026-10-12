@@ -59,15 +59,20 @@ func build_station(entry: Dictionary) -> void:
 	var prop = Node3D.new()
 	prop.name = "DisplayObject"
 	root.add_child(prop)
-	prop.position.y = 1.1
+	prop.position.y = 1.25
 	if entry.id in ["rifle","revolver","axe"]:
 		var model = preload("res://scripts/weapon_view.gd").create_model(entry.id)
 		prop.add_child(model)
 		var bounds = preload("res://scripts/world_geometry.gd").posed_bounds(model)
+		var center = model.to_local(bounds.get_center())
 		var factor: float = 1.45/maxf(.01,bounds.size.length())
 		model.scale *= factor
-		model.position -= bounds.get_center()*factor
+		model.position -= center*factor
 		model.rotation.z = -.15
+		if bounds.size.y > maxf(bounds.size.x,bounds.size.z): prop.rotation.z = PI/2
+		elif bounds.size.z > bounds.size.x: prop.rotation.y = PI/2
+		var fitted: AABB = preload("res://scripts/world_geometry.gd").posed_bounds(model)
+		prop.position.y += maxf(0,3.98-fitted.position.y)
 	elif entry.id == "grenade":
 		for x in [-.45,0,.45]:
 			var model = preload("res://scripts/equipment_props.gd").model(4)
@@ -83,6 +88,15 @@ func build_station(entry: Dictionary) -> void:
 	cover.material_override = material("3b474a")
 	cover.position.y = 1.6
 	root.add_child(cover)
+	for side in [-1.0,1.0]:
+		for level in 6:
+			var rib = MeshInstance3D.new()
+			var rib_mesh = BoxMesh.new()
+			rib_mesh.size = Vector3(2.12,.035,.04)
+			rib.mesh = rib_mesh
+			rib.material_override = material("596568")
+			rib.position = Vector3(0,-.5+level*.2,side*.73)
+			cover.add_child(rib)
 	cover.visible = false
 	var light = OmniLight3D.new()
 	light.position = Vector3(0,2.2,0)
@@ -101,12 +115,14 @@ func build_talent(parent: Node3D, id: String) -> void:
 	match id:
 		"strong":
 			block("MedicalCase",p,Vector3(1,.5,.6),"dddac9",false)
-			block("MedicalCrossH",p+Vector3(0,0,.31),Vector3(.45,.1,.02),"bf4e40",false)
-			block("MedicalCrossV",p+Vector3(0,0,.32),Vector3(.1,.35,.02),"bf4e40",false)
+			for side in [-1.0,1.0]:
+				block("MedicalCrossH",p+Vector3(0,0,side*.31),Vector3(.45,.1,.02),"bf4e40",false)
+				block("MedicalCrossV",p+Vector3(0,0,side*.32),Vector3(.1,.35,.02),"bf4e40",false)
 		"precise":
-			for r in [ .48,.32,.15 ]:
-				var disk = cylinder(p+Vector3(0,0,.5-r*.15),r,.04,"e2d9bd" if r == .48 else "a94c3c" if r == .32 else "e2d9bd",true)
-				disk.rotation.x = PI/2
+			for side in [-1.0,1.0]:
+				for r in [ .48,.32,.15 ]:
+					var disk = cylinder(p+Vector3(0,.22,side*(.04+(.48-r)*.2)),r,.04,"e2d9bd" if r == .48 else "a94c3c" if r == .32 else "e2d9bd")
+					disk.rotation = Vector3(PI/2,0,0)
 		"swift":
 			for x in [-.35,.35]:
 				block("TrainingWeight",p+Vector3(x,0,0),Vector3(.2,.5,.5),"454b48",false)
@@ -126,7 +142,7 @@ func sync(state: Dictionary) -> void:
 		var station: Dictionary = stations[id]
 		station.cover.visible = closed and id != "alarm"
 		station.prop.visible = not closed or id == "alarm"
-		station.light.light_energy = .12 if closed else 1.1
+		station.light.light_energy = 0.0 if closed else 1.1
 	if alarm_light:
 		alarm_light.light_color = Color("ff654b") if closed else Color("72e6b0")
 		alarm_light.light_energy = 1.5 if closed else 1.1

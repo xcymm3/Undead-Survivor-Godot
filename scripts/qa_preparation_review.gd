@@ -15,6 +15,8 @@ func stage() -> void:
 	game.start_solo("defense",42)
 	await get_tree().physics_frame
 	game.running = false
+	game.set_process(false)
+	game.set_physics_process(false)
 	game.ui.clear_menu()
 	game.ui.root.visible = true
 	game.ui.native_hud.visible = true
@@ -49,6 +51,8 @@ func stage() -> void:
 	game.running = false
 	game.ui.native_hud.visible = true
 	game.arena.scenery.preparation.sync(game.sim.defense)
-	RenderingServer.render_loop_enabled = true
+	RenderingServer.render_loop_enabled = false
 	for i in 5: await get_tree().process_frame
+	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+	RenderingServer.force_draw(true)
 	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37}),true)

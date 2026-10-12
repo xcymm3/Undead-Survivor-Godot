@@ -12,7 +12,7 @@ test('整备展台、关闭防护罩、金币与钱包图标截图', async ({ pa
     expect(state.closed).toBe(scenario === 'closed');
     await page.waitForTimeout(700);
     const file = info.outputPath(`${scenario}.png`);
-    await page.screenshot({ path: file });
+    await page.screenshot({ path: file, timeout: 60_000 });
     await info.attach(scenario, { path: file, contentType: 'image/png' });
     expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });
   }

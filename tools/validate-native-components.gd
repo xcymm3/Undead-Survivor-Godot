@@ -355,6 +355,10 @@ func validate_interaction_motion() -> void:
 	var fixture = preload("res://tools/preparation-fixture.gd")
 	check(not game.paused and game.ui.current.is_empty(),"Preparation begins directly in the world without a modal")
 	check(game.arena.scenery.preparation.stations.size() == 9,"Eight equipment and talent stations plus one alarm exist")
+	for id in ["rifle","revolver","axe"]:
+		var station: Dictionary = game.arena.scenery.preparation.stations[id]
+		var bounds: AABB = preload("res://scripts/world_geometry.gd").posed_bounds(station.prop.get_child(0))
+		check(bounds.get_center().distance_to(station.prop.global_position) < .35 and bounds.size.length() > 1.0,"Display geometry is centered above its actual world-space desk: "+id)
 	check(game.arena.scenery.find_children("*","Label3D",true,false).size() == 1,"Only the context-sensitive borderless scene label remains")
 	fixture.face(sim,p,"rifle")
 	game.arena.scenery.sync_focus(sim,p)
