@@ -291,7 +291,7 @@ func damage_crystal(z: Dictionary, amount: int) -> bool:
 	return true
 
 func damage_target(target: Dictionary, z: Dictionary, amount: int) -> bool:
-	if target.get("is_structure",false): return defense_director.structures.damage(target.id,amount)
+	if target.get("is_structure",false) or target.get("is_crystal",false): return defense_director.structures.damage(target.id,amount)
 	if target.get("is_crystal",false):
 		return damage_crystal(z,amount)
 	return damage_pawn(target,z,amount)
