@@ -212,7 +212,8 @@ func panel(title: String, subtitle: String, width := 700, warm := false) -> VBox
 	center.add_child(card)
 	card.add_child(preload("res://scripts/menu_plate.gd").new())
 	var scroll = ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(minf(width-56,root.size.x-100),minf(650,root.size.y-160))
+	var height = 650 if warm or width >= 900 else 560 if title in ["游戏通关","水晶防线失守"] else 450
+	scroll.custom_minimum_size = Vector2(minf(width-56,root.size.x-100),minf(height,root.size.y-160))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	card.add_child(scroll)
 	var column = VBoxContainer.new()
@@ -273,10 +274,11 @@ func show_home() -> void:
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stage.add_child(subtitle)
 	var emblem = TextureRect.new()
+	emblem.name = "CrystalSigil"
+	emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	emblem.texture = preload("res://scripts/currency_art.gd").diamond()
 	emblem.position = Vector2(680,98)
 	emblem.size = Vector2(80,80)
-	emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	stage.add_child(emblem)
 	var setup = HBoxContainer.new()
 	setup.name = "DifficultySelection"
@@ -336,7 +338,7 @@ func show_settings() -> void:
 	var shell = panel("战场设置", "声音、操控与画质会保存到本机",700,true)
 	current = "settings"
 	var tabs = TabContainer.new()
-	tabs.custom_minimum_size.y = 460
+	tabs.custom_minimum_size.y = 400
 	tabs.add_theme_stylebox_override("panel",settings_box(Color(.05,.08,.065,.4),SETTINGS_BRASS.darkened(.5),14))
 	tabs.add_theme_stylebox_override("tab_selected",settings_box(Color("314335"),SETTINGS_BRASS,10))
 	tabs.add_theme_stylebox_override("tab_unselected",settings_box(Color("121f1a"),SETTINGS_BRASS.darkened(.5),10))
@@ -441,7 +443,7 @@ func settings_page(tabs: TabContainer, title: String) -> VBoxContainer:
 	tabs.add_child(scroll)
 	var column = VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation",12)
+	column.add_theme_constant_override("separation",6)
 	scroll.add_child(column)
 	return column
 
