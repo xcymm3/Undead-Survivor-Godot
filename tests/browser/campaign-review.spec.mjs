@@ -2,6 +2,7 @@ import {test,expect} from '@playwright/test';
 test('战斗反馈、主页、设置与失败镜头隔离截图',async({page},info)=>{
  test.setTimeout(900000);
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+ page.on('console',message=>{if(/^(SCRIPT ERROR|ERROR):/.test(message.text()))errors.push(message.text());});
  await page.setViewportSize({width:1440,height:900});
  for(const scenario of ['crystal_half','crystal_broken','heal','boss','home','failure_player','failure_crystal','settings']){
   await page.goto(`/?campaignReview=${scenario}`);

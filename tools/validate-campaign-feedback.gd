@@ -79,11 +79,18 @@ func run() -> void:
 	check(sim.won and sim.alive_count() == 0 and sim.earned_coins > 0 and sim.earned_diamonds == 1,"Boss defeat clears and rewards the army and wins immediately")
 	game.finish_run()
 	game.update_finish_camera(1)
+	check(not sim.coin_drops.is_empty() and sim.coin_drops[0].age >= 1,"Victory coin pickup animations continue during the cinematic")
 	check(game.ui.current != "result","Battle aftermath delays the result panel")
 	game.update_finish_camera(3)
 	check(game.ui.current == "result" and game.ui.menu.find_children("*","Label",true,false).any(func(n): return n.text.contains("本局获得")),"Result shows session coin and diamond earnings after camera sequence")
 	game.return_home()
 	check(game.ui.menu.has_node("HomeStage/GameTitle"),"Home uses the central game title and bottom action layout")
+	check(game.ui.menu.get_node("HomeStage/CrystalSigil").size == Vector2(80,80),"Home crystal emblem stays inside its title-free reserved space")
+	game.ui.show_settings()
+	await process_frame
+	await process_frame
+	var returns = game.ui.menu.find_children("*","Button",true,false).filter(func(n): return n.text == "返回")
+	check(not returns.is_empty() and returns[0].get_global_rect().end.y <= returns[0].get_parent().get_parent().get_global_rect().end.y+1,"Settings return button fits the visible panel without outer scrolling")
 	game.start_solo("defense",42)
 	sim = game.sim
 	p = sim.pawns.solo
