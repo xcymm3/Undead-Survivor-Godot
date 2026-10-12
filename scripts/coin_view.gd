@@ -6,8 +6,8 @@ func _ready() -> void:
 	var coin = preload("res://scripts/currency_art.gd").mesh()
 	var material = StandardMaterial3D.new()
 	material.albedo_texture = preload("res://scripts/currency_art.gd").coin()
-	material.metallic = .3
-	material.roughness = .32
+	material.metallic = 0.0
+	material.roughness = 1.0
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.emission_enabled = true
 	material.emission = Color.WHITE
