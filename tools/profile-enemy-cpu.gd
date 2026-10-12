@@ -106,7 +106,9 @@ func stage_case(count: int, scenario: String) -> Dictionary:
 	if scenario == "bridge":
 		# Five lanes start at the intact gate and queue down the ramp/bridge.
 		for row in 29:
-			for column in 5: positions.append(Vector2((column-2)*1.45,-13-row*1.65))
+			for column in 5:
+				var point = Vector2((column-2)*1.45,-13-row*1.65)
+				if sim.arena.clear(point,point): positions.append(point)
 		# 300 actors cannot fit in a single bridge queue without leaving the map.
 		# Additional ranks approach from the actual far bank, inside map bounds.
 		for row in 8:
@@ -124,7 +126,8 @@ func stage_case(count: int, scenario: String) -> Dictionary:
 			if positions.size() >= count: break
 	var begin = Time.get_ticks_usec()
 	for i in mini(count,positions.size()):
-		sim.spawn(positions[i],"crawler" if i%10 == 9 else "normal")
+		# Controlled ordinary population: crawlers are no longer generated in play.
+		sim.spawn(positions[i],"normal")
 		var z: Dictionary = sim.zombies[-1]
 		# Preserve population while retaining real hit, damage and flinch work.
 		z.hp = 1000000000.0
@@ -210,5 +213,5 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 func save_results(failed: bool) -> void:
 	DirAccess.make_dir_recursive_absolute("res://artifacts")
 	var output = FileAccess.open("res://artifacts/enemy-cpu-profile.json",FileAccess.WRITE)
-	output.store_string(JSON.stringify({"movement_model":"2d-overlap", "engine":Engine.get_version_info().string,"display_driver":DisplayServer.get_name(),"instrumented":instrumented,"physics_hz":Engine.physics_ticks_per_second,"warmup_frames":warmup,"sample_frames":sample_count,"rounds":rounds,"enemy_mix":"90% normal, 10% crawler","failed":failed,"cases":all_results},"\t"))
+	output.store_string(JSON.stringify({"movement_model":"2d-overlap", "engine":Engine.get_version_info().string,"display_driver":DisplayServer.get_name(),"instrumented":instrumented,"physics_hz":Engine.physics_ticks_per_second,"warmup_frames":warmup,"sample_frames":sample_count,"rounds":rounds,"enemy_mix":"100% normal","failed":failed,"cases":all_results},"\t"))
 	output.close()
