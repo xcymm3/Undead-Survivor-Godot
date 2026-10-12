@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Progression', 'Campaign', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'DefenseWaves', 'SpreadBallistics', 'ExportWeb')]
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Progression', 'Campaign', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'DefenseWaves', 'NavigationRegressions', 'SpreadBallistics', 'ExportWeb')]
     [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
@@ -13,6 +13,7 @@ $Godot = (Resolve-Path -LiteralPath $Godot).Path
 $arguments = @('--headless', '--audio-driver', 'Dummy', '--path', ('"' + $projectRoot + '"'))
 if ($VerboseEngine) { $arguments += '--verbose' }
 switch ($Mode) {
+    'NavigationRegressions' { $arguments += @('--script', 'res://tools/validate-navigation-regressions.gd', '--', '--silent', '--automation') }
     'ExportWeb' {
         New-Item -ItemType Directory -Force -Path (Join-Path $projectRoot 'build/web') | Out-Null
         $arguments += @('--export-release', '"Web QA"')
