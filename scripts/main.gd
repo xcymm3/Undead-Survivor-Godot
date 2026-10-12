@@ -33,6 +33,7 @@ var spectating = ""
 var snapshot_timer = 0.0
 var queued_effects: Array = []
 var finish_camera_start = Transform3D.IDENTITY
+var finish_focus = Vector3.ZERO
 var death_timer = 0.0
 var draw_timer = 0.0
 var display_buffer = preload("res://scripts/snapshot_buffer.gd").new()
@@ -393,6 +394,7 @@ func finish_run() -> void:
 	ui.hud.queue_redraw()
 	death_timer = 0.0
 	finish_camera_start = camera.global_transform
+	finish_focus = Vector3(Data.Maps.Defense.CRYSTAL.x,4.1,Data.Maps.Defense.CRYSTAL.y)
 	var pawn = local_pawn()
 	if not pawn.is_empty() and pawn.hp <= 0 and sim.cause != "crystal":
 		var corpse = preload("res://scripts/partner_view.gd").new()
@@ -403,6 +405,8 @@ func finish_run() -> void:
 		corpse.rotation.x = -PI/2
 		corpse.label.hide()
 		corpse.held.hide()
+		corpse.force_update_transform()
+		finish_focus = preload("res://scripts/world_geometry.gd").posed_bounds(corpse.avatar).get_center()
 		partners["fallen_guard"] = corpse
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	sound.set_playing(false)
@@ -410,14 +414,13 @@ func finish_run() -> void:
 
 func update_finish_camera(dt: float) -> void:
 	death_timer += dt
+	sim.step_coins(dt)
 	weapon.visible = false
 	sim.defense.prop_clock += dt
 	arena.scenery.sync(sim.defense)
 	for z in sim.zombies:
 		if z.hp <= 0: z.down = maxf(0,z.down-dt)
-	var p = local_pawn()
-	var focus = Vector3(Data.Maps.Defense.CRYSTAL.x,4.1,Data.Maps.Defense.CRYSTAL.y)
-	if not sim.won and sim.cause != "crystal" and not p.is_empty(): focus = Vector3(p.pos.x,p.height+.4,p.pos.y+.65)
+	var focus = finish_focus
 	var end = focus+(Vector3(2.4,1.6,2.8) if not sim.won and sim.cause != "crystal" else Vector3(3.8,2.8,4.8))
 	var target = Transform3D(Basis.IDENTITY,end).looking_at(focus)
 	var amount = smoothstep(0.0,1.0,death_timer/1.8)
