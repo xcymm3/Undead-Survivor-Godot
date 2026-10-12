@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Progression', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'DefenseWaves', 'SpreadBallistics', 'ExportWeb')]
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Progression', 'Campaign', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'DefenseWaves', 'SpreadBallistics', 'ExportWeb')]
     [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
@@ -22,6 +22,7 @@ switch ($Mode) {
     'Parse' { $arguments += @('--script', 'res://tools/validate-scripts.gd', '--', '--silent', '--automation', ('--parse-script=' + $Script)) }
     'Defense' { $arguments += @('--script', 'res://tools/validate-defense.gd', '--', '--silent', '--automation') }
     'Progression' { $arguments += @('--script', 'res://tools/validate-progression.gd', '--', '--silent', '--automation') }
+    'Campaign' { $arguments += @('--script', 'res://tools/validate-campaign.gd', '--', '--silent', '--automation') }
     'DefenseSpawns' { $arguments += @('--script', 'res://tools/validate-defense-spawns.gd', '--', '--silent', '--automation') }
     'DefenseWaves' { $arguments += @('--script', 'res://tools/validate-defense-waves.gd', '--', '--silent', '--automation') }
     'DefenseStructures' { $arguments += @('--script', 'res://tools/validate-defense-structures.gd', '--', '--silent', '--automation') }

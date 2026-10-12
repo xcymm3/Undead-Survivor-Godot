@@ -9,7 +9,7 @@ async function clickButton(page, text) {
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
 }
 
-test('吊桥水晶防守使用真实输入换装并按 T 开战', async ({ page }, info) => {
+test('吊桥水晶防守使用真实输入换装并点击开始进攻', async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('/');
@@ -43,7 +43,9 @@ test('吊桥水晶防守使用真实输入换装并按 T 开战', async ({ page 
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 3 && window.__survivorSnapshot?.player?.weapon === 6);
   await page.keyboard.press('1');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 1 && window.__survivorSnapshot?.player?.weapon === 0);
-  await page.keyboard.press('t');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'pause');
+  await clickButton(page, '开始进攻');
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });
   state = await snapshot(page);
   expect(state.defense.waiting).toBe(false);

@@ -147,12 +147,12 @@ func run() -> void:
 	sim.roster.clear()
 	sim.zombies.clear()
 	sim.step(.02)
-	check(sim.cleared == 1 and sim.rest == 0 and sim.defense.wave == 2 and sim.defense.waiting and sim.defense.ready_players.is_empty(),"Wave end pauses before wave two and resets readiness")
+	check(sim.cleared == 1 and sim.rest == 0 and sim.wave == 2 and not sim.defense.waiting and sim.defense.ready_players.is_empty(),"Completed deployment automatically starts wave two")
 	for i in 60: sim.step(.1)
-	check(sim.wave == 1 and sim.defense.waiting and sim.roster.is_empty(),"Waiting never automatically starts the next wave")
+	check(sim.wave == 2 and not sim.defense.waiting and sim.spawned > 0,"Wave two deploys automatically without further ready input")
 	sim.submit("solo",ready_input)
 	sim.step(.02)
-	check(sim.wave == 2 and not sim.defense.waiting and sim.events.any(func(event): return event.kind == "wave_start"),"A fresh T starts wave two and sounds its horn")
+	check(sim.wave == 2 and not sim.defense.waiting and not sim.events.any(func(event): return event.kind == "wave_start"),"Legacy ready input cannot restart an active wave")
 
 	# Isolate target choice from the wave spawner: the closest valid unit must take the hit.
 	sim.roster.clear()
@@ -349,7 +349,7 @@ func run() -> void:
 		defense_random.seed = 1000+current_wave
 		reference_random.seed = defense_random.seed
 		var defense_roster: Array = population.roster(current_wave,1,defense_random,"easy")
-		var ordinary_roster: Array = defense_roster.filter(func(kind): return kind != "football")
+		var ordinary_roster: Array = defense_roster.filter(func(kind): return kind not in ["football","dancer"])
 		var reference_roster: Array = shared_population.roster(population.budget(current_wave,1,"easy"),population.kinds(current_wave),reference_random,population.special_fraction(current_wave),population.advanced_fraction(current_wave))
 		exact_wave_budgets = exact_wave_budgets and valid_roster_budget(defense_roster,population.budget(current_wave,1,"easy"),population.special_fraction(current_wave))
 		exact_football_counts = exact_football_counts and defense_roster.count("football") == population.footballs(current_wave,1)
@@ -427,74 +427,31 @@ func run() -> void:
 	sim.zombies.clear()
 	sim.roster.clear()
 	sim.wave = 8
-	sim.cleared = 7
-	sim.rest = 0
 	sim.defense.waiting = false
 	sim.step(.02)
-	check(not sim.won and sim.cleared == 8 and sim.defense.waiting and sim.defense.wave == 9 and sim.defense.ready_players.is_empty(),"Clearing wave eight prepares wave nine without winning or retaining readiness")
-	var endless_ready := command()
-	endless_ready.wave_ready = true
-	sim.submit("solo",endless_ready)
-	sim.step(.02)
-	check(sim.wave == 9 and not sim.defense.waiting and sim.roster.count("football") == 2,"A fresh T starts wave nine with two football zombies")
+	check(not sim.won and sim.wave == 9 and not sim.defense.waiting and sim.roster.count("football") == 2,"Wave eight deployment automatically starts wave nine")
 	sim.zombies.clear()
 	sim.roster.clear()
-	sim.wave = 100
-	sim.cleared = 99
 	sim.step(.02)
-	check(not sim.won and sim.cleared == 100 and sim.defense.waiting and sim.defense.wave == 101,"A high wave also prepares the next wave without a victory cap")
-
-	# Three players must each send a fresh T press for every wave.
+	check(not sim.won and sim.wave == 10 and sim.roster.count("dancer") == 1,"Wave nine automatically enters the final wave with its dancing boss")
+	sim.roster.clear()
+	sim.spawn(Vector2(8,24),"normal")
+	sim.step(.02)
+	check(not sim.won and sim.wave == 10,"Final deployment waits for every remaining living enemy")
+	sim.zombies.clear()
+	sim.step(.02)
+	check(sim.won and sim.wave == 10,"Final-wave clear ends the campaign without wave eleven")
+	# The dormant shared host simulation also advances without repeated input.
 	game.start_solo("defense")
 	await physics_frame
 	sim = game.sim
 	sim.add_pawn("two","二号",1)
 	sim.add_pawn("three","三号",2)
-	sim.defense.party = sim.pawns.size()
 	sim.defense_director.equipment.initialize()
-	var coop_ready := command()
-	coop_ready.wave_ready = true
-	sim.submit("solo",coop_ready)
-	sim.step(.02)
-	check(sim.defense.waiting and not sim.defense.started and sim.defense.ready_players.size() == 1 and sim.roster.is_empty(),"One of three players pressing T cannot start wave one")
-	sim.submit("two",coop_ready)
-	sim.step(.02)
-	check(sim.defense.waiting and sim.defense.ready_players.size() == 2 and sim.roster.is_empty(),"Two of three players pressing T cannot start wave one")
-	sim.submit("three",coop_ready)
-	sim.step(.02)
-	check(not sim.defense.waiting and sim.defense.started and sim.wave == 1 and not sim.roster.is_empty() and sim.defense.ready_players.is_empty(),"All three T presses start wave one and clear readiness")
-	sim.submit("solo",coop_ready)
-	sim.submit("two",coop_ready)
-	sim.submit("three",coop_ready)
-	sim.step(.02)
-	check(sim.defense.ready_players.is_empty(),"T presses during an active wave are not saved")
+	game.start_attack()
 	sim.roster.clear()
-	sim.zombies.clear()
 	sim.step(.02)
-	check(sim.defense.waiting and sim.defense.wave == 2 and sim.defense.ready_players.is_empty(),"Wave one completion clears all prior T presses")
-	for i in 60: sim.step(.1)
-	check(sim.defense.waiting and sim.wave == 1 and sim.roster.is_empty(),"Three-player wave two stays paused without new presses")
-	sim.submit("solo",coop_ready)
-	sim.step(.02)
-	sim.submit("two",coop_ready)
-	sim.step(.02)
-	check(sim.defense.waiting and sim.defense.ready_players.size() == 2 and sim.roster.is_empty(),"Prior-wave readiness cannot satisfy the missing third player")
-	sim.submit("three",coop_ready)
-	sim.step(.02)
-	check(not sim.defense.waiting and sim.wave == 2 and not sim.roster.is_empty() and sim.defense.ready_players.is_empty(),"All players press T again to start wave two")
-	sim.zombies.clear()
-	sim.roster.clear()
-	sim.wave = 8
-	sim.cleared = 7
-	sim.step(.02)
-	check(sim.defense.waiting and sim.defense.wave == 9 and sim.defense.ready_players.is_empty() and not sim.won,"Coop wave eight completion enters fresh wave-nine preparation")
-	sim.submit("solo",coop_ready)
-	sim.submit("two",coop_ready)
-	sim.step(.02)
-	check(sim.defense.waiting and sim.wave == 8 and sim.roster.is_empty(),"Two of three new T presses cannot start coop wave nine")
-	sim.submit("three",coop_ready)
-	sim.step(.02)
-	check(sim.wave == 9 and not sim.defense.waiting and sim.roster.count("football") == 6 and sim.defense.ready_players.is_empty(),"All new T presses start coop wave nine with twice the player count of footballs")
+	check(sim.wave == 2 and not sim.defense.waiting and sim.defense.ready_players.is_empty(),"Shared authority starts the next deployment without multiplayer ready presses")
 
 	# Failure is driven by non-recoverable crystal health, independent of player health.
 	game.start_solo("defense")

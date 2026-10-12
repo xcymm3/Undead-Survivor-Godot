@@ -94,8 +94,8 @@ func run() -> void:
 	damage_replica.apply_snapshot(sim.snapshot())
 	check(structure_view.actors.bridge_gate.damaged.visible and structure_view.actors.turret_left.smoke.visible,"Client snapshots display the authority's half-health damage cues")
 	sim.defense_director.begin_wave()
-	check(structure_view.actors.bridge_gate.intact.visible and not structure_view.actors.bridge_gate.damaged.visible and not structure_view.actors.turret_left.smoke.visible,"New wave repairs gate appearance and stops turret smoke")
-	check(damaged_turret.intact.visible and not damaged_turret.damaged.visible and damaged_turret.sensor.material_override.emission == Color("67d4b2"),"New wave repairs turret housing and restores the healthy sensor light")
+	check(structure_view.actors.bridge_gate.damaged.visible and structure_view.actors.turret_left.smoke.visible,"New wave preserves damaged gate appearance and turret smoke")
+	check(not damaged_turret.intact.visible and damaged_turret.damaged.visible and damaged_turret.sensor.material_override.emission == Color("ff4c26"),"New wave preserves damaged turret housing and its fault sensor")
 	for id in ["turret_left","turret_right"]:
 		var turret: Dictionary = manager.find(id)
 		var mirror_id = "turret_right" if id == "turret_left" else "turret_left"
@@ -303,16 +303,16 @@ func run() -> void:
 	sim.paths["stale_route"] = [Vector2.ZERO]
 	var crystal_hp: int = sim.defense.crystal_hp
 	sim.defense_director.begin_wave()
-	check(sim.defense.structures == owned_initial() and sim.paths.is_empty(),"Wave start restores owned structures and clears cached routes")
+	check(manager.find("turret_left").hp == 0 and manager.find("bridge_gate").hp == 0,"Wave start retains destroyed owned buildings")
 	check(sim.defense.crystal_hp == crystal_hp,"Wave start preserves crystal durability")
 	var view = game.arena.scenery.structure_view
-	check(view.actors.bridge_gate.body.collision_layer == 1 and view.actors.bridge_gate.panel.rotation.x == 0,"Authority restores gate collision and upright appearance")
-	check(view.actors.turret_left.body.collision_layer == 1 and view.actors.turret_left.yaw.rotation == Vector3.ZERO,"Authority restores destroyed turret collision and orientation")
+	check(view.actors.bridge_gate.body.collision_layer == 0,"Authority keeps the destroyed gate nonblocking")
+	check(view.actors.turret_left.body.collision_layer == 0,"Authority keeps the destroyed turret nonblocking")
 	check(view.actors.crystal_mine.root.visible and not view.actors.crystal_mine.led.visible,"Wave start restores a visible unprimed mine")
 	snapshot = sim.snapshot()
 	check(root.get_node("Session").valid_world(snapshot),"Coop world packet accepts restored structure state")
 	replica.apply_snapshot(snapshot)
-	check(replica.defense_state().structures == owned_initial() and view.actors.bridge_gate.body.collision_layer == 1,"Client snapshot restores buildings and gate collision for the new wave")
+	check(replica.defense_state().structures == sim.defense.structures and view.actors.bridge_gate.body.collision_layer == 0,"Client snapshot preserves destroyed buildings across the new wave")
 	sim.zombies.clear()
 	mine = manager.find("crystal_mine")
 	sim.spawn(mine.pos,"normal")

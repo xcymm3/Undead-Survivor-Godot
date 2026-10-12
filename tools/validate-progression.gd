@@ -137,13 +137,27 @@ func run() -> void:
 	check(p.reserves[0] == 1020 and p.reserves[3] == 204,"Repeated Supply purchases retain exact reserve rounding")
 	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),132) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),290.4),"Player damage combines weapon and headshot talent upgrades")
 	check(sim.purchase_upgrade("grenade",p) and p.grenades == 2 and p.grenade_capacity == 2,"Capacity purchase immediately grants its extra grenade")
-	check(sim.purchase_upgrade("bridge_entry_gate",p) and sim.purchase_upgrade("bridge_entry_gate",p),"New bridge-end gate can be bought and independently upgraded")
+	check(sim.purchase_upgrade("bridge_entry_gate",p),"New bridge-end gate can be bought")
+	var shop_position: Vector2 = p.pos
+	var shop_height: float = p.height
+	p.pos = Vector2(0,-26)
+	p.height = data.Maps.Defense.height(p.pos)
+	check(sim.purchase_upgrade("bridge_entry_gate",p),"Bridge-end gate upgrades beside its built position")
+	p.pos = shop_position
+	p.height = shop_height
 	for id in Store.MINES:
 		check(sim.purchase_upgrade(id,p) and view.actors[id].root.visible and not sim.purchase_upgrade(id,p),"Shop buys and reveals each mine once without an upgrade: "+id)
-	check(sim.purchase_upgrade("turret_left",p) and sim.purchase_upgrade("turret_left",p) and sim.purchase_upgrade("bridge_gate",p) and sim.purchase_upgrade("bridge_gate",p),"Buildings can be manufactured then upgraded")
+	for id in ["turret_left","bridge_gate"]:
+		check(sim.purchase_upgrade(id,p),"Buildings can be manufactured: "+id)
+		var item: Dictionary = sim.defense_director.structures.find(id)
+		p.pos = item.pos+Vector2(0,2)
+		p.height = data.Maps.Defense.height(p.pos)
+		check(sim.purchase_upgrade(id,p),"Buildings upgrade only beside their built position: "+id)
+		p.pos = shop_position
+		p.height = shop_height
 	var manager = sim.defense_director.structures
 	check(manager.find("bridge_gate").max_hp == 1100 and is_equal_approx(manager.find("turret_left").damage_multiplier,1.1) and manager.find("turret_right").hp == 0,"Purchased building upgrades affect only their owned targets")
-	check(manager.find("bridge_entry_gate").max_hp == 1100 and sim.progression.cost("bridge_entry_gate") == 80,"Bridge-end gate has its own upgrade level and doubled next upgrade price")
+	check(manager.find("bridge_entry_gate").max_hp == 1100 and sim.progression.cost("bridge_entry_gate") == 40,"Bridge-end gate uses the weapon upgrade price and doubles its next price")
 	check(view.actors.turret_left.root.visible and view.actors.turret_left.body.collision_layer == 1 and view.actors.bridge_gate.root.visible,"Manufacturing creates visible native building collision")
 	var turret: Dictionary = manager.find("turret_left")
 	sim.spawn(turret.pos+Vector2(0,4),"normal")
@@ -210,7 +224,7 @@ func run() -> void:
 	check(p.reserves[3] == 216 and p.reserve == 216,"Switching guns preserves above-capacity wave ammunition")
 	check(not sim.purchase_upgrade("rifle",p),"Shop stays closed after clearing a wave")
 	sim.defense_director.begin_wave()
-	check(manager.find("bridge_gate").hp == 1100 and p.grenades == 2 and p.reserves[0] == 83 and p.reserves[3] == 216,"Next wave restores purchased buildings and grenades without granting ammunition again")
+	check(manager.find("bridge_gate").hp == 0 and p.grenades == 2 and p.reserves[0] == 83 and p.reserves[3] == 216,"Next wave preserves destroyed buildings and restores grenades without extra ammunition")
 	var permanent = sim.progression.data.duplicate(true)
 	game.start_solo("defense",42)
 	await physics_frame
