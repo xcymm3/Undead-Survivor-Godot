@@ -76,9 +76,9 @@ func stage() -> void:
 	if scenario.begins_with("display"):
 		game.sim.defense.prop_clock = 9.0 if scenario.ends_with("9") else 0.0
 		game.arena.scenery.sync(game.sim.defense)
-		game.camera.position = Vector3(0,6.5,wall-10)
+		game.camera.position = Vector3(0,6.2,wall-8.6)
 		game.camera.look_at(Vector3(0,4.35,wall-2.3))
-		game.camera.fov = 98
+		game.camera.fov = 90
 	if not building_id.is_empty():
 		var item = game.sim.defense_director.structures.find(building_id)
 		var center = Vector3(item.pos.x,item.height+.7,item.pos.y)
@@ -90,13 +90,13 @@ func stage() -> void:
 		elif parts[0] == "mine":
 			game.camera.position = center+Vector3(1.3,.7,1.9)
 		else:
-			game.camera.position = center+Vector3(2.8,2,4)
+			game.camera.position = center+Vector3(2.8,2,-4)
 		game.camera.look_at(center)
 		game.camera.fov = 60
 		if parts[1] in ["prompt","unbuilt"]:
 			for entry in preload("res://scripts/preparation_catalog.gd").targets(game.sim):
 				if entry.id != building_id: continue
-				p.pos = Vector2(entry.position.x,entry.position.z+2.4)
+				p.pos = Vector2(entry.position.x,entry.position.z+(-2.4 if parts[0] == "turret" else 2.4))
 				p.height = Data.Maps.Defense.height(p.pos)
 				game.camera.position = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 				game.camera.look_at(entry.position+Vector3(0,.25,0))
