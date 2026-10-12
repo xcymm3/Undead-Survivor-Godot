@@ -15,7 +15,7 @@ func _init(world) -> void:
 	state = {
 		"started":false,"waiting":true,"ready_players":[],"crystal_hp":Layout.CRYSTAL_MAX_HP,
 		"crystal_max_hp":Layout.CRYSTAL_MAX_HP,"wave":1,
-		"objective":"战前准备 · 点击开始进攻 · 共十波","party":world.pawns.size(),"prop_clock":0.0,
+		"objective":"战前准备","party":world.pawns.size(),"prop_clock":0.0,
 		"difficulty":world.defense_difficulty,"difficulty_multiplier":preload("res://scripts/defense_population.gd").difficulty_multiplier(world.defense_difficulty)
 	}
 	structures = preload("res://scripts/defense_structures.gd").new(self)

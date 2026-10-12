@@ -34,7 +34,7 @@ static func focus(sim, p: Dictionary) -> Dictionary:
 		if delta.length() > entry.range or along <= 0 or (delta-direction*along).length() > entry.radius: continue
 		if along >= nearest: continue
 		# Existing structure collision is excluded; unrelated scenery still occludes.
-		var endpoint: Vector3 = entry.position-direction*.55
+		var endpoint: Vector3 = entry.position-direction*(1.25 if entry.id == "crystal" else .55)
 		if not sim.arena.surface_hit(eye,endpoint,entry.id).is_empty(): continue
 		nearest = along
 		selected = entry
@@ -58,13 +58,13 @@ static func description(sim, id: String) -> String:
 	var detail = ""
 	if id in profile.WEAPONS:
 		var index: int = {"rifle":0,"revolver":3,"axe":6}[id]
-		detail = "伤害 %s" % snappedf(sim.arena.get_node("/root/Data").weapons[index].damage*profile.weapon_multiplier(id),.1)
+		detail = "伤害 %s" % number(sim.arena.get_node("/root/Data").weapons[index].damage*profile.weapon_multiplier(id))
 	elif id == "grenade": detail = "容量 %d / 5" % profile.grenade_capacity()
 	elif id in profile.MINES: return "地雷\n"+("已布置" if profile.owned(id) else cost_text)
 	elif id in profile.BUILDINGS:
 		if not profile.owned(id): return NAMES[id]+"\n建造\n"+cost_text
 		var item = sim.defense_director.structures.find(id)
-		detail = "耐久 %d / %d" % [item.hp,item.max_hp] if id in profile.GATES else "伤害 %s" % snappedf(60*profile.building_multiplier(id),.1)
+		detail = "耐久 %d / %d" % [item.hp,item.max_hp] if id in profile.GATES else "伤害 %s" % number(60*profile.building_multiplier(id))
 	else:
 		match id:
 			"strong": detail = "生命 %d · 回复 %d/s" % [profile.max_health(),profile.level(id)]
@@ -72,3 +72,6 @@ static func description(sim, id: String) -> String:
 			"swift": detail = "移速 +%d%%" % (profile.level(id)*5)
 			"supply": detail = "备弹 +%d%%" % (profile.level(id)*10)
 	return level_text+"\n"+detail+"\n"+("整备已结束" if sim.defense.started else cost_text)
+
+static func number(value: float) -> String:
+	return ("%.1f" % value).trim_suffix(".0")

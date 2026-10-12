@@ -27,7 +27,9 @@ func _ready() -> void:
 	focus_label.outline_size = 5
 	focus_label.modulate = Color("fff0ca")
 	focus_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	focus_label.no_depth_test = false
+	# Visibility is gated by the authority's scenery ray; the owner's mesh must
+	# not hide its own contextual text (notably the tall crystal).
+	focus_label.no_depth_test = true
 	focus_label.visible = false
 	add_child(focus_label)
 	work_tool = Node3D.new()

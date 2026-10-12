@@ -42,9 +42,19 @@ test('吊桥水晶防守使用真实输入换装并长按警报器开始进攻',
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 3 && window.__survivorSnapshot?.player?.weapon === 6);
   await page.keyboard.press('1');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 1 && window.__survivorSnapshot?.player?.weapon === 0);
-  // Pitch down slightly through actual canvas mouse input, then hold at the alarm.
+  // Aim using observed position/angles; all changes still use actual mouse input.
   await page.mouse.move(480, 300);
-  await page.mouse.move(480, 350, { steps: 4 });
+  const beforeAim = await snapshot(page);
+  await page.waitForFunction(frame => window.__survivorSnapshot.frames > frame, beforeAim.frames);
+  const aimed = await snapshot(page);
+  const alarm = { x: -4, y: 4.15, z: 32.6666666667 };
+  const dx = alarm.x - aimed.player.x;
+  const dz = alarm.z - aimed.player.z;
+  const targetYaw = Math.atan2(-dx, -dz);
+  const targetPitch = Math.atan2(alarm.y - aimed.player.height - aimed.player.eye_height, Math.hypot(dx, dz));
+  const deltaX = (aimed.yaw - targetYaw) / .0022;
+  const deltaY = (aimed.pitch - targetPitch) / .0022;
+  await page.mouse.move(480 + deltaX, 300 + deltaY, { steps: Math.max(1, Math.ceil(Math.max(Math.abs(deltaX), Math.abs(deltaY)) / 100)) });
   await page.waitForFunction(() => window.__survivorSnapshot.player.focus?.id === 'alarm');
   await page.keyboard.down('e');
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });
