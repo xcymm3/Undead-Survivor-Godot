@@ -81,7 +81,7 @@ func run() -> void:
 	var perimeter_count = environment_features.filter(func(node): return node.get_meta("environment_feature","") == "perimeter_wall").size()
 	check(boulder_count >= 10,"Defense field has authored natural rock cover")
 	check(vegetation_count >= 20,"Defense terrain has distributed vegetation detail")
-	check(perimeter_count == 6,"All outer edges except the two chasm-side runs have physical perimeter walls")
+	check(perimeter_count == 8,"Outer walls and both ramp-shelf cliff ends are physically enclosed")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Environmental cover preserves the central bridge, ramp and field lane")
 	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).is_empty(),"Shop removes all free weapon racks")
 	check(game.arena.scenery.has_node("PreparationWorld/Station_rifle") and game.arena.scenery.find_children("Label3D","Label3D",true,false).is_empty(),"Rear shop has physical display stations without persistent signs")

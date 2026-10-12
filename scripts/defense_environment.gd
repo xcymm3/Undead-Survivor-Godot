@@ -158,7 +158,13 @@ static func build_boundaries(world: Node3D) -> void:
 	# Side walls stop at the chasm. The bridge flanks remain exposed cliff edges,
 	# while every playable outer edge is visibly and physically enclosed.
 	for x in [-31.45,31.45]:
-		make_wall_run(world,Vector3(x,4.1,(world.Layout.BOUNDS.end.y-28)/2),Vector3(1.1,2.2,world.Layout.BOUNDS.end.y+28),false)
+		# Extend down to the low shelves: a wall starting at plateau height left
+		# a three-metre passage underneath it beside the ramp.
+		make_wall_run(world,Vector3(x,2.5,(world.Layout.BOUNDS.end.y-28)/2),Vector3(1.1,6.0,world.Layout.BOUNDS.end.y+28),false)
+	# Close the cliff-facing ends of the shelves, overlapping the outer walls.
+	# The central bridge/ramp lane remains open; shelves still return to its foot.
+	for side in [-1.0,1.0]:
+		make_wall_run(world,Vector3(side*18.5,2.5,-27.75),Vector3(27,6.0,.8),true)
 	var far_bank: Rect2 = world.Layout.ENEMY_SPAWN_REGION
 	for x in [far_bank.position.x+.55,far_bank.end.x-.55]:
 		make_wall_run(world,Vector3(x,1.1,far_bank.get_center().y),Vector3(1.1,2.2,far_bank.size.y),false)
