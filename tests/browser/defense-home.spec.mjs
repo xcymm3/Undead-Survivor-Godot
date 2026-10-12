@@ -10,7 +10,7 @@ test('主页只提供水晶防线和难度选择，可直接开始防守', async
   expect(home.map_id).toBe('graypine_defense');
   expect(home.buttons.some(button => button.text.includes('多人'))).toBe(false);
   expect(home.buttons.some(button => /灰松夜路|保卫水晶/.test(button.text))).toBe(false);
-  for (const difficulty of ['简单 · 70%', '普通 · 100%', '困难 · 130%']) {
+  for (const difficulty of ['简单', '普通', '困难']) {
     expect(home.buttons.some(button => button.text.includes(difficulty))).toBe(true);
   }
   const button = home.buttons.find(button => button.text === '开始防守' && !button.disabled);

@@ -83,7 +83,7 @@ test('简单难度下自动霰弹枪防守前八波的独立试玩观察', async
   await page.goto('/?autoaim=1');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   await page.waitForFunction(() => window.__survivorSnapshot?.map_id === 'graypine_defense');
-  await clickButton(page, '简单 · 70%');
+  await clickButton(page, '简单');
   await clickButton(page, '单人防守');
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense' && window.__survivorSnapshot?.running);
   expect((await snapshot(page)).defense.difficulty).toBe('easy');
