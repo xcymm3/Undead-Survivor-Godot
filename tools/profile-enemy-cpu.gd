@@ -12,6 +12,7 @@ var all_results: Array = []
 var warmup = 120
 var sample_count = 300
 var rounds = 2
+var order_offset = 0
 var counts: Array = [50,100,200,300]
 var scenarios: Array = ["movement","bridge","rifle","auto-shotgun","flamethrower"]
 
@@ -32,6 +33,7 @@ func run() -> void:
 		return
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--unprofiled": instrumented = false
+		if arg == "--reverse-order": order_offset = 1
 		if arg.begins_with("--samples="): sample_count = int(arg.get_slice("=",1))
 		if arg.begins_with("--warmup="): warmup = int(arg.get_slice("=",1))
 		if arg.begins_with("--rounds="): rounds = int(arg.get_slice("=",1))
@@ -58,7 +60,7 @@ func run() -> void:
 		# Reverse the second round to reduce systematic order/thermal bias.
 		var ordered_counts = counts.duplicate()
 		var ordered_scenarios = scenarios.duplicate()
-		if round_index%2 == 1:
+		if (round_index+order_offset)%2 == 1:
 			ordered_counts.reverse()
 			ordered_scenarios.reverse()
 		for count in ordered_counts:
@@ -75,6 +77,7 @@ func run() -> void:
 
 func stage_case(count: int, scenario: String) -> Dictionary:
 	game.enemies.clear()
+	if game.arena.has_method("experiment_path"): game.arena.experiment_routes.clear()
 	if game.sim: game.sim.dispose()
 	var sim = (measured_simulation if instrumented else plain_simulation).new(game.arena)
 	game.sim = sim
@@ -133,9 +136,11 @@ func stage_case(count: int, scenario: String) -> Dictionary:
 		z.hp = 1000000000.0
 		z.body = 1000000000.0
 	var spawn_ms = (Time.get_ticks_usec()-begin)/1000.0
+	var activation_before = Time.get_ticks_usec()
 	game.enemies.sync(sim.zombies,sim.elapsed,false)
+	var actor_activation_ms = (Time.get_ticks_usec()-activation_before)/1000.0
 	disable_callbacks(root)
-	return {"sim":sim,"pawn":p,"weapon":weapon_index,"spawn_ms":spawn_ms,"initial_positions":positions}
+	return {"sim":sim,"pawn":p,"weapon":weapon_index,"spawn_ms":spawn_ms,"actor_activation_ms":actor_activation_ms,"initial_positions":positions}
 
 func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 	print("CPU PROFILE START count=%d scenario=%s round=%d" % [count,scenario,round_index])
@@ -144,6 +149,7 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 	var p: Dictionary = staged.pawn
 	await physics_frame
 	var samples: Array = []
+	var cold_samples: Array = []
 	var moving_total = 0
 	var blocked_total = 0
 	var shots = 0
@@ -194,6 +200,10 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 			if instrumented:
 				for label in sim.inclusive: sample.inclusive_ms[label] = float(sim.inclusive[label])/1000.0
 				for label in sim.exclusive: sample.exclusive_ms[label] = float(sim.exclusive[label])/1000.0
+				if sim.has_method("experiment_record_detail"):
+					sample["detail_ms"] = {}
+					for label in sim.experiment_detail: sample.detail_ms[label] = float(sim.experiment_detail[label])/1000.0
+					sample["animation_detail_us"] = game.enemies.experiment_animation_detail.duplicate()
 			samples.append(sample)
 			shots += sample.shot_calls
 			cpu_total += sample.cpu_sections_ms
@@ -201,6 +211,7 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 				moving_total += int(z.move_speed > .05)
 				blocked_total += int(z.move_speed <= .05)
 		else:
+			cold_samples.append({"simulation_ms":simulation_ms,"animation_submit_ms":animation_ms,"crosshair_ms":aim_ms,"cpu_sections_ms":simulation_ms+animation_ms+aim_ms})
 			initial_hits = p.hits
 		valid = valid and not sim.failed and sim.zombies.size() == count
 		await physics_frame
@@ -208,7 +219,7 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 		if frame >= warmup: samples[-1].engine_physics_monitor_ms = Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)*1000.0
 	var denominator = float(count*sample_count)
 	if scenario not in ["movement","bridge"]: valid = valid and shots > 0 and p.hits > initial_hits
-	return {"count":count,"scenario":scenario,"round":round_index,"valid":valid,"live":sim.alive_count(),"shots":shots,"hits":p.hits-initial_hits,"spawn_ms":staged.spawn_ms,"moving_fraction":moving_total/denominator,"blocked_fraction":blocked_total/denominator,"mean_cpu_ms":cpu_total/sample_count,"samples":samples}
+	return {"count":count,"scenario":scenario,"round":round_index,"valid":valid,"live":sim.alive_count(),"shots":shots,"hits":p.hits-initial_hits,"spawn_ms":staged.spawn_ms,"actor_activation_ms":staged.actor_activation_ms,"moving_fraction":moving_total/denominator,"blocked_fraction":blocked_total/denominator,"mean_cpu_ms":cpu_total/sample_count,"cold_samples":cold_samples,"samples":samples}
 
 func save_results(failed: bool) -> void:
 	DirAccess.make_dir_recursive_absolute("res://artifacts")

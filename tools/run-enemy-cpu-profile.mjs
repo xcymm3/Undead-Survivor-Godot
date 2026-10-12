@@ -4,9 +4,12 @@ import { createHash } from 'node:crypto';
 import { tmpdir, cpus, totalmem, release, arch } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applyVariant, applyDiagnosticDetails } from './enemy-experiment-variants.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outputDir = path.join(root, 'artifacts', process.argv.includes('--pilot') ? 'enemy-cpu-pilot' : process.argv.includes('--control') ? 'enemy-cpu-control' : 'enemy-cpu-profile');
+const option = name => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length+3);
+const variant = option('variant') ?? 'baseline';
+const outputDir = path.join(root, 'artifacts', option('output') ?? (process.argv.includes('--pilot') ? 'enemy-cpu-pilot' : process.argv.includes('--control') ? 'enemy-cpu-control' : 'enemy-cpu-profile'));
 const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8', windowsHide: true }).trim();
 const names = [...new Set(git(['ls-files', '-co', '--exclude-standard', '-z']).split('\0').filter(Boolean))].sort();
 const snapshot = await mkdtemp(path.join(tmpdir(), 'undead-enemy-cpu-'));
@@ -24,10 +27,14 @@ for (const name of names) {
   await writeFile(target, contents);
 }
 const sourceDigest = hash.digest('hex');
+const variantFiles = await applyVariant(snapshot, variant);
+if (process.argv.includes('--details')) variantFiles.push(...await applyDiagnosticDetails(snapshot));
+const variantManifest = [];
+for (const name of new Set(variantFiles)) variantManifest.push({ path: name, sha256: createHash('sha256').update(await readFile(path.join(snapshot,name))).digest('hex') });
 // Imported resource cache is validated by Godot; no gameplay source is taken from it.
 try { await cp(path.join(root, '.godot', 'imported'), path.join(snapshot, '.godot', 'imported'), { recursive: true }); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
-const metadata = { startedAt: new Date().toISOString(), head: git(['rev-parse', 'HEAD']), branch: git(['branch', '--show-current']), workingTree: git(['status', '--short']), sourceDigest, snapshot, manifest, environment:{cpu:cpus()[0]?.model,logicalCpus:cpus().length,memoryBytes:totalmem(),osRelease:release(),arch:arch(),node:process.version} };
+const metadata = { variant, variantManifest, startedAt: new Date().toISOString(), head: git(['rev-parse', 'HEAD']), branch: git(['branch', '--show-current']), workingTree: git(['status', '--short']), sourceDigest, snapshot, manifest, environment:{cpu:cpus()[0]?.model,logicalCpus:cpus().length,memoryBytes:totalmem(),osRelease:release(),arch:arch(),node:process.version} };
 await writeFile(path.join(outputDir, 'source-manifest.json'), JSON.stringify(metadata, null, 2));
 console.log(`Frozen source ${sourceDigest}; snapshot ${snapshot}`);
 const godot = path.join(root, '.runtime', 'Godot_v4.5.2-stable_win64_console.exe');
@@ -42,10 +49,20 @@ async function launch(name, args, timeoutMs) {
   if (code !== 0 || /^(SCRIPT ERROR|ERROR):/m.test(output)) throw new Error(`${name} failed (${code}); see ${outputDir}\n${output.slice(-3000)}`);
 }
 await launch('import', ['--editor', '--import', '--quit'], 180000);
+await mkdir(path.join(snapshot, 'artifacts'), { recursive: true });
+if (process.argv.includes('--regressions')) {
+  for (const name of ['navigation-regressions','spread-ballistics','native-components']) {
+    await launch(name, ['--script', `res://tools/validate-${name}.gd`, '--', '--automation','--silent'], 300000);
+  }
+  if (variant === 'rays') await launch('experiment-rays', ['--script','res://tools/validate-experiment-rays.gd','--','--automation','--silent'],300000);
+  if (variant === 'animation') await launch('experiment-animation', ['--script','res://tools/validate-experiment-animation.gd','--','--automation','--silent'],300000);
+}
+if (process.argv.includes('--prepare-only')) { console.log(`Prepared ${variant}: ${snapshot}`); process.exit(0); }
 const pilot = process.argv.includes('--pilot');
 const profileArgs = pilot ? ['--counts=50', '--warmup=30', '--samples=60', '--rounds=1'] : ['--warmup=120', '--samples=300', '--rounds=2'];
 profileArgs.push(...process.argv.slice(2).filter(arg => /^--(counts|scenarios|warmup|samples|rounds)=/.test(arg)));
 if (process.argv.includes('--control')) profileArgs.push('--unprofiled');
+if (process.argv.includes('--reverse-order')) profileArgs.push('--reverse-order');
 await launch('profile', ['--script', 'res://tools/profile-enemy-cpu.gd', '--', '--automation', '--silent', ...profileArgs], 1800000);
 const result = JSON.parse(await readFile(path.join(snapshot, 'artifacts', 'enemy-cpu-profile.json'), 'utf8'));
 result.source = metadata;
