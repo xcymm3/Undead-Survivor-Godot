@@ -17,6 +17,7 @@ const GRAPHICS_PRESETS = [
 var scores: Array = []
 var persistent = true
 var automation = "--automation" in OS.get_cmdline_user_args()
+var test_money = false
 const SAVE_PATH = "user://survivor-godot-v1.json"
 const MODELS = ["蓝衣青年", "棕衣大叔", "绿衣队员", "红衣女性"]
 const PALETTE = [0x355747,0x365d73,0x794638,0x987f4c,0x663a4b,0x4b595b]

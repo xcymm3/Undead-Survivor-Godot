@@ -289,6 +289,14 @@ func show_home() -> void:
 		option.add_theme_stylebox_override("focus",box(Color(.49,.1,.08,.83),20))
 		option.add_theme_stylebox_override("pressed",box(Color(.38,.08,.06,.9),20))
 	actions.add_child(HSeparator.new())
+	button(actions,"切换存档 · 当前存档 %d" % (Progress.active_slot+1),show_save_slots)
+	var money = CheckBox.new()
+	money.name = "InfiniteCoins"
+	money.text = "无限金币（测试：进入游戏设置为10亿）"
+	money.button_pressed = Data.test_money
+	money.add_theme_color_override("font_color",Color("e7ebdc"))
+	money.toggled.connect(func(value): Data.test_money = value)
+	actions.add_child(money)
 	for item in [["武器与操作",show_guide],["退出游戏",func(): game.quit_game()]]:
 		var option = button(actions,item[0],item[1])
 		option.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -314,6 +322,14 @@ func show_home() -> void:
 		var notice = paragraph(menu,message,18,Color("e9b79a"))
 		notice.position = Vector2(86,65)
 		notice.size.x = 650
+
+func show_save_slots() -> void:
+	var column = panel("选择存档","三个独立进度 · 选择后从第一波重新开始对局",720)
+	current = "saves"
+	for index in 3:
+		var profile = Progress.slots[index]
+		button(column,"存档 %d%s · 金币 %d · 钻石 %d · 最佳波次 %d" % [index+1,"（当前）" if index == Progress.active_slot else "",profile.data.coins,profile.data.diamonds,profile.data.best_wave],game.select_save_slot.bind(index),index == Progress.active_slot)
+	button(column,"返回",show_home)
 
 func show_pause() -> void:
 	var column = panel("休息片刻", "合作对局仍在进行" if Session.playing else "行动计时已暂停",560)

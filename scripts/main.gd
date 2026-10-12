@@ -113,6 +113,10 @@ func start_solo(mode: String = "defense", random_seed := -1) -> void:
 	load_map(Data.settings.map_id)
 	sim = Simulation.new(arena)
 	sim.progression = Progress.store
+	if Data.test_money:
+		sim.progression.data.coins = 1000000000
+		sim.progression.dirty = true
+		sim.progression.save()
 	sim.defense_difficulty = Data.settings.defense_difficulty
 	sim.add_pawn("solo","幸存者",0)
 	sim.pawns.solo.pos = arena.definition.spawn
@@ -574,6 +578,14 @@ func select_defense_difficulty(id: String) -> void:
 	Data.settings.defense_difficulty = DefensePopulation.normalize_difficulty(id)
 	Data.save()
 	ui.show_home()
+
+func select_save_slot(index: int) -> void:
+	if running: return
+	if not Progress.select_slot(index):
+		ui.message = "存档切换失败，当前进度未改变。"
+		ui.show_home()
+		return
+	start_solo("defense")
 
 func open_shop() -> bool:
 	if not running or not sim or finished or not sim.shop_available(local_pawn()): return false
