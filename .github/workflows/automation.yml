@@ -11,6 +11,10 @@ on:
         description: '仅执行整备场景隔离截图，不打包 EXE'
         type: boolean
         default: false
+      enemy_profile_only:
+        description: '仅运行隔离尸潮 CPU 独立实验，不渲染或打包 EXE'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,10 +25,13 @@ concurrency:
 
 jobs:
   preparation-visual:
-    if: inputs.visual_only == true
+    if: inputs.visual_only == true && inputs.enemy_profile_only != true
     uses: ./.github/workflows/preparation-visual.yml
+  enemy-cpu-experiments:
+    if: inputs.enemy_profile_only == true
+    uses: ./.github/workflows/enemy-cpu-experiments.yml
   verify-and-package:
-    if: inputs.visual_only != true
+    if: inputs.visual_only != true && inputs.enemy_profile_only != true
     name: 技术门禁 → EXE 验收 → 打包
     runs-on: windows-2022
     timeout-minutes: 60
