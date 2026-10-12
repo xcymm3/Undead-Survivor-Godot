@@ -324,6 +324,12 @@
       "health": 100,
       "armor": 0,
       "tier": 1
+    },
+    "dancer": {
+      "label": "舞王僵尸",
+      "health": 90000,
+      "armor": 0,
+      "tier": 5
     }
   },
   "enemy_rules": {
@@ -1021,6 +1027,92 @@
       "head": true,
       "kind": "football",
       "armor": true
+    },
+    {
+      "size": [
+        0.7,
+        0.34,
+        0.58
+      ],
+      "position": [
+        0,
+        2.18,
+        0
+      ],
+      "color": 3416350,
+      "kind": "dancer",
+      "head": true
+    },
+    {
+      "size": [
+        0.57,
+        0.12,
+        0.055
+      ],
+      "position": [
+        0,
+        1.85,
+        0.28
+      ],
+      "color": 2430512,
+      "kind": "dancer",
+      "head": true
+    },
+    {
+      "size": [
+        0.2,
+        0.17,
+        0.075
+      ],
+      "position": [
+        0,
+        1.53,
+        0.23
+      ],
+      "color": 12922246,
+      "kind": "dancer"
+    },
+    {
+      "size": [
+        0.13,
+        0.6,
+        0.035
+      ],
+      "position": [
+        -0.25,
+        1.2,
+        0.2
+      ],
+      "color": 16773053,
+      "kind": "dancer"
+    },
+    {
+      "size": [
+        0.13,
+        0.6,
+        0.035
+      ],
+      "position": [
+        0.25,
+        1.2,
+        0.2
+      ],
+      "color": 16773053,
+      "kind": "dancer"
+    },
+    {
+      "size": [
+        0.62,
+        0.12,
+        0.41
+      ],
+      "position": [
+        0,
+        0.84,
+        0
+      ],
+      "color": 12922246,
+      "kind": "dancer"
     }
   ]
 }

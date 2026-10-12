@@ -5,7 +5,7 @@ var actors: Dictionary = {}
 var skin: Skin
 var material: StandardMaterial3D
 var rage_eye_material: StandardMaterial3D
-var kinds = ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football"]
+var kinds = ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football","dancer"]
 const Wardrobe = preload("res://scripts/zombie_outfits.gd")
 
 func _ready() -> void:
@@ -37,6 +37,7 @@ func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1)
 		if part.get("shirt",false):
 			color = [Color(.349,.392,.314),Color(.424,.345,.353),Color(.329,.408,.467),Color(.510,.443,.341)][palette]
 			color = {"imp":Color(.341,.251,.373),"shield":Color(.275,.365,.396),"berserker":Color(.714,.231,.173) if rage else Color(.494,.220,.184),"giant":Color(.443,.349,.263),"football":Color(.561,.157,.188)}.get(kind,color)
+			if kind == "dancer": color = Color("eee2d5")
 		if dressed: color = Wardrobe.part_color(outfit,part,color)
 		for index in cube[Mesh.ARRAY_INDEX]:
 			surface.set_normal(cube[Mesh.ARRAY_NORMAL][index])
@@ -121,6 +122,11 @@ static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stri
 	if z.state == "windup": transform.basis *= Basis(Vector3.RIGHT,-.22)
 	if z.state == "charging": transform.basis *= Basis(Vector3.RIGHT,.28)
 	if z.state == "stunned": transform.basis *= Basis(Vector3.BACK,sin(elapsed*16)*.08)
+	if z.hp > 0 and z.get("emerge_remaining",0.0) > 0:
+		transform.origin.y -= 2.5*Data.enemy_scale(z.kind)*clampf(z.emerge_remaining/1.4,0,1)
+	if z.hp > 0 and z.get("dance_remaining",0.0) > 0:
+		transform.origin.y += absf(sin(elapsed*TAU*2))*.10
+		transform.basis *= Basis(Vector3.BACK,sin(elapsed*TAU)*.12)
 	return transform
 
 static func bone_for(part: Dictionary) -> int:
@@ -158,6 +164,12 @@ static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 		bones.append(Transform3D(rotation,pivot-rotation*pivot))
 	bones.append(Transform3D(Basis.IDENTITY,Vector3(0,-.85,-.18)) if z.attack_time > 0 and z.attack_time < .45 else Transform3D.IDENTITY)
 	bones.append(Transform3D.IDENTITY)
+	if z.hp > 0 and z.get("dance_remaining",0.0) > 0:
+		var beat = sin(elapsed*TAU*2)
+		for index in [1,2,3,4,6]:
+			var pivot = Vector3(-.19 if index == 1 else .19,.83,0) if index < 3 else Vector3(-.43 if index == 3 else .43,1.35,0) if index < 5 else Vector3(0,1.79,0)
+			var rotation = Basis(Vector3.BACK,beat*.3 if index < 3 else (-1.1 if index == 3 else 1.1)+beat*.4 if index < 5 else beat*.15)
+			bones[index] = Transform3D(rotation,pivot-rotation*pivot)
 	return {"root":root_transform(z,elapsed,stationary,stride),"bones":bones}
 
 static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
@@ -241,7 +253,8 @@ static func ray_box(origin: Vector3, direction: Vector3, transform: Transform3D,
 
 static func hit(z: Dictionary, origin: Vector3, direction: Vector3, distance: float, elapsed: float, stationary: bool) -> Dictionary:
 	var scale = Data.enemy_scale(z.kind)
-	var broad = Transform3D(Basis.IDENTITY.scaled(Vector3(3*scale,3.2*scale,3*scale)),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense"))+1.4*scale,z.pos.y))
+	var rise: float = 2.5*scale*clampf(z.get("emerge_remaining",0.0)/1.4,0,1) if z.hp > 0 else 0.0
+	var broad = Transform3D(Basis.IDENTITY.scaled(Vector3(3*scale,3.2*scale,3*scale)),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense"))+1.4*scale-rise,z.pos.y))
 	if ray_box(origin,direction,broad,distance) == INF: return {}
 	var poses = transforms(z,elapsed,stationary)
 	var nearest = distance

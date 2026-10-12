@@ -109,7 +109,7 @@ static func enemy_ground_height(p: Vector2, _map_id := "graypine_defense") -> fl
 	return Maps.Defense.height(p)
 
 static func enemy_scale(kind: String) -> float:
-	return {"imp": .65, "shield": 1.05, "giant": 1.8, "football": 1.1}.get(kind, 1.0)
+	return {"imp": .65, "shield": 1.05, "giant": 1.8, "football": 1.1,"dancer":1.35}.get(kind, 1.0)
 
 static func contact(kind: String) -> float:
 	return {"imp": 1.0, "shield": 1.3, "giant": 1.8, "football": 1.35}.get(kind, 1.25)

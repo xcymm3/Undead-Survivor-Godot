@@ -268,7 +268,7 @@ func show_home() -> void:
 	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
 	title.add_theme_constant_override("line_spacing",-12)
 	title_block.add_child(title)
-	title_block.add_child(label("按 T 开始每一波，守住水晶，挑战逐渐增强的无尽尸潮。",19,Color("d8dfce")))
+	title_block.add_child(label("战前整备，连续抵御十波尸潮，击败舞王守住水晶。",19,Color("d8dfce")))
 	var actions = VBoxContainer.new()
 	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	actions.offset_left = -450
@@ -335,6 +335,7 @@ func show_pause() -> void:
 	var column = panel("休息片刻", "合作对局仍在进行" if Session.playing else "行动计时已暂停",560)
 	current = "pause"
 	button(column,"继续游戏",func(): game.resume_game(),true)
+	if game.sim and not game.sim.defense.started: button(column,"开始进攻",game.start_attack,true)
 	if not Session.playing: button(column,"重新开始",func(): game.start_solo(game.sim.mode))
 	button(column,"设置",show_settings)
 	button(column,"武器与操作",show_guide)
@@ -437,9 +438,9 @@ func show_settings() -> void:
 	button(column,"返回",back)
 
 func show_guide() -> void:
-	var column = panel("武器与操作", "水晶防线 · 无尽防守 · 按 T 开战",1000)
+	var column = panel("武器与操作", "水晶防线 · 十波连续进攻",1000)
 	current = "guide"
-	paragraph(column,"守住水晶，挑战无尽尸潮。第一波开始前靠近水晶后方商店按 E 升级；按 T 开波后，本局商店关闭。每清完一波获得 1 颗钻石、两把枪各 2 个备弹夹，重开后可继续获取。",17)
+	paragraph(column,"战前在水晶后方商店按 E 购买装备与建筑，靠近已造炮塔或栅栏按 E 升级。点击开始进攻后，本局商店关闭；每波投放完就自动接下一波。每清完所属波次的敌人获得 1 颗钻石、两把枪各 2 个备弹夹。第十波击败舞王并清除全部敌人后通关。",17)
 	paragraph(column,"WASD 移动 / Shift 疾跑 / 鼠标瞄准 / 左键攻击 / 右键推击 / 中键开镜\n空格跳跃 / Ctrl 蹲下 / R 换弹 / 1—4 或滚轮切换装备 / Esc 暂停\n1 步枪 / 2 左轮 / 3 消防斧 / 4 手雷 / E 商店 / T 开波\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。每次清波两把枪各获得 2 个备弹夹，备弹可超上限，使用消防斧节省弹药。",17)
 	var grid = GridContainer.new()
 	grid.columns = 5
@@ -451,7 +452,7 @@ func show_guide() -> void:
 		var w: Dictionary = Data.weapons[i]
 		for text in [w.label,w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
 	paragraph(column,"击杀会掉落自动飞向玩家的金币，特殊僵尸奖励更高。金币、钻石、升级和已购建筑永久保存；重新开始只重置波次、生命和战场。",17)
-	paragraph(column,"每波开始回满生命、手雷与已购建筑状态。没有强壮天赋时不会缓慢回血；学习后停止攻击和受伤 5 秒开始恢复。商店升级手雷容量，初始 1 枚，最多 5 枚。",17)
+	paragraph(column,"每波开始回满生命与手雷，炮塔和栅栏的损伤保留，毁坏后本局不复活。没有强壮天赋时不会缓慢回血；学习后停止攻击和受伤 5 秒开始恢复。首页可切换三个独立存档，并勾选测试金币。",17)
 	button(column,"返回",back,true)
 
 func show_multiplayer() -> void:
@@ -513,6 +514,32 @@ func show_legacy_multiplayer() -> void:
 		button(lan,"加入局域网",func(): Session.join_lan(address,player_name))
 	button(column,"返回",func(): Session.leave(); show_home())
 
+func show_preparation() -> void:
+	var column = panel("战前准备","十波连续进攻 · 第十波舞王最终战",680)
+	current = "preparation"
+	paragraph(column,"进入战场后可在商店购买装备与建筑；已建造的炮塔、栅栏需靠近后按 E 升级。每波投放结束立即接下一波，建筑在战斗中毁坏后不再复活。")
+	button(column,"进入战场整备",func(): game.resume_game(),true)
+	button(column,"开始进攻",game.start_attack,true)
+	button(column,"返回主菜单",func(): game.return_home())
+
+func show_building(id: String, feedback := "") -> void:
+	if not game.sim or not game.sim.building_available(id,game.local_pawn()):
+		game.resume_game()
+		return
+	var profile = game.sim.progression
+	var gate: bool = id in profile.GATES
+	var column = panel("栅栏门升级" if gate else "炮塔升级","战前就地升级 · 已制造建筑 · 永久保存",640)
+	current = "building"
+	column.add_child(label("金币 %d · 等级 %d" % [profile.data.coins,profile.level(id)],24))
+	paragraph(column,shop_description(profile,id))
+	if not feedback.is_empty(): paragraph(column,feedback,17,RUST)
+	var price: int = profile.cost(id)
+	var purchase = button(column,"升级 +10%% · %d 金币" % price if price >= 0 else "已满级",game.buy_upgrade.bind(id),true)
+	purchase.name = "Purchase_"+id
+	purchase.disabled = price < 0 or profile.data.coins < price
+	button(column,"返回战场整备",func(): game.resume_game())
+	button(column,"开始进攻",game.start_attack)
+
 func show_shop(feedback := "") -> void:
 	if not game.sim or not game.sim.shop_available(game.local_pawn()):
 		game.resume_game()
@@ -543,15 +570,17 @@ func show_shop(feedback := "") -> void:
 		detail.add_child(label(entry[1]+status,20))
 		paragraph(detail,shop_description(profile,id),15,Color("687264"))
 		var price: int = profile.cost(id)
+		if id in profile.BUILDINGS and profile.owned(id): price = -1
 		var currency_name = "钻石" if profile.currency(id) == "diamonds" else "金币"
 		var action = "购买" if id in profile.MINES else "制造" if id in profile.BUILDINGS and not profile.owned(id) else "升级"
-		var caption = ("已购买" if id in profile.MINES else "已满级") if price < 0 else "%s · %d %s" % [action,price,currency_name]
+		var caption = ("靠近建筑按 E 升级" if id in profile.BUILDINGS else "已购买" if id in profile.MINES else "已满级") if price < 0 else "%s · %d %s" % [action,price,currency_name]
 		var purchase = button(row,caption,game.buy_upgrade.bind(id))
 		purchase.name = "Purchase_"+id
 		purchase.custom_minimum_size.x = 195
 		purchase.disabled = price < 0 or profile.data[profile.currency(id)] < price
 		if price >= 0 and purchase.disabled: purchase.tooltip_text = currency_name+"不足"
 	button(column,"完成整备 · 返回战场",func(): game.resume_game(),true)
+	button(column,"开始进攻",game.start_attack)
 
 func shop_description(profile, id: String) -> String:
 	if id in profile.WEAPONS:
@@ -559,8 +588,8 @@ func shop_description(profile, id: String) -> String:
 		return "伤害 %.1f → %.1f · 每次 +10%%，下次价格翻倍" % [Data.weapons[index].damage*profile.weapon_multiplier(id),Data.weapons[index].damage*profile.weapon_multiplier(id)*1.1]
 	if id == "grenade": return "持有上限 %d / 5 · 每次 +1 · 每波开始补满" % profile.grenade_capacity()
 	if id in profile.MINES: return "永久购买 · 无升级 · 每波恢复 · 僵尸触发后 1.5 秒爆炸"
-	if id in profile.GATES: return "耐久 %d · 升级 +10%% · 每波恢复初始状态" % roundi(1000*profile.building_multiplier(id))
-	if id in profile.BUILDINGS: return "每发伤害 %.1f · 升级伤害 +10%% · 每波恢复初始状态" % (60*profile.building_multiplier(id))
+	if id in profile.GATES: return "耐久 %d · 就地升级 +10%% · 价格与枪械相同并逐次翻倍 · 战斗中不复活" % roundi(1000*profile.building_multiplier(id))
+	if id in profile.BUILDINGS: return "每发伤害 %.1f · 就地升级伤害 +10%% · 价格与枪械相同并逐次翻倍 · 战斗中不复活" % (60*profile.building_multiplier(id))
 	match id:
 		"strong": return "最大生命 %d · 脱战 5 秒后每秒回复 %d 生命 · 每级 +10 生命、+1 回复" % [profile.max_health(),profile.level(id)]
 		"precise": return "爆头倍率 +%d%% · 每级 +10%%" % (profile.level(id)*10)
@@ -572,10 +601,10 @@ func show_result() -> void:
 	var sim = game.sim
 	if sim.mode == "defense":
 		var state: Dictionary = sim.defense_state()
-		var result = panel("水晶防线失守","保卫水晶",640)
+		var result = panel("游戏通关" if sim.won else "水晶防线失守","十波尸潮已清除 · 舞王已击败" if sim.won else "保卫水晶",640)
 		current = "result"
 		result.add_child(label("守住 %d 波 · %d 击杀 · %s" % [sim.cleared,sim.kills,time_text(sim.elapsed)],32))
-		paragraph(result,("水晶被摧毁。" if sim.cause == "crystal" else "守卫者已失去行动能力。")+" 水晶剩余 %d / %d。" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)])
+		paragraph(result,("成功守住水晶。" if sim.won else "水晶被摧毁。" if sim.cause == "crystal" else "守卫者已失去行动能力。")+" 水晶剩余 %d / %d。" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)])
 		if not Session.playing: button(result,"重新防守",func(): game.start_solo("defense"),true)
 		button(result,"返回主菜单",func(): game.return_home())
 		return

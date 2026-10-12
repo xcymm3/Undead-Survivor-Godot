@@ -131,8 +131,13 @@ func spawn(pos: Vector2, kind: String) -> void:
 	var health: float = body+armor
 	var locomotion = RandomNumberGenerator.new()
 	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
-	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
+	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"spawn_wave":wave,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
 	if kind == "crawler": zombies[-1].chase_speed *= .85
+	if kind == "dancer":
+		zombies[-1].chase_speed = 2.1
+		zombies[-1].summon_clock = preload("res://scripts/dancer_boss.gd").INTERVAL
+		zombies[-1].dance_remaining = 0.0
+		zombies[-1].summon_roster = []
 	if kind in ["normal","crawler","cone","bucket"]:
 		# Cosmetic RNG never advances encounter, movement or combat randomness.
 		var wardrobe = RandomNumberGenerator.new()
@@ -192,6 +197,7 @@ func step(dt: float) -> void:
 	if living.is_empty():
 		failed = true
 		return
+	preload("res://scripts/dancer_boss.gd").step(self,dt)
 	for z in zombies:
 		if z.hp <= 0:
 			z.down -= dt
@@ -210,18 +216,16 @@ func step(dt: float) -> void:
 		failed = true
 		return
 	if mode == "defense" and defense.get("waiting",false): return
-	if roster.is_empty() and alive_count() == 0:
-		cleared = wave
-		rest = 0
-		if mode == "defense":
-			defense_director.finish_wave()
-		for p in pawns.values():
-			if p.hp <= 0:
-				p.pos = safe_spawn()
-				p.height = Data.enemy_ground_height(p.pos,map_id)
-				p.velocity = 0.0
+	defense_director.reward_finished_waves()
+	if roster.is_empty():
+		if wave < 10:
+			defense.wave = wave+1
+			defense_director.begin_wave()
+		elif alive_count() == 0:
+			won = true
+			defense.objective = "游戏通关 · 十波尸潮已清除"
+			defense_director.sync_world()
 		return
-	if roster.is_empty(): return
 	defense_spawner.step(dt,living)
 
 func safe_spawn() -> Vector2:
@@ -426,7 +430,9 @@ func shop_available(p: Dictionary) -> bool:
 	return defense_director != null and not defense.started and not failed and not won and p.get("hp",0) > 0 and defense_director.near(p,Data.Maps.Defense.SHOP_POINT,4.0)
 
 func purchase_upgrade(id: String, p: Dictionary) -> bool:
-	if not shop_available(p): return false
+	var onsite: bool = building_available(id,p)
+	if not shop_available(p) and not onsite: return false
+	if id in progression.BUILDINGS and progression.owned(id) and not onsite: return false
 	var old_health = progression.max_health()
 	var old_reserve = progression.reserve_multiplier()
 	var old_grenades = progression.grenade_capacity()
@@ -440,9 +446,16 @@ func purchase_upgrade(id: String, p: Dictionary) -> bool:
 	equipment.save_weapon_slot(p)
 	# The other firearm slot also tracks its increased reserve.
 	p.slot_reserves = [p.reserves[0],p.reserves[3]]
-	defense_director.structures.reset_wave()
+	defense_director.structures.refresh_purchase(id)
 	defense_director.sync_world()
 	return true
+
+func building_available(id: String, p: Dictionary) -> bool:
+	if defense_director == null or defense.started or failed or won or p.get("hp",0) <= 0: return false
+	var item: Dictionary = defense_director.structures.find(id)
+	if item.is_empty() or item.kind == "mine" or not item.get("owned",false) or item.hp <= 0: return false
+	if p.pos.distance_to(item.pos) > 3: return false
+	return arena.surface_hit(Vector3(p.pos.x,p.height+1.4,p.pos.y),Vector3(item.pos.x,item.height+1.1,item.pos.y),id).is_empty()
 
 func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	advance_arsenal(p,input,dt)
@@ -578,6 +591,7 @@ func try_shove(p: Dictionary) -> bool:
 		if delta.length() > .05 and forward.dot(delta.normalized()) < cos(deg_to_rad(80)): continue
 		if not arena.surface_hit(Vector3(p.pos.x,p.height+1.1,p.pos.y),Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+1.1,z.pos.y)).is_empty(): continue
 		if z.kind == "football" and z.state in ["windup","charging"]: continue
+		if z.get("dance_remaining",0.0) > 0: continue
 		var stun_immune: bool = z.kind in ["shield","football","giant"] or (z.kind == "berserker" and z.rage)
 
 		z.attack_time = 0.0
@@ -627,6 +641,10 @@ func approach_goal(z: Dictionary, target: Dictionary) -> Vector2:
 
 func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 	z.move_speed = 0.0
+	if z.get("emerge_remaining",0.0) > 0:
+		z.emerge_remaining = maxf(0,z.emerge_remaining-dt)
+		return
+	if z.get("dance_remaining",0.0) > 0: return
 	if z.get("shove_time",0.0) > 0:
 		var duration = minf(dt,z.shove_time)
 		z.shove_time -= duration
@@ -853,7 +871,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 	else:
 		# Small displacement is independent of shove velocity/time and stun duration.
 		# A pellet/flame tick cannot multiply displacement within the same volley.
-		if not charging_on_hit and z.kind != "giant" and not (z.kind == "berserker" and z.rage) and elapsed >= z.get("hit_push_at",-1.0):
+		if not charging_on_hit and z.get("dance_remaining",0.0) <= 0 and z.kind != "giant" and not (z.kind == "berserker" and z.rage) and elapsed >= z.get("hit_push_at",-1.0):
 			var source: Vector2 = push_origin if push_origin.is_finite() else p.get("pos",Vector2(position.x,position.z))
 			var push: Vector2 = (z.pos-source).normalized()*.22
 			for step in 4:

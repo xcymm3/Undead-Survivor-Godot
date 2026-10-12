@@ -8,13 +8,14 @@ var state: Dictionary
 var equipment
 var structures
 var rewarded_waves: Dictionary = {}
+var launched_waves: Dictionary = {}
 
 func _init(world) -> void:
 	owner_ref = weakref(world)
 	state = {
 		"started":false,"waiting":true,"ready_players":[],"crystal_hp":Layout.CRYSTAL_MAX_HP,
 		"crystal_max_hp":Layout.CRYSTAL_MAX_HP,"wave":1,
-		"objective":"第 1 波待开始 · 按 T 准备 (0/%d)" % world.pawns.size(),"party":world.pawns.size(),"prop_clock":0.0,
+		"objective":"战前准备 · 点击开始进攻 · 共十波","party":world.pawns.size(),"prop_clock":0.0,
 		"difficulty":world.defense_difficulty,"difficulty_multiplier":preload("res://scripts/defense_population.gd").difficulty_multiplier(world.defense_difficulty)
 	}
 	structures = preload("res://scripts/defense_structures.gd").new(self)
@@ -27,11 +28,13 @@ func near(p: Dictionary, point: Vector2, distance := 2.0) -> bool:
 	return sim.arena.surface_hit(Vector3(p.pos.x,p.height+1.1,p.pos.y),Vector3(point.x,p.height+1.1,point.y)).is_empty()
 
 func begin_wave() -> void:
+	state.wave = clampi(int(state.wave),1,10)
 	sim.wave = int(state.wave)
 	sim.spawned = 0
 	sim.rest = 0.0
 	sim.prepare_wave()
-	structures.reset_wave()
+	structures.reset_mines()
+	launched_waves[sim.wave] = true
 	for p in sim.pawns.values():
 		p.hp = p.max_hp
 		p.regen_credit = 0.0
@@ -49,20 +52,25 @@ func begin_wave() -> void:
 	sync_world()
 
 func finish_wave() -> void:
-	if not rewarded_waves.has(sim.wave) and state.started and not state.waiting and not sim.failed and state.crystal_hp > 0 and sim.roster.is_empty() and sim.alive_count() == 0:
-		rewarded_waves[sim.wave] = true
-		sim.progression.award_wave(sim.wave)
-		for p in sim.pawns.values(): equipment.award_wave_ammo(p)
-	state.waiting = true
-	state.wave = sim.wave+1
-	state.ready_players.clear()
-	state.objective = "第 %d 波已清除 · 钻石 +1 · 两把枪各补 2 备弹夹 · 按 T 开始第 %d 波" % [sim.wave,state.wave]
+	reward_finished_waves()
 	sync_world()
+
+func reward_finished_waves() -> void:
+	if sim.failed or not state.started or state.crystal_hp <= 0: return
+	for generation in launched_waves:
+		if rewarded_waves.has(generation) or (generation == sim.wave and not sim.roster.is_empty()): continue
+		if sim.zombies.any(func(z): return z.hp > 0 and int(z.get("spawn_wave",sim.wave)) == generation): continue
+		rewarded_waves[generation] = true
+		sim.progression.award_wave(generation)
+		for p in sim.pawns.values(): equipment.award_wave_ammo(p)
+		sim.cleared = rewarded_waves.size()
 
 func choose_weapon(p: Dictionary, _requested: int) -> int:
 	return p.weapon1 if p.slot == 1 else 6 if p.slot == 3 else p.weapon2 if p.slot == 2 else p.weapon
 
 func target(p: Dictionary) -> Dictionary:
+	for item in state.structures:
+		if sim.building_available(item.id,p): return {"id":item.id,"label":"升级炮塔" if item.kind == "turret" else "升级栅栏门","seconds":0.0}
 	if sim.shop_available(p): return {"id":"shop","label":"打开商店（本局开波后关闭）","seconds":0.0}
 	return {}
 
@@ -81,7 +89,7 @@ func interactions(dt: float) -> void:
 		p.input["wave_ready"] = false
 		if not input.get("interact",false): p.pickup_latched = false
 		var choice := target(p)
-		p.hint = "E "+choice.label if not choice.is_empty() else "水晶后方商店升级 · 按 T 开始第一波" if not state.started else "商店已关闭 · 按 T 开始下一波" if state.waiting else "保护水晶 · 清波后两把枪各补 2 备弹夹"
+		p.hint = "E "+choice.label if not choice.is_empty() else "战前准备 · 点击开始进攻" if not state.started else "尸潮连续逼近 · 清波补充弹药 · 第十波最终战"
 		if p.pickup_latched or not input.get("interact",false): choice = {}
 		if choice.is_empty():
 			p.interaction = ""
@@ -96,6 +104,9 @@ func interactions(dt: float) -> void:
 		if choice.id == "shop":
 			p.pickup_latched = true
 			sim.events.append({"kind":"shop_open","player":p.id})
+		else:
+			p.pickup_latched = true
+			sim.events.append({"kind":"structure_open","player":p.id,"id":choice.id})
 		p.interaction = ""
 		p.interact_time = 0.0
 	for p in sim.pawns.values(): p.input.interact = false
@@ -104,7 +115,7 @@ func interactions(dt: float) -> void:
 		if not sim.pawns.is_empty() and sim.pawns.keys().all(func(id): return state.ready_players.has(id)):
 			begin_wave()
 		else:
-			state.objective = "第 %d 波待开始 · 按 T 准备 (%d/%d)" % [state.wave,state.ready_players.size(),sim.pawns.size()]
+			state.objective = "战前准备 · 点击开始进攻 · 共十波"
 	sync_world()
 
 func sync_world() -> void:

@@ -7,7 +7,7 @@ const LEGACY_BUILDINGS = ["turret_left","turret_right","bridge_gate"]
 const GATES = ["bridge_gate","bridge_entry_gate"]
 const BUILDINGS = ["turret_left","turret_right","bridge_gate","bridge_entry_gate"]
 const MINES = ["crystal_mine","ramp_mine","gate_mine"]
-const COIN_REWARDS = {"normal":1,"crawler":1,"cone":2,"bucket":3,"imp":3,"shield":5,"berserker":10,"giant":10,"football":20}
+const COIN_REWARDS = {"normal":1,"crawler":1,"cone":2,"bucket":3,"imp":3,"shield":5,"berserker":10,"giant":10,"football":20,"dancer":200}
 var path = ""
 var dirty = false
 var notice = ""
@@ -130,7 +130,7 @@ func cost(id: String) -> int:
 		base = 30
 	elif id in BUILDINGS:
 		if not owned(id): return 80 if id in GATES else 100
-		base = 40 if id in GATES else 50
+		base = 20
 	elif id not in WEAPONS: return -1
 	var price = float(base)*pow(2,level(id))
 	return int(price) if level(id) < 48 and price <= MAX_CURRENCY else -1

@@ -46,6 +46,29 @@ func find(id: String) -> Dictionary:
 		if item.id == id: return item
 	return {}
 
+func reset_mines() -> void:
+	for item in director.state.structures:
+		if item.kind != "mine": continue
+		# A continuous next wave must not erase a fuse already in flight.
+		if item.triggered and not item.spent: continue
+		item.triggered = false
+		item.spent = false
+		item.fuse = MINE_DELAY
+		item.hp = item.max_hp if item.owned else 0
+
+func refresh_purchase(id: String) -> void:
+	var item = find(id)
+	if item.is_empty(): return
+	var was_owned: bool = item.get("owned",false)
+	item.owned = sim.progression.owned(id)
+	if item.kind == "turret": item.damage_multiplier = sim.progression.building_multiplier(id)
+	if item.kind == "gate":
+		var previous: int = item.max_hp
+		item.max_hp = roundi(1000*sim.progression.building_multiplier(id))
+		if item.hp > 0: item.hp += item.max_hp-previous
+	if not was_owned and item.owned: item.hp = item.max_hp
+	sim.paths.clear()
+
 static func bounds(item: Dictionary) -> Rect2:
 	var size = Vector2(GATE_WIDTH,GATE_DEPTH) if item.kind == "gate" else Vector2(1.3,1.3)
 	return Rect2(item.pos-size*.5,size)

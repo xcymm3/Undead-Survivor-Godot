@@ -38,6 +38,7 @@ func sync_enemy_steps(enemies: Array, listener: Vector3, dt: float) -> void:
 		if step_clock-step_due[id] > 3: step_due.erase(id)
 
 func _ready() -> void:
+	streams["disco"] = load("res://assets/audio/disco.wav")
 	for cue in ["grenade-throw","grenade-fuse"]: streams[cue] = load("res://assets/audio/%s.wav" % cue)
 	for weapon_index in Data.weapons.size():
 		var cue = weapon_cue(weapon_index)

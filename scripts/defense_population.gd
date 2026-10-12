@@ -73,4 +73,5 @@ static func roster(wave: int, party_size: int, random: RandomNumberGenerator, di
 	var ordinary_count := result.size()
 	for index in required_footballs:
 		result.insert(roundi(ordinary_count*float(index+1)/float(required_footballs+1))+index,"football")
+	if wave == 10: result.push_front("dancer")
 	return result

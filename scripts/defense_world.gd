@@ -180,7 +180,7 @@ func _ready() -> void:
 	DefenseEnvironment.decorate(self)
 	for p in [DefenseLayout.CRYSTAL+Vector2(-12,-3),DefenseLayout.CRYSTAL+Vector2(13,-4)]:
 		block("CrystalGuard",Vector3(p.x,4.0,p.y),Vector3(3.5,2,1.2),"46534a")
-	wave_label = sign_at("按 T 开始第 1 波",Vector3(6,6.5,DefenseLayout.CRYSTAL.y+3),5.7)
+	wave_label = sign_at("战前准备 · 共十波",Vector3(6,6.5,DefenseLayout.CRYSTAL.y+3),5.7)
 	for p in [Vector3(-4.2,5.5,-62),Vector3(4.2,5.5,-62),Vector3(-4.2,5.5,-28),Vector3(4.2,5.5,-28),Vector3(-11,6,DefenseLayout.CRYSTAL.y+2),Vector3(11,6,DefenseLayout.CRYSTAL.y+2)]:
 		var light = OmniLight3D.new()
 		light.position = p
@@ -209,4 +209,4 @@ func sync(state: Dictionary) -> void:
 	crystal_light.light_energy = lerpf(.35,5.0,ratio)
 	crystal_light.light_color = Color("f05d4f") if ratio < .3 else Color("65dff2")
 	crystal_label.text = "水晶 %d / %d" % [ceili(hp),ceili(maximum)]
-	wave_label.text = "第 %d 波 · 按 T 准备 %d/%d" % [state.get("wave",1),state.get("ready_players",[]).size(),state.get("party",1)] if state.get("waiting",false) else "第 %d 波" % state.get("wave",1)
+	wave_label.text = "战前准备 · 点击开始进攻" if not state.get("started",false) else "第 %d / 10 波" % state.get("wave",1)
