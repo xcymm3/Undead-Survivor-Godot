@@ -13,6 +13,7 @@ var hurt_flash = 0.0
 var message = ""
 var portraits: Dictionary = {}
 var native_hud
+var settings_tab = 0
 var overlay_state: Array = []
 const INK = Color("eee4c9")
 const PAPER = Color("14231f")
@@ -61,6 +62,8 @@ func box(color: Color, padding := 16) -> StyleBoxFlat:
 	style.corner_radius_top_right = 0
 	style.corner_radius_bottom_left = 0
 	style.corner_radius_bottom_right = 0
+	style.border_width_bottom = 3
+	style.border_color = color.darkened(.4)
 	return style
 
 func settings_box(color: Color, border: Color, padding := 12) -> StyleBoxFlat:
@@ -197,8 +200,8 @@ func panel(title: String, subtitle: String, width := 700, warm := false) -> VBox
 	card_style.shadow_size = 12
 	if warm:
 		card.theme = settings_theme()
-		card_style.border_width_left = 1
-		card_style.border_width_top = 1
+		card_style.border_width_left = 5
+		card_style.border_width_top = 2
 		card_style.border_width_right = 1
 		card_style.border_width_bottom = 1
 		card_style.border_color = SETTINGS_BRASS
@@ -207,6 +210,7 @@ func panel(title: String, subtitle: String, width := 700, warm := false) -> VBox
 	card.add_theme_stylebox_override("panel",card_style)
 	card.custom_minimum_size.x = width
 	center.add_child(card)
+	card.add_child(preload("res://scripts/menu_plate.gd").new())
 	var scroll = ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(minf(width-56,root.size.x-100),minf(650,root.size.y-160))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -251,6 +255,10 @@ func show_home() -> void:
 	version.position = Vector2(1290,42)
 	stage.add_child(version)
 	var title = label("UNDEAD\nSURVIVOR",98,Color("e9e2c7"))
+	var display_font = FontVariation.new()
+	display_font.base_font = font
+	display_font.variation_embolden = 1.2
+	title.add_theme_font_override("font",display_font)
 	title.name = "GameTitle"
 	title.position = Vector2(190,184)
 	title.size = Vector2(1060,280)
@@ -264,8 +272,11 @@ func show_home() -> void:
 	subtitle.size.x = 840
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stage.add_child(subtitle)
-	var emblem = label("◆",60,Color("65b8b0"))
-	emblem.position = Vector2(680,107)
+	var emblem = TextureRect.new()
+	emblem.texture = preload("res://scripts/currency_art.gd").diamond()
+	emblem.position = Vector2(680,98)
+	emblem.size = Vector2(80,80)
+	emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	stage.add_child(emblem)
 	var setup = HBoxContainer.new()
 	setup.name = "DifficultySelection"
@@ -322,8 +333,15 @@ func back() -> void:
 	else: show_home()
 
 func show_settings() -> void:
-	var column = panel("战场设置", "声音、操控与画质会保存到本机",700,true)
+	var shell = panel("战场设置", "声音、操控与画质会保存到本机",700,true)
 	current = "settings"
+	var tabs = TabContainer.new()
+	tabs.custom_minimum_size.y = 460
+	tabs.add_theme_stylebox_override("panel",settings_box(Color(.05,.08,.065,.4),SETTINGS_BRASS.darkened(.5),14))
+	tabs.add_theme_stylebox_override("tab_selected",settings_box(Color("314335"),SETTINGS_BRASS,10))
+	tabs.add_theme_stylebox_override("tab_unselected",settings_box(Color("121f1a"),SETTINGS_BRASS.darkened(.5),10))
+	shell.add_child(tabs)
+	var column = settings_page(tabs,"操控与声音")
 	settings_heading(column,"操控")
 	column.add_child(label("鼠标灵敏度",18,SETTINGS_INK))
 	var row = HBoxContainer.new()
@@ -367,6 +385,7 @@ func show_settings() -> void:
 		Data.settings.muted = v
 		Data.apply_settings()
 		Data.save())
+	column = settings_page(tabs,"画面")
 	settings_heading(column,"画质")
 	var quality = OptionButton.new()
 	for text in ["极限流畅","流畅","均衡","精细","极致画质","自定义"]: quality.add_item(text)
@@ -411,12 +430,25 @@ func show_settings() -> void:
 		Data.apply_settings()
 		Data.save())
 	paragraph(column,"渲染器：Godot Compatibility\n渲染设备：%s\n版本：%s" % [RenderingServer.get_video_adapter_name(),Engine.get_version_info().string],15,SETTINGS_MUTED)
-	button(column,"返回",back)
+	tabs.current_tab = settings_tab
+	tabs.tab_changed.connect(func(index): settings_tab = index)
+	button(shell,"返回",back)
+
+func settings_page(tabs: TabContainer, title: String) -> VBoxContainer:
+	var scroll = ScrollContainer.new()
+	scroll.name = title
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tabs.add_child(scroll)
+	var column = VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation",12)
+	scroll.add_child(column)
+	return column
 
 func show_guide() -> void:
 	var column = panel("武器与操作", "水晶防线 · 十波连续进攻",1000)
 	current = "guide"
-	paragraph(column,"战前靠近并瞄准展台或施工点，长按 E 升级或建造。长按警报器启动进攻后，展台关闭；每波投放完等待10秒再自动接下一波。每清完所属波次的敌人获得 1 颗钻石、两把枪各 2 个备弹夹。第十波击败舞王并清除全部敌人后通关。",17)
+	paragraph(column,"战前靠近并瞄准展台或施工点，长按 E 升级或建造。长按警报器启动进攻后，展台关闭；每波投放完等待10秒再自动接下一波。每清完所属波次的敌人获得 1 颗钻石、两把枪各 2 个备弹夹。第十波击败舞王后立即清除全部残敌并通关。",17)
 	paragraph(column,"WASD 移动 / Shift 疾跑 / 鼠标瞄准 / 左键攻击 / 右键推击 / 中键开镜\n空格跳跃 / Ctrl 蹲下 / R 换弹 / 1—4 或滚轮切换装备 / Esc 暂停\n1 步枪 / 2 左轮 / 3 消防斧 / 4 手雷 / E 长按交互\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。每次清波两把枪各获得 2 个备弹夹，备弹可超上限，使用消防斧节省弹药。",17)
 	var grid = GridContainer.new()
 	grid.columns = 4
@@ -579,8 +611,10 @@ func _draw_hud() -> void:
 		hud.draw_colored_polygon(PackedVector2Array([center+direction*82,center+direction*61+side*9,center+direction*61-side*9]),tint)
 	if p.hp > 0 and p.get("healing_flash",0.0) > 0:
 		var heal: float = p.healing_flash
-		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.08,.48,.19,heal*.055))
-		hud.draw_rect(Rect2(Vector2(5,5),screen-Vector2(10,10)),Color(.22,.65,.31,heal*.22),false,16)
+		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.08,.48,.19,heal*.035))
+		for layer in 8:
+			var inset = float(layer)*10.0
+			hud.draw_rect(Rect2(Vector2.ONE*inset,screen-Vector2.ONE*inset*2),Color(.18,.6,.29,heal*.035*(1.0-layer/8.0)),false,24)
 	if hurt_flash > 0:
 		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.55,.08,.04,hurt_flash*.3),false,20)
 
