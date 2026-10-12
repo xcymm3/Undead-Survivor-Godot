@@ -3,10 +3,10 @@ extends TextureRect
 ## Native font artwork with extruded edges, projected away at the top.
 var display_font: Font
 class Ink extends Control:
-	const IVORY = Color("f8edc3")
-	const EDGE = Color("d8a65a")
-	const SIDE = Color("72512e")
-	const OUTLINE = Color("101713")
+	const IVORY = Color("bfc4c6")
+	const EDGE = Color("8f989c")
+	const SIDE = Color("3b444a")
+	const OUTLINE = Color("101619")
 	var display_font: Font
 	func _draw() -> void:
 		for row in [["UNDEAD",112,148],["SURVIVOR",144,316]]:
@@ -39,7 +39,8 @@ void fragment() {
  float width = mix(.68,1.0,uv.y);
  uv.x = (uv.x-.5)/width+.5;
  vec4 ink = texture(TEXTURE,uv);
- ink.rgb *= mix(1.05,.83,uv.y);
+ float grain = fract(sin(dot(floor(uv*vec2(1200.0,370.0)),vec2(12.9898,78.233)))*43758.5453);
+ ink.rgb *= mix(1.05,.83,uv.y)*(0.96+grain*0.06);
  COLOR = (uv.x < 0.0 || uv.x > 1.0) ? vec4(0.0) : ink;
 }
 """

@@ -270,7 +270,7 @@ func show_home() -> void:
 	var title = preload("res://scripts/menu_title.gd").new()
 	var display_font = FontVariation.new()
 	display_font.base_font = font
-	display_font.variation_embolden = 3.5
+	display_font.variation_embolden = 1.1
 	title.display_font = display_font
 	title.name = "GameTitle"
 	title.position = Vector2(140,175)
@@ -290,7 +290,8 @@ func show_home() -> void:
 	stage.add_child(emblem)
 	var setup = HBoxContainer.new()
 	setup.name = "DifficultySelection"
-	setup.position = Vector2(270,642)
+	setup.position = Vector2(0,642)
+	setup.resized.connect(func(): setup.position.x = (stage.size.x-setup.size.x)*.5)
 	setup.add_theme_constant_override("separation",12)
 	stage.add_child(setup)
 	for entry in [["easy","简单"],["normal","普通"],["hard","困难"]]:
@@ -298,23 +299,27 @@ func show_home() -> void:
 		option.custom_minimum_size = Vector2(135,44)
 	var money = CheckBox.new()
 	money.name = "InfiniteCoins"
-	money.text = "无限金币 · 测试"
+	money.text = "无限金币 / 钻石 · 测试"
 	money.button_pressed = Data.test_money
 	money.toggled.connect(func(value): Data.test_money = value)
 	setup.add_child(money)
 	var actions = HBoxContainer.new()
-	actions.position = Vector2(270,723)
+	actions.name = "HomeActions"
+	actions.position = Vector2(0,723)
+	actions.resized.connect(func(): actions.position.x = (stage.size.x-actions.size.x)*.5)
 	actions.add_theme_constant_override("separation",14)
 	stage.add_child(actions)
 	for item in [["开始防守",func(): game.start_solo("defense")],["设置",show_settings],["武器与操作",show_guide],["退出游戏",func(): game.quit_game()]]:
 		var option = home_button(actions,item[0],item[1],item[0] == "开始防守")
 		option.custom_minimum_size = Vector2(214,76)
 		option.add_theme_font_size_override("font_size",25)
-	var save = home_button(stage,"存档 %d" % (Progress.active_slot+1),show_save_slots)
-	save.position = Vector2(56,725)
+	var save = home_button(actions,"存档 %d" % (Progress.active_slot+1),show_save_slots)
+	actions.move_child(save,0)
 	save.custom_minimum_size = Vector2(168,76)
 	var profile = label("金币 %d   ◆ 钻石 %d   最佳第 %d 波" % [Progress.store.data.coins,Progress.store.data.diamonds,Progress.store.data.best_wave],17,Color("b6c3a5"))
-	profile.position = Vector2(270,827)
+	profile.position = Vector2(120,827)
+	profile.size.x = 1200
+	profile.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stage.add_child(profile)
 	if not message.is_empty():
 		var notice = label(message,17,Color("e9b79a"))

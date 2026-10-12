@@ -84,6 +84,12 @@ func run() -> void:
 	game.update_finish_camera(3)
 	check(game.ui.current == "result" and game.ui.menu.find_children("*","Label",true,false).any(func(n): return n.text.contains("本局获得")),"Result shows session coin and diamond earnings after camera sequence")
 	game.return_home()
+	await process_frame
+	await process_frame
+	var actions = game.ui.menu.get_node("HomeStage/HomeActions")
+	var setup_row = game.ui.menu.get_node("HomeStage/DifficultySelection")
+	check(absf(actions.get_global_rect().get_center().x-game.ui.root.size.x*.5) < 1 and actions.get_children().size() == 5,"All five home buttons including saves form one centered row")
+	check(absf(setup_row.get_global_rect().get_center().x-game.ui.root.size.x*.5) < 1,"Difficulty and test-money controls are centered as a group")
 	check(game.ui.menu.has_node("HomeStage/GameTitle"),"Home uses the central game title and bottom action layout")
 	check(game.ui.menu.get_node("HomeStage/CrystalSigil").size == Vector2(80,80),"Home crystal emblem stays inside its title-free reserved space")
 	check(game.ui.menu.get_child(0) is TextureRect and game.ui.menu.get_child(0).texture is GradientTexture2D,"Home restores the original translucent battlefield backdrop")
