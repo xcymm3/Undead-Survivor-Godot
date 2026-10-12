@@ -105,7 +105,7 @@ static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stri
 	var basis = Basis(Vector3.UP,z.heading).scaled(Vector3.ONE*Data.enemy_scale(z.kind))
 	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense"))
 	var transform = Transform3D(basis,Vector3(z.pos.x,ground+absf(stride)*.04,z.pos.y))
-	if z.hp > 0 and z.get("move_speed",0.0) <= .05 and z.attack_time <= 0 and z.state == "ready":
+	if z.hp > 0 and z.get("move_speed",0.0) <= .05 and z.state == "ready":
 		# Root pose is shared by skeleton rendering and CPU ray boxes: no invisible hitbox motion.
 		var breath = sin(elapsed*1.4+z.id*2.17)
 		transform.origin.y += breath*.018
@@ -117,7 +117,10 @@ static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stri
 	var attack_advancing: bool = z.attack_time > 0 and z.attack_time < Data.attack(z.kind,z.rage).x
 	if z.get("move_speed",0.0) > 3.5 and (z.attack_time <= 0 or attack_advancing): transform.basis *= Basis(Vector3.RIGHT,.12)
 	if z.attack_time > 0:
-		var strike = sin(clampf(z.attack_time/Data.attack(z.kind,z.rage).x,0,1)*PI/2)
+		var profile = Data.attack(z.kind,z.rage)
+		# Recover the torso lean before the cycle ends instead of snapping from
+		# full lean to idle; the displacement was magnified on giant bodies.
+		var strike = sin(clampf(z.attack_time/profile.x,0,1)*PI/2) if z.attack_time <= profile.x else cos(smoothstep(profile.x,profile.y,z.attack_time)*PI/2)
 		transform.basis *= Basis(Vector3.RIGHT,strike*.10)
 	if z.state == "windup": transform.basis *= Basis(Vector3.RIGHT,-.22)
 	if z.state == "charging": transform.basis *= Basis(Vector3.RIGHT,.28)
