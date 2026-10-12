@@ -46,6 +46,21 @@ func stage() -> void:
 		var drops: Array = []
 		for i in 5: drops.append({"age":.05*i,"value":1,"arrival":0.0,"pos":Vector3(3.55+i*.23,3.8+sin(i)*.16,z-.1-i*.18)})
 		game.coins.sync(drops)
+	if scenario in ["wave","wave10"]:
+		game.sim.defense.wave = 10 if scenario == "wave10" else 2
+		game.sim.defense_director.begin_wave()
+		game.sim.elapsed += 1.2
+		p.pos = Data.Maps.Defense.CRYSTAL+Vector2(0,-5)
+		p.height = 3
+		game.camera.position = Vector3(p.pos.x,4.55,p.pos.y)
+		game.camera.look_at(Vector3(0,3,-18))
+		game.camera.fov = 61
+		p.yaw = game.camera.rotation.y
+		p.pitch = game.camera.rotation.x
+		game.weapon.sync(p,.1,game.sim.elapsed,Vector3(0,0,-50))
+		game.weapon.visible = true
+		for point in [Vector2(-3,3),Vector2(2,1),Vector2(0,-4)]: game.sim.spawn(point,"normal")
+		game.enemies.sync(game.sim.zombies,game.sim.elapsed,false)
 	game.running = true
 	game.ui.native_hud.sync()
 	game.running = false
@@ -56,4 +71,4 @@ func stage() -> void:
 	for i in 5: await get_tree().process_frame
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
-	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37}),true)
+	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37,"announcement":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a}),true)

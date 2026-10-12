@@ -106,7 +106,21 @@ func run() -> void:
 		sim.defense_spawner.step(1,[p])
 	check(sim.spawned == expected and sim.alive_count() == expected,"The real spawner completes wave one while its enemies remain alive")
 	sim.step(.02)
-	check(sim.wave == 2 and sim.alive_count() == expected and not sim.roster.is_empty(),"The next wave starts immediately after deployment without clearing living zombies")
+	check(sim.wave == 1 and sim.alive_count() == expected and sim.roster.is_empty(),"Deployment completion begins the gap while remaining enemies stay alive")
+	var deadline: float = sim.defense.next_wave_at
+	check(is_equal_approx(deadline,sim.elapsed+10),"Inter-wave gap is ten simulation seconds")
+	var remaining_enemy_position: Vector2 = sim.zombies[0].pos
+	sim.step(9.9)
+	check(sim.wave == 1 and sim.roster.is_empty(),"Next wave cannot begin before ten seconds")
+	check(sim.zombies[0].pos.distance_to(remaining_enemy_position) > .1,"Remaining enemies keep moving during the inter-wave gap")
+	sim.step(.1)
+	check(sim.wave == 2 and sim.alive_count() == expected and not sim.roster.is_empty(),"Ten seconds later the next wave starts without requiring kills")
+	check(sim.events.count({"kind":"wave_start","position":Vector3(data.Maps.Defense.CRYSTAL.x,5.0,data.Maps.Defense.CRYSTAL.y)}) == 1,"The transition emits one wave announcement event")
+	var hud = game.ui.native_hud
+	check(hud.announcement_alpha(0) == 0 and is_equal_approx(hud.announcement_alpha(.225),.5) and hud.announcement_alpha(1.2) == 1 and is_equal_approx(hud.announcement_alpha(2.675),.5) and hud.announcement_alpha(3) == 0,"Announcement fades in, holds and fades out over three seconds")
+	sim.elapsed += 1.2
+	hud.sync()
+	check(hud.wave_announcement.visible and hud.wave_announcement.text == "第2波" and hud.wave_announcement.modulate.a == 1,"Native HUD presents the new wave without pausing")
 	check(turret.hp == 50 and gate.hp == 0 and not sim.building_available("turret_left",p),"New waves preserve turret damage and destroyed gates and close onsite upgrades")
 	var diamonds: int = sim.progression.data.diamonds
 	var reserve: int = p.reserves[0]
@@ -117,7 +131,11 @@ func run() -> void:
 	for generation in range(2,10):
 		sim.roster.clear()
 		sim.step(.02)
+		sim.step(10)
 	check(sim.wave == 10 and sim.roster.count("dancer") == 1,"The tenth and final wave contains exactly one dancing boss")
+	sim.elapsed += 1.2
+	hud.sync()
+	check(hud.wave_announcement.text == "第10波-最后一波！" and hud.wave_announcement.visible,"Final-wave announcement identifies the last wave")
 	check(data.enemies.dancer.health == data.enemies.football.health*10,"Boss health is exactly ten football zombies")
 	sim.roster.clear()
 	sim.zombies.clear()

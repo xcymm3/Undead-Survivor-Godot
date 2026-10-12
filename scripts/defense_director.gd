@@ -9,6 +9,7 @@ var equipment
 var structures
 var rewarded_waves: Dictionary = {}
 var launched_waves: Dictionary = {}
+const WAVE_GAP = 10.0
 
 func _init(world) -> void:
 	owner_ref = weakref(world)
@@ -45,6 +46,8 @@ func begin_wave() -> void:
 		p.grenades = sim.progression.grenade_capacity()
 		p.grenade_ready_at = 0.0
 	state.started = true
+	state["wave_started_at"] = sim.elapsed
+	state["next_wave_at"] = -1.0
 	state.waiting = false
 	state.ready_players.clear()
 	state.objective = "第 %d 波正在逼近" % sim.wave

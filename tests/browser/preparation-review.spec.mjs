@@ -4,12 +4,16 @@ test('整备展台、关闭防护罩、金币与钱包图标截图', async ({ pa
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.setViewportSize({ width: 1440, height: 900 });
-  for (const scenario of ['open', 'closed', 'rifle', 'coins']) {
+  for (const scenario of ['coins', 'wave', 'wave10']) {
     await page.goto(`/?preparationReview=${scenario}`);
     await page.waitForFunction(() => window.__preparationReviewReady, null, { timeout: 90_000 });
     const state = await page.evaluate(() => window.__preparationReviewReady);
     expect(state.stations).toBe(9);
-    expect(state.closed).toBe(scenario === 'closed');
+    expect(state.closed).toBe(scenario !== 'coins');
+    if (scenario !== 'coins') {
+      expect(state.alpha).toBe(1);
+      expect(state.announcement).toBe(scenario === 'wave10' ? '第10波-最后一波！' : '第2波');
+    }
     await page.waitForTimeout(700);
     const file = info.outputPath(`${scenario}.png`);
     await page.screenshot({ path: file, timeout: 60_000 });

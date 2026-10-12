@@ -45,6 +45,7 @@ func snapshot() -> Dictionary:
 				"width": rect.size.x, "height": rect.size.y, "disabled": node.disabled})
 	if game.sim:
 		result.progress = game.sim.progression.data
+		result.announcement = {"visible":game.ui.native_hud.wave_announcement.visible,"text":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a}
 		result.mode = game.sim.mode
 		result.defense = game.sim.defense_state()
 		result.won = game.sim.won

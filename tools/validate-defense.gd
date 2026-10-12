@@ -148,11 +148,13 @@ func run() -> void:
 	sim.roster.clear()
 	sim.zombies.clear()
 	sim.step(.02)
+	sim.step(10)
 	check(sim.cleared == 1 and sim.rest == 0 and sim.wave == 2 and not sim.defense.waiting and sim.defense.ready_players.is_empty(),"Completed deployment automatically starts wave two")
 	for i in 60: sim.step(.1)
 	check(sim.wave == 2 and not sim.defense.waiting and sim.spawned > 0,"Wave two deploys automatically without further ready input")
 	sim.submit("solo",{"wave_ready":true})
 	sim.step(.02)
+	sim.step(10)
 	check(sim.wave == 2 and not sim.defense.waiting and not sim.events.any(func(event): return event.kind == "wave_start"),"Legacy ready input cannot restart an active wave")
 
 	# Isolate target choice from the wave spawner: the closest valid unit must take the hit.
@@ -430,10 +432,12 @@ func run() -> void:
 	sim.wave = 8
 	sim.defense.waiting = false
 	sim.step(.02)
+	sim.step(10)
 	check(not sim.won and sim.wave == 9 and not sim.defense.waiting and sim.roster.count("football") == 2,"Wave eight deployment automatically starts wave nine")
 	sim.zombies.clear()
 	sim.roster.clear()
 	sim.step(.02)
+	sim.step(10)
 	check(not sim.won and sim.wave == 10 and sim.roster.count("dancer") == 1,"Wave nine automatically enters the final wave with its dancing boss")
 	sim.roster.clear()
 	sim.spawn(Vector2(8,24),"normal")
@@ -452,6 +456,7 @@ func run() -> void:
 	game.start_attack()
 	sim.roster.clear()
 	sim.step(.02)
+	sim.step(10)
 	check(sim.wave == 2 and not sim.defense.waiting and sim.defense.ready_players.is_empty(),"Shared authority starts the next deployment without multiplayer ready presses")
 
 	# Failure is driven by non-recoverable crystal health, independent of player health.

@@ -16,6 +16,7 @@ var network_detail: Label
 var network_card: PanelContainer
 var currency_label: Label
 var diamond_label: Label
+var wave_announcement: Label
 var health_row: HBoxContainer
 var cards: Dictionary = {}
 var slots: Array[Label] = []
@@ -139,6 +140,16 @@ func setup(owner_ui) -> void:
 		if currency == "coins": currency_label = number
 		else: diamond_label = number
 	resized.connect(layout)
+	wave_announcement = text(content,48)
+	wave_announcement.name = "WaveAnnouncement"
+	wave_announcement.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	wave_announcement.offset_left = 290
+	wave_announcement.offset_right = -290
+	wave_announcement.offset_top = 200
+	wave_announcement.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wave_announcement.add_theme_color_override("font_outline_color",Color(.035,.04,.05,.9))
+	wave_announcement.add_theme_constant_override("outline_size",6)
+	wave_announcement.visible = false
 	layout()
 	ignore_mouse(self)
 
@@ -147,6 +158,9 @@ func layout() -> void:
 	var factor = maxf(.1,minf(size.x/1440.0,size.y/900.0))
 	content.scale = Vector2.ONE*factor
 	content.size = size/factor
+
+static func announcement_alpha(age: float) -> float:
+	return minf(clampf(age/.45,0,1),clampf((3.0-age)/.65,0,1)) if age >= 0 and age < 3.0 else 0.0
 
 static func ignore_mouse(node: Node) -> void:
 	if node is Control: node.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -215,6 +229,14 @@ func sync() -> void:
 	count_label.text = "击杀 %d  ·  场上 %d" % [sim.kills,sim.alive_count()]
 	time_label.text = ui.time_text(sim.elapsed)
 	var defense: Dictionary = sim.defense_state()
+	if float(defense.get("next_wave_at",-1)) >= 0:
+		time_label.text += " · 下一波 %d 秒" % ceili(maxf(0,float(defense.next_wave_at)-sim.elapsed))
+	var age: float = sim.elapsed-float(defense.get("wave_started_at",-100))
+	var announcement_opacity: float = announcement_alpha(age) if defense.get("started",false) and not sim.failed and not sim.won else 0.0
+	wave_announcement.visible = announcement_opacity > 0
+	wave_announcement.modulate = Color(1,1,1,announcement_opacity)
+	wave_announcement.text = "第10波-最后一波！" if sim.wave == 10 else "第%d波" % sim.wave
+	wave_announcement.add_theme_color_override("font_color",Color("ffab62") if sim.wave == 10 else Color("ffe8ae"))
 	crystal_label.visible = sim.mode == "defense"
 	crystal_bar.visible = sim.mode == "defense"
 	if sim.mode == "defense":

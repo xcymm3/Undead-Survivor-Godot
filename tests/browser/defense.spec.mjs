@@ -59,6 +59,8 @@ test('吊桥水晶防守使用真实输入换装并长按警报器开始进攻',
   await page.keyboard.down('e');
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });
   await page.keyboard.up('e');
+  await page.waitForFunction(() => window.__survivorSnapshot.announcement.visible && window.__survivorSnapshot.announcement.text === '第1波');
+  await page.waitForFunction(() => window.__survivorSnapshot.elapsed > 3.1 && !window.__survivorSnapshot.announcement.visible);
   state = await snapshot(page);
   expect(state.defense.waiting).toBe(false);
   expect(state.player.grenades).toBe(1);

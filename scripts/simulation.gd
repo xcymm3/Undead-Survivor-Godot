@@ -219,14 +219,18 @@ func step(dt: float) -> void:
 	defense_director.reward_finished_waves()
 	if roster.is_empty():
 		if wave < 10:
-			defense.wave = wave+1
-			defense_director.begin_wave()
+			if float(defense.get("next_wave_at",-1)) < 0: defense["next_wave_at"] = elapsed+defense_director.WAVE_GAP
+			if elapsed+.000001 >= float(defense.next_wave_at):
+				defense.wave = wave+1
+				defense_director.begin_wave()
 		elif alive_count() == 0:
 			won = true
 			defense.objective = "游戏通关 · 十波尸潮已清除"
 			defense_director.sync_world()
 		return
 	defense_spawner.step(dt,living)
+	if roster.is_empty() and wave < 10 and float(defense.get("next_wave_at",-1)) < 0:
+		defense["next_wave_at"] = elapsed+defense_director.WAVE_GAP
 
 func safe_spawn() -> Vector2:
 	for p in map_definition.safe:
