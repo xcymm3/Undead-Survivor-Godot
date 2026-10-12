@@ -14,13 +14,13 @@ var message = ""
 var portraits: Dictionary = {}
 var native_hud
 var overlay_state: Array = []
-const INK = Color("303a33")
-const PAPER = Color("f0ece2")
+const INK = Color("eee4c9")
+const PAPER = Color("14231f")
 const RUST = Color("ae573b")
 const SETTINGS_INK = Color("f2e2bd")
 const SETTINGS_MUTED = Color("c4ad86")
 const SETTINGS_BRASS = Color("c59b62")
-const SETTINGS_PAPER = Color(.27,.19,.12,.62)
+const SETTINGS_PAPER = Color(.055,.09,.075,.96)
 
 func _ready() -> void:
 	root = Control.new()
@@ -33,10 +33,10 @@ func _ready() -> void:
 	root.theme.set_color("font_color","Button",INK)
 	root.theme.set_color("font_hover_color","Button",INK)
 	root.theme.set_color("font_focus_color","Button",INK)
-	root.theme.set_stylebox("normal","Button",box(Color("e5e0d5"),10))
-	root.theme.set_stylebox("hover","Button",box(Color("d9d3c4"),10))
-	root.theme.set_stylebox("pressed","Button",box(Color("cbc0a9"),10))
-	root.theme.set_stylebox("focus","Button",box(Color("e2d1b6"),10))
+	root.theme.set_stylebox("normal","Button",box(Color("293d32"),10))
+	root.theme.set_stylebox("hover","Button",box(Color("415c47"),10))
+	root.theme.set_stylebox("pressed","Button",box(Color("19291f"),10))
+	root.theme.set_stylebox("focus","Button",box(Color("ae573b"),10))
 	add_child(root)
 	hud = Control.new()
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -57,10 +57,10 @@ func box(color: Color, padding := 16) -> StyleBoxFlat:
 	style.content_margin_right = padding
 	style.content_margin_top = padding
 	style.content_margin_bottom = padding
-	style.corner_radius_top_left = 3
-	style.corner_radius_top_right = 3
-	style.corner_radius_bottom_left = 3
-	style.corner_radius_bottom_right = 3
+	style.corner_radius_top_left = 0
+	style.corner_radius_top_right = 0
+	style.corner_radius_bottom_left = 0
+	style.corner_radius_bottom_right = 0
 	return style
 
 func settings_box(color: Color, border: Color, padding := 12) -> StyleBoxFlat:
@@ -189,7 +189,12 @@ func panel(title: String, subtitle: String, width := 700, warm := false) -> VBox
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu.add_child(center)
 	var card = PanelContainer.new()
-	var card_style = box(SETTINGS_PAPER if warm else PAPER,28)
+	var card_style = settings_box(SETTINGS_PAPER,SETTINGS_BRASS,28)
+	card.theme = settings_theme()
+	card_style.border_width_left = 5
+	card_style.border_width_top = 2
+	card_style.shadow_color = Color(0,0,0,.65)
+	card_style.shadow_size = 12
 	if warm:
 		card.theme = settings_theme()
 		card_style.border_width_left = 1
@@ -203,14 +208,16 @@ func panel(title: String, subtitle: String, width := 700, warm := false) -> VBox
 	card.custom_minimum_size.x = width
 	center.add_child(card)
 	var scroll = ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(width-56,700)
+	scroll.custom_minimum_size = Vector2(minf(width-56,root.size.x-100),minf(650,root.size.y-160))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	card.add_child(scroll)
 	var column = VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation",14)
 	scroll.add_child(column)
-	column.add_child(label(title,34,SETTINGS_INK if warm else INK))
+	column.add_child(label("断崖防线  /  FIELD CONTROL",13,SETTINGS_BRASS))
+	column.add_child(HSeparator.new())
+	column.add_child(label(title,34,SETTINGS_INK))
 	paragraph(column,subtitle,16,SETTINGS_MUTED if warm else Color("797b6f"))
 	return column
 
@@ -226,101 +233,72 @@ func show_home() -> void:
 	menu = Control.new()
 	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(menu)
-	var gradient = Gradient.new()
-	gradient.set_color(0,Color(.04,.08,.06,.22))
-	gradient.set_color(1,Color(.02,.04,.035,.94))
-	gradient.add_point(.42,Color(.04,.07,.05,.38))
-	var texture = GradientTexture2D.new()
-	texture.gradient = gradient
-	texture.fill_from = Vector2(0,.5)
-	texture.fill_to = Vector2(1,.5)
-	var shade = TextureRect.new()
-	shade.texture = texture
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	menu.add_child(shade)
-	var map_panel = VBoxContainer.new()
-	map_panel.name = "DefenseSetup"
-	map_panel.position = Vector2(86,120)
-	map_panel.add_theme_constant_override("separation",12)
-	menu.add_child(map_panel)
-	map_panel.add_child(label("战场 · "+game.arena.definition.title,26,Color("fff7e8")))
-	map_panel.add_child(label(game.arena.definition.subtitle,16,Color("c8c5b8")))
-	map_panel.add_child(label("永久进度 · 金币 %d · 钻石 %d · 最佳第 %d 波" % [Progress.store.data.coins,Progress.store.data.diamonds,Progress.store.data.best_wave],17,Color("e9cf8d")))
-	if not Progress.store.notice.is_empty(): map_panel.add_child(label(Progress.store.notice,16,Color("e9b79a")))
-	var difficulty_row = HBoxContainer.new()
-	difficulty_row.name = "DifficultySelection"
-	difficulty_row.add_theme_constant_override("separation",8)
-	map_panel.add_child(difficulty_row)
-	difficulty_row.add_child(label("难度",16,Color("c8c5b8")))
-	for entry in [["easy","简单 · 70%"],["normal","普通 · 100%"],["hard","困难 · 130%"]]:
-		var selected: bool = Data.settings.defense_difficulty == entry[0]
-		var difficulty_button = button(difficulty_row,("● " if selected else "")+entry[1],game.select_defense_difficulty.bind(entry[0]))
-		difficulty_button.custom_minimum_size.y = 38
-		difficulty_button.add_theme_font_size_override("font_size",15)
-	var title_block = VBoxContainer.new()
-	title_block.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	title_block.offset_left = 86
-	title_block.offset_top = -340
-	title_block.add_theme_constant_override("separation",10)
-	menu.add_child(title_block)
-	title_block.add_child(label(game.arena.definition.title,19,Color("bfccba")))
-	var title = label("UNDEAD\nSURVIVOR",85,Color("f2ecdc"))
-	title.add_theme_constant_override("line_spacing",-12)
-	title_block.add_child(title)
-	title_block.add_child(label("战前整备，连续抵御十波尸潮，击败舞王守住水晶。",19,Color("d8dfce")))
-	var actions = VBoxContainer.new()
-	actions.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
-	actions.offset_left = -450
-	actions.offset_top = -166
-	actions.custom_minimum_size.x = 340
-	actions.add_theme_constant_override("separation",14)
-	menu.add_child(actions)
-	for item in [["开始防守",func(): game.start_solo("defense")]]:
-		var option = button(actions,item[0],item[1])
-		option.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		option.custom_minimum_size.y = 76
-		option.add_theme_font_size_override("font_size",36)
-		option.add_theme_color_override("font_color",Color("f5efdf"))
-		option.add_theme_color_override("font_hover_color",Color.WHITE)
-		option.add_theme_color_override("font_focus_color",Color.WHITE)
-		option.add_theme_stylebox_override("normal",box(Color.TRANSPARENT,20))
-		option.add_theme_stylebox_override("hover",box(Color(.49,.1,.08,.83),20))
-		option.add_theme_stylebox_override("focus",box(Color(.49,.1,.08,.83),20))
-		option.add_theme_stylebox_override("pressed",box(Color(.38,.08,.06,.9),20))
-	actions.add_child(HSeparator.new())
-	button(actions,"切换存档 · 当前存档 %d" % (Progress.active_slot+1),show_save_slots)
+	menu.add_child(preload("res://scripts/menu_backdrop.gd").new())
+	var stage = Control.new()
+	stage.name = "HomeStage"
+	stage.size = Vector2(1440,900)
+	menu.add_child(stage)
+	var fit = func():
+		var factor = minf(root.size.x/1440.0,root.size.y/900.0)
+		stage.scale = Vector2.ONE*factor
+		stage.position = (root.size-stage.size*factor)*.5
+	menu.resized.connect(fit)
+	fit.call()
+	var edition = label("断崖防线  /  TEN WAVES • ONE LAST STAND",17,Color("adba9c"))
+	edition.position = Vector2(58,42)
+	stage.add_child(edition)
+	var version = label("v"+str(ProjectSettings.get_setting("application/config/version","2.1.0")),16,Color("adba9c"))
+	version.position = Vector2(1290,42)
+	stage.add_child(version)
+	var title = label("UNDEAD\nSURVIVOR",98,Color("e9e2c7"))
+	title.name = "GameTitle"
+	title.position = Vector2(190,184)
+	title.size = Vector2(1060,280)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_constant_override("line_spacing",-16)
+	title.add_theme_color_override("font_outline_color",Color("0b1715"))
+	title.add_theme_constant_override("outline_size",12)
+	stage.add_child(title)
+	var subtitle = label("守住水晶，击败舞王",25,Color("bccaab"))
+	subtitle.position = Vector2(300,505)
+	subtitle.size.x = 840
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stage.add_child(subtitle)
+	var emblem = label("◆",60,Color("65b8b0"))
+	emblem.position = Vector2(680,107)
+	stage.add_child(emblem)
+	var setup = HBoxContainer.new()
+	setup.name = "DifficultySelection"
+	setup.position = Vector2(270,642)
+	setup.add_theme_constant_override("separation",12)
+	stage.add_child(setup)
+	for entry in [["easy","简单"],["normal","普通"],["hard","困难"]]:
+		var option = button(setup,("◆ " if Data.settings.defense_difficulty == entry[0] else "")+entry[1],game.select_defense_difficulty.bind(entry[0]))
+		option.custom_minimum_size = Vector2(135,44)
 	var money = CheckBox.new()
 	money.name = "InfiniteCoins"
-	money.text = "无限金币（测试：进入游戏设置为10亿）"
+	money.text = "无限金币 · 测试"
 	money.button_pressed = Data.test_money
-	money.add_theme_color_override("font_color",Color("e7ebdc"))
 	money.toggled.connect(func(value): Data.test_money = value)
-	actions.add_child(money)
-	for item in [["武器与操作",show_guide],["退出游戏",func(): game.quit_game()]]:
-		var option = button(actions,item[0],item[1])
-		option.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		option.add_theme_stylebox_override("normal",box(Color.TRANSPARENT,20))
-		option.add_theme_color_override("font_color",Color("c3ccbb"))
-	var toolbar = HBoxContainer.new()
-	toolbar.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	toolbar.offset_left = -400
-	toolbar.offset_top = 32
-	toolbar.add_theme_constant_override("separation",12)
-	menu.add_child(toolbar)
-	for item in [["声音",func():
-		Data.settings.muted = not Data.settings.muted
-		Data.apply_settings()
-		Data.save()],["全屏",func():
-		Data.settings.fullscreen = not Data.settings.fullscreen
-		Data.apply_settings()
-		Data.save()],["设置",show_settings]]:
-		var option = button(toolbar,item[0],item[1])
-		option.add_theme_stylebox_override("normal",box(Color.TRANSPARENT,14))
-		option.add_theme_color_override("font_color",Color("e7ebdc"))
+	setup.add_child(money)
+	var actions = HBoxContainer.new()
+	actions.position = Vector2(270,723)
+	actions.add_theme_constant_override("separation",14)
+	stage.add_child(actions)
+	for item in [["开始防守",func(): game.start_solo("defense")],["设置",show_settings],["武器与操作",show_guide],["退出游戏",func(): game.quit_game()]]:
+		var option = button(actions,item[0],item[1],item[0] == "开始防守")
+		option.custom_minimum_size = Vector2(214,76)
+		option.add_theme_font_size_override("font_size",25)
+	var save = button(stage,"存档 %d" % (Progress.active_slot+1),show_save_slots)
+	save.position = Vector2(56,725)
+	save.custom_minimum_size = Vector2(168,76)
+	var profile = label("金币 %d   ◆ 钻石 %d   最佳第 %d 波" % [Progress.store.data.coins,Progress.store.data.diamonds,Progress.store.data.best_wave],17,Color("b6c3a5"))
+	profile.position = Vector2(270,827)
+	stage.add_child(profile)
 	if not message.is_empty():
-		var notice = paragraph(menu,message,18,Color("e9b79a"))
-		notice.position = Vector2(86,65)
-		notice.size.x = 650
+		var notice = label(message,17,Color("e9b79a"))
+		notice.position = Vector2(58,92)
+		stage.add_child(notice)
 
 func show_save_slots() -> void:
 	var column = panel("选择存档","三个独立进度 · 选择后从第一波重新开始对局",720)
@@ -441,16 +419,16 @@ func show_guide() -> void:
 	paragraph(column,"战前靠近并瞄准展台或施工点，长按 E 升级或建造。长按警报器启动进攻后，展台关闭；每波投放完等待10秒再自动接下一波。每清完所属波次的敌人获得 1 颗钻石、两把枪各 2 个备弹夹。第十波击败舞王并清除全部敌人后通关。",17)
 	paragraph(column,"WASD 移动 / Shift 疾跑 / 鼠标瞄准 / 左键攻击 / 右键推击 / 中键开镜\n空格跳跃 / Ctrl 蹲下 / R 换弹 / 1—4 或滚轮切换装备 / Esc 暂停\n1 步枪 / 2 左轮 / 3 消防斧 / 4 手雷 / E 长按交互\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。每次清波两把枪各获得 2 个备弹夹，备弹可超上限，使用消防斧节省弹药。",17)
 	var grid = GridContainer.new()
-	grid.columns = 5
+	grid.columns = 4
 	grid.add_theme_constant_override("h_separation",24)
 	grid.add_theme_constant_override("v_separation",12)
 	column.add_child(grid)
-	for heading in ["武器","等级","弹量","伤害 / 次","装填"]: grid.add_child(label(heading,16,RUST))
+	for heading in ["武器","弹量","伤害 / 次","装填"]: grid.add_child(label(heading,16,RUST))
 	for i in [0,3,6]:
 		var w: Dictionary = Data.weapons[i]
-		for text in [w.label,w.tier,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
+		for text in [w.label,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
 	paragraph(column,"击杀会掉落自动飞向玩家的金币，特殊僵尸奖励更高。金币、钻石、升级和已购建筑永久保存；重新开始只重置波次、生命和战场。",17)
-	paragraph(column,"每波开始回满生命与手雷，炮塔和栅栏的损伤保留，毁坏后本局不复活。没有强壮天赋时不会缓慢回血；学习后连续 5 秒未受伤开始恢复，期间可以攻击。商店也可被僵尸进入。首页可切换三个独立存档，并勾选测试金币。",17)
+	paragraph(column,"生命、炮塔、栅栏和地雷状态跨波保留；手雷每15秒补充一颗至持有上限。没有强壮天赋时不会缓慢回血；学习后连续 5 秒未受伤开始恢复，期间可以攻击。商店也可被僵尸进入。首页可切换三个独立存档，并勾选测试金币。",17)
 	button(column,"返回",back,true)
 
 func show_multiplayer() -> void:
@@ -516,7 +494,7 @@ func shop_description(profile, id: String) -> String:
 	if id in profile.WEAPONS:
 		var index: int = {"rifle":0,"revolver":3,"axe":6}[id]
 		return "伤害 %.1f → %.1f · 每次 +10%%，下次价格翻倍" % [Data.weapons[index].damage*profile.weapon_multiplier(id),Data.weapons[index].damage*profile.weapon_multiplier(id)*1.1]
-	if id == "grenade": return "持有上限 %d / 5 · 每次 +1 · 每波开始补满" % profile.grenade_capacity()
+	if id == "grenade": return "持有上限 %d / 5 · 每次 +1 · 每15秒补充1颗" % profile.grenade_capacity()
 	if id in profile.MINES: return "永久购买 · 无升级 · 每波恢复 · 僵尸触发后 1.5 秒爆炸"
 	if id in profile.GATES: return "耐久 %d · 就地升级 +10%% · 价格与枪械相同并逐次翻倍 · 战斗中不复活" % roundi(1000*profile.building_multiplier(id))
 	if id in profile.BUILDINGS: return "每发伤害 %.1f · 就地升级伤害 +10%% · 价格与枪械相同并逐次翻倍 · 战斗中不复活" % (60*profile.building_multiplier(id))
@@ -535,6 +513,8 @@ func show_result() -> void:
 		current = "result"
 		result.add_child(label("守住 %d 波 · %d 击杀 · %s" % [sim.cleared,sim.kills,time_text(sim.elapsed)],32))
 		paragraph(result,("成功守住水晶。" if sim.won else "水晶被摧毁。" if sim.cause == "crystal" else "守卫者已失去行动能力。")+" 水晶剩余 %d / %d。" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)])
+		paragraph(result,"本局获得   金币 +%d   ◆ 钻石 +%d" % [sim.earned_coins,sim.earned_diamonds],24,SETTINGS_BRASS)
+		paragraph(result,"金币、钻石、武器升级、建筑所有权及天赋已永久保留。",17,SETTINGS_MUTED)
 		if not Session.playing: button(result,"重新防守",func(): game.start_solo("defense"),true)
 		button(result,"返回主菜单",func(): game.return_home())
 		return
@@ -547,13 +527,13 @@ func tick(dt: float) -> void:
 	hurt_flash = maxf(0,hurt_flash-dt)
 	native_hud.sync()
 	var pawn: Dictionary = game.view_pawn()
-	var state = [game.running,current,pawn.get("weapon",-1),pawn.get("slot",1),pawn.get("aim",false),game.weapon.ads > .8,pawn.get("shove_cd",0.0),pawn.get("shove_gap",0.0),hit_flash,hurt_flash,pawn.get("damage_hint",0.0),game.yaw,hud.size]
+	var state = [game.running,current,pawn.get("weapon",-1),pawn.get("slot",1),pawn.get("aim",false),game.weapon.ads > .8,pawn.get("shove_cd",0.0),pawn.get("shove_gap",0.0),hit_flash,hurt_flash,pawn.get("damage_hint",0.0),pawn.get("healing_flash",0.0),game.yaw,hud.size]
 	if state != overlay_state:
 		overlay_state = state
 		hud.queue_redraw()
 
 func _draw_hud() -> void:
-	if not game or not game.running or not game.sim: return
+	if not game or not game.running or not game.sim or game.finished: return
 	var sim = game.sim
 	var p: Dictionary = game.view_pawn()
 	if p.is_empty(): return
@@ -597,6 +577,10 @@ func _draw_hud() -> void:
 		var tint = Color(1,.25,.12,minf(1,p.damage_hint))
 		var side = direction.orthogonal()
 		hud.draw_colored_polygon(PackedVector2Array([center+direction*82,center+direction*61+side*9,center+direction*61-side*9]),tint)
+	if p.hp > 0 and p.get("healing_flash",0.0) > 0:
+		var heal: float = p.healing_flash
+		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.08,.48,.19,heal*.055))
+		hud.draw_rect(Rect2(Vector2(5,5),screen-Vector2(10,10)),Color(.22,.65,.31,heal*.22),false,16)
 	if hurt_flash > 0:
 		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.55,.08,.04,hurt_flash*.3),false,20)
 

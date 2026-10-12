@@ -1,0 +1,9 @@
+{
+  "framework": "Godot 4.5.2 native Control and CanvasItem",
+  "font": "NotoSansCJKsc-Regular",
+  "source": "scripts/interface.gd",
+  "palette": "dark forest green, bone white, oxidized brass and rust",
+  "structure": "central two-line game title, bottom action dock, animated procedural backdrop",
+  "reference": "User supplied Balatro home screenshot; macro layout only",
+  "scope": "Desktop game menus and dialogs; preserve existing routes and controls"
+}
