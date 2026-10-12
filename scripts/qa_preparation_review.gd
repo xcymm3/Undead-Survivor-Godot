@@ -50,6 +50,7 @@ func stage() -> void:
 	game.ui.native_hud.sync()
 	game.running = false
 	game.ui.native_hud.visible = true
+	if scenario in ["open","closed"]: game.ui.native_hud.weapon_label.get_parent().get_parent().visible = false
 	game.arena.scenery.preparation.sync(game.sim.defense)
 	RenderingServer.render_loop_enabled = false
 	for i in 5: await get_tree().process_frame

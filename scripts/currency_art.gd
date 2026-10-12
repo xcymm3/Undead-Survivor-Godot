@@ -5,21 +5,15 @@ static var diamond_texture: Texture2D
 
 static func coin() -> Texture2D:
 	if coin_texture: return coin_texture
-	var image = Image.create(128,128,false,Image.FORMAT_RGBA8)
-	var glyph = ["0011100","0101010","0101000","0011100","0001010","0101010","0011100"]
-	for y in 128:
-		for x in 128:
-			var p = Vector2(x-63.5,y-63.5)
-			var r = p.length()
-			if r > 62: continue
-			var gold = Color("d89a25").lerp(Color("ffe3a0"),clampf(.55-p.y/155-p.x/310,0,1))
-			if r > 55: gold = Color("8f5817") if r > 60 else Color("ffe2a0")
-			elif r > 50: gold = Color("995c14") if r < 52 else Color("f6ce65")
-			if r > 56 and fmod(atan2(p.y,p.x)+PI,TAU/40) < .025: gold = Color("a6691c")
-			var gx = floori((x-39)/7.0)
-			var gy = floori((y-39)/7.0)
-			if x >= 39 and y >= 39 and gx >= 0 and gx < 7 and gy >= 0 and gy < 7 and glyph[gy][gx] == "1": gold = Color("8c5417")
-			image.set_pixel(x,y,gold)
+	var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe9aa"/><stop offset="0.48" stop-color="#e4b14f"/><stop offset="1" stop-color="#aa6b1e"/></linearGradient></defs><circle cx="64" cy="64" r="62" fill="#89551b"/><circle cx="64" cy="64" r="60" fill="url(#gold)" stroke="#ffe3a1" stroke-width="2"/><circle cx="64" cy="64" r="52" fill="none" stroke="#9c671d" stroke-width="2"/><circle cx="64" cy="64" r="49" fill="none" stroke="#ffe3a1" stroke-width="1"/>'
+	for i in 40:
+		var a = i*TAU/40
+		var p0 = Vector2(64,64)+Vector2(cos(a),sin(a))*55
+		var p1 = Vector2(64,64)+Vector2(cos(a),sin(a))*58
+		svg += '<path d="M%.2f %.2f L%.2f %.2f" stroke="#8f5b18" stroke-width="1.4"/>' % [p0.x,p0.y,p1.x,p1.y]
+	svg += '<path d="M82 44 C75 32 49 33 45 47 C39 66 84 61 82 78 C79 96 52 96 43 83 M63 27 L63 102" fill="none" stroke="#ffe2a0" stroke-width="8" stroke-linecap="round" transform="translate(-1 -1)"/><path d="M82 44 C75 32 49 33 45 47 C39 66 84 61 82 78 C79 96 52 96 43 83 M63 27 L63 102" fill="none" stroke="#95611d" stroke-width="6" stroke-linecap="round"/></svg>'
+	var image = Image.new()
+	image.load_svg_from_string(svg,2.0)
 	coin_texture = ImageTexture.create_from_image(image)
 	return coin_texture
 

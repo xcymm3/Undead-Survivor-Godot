@@ -22,8 +22,8 @@ func _ready() -> void:
 	focus_label = Label3D.new()
 	focus_label.name = "FocusedInformation"
 	focus_label.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
-	focus_label.font_size = 48
-	focus_label.pixel_size = .0037
+	focus_label.font_size = 36
+	focus_label.pixel_size = .0026
 	focus_label.outline_size = 5
 	focus_label.modulate = Color("fff0ca")
 	focus_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -166,4 +166,4 @@ func sync_focus(sim, p: Dictionary) -> void:
 		elif choice.id != "alarm": text += "\n长按 E"
 	if p.get("work_feedback_id","") == choice.id and p.get("work_feedback_until",0.0) > sim.defense.prop_clock: text += "\n"+p.work_feedback
 	focus_label.text = text
-	focus_label.position = choice.position+Vector3(0,1.25,0)
+	focus_label.position = choice.position+Vector3(0,.95,0)
