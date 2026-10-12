@@ -93,6 +93,8 @@ func run() -> void:
 	game.finish_run()
 	check(game.partners.has("fallen_guard") and not game.ui.native_hud.visible,"Player defeat creates a corpse and hides combat HUD")
 	game.update_finish_camera(2.4)
+	game.ui.tick(0)
+	check(not game.ui.native_hud.visible,"HUD stays hidden throughout failure camera updates")
 	check(game.ui.current != "result" and game.camera.position.distance_to(Vector3(p.pos.x,p.height,p.pos.y)) < 10,"Player defeat focuses the fallen guard before any result dialog")
 	game.update_finish_camera(1.5)
 	check(game.ui.current == "result","Player defeat opens results after the cinematic delay")

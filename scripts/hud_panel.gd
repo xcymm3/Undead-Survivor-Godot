@@ -234,7 +234,7 @@ func health_card(id: String) -> Dictionary:
 	return result
 
 func sync() -> void:
-	visible = ui.game.running and ui.game.sim != null
+	visible = ui.game.running and ui.game.sim != null and not ui.game.finished
 	if not visible: return
 	var sim = ui.game.sim
 	var bosses = sim.zombies.filter(func(z): return z.kind == "dancer" and z.hp > 0)

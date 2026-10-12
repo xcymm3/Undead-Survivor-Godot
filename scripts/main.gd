@@ -418,7 +418,7 @@ func update_finish_camera(dt: float) -> void:
 	var p = local_pawn()
 	var focus = Vector3(Data.Maps.Defense.CRYSTAL.x,4.1,Data.Maps.Defense.CRYSTAL.y)
 	if not sim.won and sim.cause != "crystal" and not p.is_empty(): focus = Vector3(p.pos.x,p.height+.4,p.pos.y+.65)
-	var end = focus+Vector3(3.8,2.8,4.8)
+	var end = focus+(Vector3(2.4,1.6,2.8) if not sim.won and sim.cause != "crystal" else Vector3(3.8,2.8,4.8))
 	var target = Transform3D(Basis.IDENTITY,end).looking_at(focus)
 	var amount = smoothstep(0.0,1.0,death_timer/1.8)
 	camera.global_transform = finish_camera_start.interpolate_with(target,amount)
