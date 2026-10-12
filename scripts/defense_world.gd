@@ -5,6 +5,7 @@ const DefenseEnvironment = preload("res://scripts/defense_environment.gd")
 var crystal: Node3D
 var crystal_core: MeshInstance3D
 var crystal_light: OmniLight3D
+var crystal_damage: Node3D
 var preparation: Node3D
 var pickup_animation: Node3D
 var structure_view: Node3D
@@ -41,6 +42,8 @@ func make_crystal() -> void:
 	add_child(body)
 	obstacles.append({"minX":DefenseLayout.CRYSTAL.x-DefenseLayout.CRYSTAL_RADIUS,"maxX":DefenseLayout.CRYSTAL.x+DefenseLayout.CRYSTAL_RADIUS,"minZ":DefenseLayout.CRYSTAL.y-DefenseLayout.CRYSTAL_RADIUS,"maxZ":DefenseLayout.CRYSTAL.y+DefenseLayout.CRYSTAL_RADIUS})
 	crystal_core = preload("res://scripts/crystal_art.gd").build(crystal)
+	crystal_damage = preload("res://scripts/crystal_damage.gd").new()
+	crystal.add_child(crystal_damage)
 	crystal_light = OmniLight3D.new()
 	crystal_light.position = Vector3(0,2.3,0)
 	crystal_light.light_color = Color("65dff2")
@@ -152,3 +155,12 @@ func sync(state: Dictionary) -> void:
 	crystal.scale = Vector3.ONE*lerpf(.88,1.0,ratio)
 	crystal_light.light_energy = lerpf(.35,2.4,ratio)
 	crystal_light.light_color = Color("f05d4f") if ratio < .3 else Color("65dff2")
+	if ratio > 0 and ratio <= .5:
+		crystal_light.light_energy *= .75+.25*sin(clock*7.0)
+		crystal_light.light_color = Color("e6ba83")
+	if hp <= 0:
+		crystal.rotation.y = fmod(float(state.get("crystal_broken_at",clock)),36.0)*TAU/36.0
+		crystal.position.y = 3.0
+		crystal_light.light_energy = maxf(0,1.3-(clock-float(state.get("crystal_broken_at",clock)))*2)
+	get_node("CrystalBody").collision_layer = 1 if hp > 0 else 0
+	crystal_damage.sync(ratio,maxf(0,clock-float(state.get("crystal_broken_at",clock))),clock)

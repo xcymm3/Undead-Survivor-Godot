@@ -32,6 +32,7 @@ var aim_held = false
 var spectating = ""
 var snapshot_timer = 0.0
 var queued_effects: Array = []
+var finish_camera_start = Transform3D.IDENTITY
 var death_timer = 0.0
 var draw_timer = 0.0
 var display_buffer = preload("res://scripts/snapshot_buffer.gd").new()
@@ -297,18 +298,12 @@ func _process(dt: float) -> void:
 		partners[id].label.visible = id != Session.local_id
 		if spectate and id == p.id: partners[id].visible = false
 	for id in partners.keys():
+		if id == "fallen_guard" and finished: continue
 		if not sim.pawns.has(id):
 			partners[id].queue_free()
 			partners.erase(id)
 	if finished:
-		death_timer += dt
-		weapon.visible = false
-		for z in sim.zombies:
-			if not sim.won and z.id == sim.culprit:
-				var head = Vector3(z.pos.x,1.8*Data.enemy_scale(z.kind),z.pos.y)
-				camera.position = desired.lerp(head+(desired-head).normalized()*.85,clampf(death_timer*.8,0,1))
-				if camera.position.distance_to(head) > .05: camera.look_at(head)
-		if death_timer > 1.2 and ui.current != "result": ui.show_result()
+		update_finish_camera(dt)
 	ui.tick(dt)
 	qa_draw(dt)
 
@@ -385,17 +380,49 @@ func handle_effects(events: Array) -> void:
 					ui.hurt_flash = .45
 					sound.play("rear-warning" if event.get("rear",false) else "hurt")
 			"reload":
-				if event.player == Session.local_id: sound.play("reload",-15)
+				if event.player == Session.local_id: sound.play("reload-"+str(Data.weapons[int(event.get("weapon",0))].id),-16)
+			"heal":
+				if event.player == Session.local_id: sound.play("heal",-27)
 
 func finish_run() -> void:
 	if finished: return
 	Progress.store.save()
 	reset_mouse_buttons()
 	finished = true
-	death_timer = 1.3 if sim.won else 0.0
+	ui.native_hud.hide()
+	ui.hud.queue_redraw()
+	death_timer = 0.0
+	finish_camera_start = camera.global_transform
+	var pawn = local_pawn()
+	if not pawn.is_empty() and pawn.hp <= 0 and sim.cause != "crystal":
+		var corpse = preload("res://scripts/partner_view.gd").new()
+		add_child(corpse)
+		corpse.setup(pawn)
+		corpse.name = "FallenGuard"
+		corpse.position.y = pawn.height+.18
+		corpse.rotation.x = -PI/2
+		corpse.label.hide()
+		corpse.held.hide()
+		partners["fallen_guard"] = corpse
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	sound.set_playing(false)
 	sound.play("victory" if sim.won else "failure",-9)
+
+func update_finish_camera(dt: float) -> void:
+	death_timer += dt
+	weapon.visible = false
+	sim.defense.prop_clock += dt
+	arena.scenery.sync(sim.defense)
+	for z in sim.zombies:
+		if z.hp <= 0: z.down = maxf(0,z.down-dt)
+	var p = local_pawn()
+	var focus = Vector3(Data.Maps.Defense.CRYSTAL.x,4.1,Data.Maps.Defense.CRYSTAL.y)
+	if not sim.won and sim.cause != "crystal" and not p.is_empty(): focus = Vector3(p.pos.x,p.height+.4,p.pos.y+.65)
+	var end = focus+Vector3(3.8,2.8,4.8)
+	var target = Transform3D(Basis.IDENTITY,end).looking_at(focus)
+	var amount = smoothstep(0.0,1.0,death_timer/1.8)
+	camera.global_transform = finish_camera_start.interpolate_with(target,amount)
+	if death_timer > 3.8 and ui.current != "result": ui.show_result()
 func pause_game() -> void:
 	if not running or finished: return
 	reset_mouse_buttons()

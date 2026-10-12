@@ -43,6 +43,8 @@ func _ready() -> void:
 	for weapon_index in Data.weapons.size():
 		var cue = weapon_cue(weapon_index)
 		streams[cue] = load("res://assets/audio/%s.wav" % cue)
+		streams["reload-"+str(Data.weapons[weapon_index].id)] = preload("res://scripts/mechanical_audio.gd").make(weapon_index)
+	streams["heal"] = preload("res://scripts/mechanical_audio.gd").make(0,true)
 	for cue in ["enemy-step-0","enemy-step-1","rear-warning","shove","shove-hit","enemy-windup","enemy-impact","enemy-miss","grenade-explosion","wave-horn","victory","music","reload","hurt","failure","death-0","death-1","death-2","cone-false","cone-true","bucket-false","bucket-true","shield-false","shield-true","football-false","football-true"]:
 		streams[cue] = load("res://assets/audio/%s.wav" % cue)
 	for i in range(24):

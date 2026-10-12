@@ -17,6 +17,8 @@ var network_card: PanelContainer
 var currency_label: Label
 var diamond_label: Label
 var wave_announcement: Label
+var boss_title: Label
+var boss_bar: ProgressBar
 var health_row: HBoxContainer
 var cards: Dictionary = {}
 var slots: Array[Label] = []
@@ -140,6 +142,20 @@ func setup(owner_ui) -> void:
 		if currency == "coins": currency_label = number
 		else: diamond_label = number
 	resized.connect(layout)
+	var boss_column = VBoxContainer.new()
+	boss_column.name = "DancerHealth"
+	boss_column.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	boss_column.offset_left = 380
+	boss_column.offset_right = -380
+	boss_column.offset_top = 32
+	content.add_child(boss_column)
+	boss_title = text(boss_column,22)
+	boss_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_bar = ProgressBar.new()
+	boss_bar.show_percentage = false
+	boss_bar.custom_minimum_size.y = 16
+	boss_bar.add_theme_stylebox_override("fill",style(Color("b84739"),0))
+	boss_column.add_child(boss_bar)
 	wave_announcement = text(content,48)
 	wave_announcement.name = "WaveAnnouncement"
 	wave_announcement.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -221,6 +237,13 @@ func sync() -> void:
 	visible = ui.game.running and ui.game.sim != null
 	if not visible: return
 	var sim = ui.game.sim
+	var bosses = sim.zombies.filter(func(z): return z.kind == "dancer" and z.hp > 0)
+	boss_title.get_parent().visible = not bosses.is_empty()
+	if not bosses.is_empty():
+		var boss: Dictionary = bosses[0]
+		boss_bar.max_value = boss.get("max_hp",Data.enemies.dancer.health)
+		boss_bar.value = boss.hp
+		boss_title.text = "舞王  /  DISCO KING    %d / %d" % [boss.hp,boss_bar.max_value]
 	currency_label.text = str(sim.progression.data.coins)
 	diamond_label.text = str(sim.progression.data.diamonds)
 	var p: Dictionary = ui.game.view_pawn()
@@ -248,20 +271,20 @@ func sync() -> void:
 		crystal_bar.value = defense.get("crystal_hp",0)
 		crystal_bar.modulate = Color("7fe7ef") if crystal_bar.value > crystal_bar.max_value*.3 else Color("ee6658")
 	var w: Dictionary = Data.weapons[int(p.weapon)]
-	weapon_label.text = "%s · %s级" % [w.label,w.tier]
+	weapon_label.text = str(w.label)
 	var infinite: bool = w.get("infiniteAmmo",false)
 	ammo_label.text = "∞  近战" if infinite else "%02d / ∞" % p.ammo[int(p.weapon)]
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "defense":
-		controls_hint.text = "1 步枪 · 2 左轮 · 3 消防斧 · 4 手雷 · 长按 E 交互"
+		controls_hint.text = "1 步枪 · 2 左轮 · 3 消防斧 · 4 手雷 · R 换弹 · ESC 暂停" if defense.get("started",false) else "靠近并瞄准目标 · 长按 E 整备 / 启动警报"
 		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id)+1]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
 		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 清波 +2 备弹夹"
 		if p.slot == 4:
 			weapon_label.text = "手雷"
 			ammo_label.text = "%d / %d" % [p.grenades,p.grenade_capacity]
-			ammo_note.text = "左键投掷 · 每波开始补满"
+			ammo_note.text = "左键投掷 · 每15秒补充1颗"
 
 	arsenal.visible = not (int(p.weapon) == 5 and p.get("slot",1) < 4 and ui.game.weapon.ads > .8)
 	var shared_loadout: bool = sim.mode == "defense"
@@ -278,7 +301,7 @@ func sync() -> void:
 			item.icon.modulate = Color("c7ef8a") if selected and available else Color("f2eedf") if available else Color("647064")
 			item.title.text = Data.weapons[index].label if i < 3 else "手雷  %d / %d" % [p.grenades,p.grenade_capacity]
 			item.note.visible = true
-			item.note.text = "%d / %d" % [p.slot_ammo[i],p.slot_reserves[i]] if i < 2 else "无需弹药" if i == 2 else "每波开始补满"
+			item.note.text = "%d / %d" % [p.slot_ammo[i],p.slot_reserves[i]] if i < 2 else "无需弹药" if i == 2 else "每15秒补充1颗"
 			if i < 2 and Data.weapons[index].get("infiniteAmmo",false): item.note.text = "无需弹药"
 			item.icon.queue_redraw()
 	else:
