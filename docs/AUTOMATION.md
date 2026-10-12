@@ -8,11 +8,12 @@
 npm run verify
 ```
 
-基础检查包含版本一致性、Godot 资源导入、原生组件断言和增量进度/存档专项。根据改动范围，可额外运行一个专项：
+基础检查包含版本一致性、Godot 资源导入、原生组件断言、增量进度/存档与十波战役专项。根据改动范围，可额外运行一个专项：
 
 ```powershell
 ./tools/validate-headless.ps1 -Mode Defense
 ./tools/validate-headless.ps1 -Mode Progression
+./tools/validate-headless.ps1 -Mode Campaign
 ./tools/validate-headless.ps1 -Mode DefenseSpawns
 ./tools/validate-headless.ps1 -Mode DefenseWaves -TimeoutSeconds 600
 ./tools/validate-headless.ps1 -Mode SpreadBallistics
@@ -51,3 +52,5 @@ npm run verify:release
 所有本机检查必须保持无窗口，不捕获鼠标、不切换全屏、不操作用户已有的 Godot 或浏览器窗口。日志与报告写入忽略版本控制的 `artifacts/`；单项 PowerShell 检查只在失败时于根目录保留诊断日志。
 
 `DefenseWaves` 验证0.75分普通成本、特殊预算从25%升至50%、总预算下调至85%、人数/难度缩放、动态30秒批次及刷新点堵塞后的保留配额。它使用正常房主物理循环模拟普通单人第一波，输出 `artifacts/first-wave-horde.json` 的实际种类、出生时间和位置；不是浏览器或整波生存试玩。
+
+`Campaign` 为真正 headless 的十波战役专项，覆盖三档独立文件、选择失败不切换、测试金币、战前按钮、就地建筑升级、连续接波、按波次奖励、夜间参数、钱币弹起/吸附、舞王预算和死亡停召唤、共享姿态钻地及最终通关。自动测试不触发OS鼠标、键盘或电脑窗口控制。
