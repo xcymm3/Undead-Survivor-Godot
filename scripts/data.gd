@@ -41,7 +41,7 @@ func _ready() -> void:
 				for entry in loaded.scores:
 					if valid_score(entry): scores.append(entry)
 	if not Maps.valid(settings.map_id): settings.map_id = "graypine_defense"
-	settings.defense_difficulty = preload("res://scripts/defense_population.gd").normalize_difficulty(settings.defense_difficulty)
+	settings.defense_difficulty = "normal"
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--map=") and Maps.valid(arg.trim_prefix("--map=")): settings.map_id = arg.trim_prefix("--map=")
 	settings.sensitivity = clampf(settings.sensitivity, .00022, .0044)

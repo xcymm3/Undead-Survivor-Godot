@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('主页只提供水晶防线和难度选择，可直接开始防守', async ({ page }) => {
+test('主页只提供普通难度水晶防线，可直接开始防守', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   page.on('console', message => { if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text()); });
@@ -11,7 +11,7 @@ test('主页只提供水晶防线和难度选择，可直接开始防守', async
   expect(home.buttons.some(button => button.text.includes('多人'))).toBe(false);
   expect(home.buttons.some(button => /灰松夜路|保卫水晶/.test(button.text))).toBe(false);
   for (const difficulty of ['简单', '普通', '困难']) {
-    expect(home.buttons.some(button => button.text.includes(difficulty))).toBe(true);
+    expect(home.buttons.some(button => button.text === difficulty)).toBe(false);
   }
   const button = home.buttons.find(button => button.text === '开始防守' && !button.disabled);
   expect(button).toBeTruthy();

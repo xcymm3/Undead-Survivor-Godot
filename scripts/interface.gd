@@ -294,9 +294,6 @@ func show_home() -> void:
 	setup.resized.connect(func(): setup.position.x = (stage.size.x-setup.size.x)*.5)
 	setup.add_theme_constant_override("separation",12)
 	stage.add_child(setup)
-	for entry in [["easy","简单"],["normal","普通"],["hard","困难"]]:
-		var option = home_button(setup,("◆ " if Data.settings.defense_difficulty == entry[0] else "")+entry[1],game.select_defense_difficulty.bind(entry[0]))
-		option.custom_minimum_size = Vector2(135,44)
 	var money = CheckBox.new()
 	money.name = "InfiniteCoins"
 	money.text = "无限金币 / 钻石 · 测试"

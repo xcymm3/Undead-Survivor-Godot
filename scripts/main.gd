@@ -120,7 +120,7 @@ func start_solo(mode: String = "defense", random_seed := -1) -> void:
 		sim.progression.data.diamonds = 10000
 		sim.progression.dirty = true
 		sim.progression.save()
-	sim.defense_difficulty = Data.settings.defense_difficulty
+	sim.defense_difficulty = "normal"
 	sim.add_pawn("solo","幸存者",0)
 	sim.pawns.solo.pos = arena.definition.spawn
 	yaw = arena.definition.yaw
