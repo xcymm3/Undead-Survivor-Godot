@@ -48,9 +48,9 @@ func stage() -> void:
 			game.camera.fov = 74
 			game.weapon.show()
 			game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-50))
-		if scenario == "crystal_half": sim.defense.crystal_hp = 750
+		if scenario == "crystal_half": sim.defense.crystal_hp = 1500
 		if scenario == "crystal_broken":
-			sim.damage_crystal({},1500)
+			sim.damage_crystal({},3000)
 			sim.defense.prop_clock += .6
 		if scenario == "heal":
 			sim.progression.data.talents.strong = 1
@@ -77,7 +77,7 @@ func stage() -> void:
 			sim.failed = true
 			if scenario == "failure_crystal":
 				sim.cause = "crystal"
-				sim.damage_crystal({},1500)
+				sim.damage_crystal({},3000)
 			else: p.hp = 0; sim.cause = "enemy"
 			game.finish_run()
 			game.update_finish_camera(2.4)

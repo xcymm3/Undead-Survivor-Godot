@@ -379,7 +379,7 @@ func validate_interaction_motion() -> void:
 	check(game.arena.scenery.find_children("*","Label3D",true,false).size() == 2,"Only the context-sensitive borderless scene label remains")
 	fixture.face(sim,p,"crystal")
 	game.arena.scenery.sync_focus(sim,p)
-	check(preload("res://scripts/preparation_catalog.gd").focus(sim,p).get("id","") == "crystal" and game.arena.scenery.preparation.focus_label.text.contains("1500"),"The crystal does not occlude its own contextual health information")
+	check(preload("res://scripts/preparation_catalog.gd").focus(sim,p).get("id","") == "crystal" and game.arena.scenery.preparation.focus_label.text.contains("3000"),"The crystal does not occlude its own contextual health information")
 	fixture.face(sim,p,"rifle")
 	game.arena.scenery.sync_focus(sim,p)
 	check(game.arena.scenery.preparation.focus_label.visible,"Nearby aimed station shows its details")
