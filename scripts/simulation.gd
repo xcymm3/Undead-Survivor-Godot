@@ -1,5 +1,8 @@
 extends RefCounted
 ## The sole authority for movement, ammunition, enemies, damage and score, shared by solo/coop.
+const CpuPolicy = preload("res://scripts/cpu_policy.gd")
+const EnemyRayIndex = preload("res://scripts/enemy_ray_index.gd")
+const EnemyPaths = preload("res://scripts/enemy_path_scheduler.gd")
 const EnemyView = preload("res://scripts/enemy_view.gd")
 const PlayerBody = preload("res://scripts/player_body.gd")
 const DefensePopulation = preload("res://scripts/defense_population.gd")
@@ -43,6 +46,18 @@ var earned_diamonds = 0
 var boss_victory = false
 var paths: Dictionary = {}
 var crowd_buckets: Dictionary = {}
+var enemy_ray_index = EnemyRayIndex.new()
+var ray_index_valid = false
+var path_scheduler = EnemyPaths.new()
+var target_cache: Dictionary = {}
+var target_context_time = -INF
+var target_context_revision = -1
+var target_buildings: Array = []
+var target_gates: Array = []
+var target_crystal: Dictionary = {}
+var cpu_neighbor_visits = 0
+var cpu_target_refreshes = 0
+var cpu_cleanup_at = 0.0
 var player_route_cache: Dictionary = {}
 var player_cell_cache: Dictionary = {}
 # Authority-only swing history; clients receive the resulting damage and animation.
@@ -114,6 +129,10 @@ func start(_game_mode: String = "defense") -> void:
 	boss_victory = false
 	coin_drops.clear()
 	paths.clear()
+	path_scheduler.clear()
+	target_cache.clear()
+	target_context_time = -INF
+	ray_index_valid = false
 	player_route_cache.clear()
 	player_cell_cache.clear()
 	roster.clear()
@@ -141,6 +160,7 @@ func spawn(pos: Vector2, kind: String) -> void:
 	var health: float = body+armor
 	var locomotion = RandomNumberGenerator.new()
 	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
+	ray_index_valid = false
 	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"spawn_wave":wave,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
 	if kind == "crawler": zombies[-1].chase_speed *= .85
 	if kind == "dancer":
@@ -182,6 +202,9 @@ func submit(id: String, input: Dictionary) -> void:
 
 func step(dt: float) -> void:
 	events.clear()
+	ray_index_valid = false
+	cpu_neighbor_visits = 0
+	cpu_target_refreshes = 0
 	step_coins(dt)
 	if failed or won: return
 	for id in player_bodies.keys():
@@ -191,6 +214,7 @@ func step(dt: float) -> void:
 	for id in melee_swings.keys():
 		if not pawns.has(id) or pawns[id].hp <= 0: melee_swings.erase(id)
 	if defense.get("started",false): elapsed += dt
+	if CpuPolicy.PATH_BUDGET: path_scheduler.begin(elapsed,arena)
 	if equipment: equipment.before_movement(dt)
 	for p in pawns.values(): update_pawn(p,dt)
 	if equipment: equipment.step_projectiles(dt)
@@ -214,7 +238,16 @@ func step(dt: float) -> void:
 			continue
 		var target: Dictionary = choose_zombie_target(z,living)
 		update_zombie(z,target,dt)
+	ray_index_valid = false
 	defense_director.structures.step(dt)
+	if elapsed >= cpu_cleanup_at:
+		cpu_cleanup_at = elapsed+2
+		var alive: Dictionary = {}
+		for z in zombies:
+			if z.hp > 0: alive[z.id] = true
+		for id in target_cache.keys():
+			if not alive.has(id): target_cache.erase(id)
+		path_scheduler.prune(alive)
 	zombies = zombies.filter(func(z): return z.hp > 0 or z.down > 0)
 	if mode == "defense" and defense.get("crystal_hp",0) <= 0:
 		failed = true
@@ -254,6 +287,84 @@ func crystal_target() -> Dictionary:
 	return {"id":"crystal","pos":Data.Maps.Defense.CRYSTAL,"height":Data.Maps.Defense.height(Data.Maps.Defense.CRYSTAL),"hp":defense.get("crystal_hp",0),"is_crystal":true}
 
 func choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
+	if not CpuPolicy.TARGET_CACHE: return original_choose_zombie_target(z,living)
+	prepare_target_context()
+	var cached: Dictionary = target_cache.get(z.id,{})
+	# Entering the player radius always bypasses far-target throttling.
+	if not cached.is_empty() and cached.revision == arena.navigation_revision and elapsed < cached.until and living.all(func(p): return z.pos.distance_squared_to(p.pos)>225):
+		var current: Dictionary = target_by_id(cached.id)
+		if not current.is_empty() and current.hp > 0 and (current.get("is_structure",false) or current.get("is_crystal",false)) and z.pos.distance_squared_to(current.pos)>144:
+			if current.get("is_structure",false): current = defense_director.structures.target(defense_director.structures.find(cached.id),z.pos)
+			var barrier = cached_barrier(z.pos,current.pos)
+			return current if barrier.is_empty() else barrier
+	cpu_target_refreshes += 1
+	var nearest = INF
+	var item: Dictionary = {}
+	if not target_crystal.is_empty() and defense.get("crystal_hp",0)>0:
+		nearest = z.pos.distance_squared_to(target_crystal.pos)
+		item = target_crystal
+	for building in target_buildings:
+		if building.hp <= 0: continue
+		var point: Vector2 = building.pos
+		if building.kind == "gate": point.x = clampf(z.pos.x,-2.7,2.7)
+		var distance: float = z.pos.distance_squared_to(point)
+		if distance < nearest:
+			nearest = distance
+			item = building
+	var target: Dictionary = defense_director.structures.target(item,z.pos) if item.get("kind","") in ["gate","turret"] else crystal_target() if not item.is_empty() else living[0]
+	if z.kind not in ["imp","giant"]:
+		for player in living:
+			var distance: float = z.pos.distance_squared_to(player.pos)
+			if distance <= 225 and distance < nearest and player_reachable(z,player):
+				nearest = distance
+				target = player
+	var barrier = cached_barrier(z.pos,target.pos)
+	if not barrier.is_empty(): target = barrier
+	target_cache[z.id] = {"id":str(target.id),"revision":arena.navigation_revision,"until":elapsed+.1+fmod(z.id*.013,.1)}
+	return target
+
+func prepare_target_context() -> void:
+	if target_context_time == elapsed and target_context_revision == arena.navigation_revision: return
+	target_context_time = elapsed
+	target_context_revision = arena.navigation_revision
+	target_buildings.clear()
+	target_gates.clear()
+	target_crystal = crystal_target() if mode == "defense" and defense.get("crystal_hp",0)>0 else {}
+	if not defense_director: return
+	# Preserve the old ordering: turrets, then gates, for equal-distance ties.
+	for item in defense.structures:
+		if item.kind == "turret" and item.hp > 0: target_buildings.append(item)
+	for item in defense.structures:
+		if item.kind == "gate" and item.hp > 0:
+			target_buildings.append(item)
+			target_gates.append({"item":item,"bounds":defense_director.structures.bounds(item).grow(.95)})
+
+func cached_barrier(from: Vector2, goal: Vector2) -> Dictionary:
+	var selected: Dictionary = {}
+	var nearest = INF
+	for entry in target_gates:
+		var item: Dictionary = entry.item
+		if item.hp <= 0: continue
+		var distance = from.distance_squared_to(item.pos)
+		if distance < nearest and ((from.y-item.pos.y)*(goal.y-item.pos.y)<0 or arena.segment_rect(from,goal,entry.bounds)):
+			selected = item
+			nearest = distance
+	return {} if selected.is_empty() else defense_director.structures.target(selected,from)
+
+func enemy_ray_candidates(origin: Vector3, direction: Vector3, distance: float) -> Array:
+	if not CpuPolicy.RAY_INDEX: return zombies
+	if not ray_index_valid:
+		enemy_ray_index.rebuild(zombies)
+		ray_index_valid = true
+	return enemy_ray_index.query(origin,direction,distance)
+
+func path_priority(z: Dictionary) -> float:
+	var nearest = INF
+	for player in pawns.values():
+		if player.hp > 0: nearest = minf(nearest,z.pos.distance_squared_to(player.pos))
+	return (20.0 if nearest<=225 else 0.0)+(10.0 if z.get("move_speed",0.0)<.05 else 0.0)
+
+func original_choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
 	var buildings: Array = []
 	if mode == "defense" and defense.get("crystal_hp",0) > 0: buildings.append(crystal_target())
 	if defense_director:
@@ -282,16 +393,18 @@ func choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
 func player_reachable(z: Dictionary, p: Dictionary) -> bool:
 	if absf(p.height-Data.enemy_ground_height(p.pos,map_id)) > 1.0: return false
 	var endpoint: Dictionary = player_cell_cache.get(p.id,{})
-	var endpoint_state = [p.pos,arena.navigation_structures]
+	var endpoint_state = [p.pos,arena.navigation_revision]
 	if endpoint.get("state",[]) != endpoint_state or elapsed >= endpoint.get("until",-1.0):
 		endpoint = {"state":endpoint_state.duplicate(true),"until":elapsed+.15,"cell":arena.nearest_cell(p.pos)}
 		player_cell_cache[p.id] = endpoint
 	if endpoint.cell.x < 0: return false
 	var key = str(z.id)+":"+str(p.id)
 	var cached: Dictionary = player_route_cache.get(key,{})
-	var state = [Vector2i(z.pos/2),Vector2i(p.pos/2),arena.navigation_structures]
+	var state = [Vector2i(z.pos/2),Vector2i(p.pos/2),arena.navigation_revision]
 	if cached.get("state",[]) == state and elapsed < cached.get("until",-1.0): return cached.reachable
-	var reachable = not arena.path_to(z.pos,p.pos).is_empty()
+	var result: Dictionary = path_scheduler.request("reach:"+str(z.id)+":"+str(p.id),z.pos,p.pos,50+path_priority(z),elapsed,arena)
+	if result.is_empty(): return cached.get("reachable",false) if cached.get("state",[]) == state else false
+	var reachable = not result.path.is_empty()
 	player_route_cache[key] = {"state":state.duplicate(true),"until":elapsed+.25,"reachable":reachable}
 	return reachable
 
@@ -854,36 +967,57 @@ func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance
 	var waypoint: Vector2 = goal
 	var direction = (waypoint-z.pos).normalized()
 	var cached: Dictionary = paths.get(z.id,{"until":0.0,"path":PackedVector2Array(),"goal":Vector2.INF,"direct_until":0.0,"direct":false})
-	if elapsed >= cached.get("direct_until",0.0) or cached.get("direct_goal",Vector2.INF).distance_to(goal) > .65:
+	if cached.get("revision",arena.navigation_revision) != arena.navigation_revision:
+		cached.path = PackedVector2Array()
+		cached.until = 0.0
+		cached.direct_until = 0.0
+		cached.revision = arena.navigation_revision
+	if cached.get("revision",arena.navigation_revision) != arena.navigation_revision or elapsed >= cached.get("direct_until",0.0) or cached.get("direct_goal",Vector2.INF).distance_to(goal) > .65:
 		cached.direct = arena.clear(z.pos,goal)
 		cached.direct_goal = goal
 		cached.direct_until = elapsed+.15+fmod(z.id*.027,.12)
 		paths[z.id] = cached
 	if not cached.get("direct",false):
 		if elapsed >= cached.until or cached.goal.distance_to(goal) > 1.3:
-			cached.until = elapsed+.65+fmod(z.id*.037,.25)
-			cached.path = arena.path_to(z.pos,goal)
-			cached.goal = goal
-			paths[z.id] = cached
+			var result: Dictionary = path_scheduler.request("move:"+str(z.id),z.pos,goal,path_priority(z),elapsed,arena)
+			if not result.is_empty():
+				cached.until = elapsed+.65+fmod(z.id*.037,.25)
+				cached.path = result.path
+				cached.goal = goal
+				cached.revision = arena.navigation_revision
+				paths[z.id] = cached
 		var route: PackedVector2Array = cached.path
 		# Skip only reachable waypoints; a nearby corner cannot be cut through.
 		while route.size() > 1 and arena.clear(z.pos,route[1]): route.remove_at(0)
 		cached.path = route
-		if route.is_empty(): return
+		if route.is_empty():
+			z.move_speed = 0.0
+			return
 		waypoint = route[0]
 		direction = (waypoint-z.pos).normalized()
 	var separation = Vector2.ZERO
+	var examined = 0
 	var cell = Vector2i(floori(z.pos.x/3),floori(z.pos.y/3))
 	var radius = 2.1 if z.kind == "giant" else .85 if z.kind == "imp" else 1.65
-	for y in range(-1,2):
-		for x in range(-1,2):
-			for other in crowd_buckets.get(cell+Vector2i(x,y),[]):
-				if other.id == z.id or other.hp <= 0: continue
-				var offset: Vector2 = z.pos-other.pos
-				var d = offset.length_squared()
-				if d > .001 and d < radius*radius: separation += offset.normalized()*(radius-sqrt(d))
+	# Visit the current cell first, then the eight neighboring cells.
+	var offsets = [Vector2i.ZERO,Vector2i(-1,-1),Vector2i(0,-1),Vector2i(1,-1),Vector2i(-1,0),Vector2i(1,0),Vector2i(-1,1),Vector2i(0,1),Vector2i(1,1)]
+	if not CpuPolicy.CROWD_LIMIT: offsets = [Vector2i(-1,-1),Vector2i(0,-1),Vector2i(1,-1),Vector2i(-1,0),Vector2i.ZERO,Vector2i(1,0),Vector2i(-1,1),Vector2i(0,1),Vector2i(1,1)]
+	for offset_cell in offsets:
+		var bucket: Array = crowd_buckets.get(cell+offset_cell,[])
+		var visits = mini(8 if offset_cell == Vector2i.ZERO else 3,bucket.size()) if CpuPolicy.CROWD_LIMIT else bucket.size()
+		if CpuPolicy.CROWD_LIMIT: visits = mini(visits,CpuPolicy.NEIGHBOR_LIMIT-examined)
+		cpu_neighbor_visits += visits
+		for j in visits:
+			if CpuPolicy.CROWD_LIMIT and examined >= CpuPolicy.NEIGHBOR_LIMIT: break
+			examined += 1
+			var other: Dictionary = bucket[(j+int(z.id)+floori(elapsed*10))%bucket.size()] if CpuPolicy.CROWD_LIMIT else bucket[j]
+			if other.id == z.id or other.hp <= 0: continue
+			var offset: Vector2 = z.pos-other.pos
+			var d = offset.length_squared()
+			if d > .001 and d < radius*radius:
+				separation += offset*(radius/sqrt(d)-1.0) if CpuPolicy.CROWD_LIMIT else offset.normalized()*(radius-sqrt(d))
 	var route_direction = direction
-	direction = (direction+separation.limit_length(.75)).normalized()
+	direction = (direction+separation.limit_length(.3 if CpuPolicy.CROWD_LIMIT and crowd_buckets.get(cell,[]).size()>20 else .75)).normalized()
 	var old_position: Vector2 = z.pos
 	# A detour must continue even when Euclidean target distance is small.
 	var travel: float = minf(speed*dt,waypoint.distance_to(z.pos)) if stop_at_waypoint or not cached.get("direct",false) else minf(speed*dt,maxf(0,distance-contact*.88))
@@ -1054,7 +1188,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	var surface: Dictionary = arena.surface_hit(camera.origin,target)
 	if not surface.is_empty(): target = surface.position
 	var closest = camera.origin.distance_to(target)
-	for z in zombies:
+	for z in enemy_ray_candidates(camera.origin,forward,closest):
 		if z.hp <= 0: continue
 		var impact = EnemyView.hit(z,camera.origin,forward,closest,elapsed,false)
 		if not impact.is_empty():
@@ -1092,7 +1226,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 		var wall: Dictionary = arena.surface_hit(muzzle,end)
 		var distance = muzzle.distance_to(wall.position) if not wall.is_empty() else reach
 		var candidates: Array = []
-		for z in zombies:
+		for z in enemy_ray_candidates(muzzle,ray,distance):
 			if z.hp <= 0: continue
 			var candidate = EnemyView.hit(z,muzzle,ray,distance,elapsed,false)
 			if not candidate.is_empty(): candidates.append(candidate)

@@ -11,6 +11,7 @@ var structure_state: Array = []
 var grid = AStarGrid2D.new()
 var static_solid = PackedByteArray()
 var navigation_structures: Array = []
+var navigation_revision = 0
 var scenery: Node3D
 var sun: DirectionalLight3D
 const CELL = .65
@@ -155,6 +156,7 @@ func sync_defense(state: Dictionary) -> void:
 		if item.hp > 0 and item.kind != "mine": active.append(item.id)
 	if active != navigation_structures:
 		navigation_structures = active
+		navigation_revision += 1
 		for y in grid.region.size.y:
 			for x in grid.region.size.x:
 				grid.set_point_solid(Vector2i(x,y),static_solid[y*grid.region.size.x+x] != 0)

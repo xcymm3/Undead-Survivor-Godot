@@ -39,6 +39,7 @@ await writeFile(path.join(outputDir, 'source-manifest.json'), JSON.stringify(met
 console.log(`Frozen source ${sourceDigest}; snapshot ${snapshot}`);
 const godot = path.join(root, '.runtime', 'Godot_v4.5.2-stable_win64_console.exe');
 async function launch(name, args, timeoutMs) {
+  console.log('CPU COMMAND '+JSON.stringify({operation:name,executable:godot,args:['--headless','--audio-driver','Dummy','--path',snapshot,...args]}));
   const child = spawn(godot, ['--headless', '--audio-driver', 'Dummy', '--path', snapshot, ...args], { cwd: snapshot, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   const append = data => { output += data; if (/^(SCRIPT ERROR|ERROR):/m.test(output)) child.kill(); if (name !== 'import') process.stdout.write(data); };
@@ -46,6 +47,7 @@ async function launch(name, args, timeoutMs) {
   const timer = setTimeout(() => { child.kill(); }, timeoutMs);
   const code = await new Promise((resolve, reject) => { child.on('error', reject); child.on('close', resolve); }).finally(() => clearTimeout(timer));
   await writeFile(path.join(outputDir, `${name}.log`), output);
+  console.log('CPU COMMAND RESULT '+JSON.stringify({operation:name,exitCode:code}));
   if (code !== 0 || /^(SCRIPT ERROR|ERROR):/m.test(output)) throw new Error(`${name} failed (${code}); see ${outputDir}\n${output.slice(-3000)}`);
 }
 await launch('import', ['--editor', '--import', '--quit'], 180000);
@@ -54,7 +56,8 @@ if (process.argv.includes('--regressions')) {
   for (const name of ['navigation-regressions','spread-ballistics','native-components']) {
     await launch(name, ['--script', `res://tools/validate-${name}.gd`, '--', '--automation','--silent'], 300000);
   }
-  if (variant.includes('ray')||variant.includes('pose_cache')) await launch('experiment-rays', ['--script','res://tools/validate-experiment-rays.gd','--','--automation','--silent'],300000);
+  if (process.argv.includes('--cpu-checks') && variant!=='prechange') await launch('cpu-optimizations',['--script','res://tools/validate-cpu-optimizations.gd','--','--automation','--silent'],300000);
+  if (!variant.startsWith('cpu_') && (variant.includes('ray')||variant.includes('pose_cache'))) await launch('experiment-rays', ['--script','res://tools/validate-experiment-rays.gd','--','--automation','--silent'],300000);
   if (variant.includes('animation')) await launch('experiment-animation', ['--script','res://tools/validate-experiment-animation.gd','--','--automation','--silent'],300000);
 }
 if (process.argv.includes('--prepare-only')) { console.log(`Prepared ${variant}: ${snapshot}`); process.exit(0); }

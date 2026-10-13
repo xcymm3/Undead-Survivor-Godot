@@ -1,10 +1,26 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {applyVariant as legacy,applyDiagnosticDetails as legacyDetails} from './enemy-experiment-variants.mjs';
 
 export const variants=['baseline','navigation','rays','animation','mesh_cache','no_submit','no_pose','bones5','bones1','avoid16','avoid32','no_avoid','shared_path','target_rate','ray_grid','pose_cache','pool'];
 export const candidates=['mesh_cache','animation','avoid16','avoid32','shared_path','target_rate','ray_grid','pose_cache','pool'];
 export async function applyVariant(root,variant){
+ if(variant==='cpu_all')return [];
+ if(variant==='prechange'){
+  const repo=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+  const files=['scripts/simulation.gd','scripts/main.gd','scripts/arena.gd'];
+  for(const file of files)await writeFile(path.join(root,file),execFileSync('git',['show',`1940134:${file}`],{cwd:repo,windowsHide:true}));
+  return files;
+ }
+ const switches={cpu_target:'TARGET_CACHE',cpu_ray:'RAY_INDEX',cpu_crowd:'CROWD_LIMIT',cpu_paths:'PATH_BUDGET'};
+ if(switches[variant]){
+  const file='scripts/cpu_policy.gd';
+  let code=await readFile(path.join(root,file),'utf8');
+  for(const flag of Object.values(switches))if(flag!==switches[variant])code=code.replace(`const ${flag} = true`,`const ${flag} = false`);
+  await writeFile(path.join(root,file),code);return [file];
+ }
  if(variant.startsWith('combo:')){
   let names=variant.slice(6).split('+');
   if(names.includes('ray_grid')&&names.includes('pose_cache'))names=[...names.filter(n=>!['ray_grid','pose_cache'].includes(n)),'rays'];

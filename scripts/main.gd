@@ -3,6 +3,7 @@ const Simulation = preload("res://scripts/simulation.gd")
 const Arena = preload("res://scripts/arena.gd")
 const EnemyView = preload("res://scripts/enemy_view.gd")
 const DefensePopulation = preload("res://scripts/defense_population.gd")
+var visual_ray_index = preload("res://scripts/enemy_ray_index.gd").new()
 var arena
 var enemies
 var sim
@@ -266,7 +267,14 @@ func _process(dt: float) -> void:
 	var aim_surface: Dictionary = arena.surface_hit(camera.position,aim_target)
 	if not aim_surface.is_empty(): aim_target = aim_surface.position
 	var aim_distance = camera.position.distance_to(aim_target)
-	for zombie in visible_zombies:
+	var aim_candidates: Array = visible_zombies
+	if preload("res://scripts/cpu_policy.gd").RAY_INDEX:
+		if displayed.is_empty(): aim_candidates = sim.enemy_ray_candidates(camera.position,-camera.global_basis.z,aim_distance)
+		else:
+			# Interpolated client positions never reuse the authority index.
+			visual_ray_index.rebuild(visible_zombies)
+			aim_candidates = visual_ray_index.query(camera.position,-camera.global_basis.z,aim_distance)
+	for zombie in aim_candidates:
 		if zombie.hp <= 0: continue
 		var impact = EnemyView.hit(zombie,camera.position,-camera.global_basis.z,aim_distance,visual_time,false)
 		if not impact.is_empty():

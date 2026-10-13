@@ -223,7 +223,8 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 		var endpoint = camera.origin+direction*180
 		var surface: Dictionary = sim.arena.surface_hit(camera.origin,endpoint)
 		var distance = camera.origin.distance_to(surface.position) if not surface.is_empty() else 180.0
-		for z in sim.zombies:
+		var aim_candidates: Array = sim.enemy_ray_candidates(camera.origin,direction,distance) if sim.has_method("enemy_ray_candidates") else sim.zombies
+		for z in aim_candidates:
 			if z.hp <= 0: continue
 			var hit = enemy_view.hit(z,camera.origin,direction,distance,sim.elapsed,false)
 			if not hit.is_empty(): distance = hit.distance
@@ -252,6 +253,8 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 					sample["detail_ms"] = {}
 					for label in sim.experiment_detail: sample.detail_ms[label] = float(sim.experiment_detail[label])/1000.0
 					sample["animation_detail_us"] = game.enemies.experiment_animation_detail.duplicate()
+			if sim.has_method("enemy_ray_candidates"):
+				sample["cpu_work"] = {"neighbors":sim.cpu_neighbor_visits,"target_refreshes":sim.cpu_target_refreshes,"astar_used":sim.path_scheduler.used,"astar_pending":sim.path_scheduler.pending.size(),"ray_builds":sim.enemy_ray_index.builds,"ray_queries":sim.enemy_ray_index.queries}
 			samples.append(sample)
 			shots += sample.shot_calls
 			cpu_total += sample.cpu_sections_ms
@@ -285,6 +288,10 @@ func reset_epoch(staged: Dictionary) -> void:
 	var sim = staged.sim
 	if staged.scenario in ["boss","lifecycle"]: return
 	sim.paths.clear()
+	if sim.has_method("enemy_ray_candidates"):
+		sim.path_scheduler.clear()
+		sim.target_cache.clear()
+		sim.ray_index_valid = false
 	sim.player_route_cache.clear()
 	for i in sim.zombies.size():
 		var z: Dictionary = sim.zombies[i]
