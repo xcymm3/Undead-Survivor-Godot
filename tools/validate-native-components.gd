@@ -220,6 +220,57 @@ func validate_sniper_penetration() -> void:
 	sim.fire(p,w)
 	check(sim.zombies[0].hp == health,"Sniper cannot penetrate the armory wall")
 
+func validate_rifle_penetration() -> void:
+	game.return_home()
+	game.start_solo("defense",71245)
+	await physics_frame
+	var sim = game.sim
+	var p: Dictionary = game.local_pawn()
+	var data = root.get_node("Data")
+	var w: Dictionary = data.weapons[0].duplicate(true)
+	sim.progression.data.weapons.rifle = 0
+	w.spread = 0
+	w.adsSpread = 0
+	w.headshotMultiplier = 1
+	p.pos = Vector2(8,36)
+	p.yaw = 0
+	p.pitch = 0
+	p.weapon = 0
+	# Deliberately reverse the storage order; impacts must still follow distance.
+	for depth in [24,26,28,30]:
+		sim.spawn(Vector2(8,depth),"normal")
+		sim.zombies[-1].hp = 2000
+		sim.zombies[-1].body = 2000
+	sim.fire(p,w)
+	for index in 4:
+		var order = 3-index
+		var expected = 120.0*pow(2.0/3.0,order) if order < 3 else 0.0
+		check(is_equal_approx(2000-sim.zombies[index].hp,expected),"Rifle distance-sorted damage 120/80/53.33 and fourth-target exclusion: "+str(order))
+	sim.progression.data.weapons.rifle = 1
+	for z in sim.zombies: z.hp = 2000; z.body = 2000
+	sim.fire(p,w)
+	check(is_equal_approx(2000-sim.zombies[-1].hp,132) and is_equal_approx(2000-sim.zombies[-2].hp,88),"Permanent rifle upgrades scale penetration damage without changing attenuation")
+	sim.progression.data.weapons.rifle = 0
+	w.headshotMultiplier = 2
+	for z in sim.zombies: z.hp = 2000; z.body = 2000
+	sim.fire(p,w)
+	check(is_equal_approx(2000-sim.zombies[-1].hp,240) and is_equal_approx(2000-sim.zombies[-2].hp,160),"Headshot multiplier is retained through rifle penetration")
+	w.headshotMultiplier = 1
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,30),"bucket")
+	sim.spawn(Vector2(8,28),"normal")
+	var armored_hp: float = sim.zombies[0].hp
+	var behind_hp: float = sim.zombies[1].hp
+	sim.fire(p,w)
+	check(is_equal_approx(armored_hp-sim.zombies[0].hp,120) and is_equal_approx(behind_hp-sim.zombies[1].hp,80),"Armored enemy still absorbs damage normally while rifle continues to the second target")
+	p.pos = data.Maps.Defense.SPAWN
+	p.yaw = PI
+	sim.zombies.clear()
+	sim.spawn(p.pos+Vector2(0,7),"normal")
+	var health: float = sim.zombies[0].hp
+	sim.fire(p,w)
+	check(sim.zombies[0].hp == health,"Rifle penetration stops at the shop wall")
+
 func validate_crawler() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
@@ -542,6 +593,7 @@ func run() -> void:
 	await validate_crawler()
 	await validate_flame()
 	await validate_sniper_penetration()
+	await validate_rifle_penetration()
 	validate_close_combat()
 	validate_enemy_overlap()
 	validate_revolver()
