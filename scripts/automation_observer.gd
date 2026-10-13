@@ -84,7 +84,7 @@ func native_smoke() -> void:
 	game.yaw = game.local_pawn().yaw
 	game.pitch = game.local_pawn().pitch
 	Input.action_press("interact")
-	await get_tree().create_timer(1.5).timeout
+	await get_tree().create_timer(preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS+.3).timeout
 	Input.action_release("interact")
 	Input.action_press("forward")
 	await get_tree().create_timer(.2).timeout
@@ -101,6 +101,7 @@ func native_smoke() -> void:
 	var p: Dictionary = game.local_pawn()
 	var passed = game.sim.mode == "defense" and game.sim.defense.started and not game.sim.defense.waiting
 	passed = passed and p.weapon1 == 0 and p.shots > 0 and p.ammo[0] < Data.weapons[0].capacity and p.reserve == Data.defense_full_reserve(0) and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
+	if not passed: print("PACKAGED DEFENSE STATE: "+JSON.stringify({"started":game.sim.defense.started,"waiting":game.sim.defense.waiting,"weapon":p.weapon1,"shots":p.shots,"ammo":p.ammo[0],"reserve":p.reserve,"mouse_mode":Input.mouse_mode}))
 	print("PACKAGED DEFENSE SMOKE: "+("PASS" if passed else "FAIL"))
 	var tree = get_tree()
 	reparent(tree.root)
