@@ -16,6 +16,66 @@ func run() -> void:
 	game.start_solo("defense",42)
 	var sim = game.sim
 	var p: Dictionary = sim.pawns.solo
+	var catalog = load("res://scripts/preparation_catalog.gd")
+	var fixture = load("res://tools/preparation-fixture.gd")
+	var layout = root.get_node("Data").Maps.Defense
+	check(sim.defense.crystal_hp == 3000 and sim.defense.crystal_max_hp == 3000,"Crystal starts with three thousand health")
+	sim.progression.data.coins = 10000
+	for id in ["bridge_gate","bridge_entry_gate"]:
+		check(fixture.buy(sim,p,id),"Build gate for whole-panel interaction: "+id)
+		var gate = sim.defense_director.structures.find(id)
+		for x in [-3.0,0.0,3.0]:
+			p.pos = Vector2(x,gate.pos.y+2)
+			p.height = layout.height(p.pos)
+			var eye = Vector3(p.pos.x,p.height+load("res://scripts/player_body.gd").eye_height(p),p.pos.y)
+			var direction = (Vector3(x,gate.height+.5,gate.pos.y)-eye).normalized()
+			p.yaw = atan2(-direction.x,-direction.z)
+			p.pitch = asin(direction.y)
+			check(catalog.focus(sim,p).get("id","") == id,"Gate panel accepts left, middle and right gaze: %s %.1f" % [id,x])
+	check(catalog.payment_interval(100) == .18 and catalog.payment_interval(101) == .09 and catalog.payment_interval(1000) == .09 and catalog.payment_interval(1001) == .045,"Payment emission uses the three exact amount boundaries")
+	for cue in ["crystal-hit","coin-pickup","purchase"]:
+		check(game.sound.streams[cue].data.size() > 0,"Dedicated feedback sound exists: "+cue)
+	sim.events.clear()
+	sim.damage_crystal({},1)
+	var sound_count: int = game.sound.spatial_index
+	game.handle_effects(sim.events)
+	check(sim.events.filter(func(e): return e.kind == "crystal_hit").size() == 1 and game.sound.spatial_index == sound_count+1 and game.sound.spatial_players[0].stream == game.sound.streams["crystal-hit"],"Each crystal damage event routes its distinct glass collision sound")
+	sim.defense.crystal_hp = 3000
+	check(is_equal_approx(game.sound.streams.purchase.get_length(),3.0),"Purchase sound covers the three-second hold")
+	p.interaction = "rifle"
+	p.interact_time = .3
+	game.sound.sync_work(p,true)
+	var early_gain: float = game.sound.work.volume_db
+	p.interact_time = 2.7
+	game.sound.sync_work(p,true)
+	check(game.sound.work.volume_db > early_gain+10,"Held purchase gradually increases its sound gain")
+	game.sound.sync_work(p,false)
+	check(game.sound.work_id.is_empty() and not game.sound.work.playing,"Cancellation or pause stops the purchase sound")
+	p.interaction = ""
+	p.interact_time = 0
+	p.slot = 3
+	p.weapon = 6
+	p.switch = 0
+	p.trigger = false
+	var swings: int = p.gun_shots[6]
+	for tick in 150:
+		p.input = {"fire":true}
+		p.input_age = 0
+		sim.update_pawn(p,.02)
+	check(p.gun_shots[6] >= swings+3,"Holding left click repeats axe swings after their cooldowns")
+	p.input = {"fire":false}
+	for tick in 50: sim.update_pawn(p,.02)
+	var released: int = p.gun_shots[6]
+	sim.update_pawn(p,1)
+	check(p.gun_shots[6] == released,"Releasing left click stops repeated axe attacks")
+	var destination = Vector3(p.pos.x,p.height+1.05,p.pos.y)
+	sim.coin_drops = [{"owner":p.id,"age":1.54,"origin":destination,"pos":destination,"scatter":Vector3.ZERO,"value":1}]
+	sim.events.clear()
+	sim.step_coins(.02)
+	sim.step_coins(.02)
+	check(sim.events.filter(func(e): return e.kind == "coin_pickup").size() == 1 and sim.coin_drops.is_empty(),"Coin arrival emits one pickup sound event and cannot replay it")
+	p.slot = 1
+	p.weapon = 0
 	p.hp = 45
 	p.combat_remaining = 3.2
 	p.grenades = 0
@@ -48,13 +108,13 @@ func run() -> void:
 		sound_hashes[hash(stream.data)] = true
 	check(sound_hashes.size() == 10,"All weapons have distinct reload resources")
 	var state = sim.defense
-	state.crystal_hp = 750
+	state.crystal_hp = 1500
 	game.arena.scenery.sync(state)
 	check(game.arena.scenery.crystal_damage.cracks.visible,"Crystal half health exposes cracks")
-	state.crystal_hp = 751
+	state.crystal_hp = 1501
 	game.arena.scenery.sync(state)
 	check(not game.arena.scenery.crystal_damage.cracks.visible,"Crystal above half health has no cracks")
-	sim.damage_crystal({},1500)
+	sim.damage_crystal({},3000)
 	state.prop_clock += .5
 	game.arena.scenery.sync(state)
 	var damage = game.arena.scenery.crystal_damage
