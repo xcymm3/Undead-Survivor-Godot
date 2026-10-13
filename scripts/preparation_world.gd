@@ -166,7 +166,7 @@ func sync_focus(sim, p: Dictionary) -> void:
 				if age <= 0 or age >= .8: continue
 				var t = age/.8
 				var point = from.lerp(choice.position,t)+Vector3(0,sin(t*PI)*.23,0)
-				drops.append({"pos":point,"age":age,"value":1,"arrival":maxf(0,(t-.8)*5)})
+				drops.append({"pos":point,"age":age,"value":1,"scale":.2,"arrival":maxf(0,(t-.8)*5)})
 	money_flights.sync(drops)
 	focus_label.visible = not choice.is_empty()
 	if choice.is_empty(): return

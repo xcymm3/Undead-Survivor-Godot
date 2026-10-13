@@ -30,5 +30,5 @@ func sync(drops: Array) -> void:
 		var drop: Dictionary = drops[index]
 		var basis = Basis(Vector3.UP,drop.age*9)*Basis(Vector3.RIGHT,PI/2+sin(drop.age*7)*.3)
 		var arrival: float = clampf(drop.get("arrival",0.0),0,1)
-		basis = basis.scaled(Vector3.ONE*(1.0+.12*log(float(drop.value)))*(1.0-arrival*.8))
+		basis = basis.scaled(Vector3.ONE*float(drop.get("scale",1.0))*(1.0+.12*log(float(drop.value)))*(1.0-arrival*.8))
 		multimesh.set_instance_transform(index,Transform3D(basis,drop.pos))
