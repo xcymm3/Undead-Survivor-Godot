@@ -95,8 +95,8 @@ func run() -> void:
 	var sim = game.sim
 	var pawn: Dictionary = sim.pawns.solo
 	check(sim.mode == "defense" and not sim.defense.started,"Entering the map does not start waves")
-	check(sim.defense.difficulty == "easy" and is_equal_approx(sim.defense.difficulty_multiplier,.7),"Defense validation runs the Easy difficulty selected before the match")
-	check(pawn.weapon1 == 0 and pawn.weapon2 == 3 and pawn.slot == 1,"Defense starts with fixed rifle, revolver and axe slots")
+	check(sim.defense.difficulty == "normal" and is_equal_approx(sim.defense.difficulty_multiplier,1.0),"Defense always uses Normal difficulty despite a legacy Easy setting")
+	check(pawn.weapon1 == 0 and pawn.weapon2 == 2 and pawn.slot == 1,"Defense starts with fixed rifle, pistol and axe slots")
 	check(not pawn.has("medkits") and pawn.grenades == 1,"Medical inventory is absent and new players carry one grenade")
 	check(pawn.reserves[pawn.weapon1] == data.defense_full_reserve(pawn.weapon1) and pawn.reserves[pawn.weapon2] == data.defense_full_reserve(pawn.weapon2),"Defense firearms start with seventeen reserve magazines")
 	var prestart_shoves: int = pawn.shoves
@@ -128,10 +128,10 @@ func run() -> void:
 	check(pawn.weapon == pawn.weapon2 and pawn.slot == 2,"Defense uses weapon-slot-2 switching")
 	check(sim.shop_available(pawn),"Shop is available from the spawn before wave one")
 	check(not sim.equipment.pickup(pawn,"weapon:5") and not sim.equipment.pickup(pawn,"weapon:7"),"Removed weapon racks cannot exchange the fixed loadout")
-	check(pawn.weapon1 == 0 and pawn.weapon2 == 3,"Invalid pickups preserve fixed weapons")
+	check(pawn.weapon1 == 0 and pawn.weapon2 == 2,"Invalid pickups preserve fixed weapons")
 	var fixture = preload("res://tools/preparation-fixture.gd")
 	fixture.face(sim,pawn,"alarm")
-	fixture.hold(sim,pawn,1.3)
+	fixture.hold(sim,pawn,3.1)
 	pawn.pos = Vector2(0,10)
 	pawn.height = 3
 	check(sim.defense.started and not sim.defense.waiting and sim.rest == 0 and not sim.roster.is_empty(),"Holding the alarm starts wave one immediately without a countdown")
@@ -340,8 +340,8 @@ func run() -> void:
 	var exact_sample_budgets = true
 	for sample in 200:
 		sim.prepare_wave()
-		exact_sample_budgets = exact_sample_budgets and valid_roster_budget(sim.roster,population.budget(1,1,"easy"),population.special_fraction(1))
-	check(exact_sample_budgets,"Easy rosters respect the quarter-point budget and fixed fifty percent special cap")
+		exact_sample_budgets = exact_sample_budgets and valid_roster_budget(sim.roster,population.budget(1,1,"normal"),population.special_fraction(1))
+	check(exact_sample_budgets,"Normal rosters respect the quarter-point budget and fixed fifty percent special cap")
 	var variants: Array = []
 	for slot in 200: variants.append(sim.defense_population_kind("normal"))
 	check(variants.count("normal") == 200 and sim.defense_population_kind("crawler") == "normal","All ordinary slots remain normal and legacy crawler slots are replaced")
@@ -440,7 +440,7 @@ func run() -> void:
 	sim.roster.clear()
 	sim.step(.02)
 	sim.step(10)
-	check(not sim.won and sim.wave == 10 and sim.roster.count("dancer") == 1,"Wave nine automatically enters the final wave with its dancing boss")
+	check(not sim.won and sim.wave == 10 and sim.roster.count("dancer") == 0 and sim.zombies.any(func(z): return z.kind == "dancer" and z.hp > 0),"Wave nine automatically enters the final wave with its dancing boss")
 	sim.roster.clear()
 	sim.spawn(Vector2(8,24),"normal")
 	sim.step(.02)

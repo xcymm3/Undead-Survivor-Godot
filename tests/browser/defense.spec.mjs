@@ -20,12 +20,12 @@ test('吊桥水晶防守使用真实输入换装并长按警报器开始进攻',
   await clickButton(page, '开始防守');
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense' && window.__survivorSnapshot?.running);
   let state = await snapshot(page);
-  expect(state.defense.difficulty).toBe('easy');
-  expect(state.defense.difficulty_multiplier).toBe(.7);
+  expect(state.defense.difficulty).toBe('normal');
+  expect(state.defense.difficulty_multiplier).toBe(1);
   expect(state.defense.started).toBe(false);
   expect(state.elapsed).toBe(0);
   expect(state.player.weapon1).toBe(0);
-  expect(state.player.weapon2).toBe(3);
+  expect(state.player.weapon2).toBe(2);
   expect(state.player.medkits).toBeUndefined();
   expect(state.player.grenades).toBe(1);
   expect(state.menu).toBe('');

@@ -71,7 +71,7 @@ func run() -> void:
 	sim.roster.clear()
 	sim.spawn(Vector2(0,3),"dancer")
 	var boss: Dictionary = sim.zombies[-1]
-	check(boss.chase_speed >= 2.3 and boss.chase_speed <= 2.6,"Boss speed is half the ordinary sampled speed")
+	check(boss.chase_speed >= 4.6 and boss.chase_speed <= 5.2,"Boss speed is the ordinary sampled speed")
 	sim.spawn(Vector2(2,3),"bucket")
 	game.ui.native_hud.sync()
 	check(game.ui.native_hud.boss_title.text.contains("90000") and game.ui.native_hud.boss_title.get_parent().visible,"Boss health HUD shows exact health on arrival")

@@ -54,6 +54,14 @@ func run() -> void:
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
+	check(p.weapon2 == 2 and p.ammo[2] == 15 and data.weapons[2].damage == 100,"Secondary pistol has a fifteen-round magazine and doubled base damage")
+	p.slot = 3
+	p.weapon = 6
+	p.switch = 0
+	sim.melee_swings[p.id] = {"elapsed":0.1}
+	check(sim.try_shove(p) and p.shove_anim == .32 and not sim.melee_swings.has(p.id),"Axe shove starts the animation and cancels an unfinished melee swing")
+	p.slot = 1
+	p.weapon = 0
 	check(progress.active_slot == 1 and sim.progression == progress.store and sim.wave == 1 and not sim.defense.started and sim.progression.data.coins == 0,"Selecting a new save creates a fresh preparation match")
 	var environment = game.arena.find_children("*","WorldEnvironment",true,false)[0].environment
 	check(environment.background_color.v < .2 and environment.ambient_light_energy <= .25 and game.arena.sun.light_energy < .4,"Native terrain uses night sky and moonlit exposure")
@@ -66,7 +74,7 @@ func run() -> void:
 	var turret: Dictionary = sim.defense_director.structures.find("turret_left")
 	Fixture.face(sim,p,"turret_left")
 	sim.events.clear()
-	Fixture.hold(sim,p,1.3)
+	Fixture.hold(sim,p,3.1)
 	check(sim.events.any(func(event): return event.kind == "world_upgrade" and event.id == "turret_left"),"Onsite E hold generates workshop feedback")
 	game.handle_effects(sim.events)
 	check(game.ui.current.is_empty() and not game.paused,"Onsite upgrade keeps the player in the world")
@@ -132,7 +140,7 @@ func run() -> void:
 		sim.roster.clear()
 		sim.step(.02)
 		sim.step(10)
-	check(sim.wave == 10 and sim.roster.count("dancer") == 1,"The tenth and final wave contains exactly one dancing boss")
+	check(sim.wave == 10 and sim.roster.count("dancer") == 0 and sim.zombies.filter(func(z): return z.kind == "dancer" and z.hp > 0).size() == 1,"The tenth and final wave contains exactly one dancing boss")
 	sim.elapsed += 1.2
 	hud.sync()
 	check(hud.wave_announcement.text == "第10波-最后一波！" and hud.wave_announcement.visible,"Final-wave announcement identifies the last wave")
@@ -141,7 +149,7 @@ func run() -> void:
 	sim.zombies.clear()
 	sim.spawn(Vector2(8,23),"dancer")
 	var boss: Dictionary = sim.zombies[-1]
-	check(boss.chase_speed >= 2.3 and boss.chase_speed <= 2.6,"Dancing boss uses half the ordinary movement speed")
+	check(boss.chase_speed >= 4.6 and boss.chase_speed <= 5.2,"Dancing boss uses the ordinary movement speed")
 	Boss.step(sim,9.9)
 	check(boss.dance_remaining == 0 and boss.summon_roster.is_empty(),"Boss cannot summon before ten seconds")
 	Boss.step(sim,.11)

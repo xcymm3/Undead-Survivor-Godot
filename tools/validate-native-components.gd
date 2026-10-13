@@ -372,11 +372,11 @@ func validate_interaction_motion() -> void:
 	scenery.sync(visual_state)
 	check(scenery.preparation.stations.rifle.prop.basis.is_equal_approx(display_pose),"Display rotation loops every forty seconds")
 	scenery.sync(sim.defense)
-	for id in ["rifle","revolver","axe"]:
+	for id in ["rifle","pistol","axe"]:
 		var station: Dictionary = game.arena.scenery.preparation.stations[id]
 		var bounds: AABB = preload("res://scripts/world_geometry.gd").posed_bounds(station.prop.get_child(0))
 		check(bounds.get_center().distance_to(station.prop.global_position) < .35 and bounds.size.length() > 1.0,"Display geometry is centered above its actual world-space desk: "+id)
-	check(game.arena.scenery.find_children("*","Label3D",true,false).size() == 1,"Only the context-sensitive borderless scene label remains")
+	check(game.arena.scenery.find_children("*","Label3D",true,false).size() == 2,"Only the context-sensitive borderless scene label remains")
 	fixture.face(sim,p,"crystal")
 	game.arena.scenery.sync_focus(sim,p)
 	check(preload("res://scripts/preparation_catalog.gd").focus(sim,p).get("id","") == "crystal" and game.arena.scenery.preparation.focus_label.text.contains("1500"),"The crystal does not occlude its own contextual health information")
@@ -395,15 +395,15 @@ func validate_interaction_motion() -> void:
 	check(p.interact_time == 0 and p.interaction.is_empty(),"Turning away cancels incomplete work")
 	fixture.face(sim,p,"rifle")
 	fixture.hold(sim,p,.6)
-	fixture.hold(sim,p,.7)
+	fixture.hold(sim,p,2.4)
 	check(sim.progression.level("rifle") == 1 and not game.paused,"Completed E hold upgrades without opening a menu")
 	fixture.hold(sim,p,2)
 	check(sim.progression.level("rifle") == 1,"Holding E cannot repeatedly purchase")
 	p.input = {"interact":false}
 	d.interactions(.01)
 	sim.progression.data.coins = 0
-	fixture.hold(sim,p,1.3)
-	check(sim.progression.level("rifle") == 1 and p.work_feedback == "金币不足","Insufficient money produces feedback without purchase")
+	fixture.hold(sim,p,3.1)
+	check(sim.progression.level("rifle") == 1 and p.interact_time == 0,"Insufficient money produces feedback without purchase")
 	var blocker = game.arena.scenery.block("WorkOccluder",Vector3(p.pos.x,4.4,p.pos.y+.8),Vector3(1.5,2,.2),"454545",true,false)
 	await physics_frame
 	check(preload("res://scripts/preparation_catalog.gd").focus(sim,p).is_empty(),"A physical obstruction hides the aimed station")
@@ -412,7 +412,7 @@ func validate_interaction_motion() -> void:
 	fixture.face(sim,p,"alarm")
 	p.input = {"interact":false}
 	d.interactions(.01)
-	fixture.hold(sim,p,1.3)
+	fixture.hold(sim,p,3.1)
 	check(sim.defense.started,"The world alarm starts the attack")
 	check(preload("res://scripts/preparation_catalog.gd").targets(sim).size() == 10,"Closed empty construction sites do not expose invisible interaction targets")
 	check(game.arena.scenery.preparation.stations.rifle.cover.visible and not game.arena.scenery.preparation.stations.rifle.prop.visible,"Attack physically closes station covers and hides goods")

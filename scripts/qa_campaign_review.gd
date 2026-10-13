@@ -32,6 +32,19 @@ func stage() -> void:
 		game.camera.look_at(center)
 		game.camera.fov = 61
 		game.weapon.hide()
+		if scenario.begins_with("interaction_"):
+			sim.defense.started = false
+			sim.progression.data.coins = 10000
+			var fixture = preload("res://tools/preparation-fixture.gd")
+			var id = "pistol" if scenario == "interaction_station" else "bridge_gate"
+			if id == "bridge_gate": fixture.buy(sim,p,id)
+			fixture.face(sim,p,id)
+			fixture.hold(sim,p,1.65)
+			game.camera.position = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
+			game.camera.rotation = Vector3(p.pitch,p.yaw,0)
+			game.camera.fov = 74
+			game.weapon.show()
+			game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-50))
 		if scenario == "crystal_half": sim.defense.crystal_hp = 750
 		if scenario == "crystal_broken":
 			sim.damage_crystal({},1500)
@@ -75,4 +88,4 @@ func stage() -> void:
 	for i in 5: await get_tree().process_frame
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
-	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"menu":game.ui.current,"boss":game.ui.native_hud.boss_title.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible,"cracks":game.arena.scenery.crystal_damage.cracks.visible,"fragments":game.arena.scenery.crystal_damage.debris.visible}),true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"ring":game.arena.scenery.preparation.interaction_ring.visible,"payments":game.arena.scenery.preparation.money_flights.multimesh.visible_instance_count,"scenario":scenario,"menu":game.ui.current,"boss":game.ui.native_hud.boss_title.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible,"cracks":game.arena.scenery.crystal_damage.cracks.visible,"fragments":game.arena.scenery.crystal_damage.debris.visible}),true)
