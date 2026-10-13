@@ -164,7 +164,7 @@
       "capacity": 1,
       "interval": 0.6,
       "reloadDuration": 0,
-      "automatic": false,
+      "automatic": true,
       "damage": 100,
       "pellets": 3,
       "spread": 0.13,
