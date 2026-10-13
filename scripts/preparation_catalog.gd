@@ -22,7 +22,7 @@ static func targets(sim) -> Array:
 		# The lower gate's end posts border the sealed shelf/cliff. Keep its
 		# interaction on the accessible bridge-facing panel inside the rail.
 		if item.kind == "gate": point.x = -1.8 if item.id == "bridge_entry_gate" else -4.65
-		result.append({"id":item.id,"position":point,"radius":.8,"range":3.2})
+		result.append({"id":item.id,"position":point,"radius":.8,"range":3.2,"gate_body":item.kind == "gate" and item.get("owned",false)})
 	result.append({"id":"crystal","position":Vector3(Layout.CRYSTAL.x,5.0,Layout.CRYSTAL.y),"radius":1.1,"range":5.0})
 	return result
 
@@ -34,6 +34,18 @@ static func focus(sim, p: Dictionary) -> Dictionary:
 	var selected: Dictionary = {}
 	var nearest = INF
 	for entry in targets(sim):
+		if entry.get("gate_body",false):
+			var gate = sim.defense_director.structures.find(entry.id)
+			var structures = sim.defense_director.structures
+			var box = AABB(Vector3(gate.pos.x-structures.GATE_WIDTH/2,gate.height,gate.pos.y-structures.GATE_DEPTH/2),Vector3(structures.GATE_WIDTH,structures.GATE_HEIGHT,structures.GATE_DEPTH))
+			var distance = gate_distance(box,eye,direction,entry.range)
+			if distance < 0 or distance >= nearest: continue
+			var point = eye+direction*distance
+			if not sim.arena.surface_hit(eye,point-direction*.02,entry.id).is_empty(): continue
+			nearest = distance
+			selected = entry.duplicate()
+			selected.position = point
+			continue
 		var delta: Vector3 = entry.position-eye
 		var along: float = delta.dot(direction)
 		if delta.length() > entry.range or along <= 0 or (delta-direction*along).length() > entry.radius: continue
@@ -82,3 +94,20 @@ static func description(sim, id: String) -> String:
 
 static func number(value: float) -> String:
 	return ("%.1f" % value).trim_suffix(".0")
+
+static func gate_distance(box: AABB, origin: Vector3, direction: Vector3, reach: float) -> float:
+	var near = 0.0
+	var far = reach
+	for axis in 3:
+		if absf(direction[axis]) < .000001:
+			if origin[axis] < box.position[axis] or origin[axis] > box.end[axis]: return -1.0
+			continue
+		var a = (box.position[axis]-origin[axis])/direction[axis]
+		var b = (box.end[axis]-origin[axis])/direction[axis]
+		near = maxf(near,minf(a,b))
+		far = minf(far,maxf(a,b))
+		if near > far: return -1.0
+	return near
+
+static func payment_interval(amount: int) -> float:
+	return .18 if amount <= 100 else .09 if amount <= 1000 else .045

@@ -161,8 +161,9 @@ func sync_focus(sim, p: Dictionary) -> void:
 		interaction_ring.sync(time/Catalog.HOLD_SECONDS,eye,enabled)
 		if enabled and price > 0:
 			var from = eye+Basis.from_euler(Vector3(p.pitch,p.yaw,0))*Vector3(.3,-.35,-.6)
-			for i in ceili(time/.18):
-				var age = time-i*.18
+			var interval = Catalog.payment_interval(price)
+			for i in ceili(time/interval):
+				var age = time-i*interval
 				if age <= 0 or age >= .8: continue
 				var t = age/.8
 				var point = from.lerp(choice.position,t)+Vector3(0,sin(t*PI)*.23,0)
