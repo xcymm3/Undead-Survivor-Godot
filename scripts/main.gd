@@ -315,7 +315,6 @@ func handle_effects(events: Array) -> void:
 		match event.kind:
 			"world_upgrade":
 				sound.play_at("reload",event.position,-12)
-				effects.burst(event.position,true,false)
 			"disco":
 				sound.play_at("disco",event.position,-8)
 			"shove":
@@ -334,7 +333,6 @@ func handle_effects(events: Array) -> void:
 				effects.eject_shell(event.from,event.to-event.from)
 				sound.play_at(sound.weapon_cue(0),event.from,-12)
 			"structure_hit":
-				effects.burst(event.position,true,false)
 				sound.play_at("enemy-impact",event.position,-10)
 			"structure_destroyed":
 				effects.explosion(event.position)

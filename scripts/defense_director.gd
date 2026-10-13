@@ -90,6 +90,8 @@ func interactions(dt: float) -> void:
 		p["focus"] = choice
 		p.hint = ""
 		if not choice.is_empty() and not preload("res://scripts/preparation_catalog.gd").available(sim,choice.id): choice = {}
+		if not choice.is_empty() and choice.id != "alarm":
+			if sim.progression.data[sim.progression.currency(choice.id)] < sim.progression.cost(choice.id): choice = {}
 		if p.pickup_latched or not input.get("interact",false): choice = {}
 		if choice.is_empty():
 			p.interaction = ""

@@ -5,8 +5,8 @@ var stations: Dictionary = {}
 var blueprints: Dictionary = {}
 var focus_label: Label3D
 var alarm_light: OmniLight3D
-var work_tool: Node3D
-var work_glow: OmniLight3D
+var interaction_ring: Node3D
+var money_flights
 
 func _ready() -> void:
 	for entry in Catalog.stations(): build_station(entry)
@@ -32,18 +32,11 @@ func _ready() -> void:
 	focus_label.no_depth_test = true
 	focus_label.visible = false
 	add_child(focus_label)
-	work_tool = Node3D.new()
-	work_tool.name = "WorkshopTool"
-	add_child(work_tool)
-	var handle = block("WeldingHandle",Vector3.ZERO,Vector3(.08,.08,.3),"796d55",false)
-	handle.reparent(work_tool)
-	var tip = cylinder(Vector3(0,0,-.18),.035,.08,"b7e7ee",true)
-	tip.reparent(work_tool)
-	work_glow = OmniLight3D.new()
-	work_glow.light_color = Color("b2ecff")
-	work_glow.omni_range = 1.0
-	work_tool.add_child(work_glow)
-	work_tool.visible = false
+	interaction_ring = preload("res://scripts/interaction_ring.gd").new()
+	add_child(interaction_ring)
+	interaction_ring.hide()
+	money_flights = preload("res://scripts/coin_view.gd").new()
+	add_child(money_flights)
 
 func build_station(entry: Dictionary) -> void:
 	var p: Vector3 = entry.position
@@ -157,10 +150,24 @@ func sync(state: Dictionary) -> void:
 
 func sync_focus(sim, p: Dictionary) -> void:
 	var choice: Dictionary = Catalog.focus(sim,p)
-	work_tool.visible = not choice.is_empty() and p.get("interaction","") == choice.get("id","") and choice.get("id","") != "alarm"
-	if work_tool.visible:
-		work_tool.position = choice.position+Vector3(.28,.05+sin(p.interact_time*20)*.03,.35)
-		work_glow.light_energy = .4+absf(sin(p.interact_time*33))*.8
+	interaction_ring.visible = not choice.is_empty() and Catalog.available(sim,choice.get("id",""))
+	var drops: Array = []
+	if interaction_ring.visible:
+		interaction_ring.position = choice.position+Vector3(0,.38,0)
+		var price: int = sim.progression.cost(choice.id) if choice.id != "alarm" else 0
+		var enabled: bool = sim.progression.data[sim.progression.currency(choice.id)] >= price
+		var time: float = p.interact_time if p.get("interaction","") == choice.id else 0.0
+		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
+		interaction_ring.sync(time/Catalog.HOLD_SECONDS,eye,enabled)
+		if enabled and price > 0:
+			var from = eye+Basis.from_euler(Vector3(p.pitch,p.yaw,0))*Vector3(.3,-.35,-.6)
+			for i in ceili(time/.18):
+				var age = time-i*.18
+				if age <= 0 or age >= .8: continue
+				var t = age/.8
+				var point = from.lerp(choice.position,t)+Vector3(0,sin(t*PI)*.23,0)
+				drops.append({"pos":point,"age":age,"value":1,"arrival":maxf(0,(t-.8)*5)})
+	money_flights.sync(drops)
 	focus_label.visible = not choice.is_empty()
 	if choice.is_empty(): return
 	var text = Catalog.description(sim,choice.id)
@@ -168,8 +175,6 @@ func sync_focus(sim, p: Dictionary) -> void:
 		var price: int = sim.progression.cost(choice.id) if choice.id != "alarm" else 0
 		var wallet = sim.progression.currency(choice.id)
 		if sim.progression.data[wallet] < price: text += "\n钻石不足" if wallet == "diamonds" else "\n金币不足"
-		elif p.get("interaction","") == choice.id: text += "\n"+"━".repeat(clampi(ceili(p.interact_time/Catalog.HOLD_SECONDS*8),0,8))+"─".repeat(clampi(8-ceili(p.interact_time/Catalog.HOLD_SECONDS*8),0,8))
-		elif choice.id != "alarm": text += "\n长按 E"
 	if p.get("work_feedback_id","") == choice.id and p.get("work_feedback_until",0.0) > sim.defense.prop_clock: text += "\n"+p.work_feedback
 	focus_label.text = text
 	focus_label.position = choice.position+Vector3(0,.95,0)

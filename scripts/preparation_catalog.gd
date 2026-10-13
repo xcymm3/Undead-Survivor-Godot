@@ -1,7 +1,7 @@
 extends RefCounted
 ## Shared world positions, gaze selection and compact descriptions.
 const Layout = preload("res://scripts/defense_layout.gd")
-const HOLD_SECONDS = 1.2
+const HOLD_SECONDS = 3.0
 const NAMES = {"rifle":"步枪","pistol":"手枪","axe":"消防斧","grenade":"手雷","strong":"强壮","precise":"精准","swift":"迅捷","supply":"补给","turret_left":"炮塔","turret_right":"炮塔","bridge_gate":"栅栏门","bridge_entry_gate":"栅栏门","crystal_mine":"地雷","ramp_mine":"地雷","gate_mine":"地雷","alarm":"警报器","crystal":"水晶"}
 
 static func stations() -> Array:
@@ -56,7 +56,7 @@ static func available(sim, id: String) -> bool:
 static func description(sim, id: String) -> String:
 	var profile = sim.progression
 	if id == "crystal": return "水晶\n%d / %d" % [sim.defense.crystal_hp,sim.defense.crystal_max_hp]
-	if id == "alarm": return "进攻中" if sim.defense.started else "开始进攻\n长按 E"
+	if id == "alarm": return "进攻中" if sim.defense.started else "开始进攻"
 	var price: int = profile.cost(id)
 	var cost_text = "%d%s" % [price,"◆" if id in profile.TALENTS else "$"] if price >= 0 else "MAX"
 	var level_text = "LV%d" % (profile.level(id)+1) if id not in profile.TALENTS else "LV%d / 10" % profile.level(id)
