@@ -43,6 +43,8 @@ var earned_diamonds = 0
 var boss_victory = false
 var paths: Dictionary = {}
 var crowd_buckets: Dictionary = {}
+var player_route_cache: Dictionary = {}
+var player_cell_cache: Dictionary = {}
 # Authority-only swing history; clients receive the resulting damage and animation.
 var melee_swings: Dictionary = {}
 const SHOVE_INTERVAL = .65
@@ -112,6 +114,8 @@ func start(_game_mode: String = "defense") -> void:
 	boss_victory = false
 	coin_drops.clear()
 	paths.clear()
+	player_route_cache.clear()
+	player_cell_cache.clear()
 	roster.clear()
 	wave_total = 0
 	wave = 1
@@ -140,7 +144,6 @@ func spawn(pos: Vector2, kind: String) -> void:
 	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"spawn_wave":wave,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
 	if kind == "crawler": zombies[-1].chase_speed *= .85
 	if kind == "dancer":
-		zombies[-1].chase_speed *= .5
 		zombies[-1].max_hp = health
 		zombies[-1].summon_clock = preload("res://scripts/dancer_boss.gd").INTERVAL
 		zombies[-1].dance_remaining = 0.0
@@ -251,27 +254,46 @@ func crystal_target() -> Dictionary:
 	return {"id":"crystal","pos":Data.Maps.Defense.CRYSTAL,"height":Data.Maps.Defense.height(Data.Maps.Defense.CRYSTAL),"hp":defense.get("crystal_hp",0),"is_crystal":true}
 
 func choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
-	# Imps and giants attack the crystal or defenses, never a player, even
-	# when a player body-blocks them at point-blank range.
-	var targets: Array = living.duplicate()
-	if mode == "defense" and z.kind in ["imp","giant"]: targets.clear()
-	if mode == "defense" and defense.get("crystal_hp",0) > 0: targets.append(crystal_target())
-	if defense_director: targets.append_array(defense_director.structures.targets(z.pos))
-	var target: Dictionary = targets[0]
-	var nearest := INF
-	for candidate in targets:
-		if mode == "defense" and not candidate.get("is_crystal",false) and candidate.pos.distance_to(Data.Maps.Defense.CRYSTAL) < 5.0:
-			var eye = Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+1.1,z.pos.y)
-			var player_eye = Vector3(candidate.pos.x,candidate.height+1.1,candidate.pos.y)
-			if not arena.surface_hit(eye,player_eye).is_empty(): continue
+	var buildings: Array = []
+	if mode == "defense" and defense.get("crystal_hp",0) > 0: buildings.append(crystal_target())
+	if defense_director:
+		buildings.append_array(defense_director.structures.targets(z.pos))
+		for item in defense.structures:
+			if item.kind == "gate" and item.hp > 0: buildings.append(defense_director.structures.target(item,z.pos))
+	var target: Dictionary = buildings[0] if not buildings.is_empty() else living[0]
+	var nearest = INF
+	for candidate in buildings:
 		var distance: float = z.pos.distance_squared_to(candidate.pos)
 		if distance < nearest:
+			nearest = distance
+			target = candidate
+	if z.kind not in ["imp","giant"]:
+		for candidate in living:
+			var distance: float = z.pos.distance_squared_to(candidate.pos)
+			if distance > 225 or distance >= nearest: continue
+			if not player_reachable(z,candidate): continue
 			nearest = distance
 			target = candidate
 	if defense_director:
 		var barrier: Dictionary = defense_director.structures.barrier(z.pos,target.pos)
 		if not barrier.is_empty(): return barrier
 	return target
+
+func player_reachable(z: Dictionary, p: Dictionary) -> bool:
+	if absf(p.height-Data.enemy_ground_height(p.pos,map_id)) > 1.0: return false
+	var endpoint: Dictionary = player_cell_cache.get(p.id,{})
+	var endpoint_state = [p.pos,arena.navigation_structures]
+	if endpoint.get("state",[]) != endpoint_state or elapsed >= endpoint.get("until",-1.0):
+		endpoint = {"state":endpoint_state.duplicate(true),"until":elapsed+.15,"cell":arena.nearest_cell(p.pos)}
+		player_cell_cache[p.id] = endpoint
+	if endpoint.cell.x < 0: return false
+	var key = str(z.id)+":"+str(p.id)
+	var cached: Dictionary = player_route_cache.get(key,{})
+	var state = [Vector2i(z.pos/2),Vector2i(p.pos/2),arena.navigation_structures]
+	if cached.get("state",[]) == state and elapsed < cached.get("until",-1.0): return cached.reachable
+	var reachable = not arena.path_to(z.pos,p.pos).is_empty()
+	player_route_cache[key] = {"state":state.duplicate(true),"until":elapsed+.25,"reachable":reachable}
+	return reachable
 
 func crystal_attack_visible(z: Dictionary) -> bool:
 	var offset: Vector2 = z.pos-Data.Maps.Defense.CRYSTAL

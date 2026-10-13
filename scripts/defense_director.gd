@@ -34,6 +34,14 @@ func begin_wave() -> void:
 	sim.spawned = 0
 	sim.rest = 0.0
 	sim.prepare_wave()
+	if sim.wave == 10 and "dancer" in sim.roster:
+		var point = sim.defense_spawner.random_point()
+		for attempt in 4096:
+			if sim.defense_spawner.ground_clear(point): break
+			point = sim.defense_spawner.random_point()
+		sim.spawn(point,"dancer")
+		sim.roster.erase("dancer")
+		sim.spawned = 1
 	launched_waves[sim.wave] = true
 	state.started = true
 	state["wave_started_at"] = sim.elapsed
