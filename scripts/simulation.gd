@@ -627,7 +627,7 @@ func charge_knockback(p: Dictionary, direction: Vector2) -> void:
 
 func try_shove(p: Dictionary) -> bool:
 	if p.hp <= 0 or p.shove_cd > 0 or p.shove_gap > 0 or p.switch > 0: return false
-	if equipment and (p.slot == 3 or p.interaction != ""): return false
+	if equipment and p.interaction != "": return false
 	p.shoves = p.get("shoves",0)+1
 	p.shove_gap = SHOVE_INTERVAL
 	p.shove_anim = .32

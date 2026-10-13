@@ -133,6 +133,10 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		var push = sin((1-p.shove_anim/.32)*PI)
 		position.z -= push*.22
 		rotation.x += push*.2
+		if w.id == "axe":
+			position.x -= push*.13
+			rotation.z -= push*.55
+			position.z -= push*.12
 	# Carry the gun low and across the body; hands follow their shared weapon root.
 	# The two-foot rhythm adds vertical bounce and a slower lateral sway.
 	if sprint_blend > 0:
