@@ -15,7 +15,6 @@ test('吊桥水晶防守使用真实输入换装并长按警报器开始进攻',
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   await page.waitForFunction(() => window.__survivorSnapshot?.map_id === 'graypine_defense');
-  await clickButton(page, '简单');
   await page.screenshot({ path: info.outputPath('defense-home.png') });
   await clickButton(page, '开始防守');
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense' && window.__survivorSnapshot?.running);
@@ -31,7 +30,7 @@ test('吊桥水晶防守使用真实输入换装并长按警报器开始进攻',
   expect(state.menu).toBe('');
   expect(state.paused).toBe(false);
   await page.keyboard.press('2');
-  await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 2 && window.__survivorSnapshot?.player?.weapon === 3);
+  await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 2 && window.__survivorSnapshot?.player?.weapon === 2);
   await page.keyboard.down('a');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.x < -3.8);
   await page.keyboard.up('a');
