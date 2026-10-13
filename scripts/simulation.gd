@@ -483,7 +483,9 @@ func step_coins(dt: float) -> void:
 			var curve: Vector3 = (start+destination)*.5+Vector3.UP*1.8
 			drop.pos = start.lerp(curve,t).lerp(curve.lerp(destination,t),t)
 			drop.arrival = smoothstep(.8,1.0,t)
-		if drop.age >= .45 and drop.pos.distance_squared_to(destination) < .09: drop.age = 5.0
+		if drop.age >= .45 and drop.pos.distance_squared_to(destination) < .09:
+			events.append({"kind":"coin_pickup","player":owner.id})
+			drop.age = 5.0
 	coin_drops = coin_drops.filter(func(drop): return drop.age < 5.0)
 
 func shop_available(p: Dictionary) -> bool:

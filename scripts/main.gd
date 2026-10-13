@@ -236,6 +236,7 @@ func _physics_process(dt: float) -> void:
 	if sim.failed or sim.won: finish_run()
 
 func _process(dt: float) -> void:
+	sound.sync_work(local_pawn() if sim else {},running and not paused and focused and not finished)
 	if not focused: return
 	if not running or (paused and not Session.playing) or (finished and death_timer > 1.2 and ui.current == "result"):
 		# Normal menus use the engine render loop, including animations and async UI.
@@ -313,6 +314,8 @@ func handle_effects(events: Array) -> void:
 	for event in events:
 		if not event is Dictionary or not event.has("kind"): continue
 		match event.kind:
+			"coin_pickup":
+				if event.player == Session.local_id: sound.play("coin-pickup",-18)
 			"world_upgrade":
 				sound.play_at("reload",event.position,-12)
 			"disco":
@@ -328,7 +331,7 @@ func handle_effects(events: Array) -> void:
 			"enemy_windup", "enemy_impact", "enemy_miss":
 				sound.play_at(event.kind.replace("_","-"),event.position,-12)
 			"crystal_hit":
-				sound.play_at("enemy-impact",event.position,-7)
+				sound.play_at("crystal-hit",event.position,-7)
 			"turret_shot":
 				effects.eject_shell(event.from,event.to-event.from)
 				sound.play_at(sound.weapon_cue(0),event.from,-12)
@@ -413,7 +416,9 @@ func finish_run() -> void:
 
 func update_finish_camera(dt: float) -> void:
 	death_timer += dt
+	var previous_events: int = sim.events.size()
 	sim.step_coins(dt)
+	handle_effects(sim.events.slice(previous_events))
 	weapon.visible = false
 	sim.defense.prop_clock += dt
 	arena.scenery.sync(sim.defense)

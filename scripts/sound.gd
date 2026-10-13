@@ -2,6 +2,9 @@ extends Node
 const WEAPON_GAINS = {"rifle":-10.0,"p90":-12.0,"pistol":-10.0,"revolver":-8.0,"shotgun":-8.0,"sniper":-8.0,"axe":-9.0,"flamethrower":-16.0,"auto-shotgun":-10.0,"heavy-machine-gun":-12.0}
 var streams: Dictionary = {}
 var players: Array[AudioStreamPlayer] = []
+var work: AudioStreamPlayer
+var work_id = ""
+var work_time = 0.0
 var music: AudioStreamPlayer
 var index = 0
 var spatial_players: Array[AudioStreamPlayer3D] = []
@@ -38,6 +41,10 @@ func sync_enemy_steps(enemies: Array, listener: Vector3, dt: float) -> void:
 		if step_clock-step_due[id] > 3: step_due.erase(id)
 
 func _ready() -> void:
+	for cue in ["crystal-hit","coin-pickup","purchase"]: streams[cue] = preload("res://scripts/economy_audio.gd").make(cue)
+	work = AudioStreamPlayer.new()
+	work.stream = streams.purchase
+	add_child(work)
 	streams["menu-hover"] = preload("res://scripts/menu_audio.gd").hover()
 	streams["disco"] = load("res://assets/audio/disco.wav")
 	for cue in ["grenade-throw","grenade-fuse"]: streams[cue] = load("res://assets/audio/%s.wav" % cue)
@@ -105,6 +112,7 @@ func playback_enabled() -> bool:
 	return DisplayServer.get_name() != "headless" and "--silent" not in OS.get_cmdline_user_args()
 
 func clear_effects() -> void:
+	sync_work({},false)
 	step_due.clear()
 	step_clock = 0.0
 	for player in players:
@@ -124,3 +132,16 @@ func _exit_tree() -> void:
 	for player in spatial_players:
 		player.stop()
 		player.stream = null
+
+func sync_work(p: Dictionary, enabled: bool) -> void:
+	var id = str(p.get("interaction","")) if enabled and p.get("hp",0) > 0 else ""
+	var time = float(p.get("interact_time",0.0))
+	if id.is_empty():
+		work.stop()
+		work_id = ""
+		work_time = 0.0
+		return
+	work.volume_db = -28+14*clampf(time/3.0,0,1)
+	if (id != work_id or time < work_time) and playback_enabled(): work.play(minf(time,2.99))
+	work_id = id
+	work_time = time
