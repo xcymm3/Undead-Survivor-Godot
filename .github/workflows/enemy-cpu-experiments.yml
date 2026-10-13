@@ -1,12 +1,16 @@
 name: 尸潮独立 CPU 对照实验
 on:
   workflow_call:
+    inputs:
+      formal_counts:
+        type: string
+        default: '50,100,200,300'
 permissions:
   contents: read
 jobs:
   profile:
     runs-on: windows-2022
-    timeout-minutes: 40
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -23,15 +27,23 @@ jobs:
           key: windows-godot-4.5.2-steam-4.16-${{ hashFiles('tools/setup-runtime.ps1', 'tools/setup-web-templates.ps1') }}
       - run: npm ci --no-audit --no-fund
       - run: npm run verify
-      - name: 串行运行独立实验及分段诊断
-        run: node tools/run-enemy-experiments.mjs --diagnostics
-      - run: node tools/summarize-enemy-experiments.mjs
+      - name: 串行运行独立筛选
+        run: node tools/run-enemy-lab.mjs --screen-only --formal-counts=${{ inputs.formal_counts }}
+      - name: 保存短筛选结果（长采样仍待确认）
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: enemy-cpu-screen-${{ github.sha }}
+          path: artifacts/enemy-lab/
+          retention-days: 30
+      - name: 长采样配对确认与动态耐久
+        run: node tools/run-enemy-lab.mjs --resume --formal-counts=${{ inputs.formal_counts }}
+      - run: node tools/summarize-enemy-lab.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: enemy-cpu-experiments-${{ github.sha }}
           path: |
-            artifacts/enemy-experiments/
+            artifacts/enemy-lab/
             docs/performance/
             artifacts/acceptance.json
           retention-days: 30

@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { tmpdir, cpus, totalmem, release, arch } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { applyVariant, applyDiagnosticDetails } from './enemy-experiment-variants.mjs';
+import { applyVariant, applyDiagnosticDetails } from './enemy-lab-variants.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const option = name => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length+3);
@@ -41,7 +41,7 @@ const godot = path.join(root, '.runtime', 'Godot_v4.5.2-stable_win64_console.exe
 async function launch(name, args, timeoutMs) {
   const child = spawn(godot, ['--headless', '--audio-driver', 'Dummy', '--path', snapshot, ...args], { cwd: snapshot, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
-  const append = data => { output += data; if (name !== 'import') process.stdout.write(data); };
+  const append = data => { output += data; if (/^(SCRIPT ERROR|ERROR):/m.test(output)) child.kill(); if (name !== 'import') process.stdout.write(data); };
   child.stdout.on('data', append); child.stderr.on('data', append);
   const timer = setTimeout(() => { child.kill(); }, timeoutMs);
   const code = await new Promise((resolve, reject) => { child.on('error', reject); child.on('close', resolve); }).finally(() => clearTimeout(timer));
@@ -54,16 +54,16 @@ if (process.argv.includes('--regressions')) {
   for (const name of ['navigation-regressions','spread-ballistics','native-components']) {
     await launch(name, ['--script', `res://tools/validate-${name}.gd`, '--', '--automation','--silent'], 300000);
   }
-  if (variant === 'rays') await launch('experiment-rays', ['--script','res://tools/validate-experiment-rays.gd','--','--automation','--silent'],300000);
-  if (variant === 'animation') await launch('experiment-animation', ['--script','res://tools/validate-experiment-animation.gd','--','--automation','--silent'],300000);
+  if (variant.includes('ray')||variant.includes('pose_cache')) await launch('experiment-rays', ['--script','res://tools/validate-experiment-rays.gd','--','--automation','--silent'],300000);
+  if (variant.includes('animation')) await launch('experiment-animation', ['--script','res://tools/validate-experiment-animation.gd','--','--automation','--silent'],300000);
 }
 if (process.argv.includes('--prepare-only')) { console.log(`Prepared ${variant}: ${snapshot}`); process.exit(0); }
 const pilot = process.argv.includes('--pilot');
 const profileArgs = pilot ? ['--counts=50', '--warmup=30', '--samples=60', '--rounds=1'] : ['--warmup=120', '--samples=300', '--rounds=2'];
-profileArgs.push(...process.argv.slice(2).filter(arg => /^--(counts|scenarios|warmup|samples|rounds)=/.test(arg)));
+profileArgs.push(...process.argv.slice(2).filter(arg => /^--(counts|scenarios|warmup|samples|rounds|wall-seconds|warmup-seconds|epoch-frames)=/.test(arg)));
 if (process.argv.includes('--control')) profileArgs.push('--unprofiled');
 if (process.argv.includes('--reverse-order')) profileArgs.push('--reverse-order');
-await launch('profile', ['--script', 'res://tools/profile-enemy-cpu.gd', '--', '--automation', '--silent', ...profileArgs], 1800000);
+await launch('profile', ['--script', 'res://tools/profile-enemy-cpu.gd', '--', '--automation', '--silent', ...profileArgs], 10800000);
 const result = JSON.parse(await readFile(path.join(snapshot, 'artifacts', 'enemy-cpu-profile.json'), 'utf8'));
 result.source = metadata;
 result.finishedAt = new Date().toISOString();
