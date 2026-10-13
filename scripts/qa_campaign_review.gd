@@ -35,11 +35,14 @@ func stage() -> void:
 		if scenario.begins_with("interaction_"):
 			sim.defense.started = false
 			sim.progression.data.coins = 10000
-			var fixture = preload("res://tools/preparation-fixture.gd")
 			var id = "pistol" if scenario == "interaction_station" else "bridge_gate"
-			if id == "bridge_gate": fixture.buy(sim,p,id)
-			fixture.face(sim,p,id)
-			fixture.hold(sim,p,1.65)
+			if id == "bridge_gate":
+				face(sim,p,id)
+				sim.purchase_upgrade(id,p)
+			face(sim,p,id)
+			p.input = {"interact":true}
+			p.input_age = 0
+			sim.defense_director.interactions(1.65)
 			game.camera.position = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 			game.camera.rotation = Vector3(p.pitch,p.yaw,0)
 			game.camera.fov = 74
@@ -89,3 +92,16 @@ func stage() -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"ring":game.arena.scenery.preparation.interaction_ring.visible,"payments":game.arena.scenery.preparation.money_flights.multimesh.visible_instance_count,"scenario":scenario,"menu":game.ui.current,"boss":game.ui.native_hud.boss_title.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible,"cracks":game.arena.scenery.crystal_damage.cracks.visible,"fragments":game.arena.scenery.crystal_damage.debris.visible}),true)
+
+func face(sim, p: Dictionary, id: String) -> void:
+	for entry in preload("res://scripts/preparation_catalog.gd").targets(sim):
+		if entry.id != id: continue
+		var point: Vector3 = entry.position
+		p.pos = Vector2(point.x,point.z)+Vector2(0,-2 if id == "pistol" else 2)
+		p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
+		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
+		var direction = (point-eye).normalized()
+		p.yaw = atan2(-direction.x,-direction.z)
+		p.pitch = asin(direction.y)
+		p.input_age = 0
+		return
