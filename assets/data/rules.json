@@ -22,7 +22,10 @@
         -0.46
       ],
       "tier": "A",
-      "adsSpread": 0.006
+      "adsSpread": 0.006,
+      "piercing": true,
+      "penetrationTargets": 3,
+      "penetrationDamage": 0.6666666666666666
     },
     {
       "id": "p90",
