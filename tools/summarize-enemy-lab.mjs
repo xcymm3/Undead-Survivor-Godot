@@ -1,4 +1,5 @@
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
+const safeLabel=s=>s.replace(/[^a-zA-Z0-9_.+-]/g,'-');
 const dir=process.argv.find(a=>a.startsWith('--output-dir='))?.slice(13)??'artifacts/enemy-lab';
 const index=JSON.parse(await readFile(`${dir}/index.json`,'utf8'));
 const complete=JSON.parse(await readFile(`${dir}/complete.json`,'utf8'));
@@ -28,7 +29,7 @@ for(const variant of formalVariants.filter(v=>v!=='baseline'))for(const count of
  const pairs=[];
  for(let round=1;round<=5;round++){
   const b=summary.formal.find(c=>c.label===`formal-${round}-baseline`&&c.count===count&&c.scenario===scenario);
-  const c=summary.formal.find(c=>c.label===`formal-${round}-${variant}`&&c.count===count&&c.scenario===scenario);
+  const c=summary.formal.find(c=>c.label===safeLabel(`formal-${round}-${variant}`)&&c.count===count&&c.scenario===scenario);
   if(!b||!c||b.wall_seconds<60||c.wall_seconds<60)throw Error('Missing five-round long confirmation');
   pairs.push({round,baseline_p95:b.metrics.cpu_sections_ms.p95,candidate_p95:c.metrics.cpu_sections_ms.p95,gain:1-c.metrics.cpu_sections_ms.p95/b.metrics.cpu_sections_ms.p95,p99_gain:1-c.metrics.cpu_sections_ms.p99/b.metrics.cpu_sections_ms.p99});
  }

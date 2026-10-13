@@ -17,6 +17,11 @@ function status(state,label,variant,progress=''){
  statusWrites=statusWrites.then(()=>writeFile(`${dir}/progress.json`,JSON.stringify(value,null,2)));return statusWrites;
 }
 async function run(variant,label,options,regressions=false){
+ label=label.replace(/[^a-zA-Z0-9_.+-]/g,'-');
+ if(resume&&runs.some(r=>r.label===label&&r.variant===variant)){
+  console.log(`LAB REUSE ${label}: completed frozen-source data`);
+  return JSON.parse(await readFile(`${dir}/${label}/results.json`,'utf8'));
+ }
  const args=['tools/run-enemy-cpu-profile.mjs',`--variant=${variant}`,`--output=${dir.replace(/^artifacts\//,'')}/${label}`,'--control','--rounds=1',...options];
  if(regressions)args.push('--regressions');
  await status("running",label,variant);
