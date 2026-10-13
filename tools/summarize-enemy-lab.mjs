@@ -1,5 +1,5 @@
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
-const dir='artifacts/enemy-lab';
+const dir=process.argv.find(a=>a.startsWith('--output-dir='))?.slice(13)??'artifacts/enemy-lab';
 const index=JSON.parse(await readFile(`${dir}/index.json`,'utf8'));
 const complete=JSON.parse(await readFile(`${dir}/complete.json`,'utf8'));
 const selection=JSON.parse(await readFile(`${dir}/selection.json`,'utf8'));

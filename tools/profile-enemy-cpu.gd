@@ -174,6 +174,7 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 	var valid = sim.zombies.size() == count
 	var frame = 0
 	var warmup_started = Time.get_ticks_usec()
+	var progress_at = warmup_started
 	var case_warmup = 2147483647 if warmup_seconds > 0 else warmup
 	var measured_started = 0
 	var presentation_ms = 0.0
@@ -263,6 +264,9 @@ func run_case(count: int, scenario: String, round_index: int) -> Dictionary:
 			cold_samples.append({"simulation_ms":simulation_ms,"animation_submit_ms":animation_ms,"crosshair_ms":aim_ms,"cpu_sections_ms":simulation_ms+animation_ms+aim_ms})
 			initial_hits = p.hits
 		valid = valid and not sim.failed and (sim.alive_count() >= count if scenario == "boss" else sim.alive_count() == count)
+		if Time.get_ticks_usec()-progress_at >= 5000000:
+			progress_at = Time.get_ticks_usec()
+			print("CPU PROFILE PROGRESS ",JSON.stringify({"count":count,"scenario":scenario,"round":round_index,"phase":"sample" if measured_started > 0 else "warmup","frames":frame,"samples":samples.size(),"sample_seconds":float(progress_at-measured_started)/1000000 if measured_started > 0 else 0.0,"mean_cpu_ms":cpu_total/maxi(1,samples.size())}))
 		await physics_frame
 		frame += 1
 		# Godot's previous engine physics monitor is contextual, not an additive stage.

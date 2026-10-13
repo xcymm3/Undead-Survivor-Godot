@@ -79,7 +79,7 @@ func experiment_choose_target(z: Dictionary, living: Array) -> Dictionary:`;
  if(variant==='bones5'||variant==='bones1'){
   const count=variant==='bones5'?5:1;
   s=s.replace('for part in 7:','for part in '+count+':').replaceAll('for j in 7:',`for j in ${count}:`).replace('PackedInt32Array([6,0,0,0])','PackedInt32Array([0,0,0,0])');
-  if(count===1)s=replace(s,'\tvar attack_advancing: bool =','\tif true: return {"root":root_transform(z,elapsed,stationary,sin(z.get("gait",0.0))),"bones":[Transform3D.IDENTITY]}\n\tvar attack_advancing: bool =');
+  if(count===1){const start=s.indexOf('static func pose_state(');s=s.slice(0,start)+replace(s.slice(start),'\tvar attack_advancing: bool =','\tif true: return {"root":root_transform(z,elapsed,stationary,sin(z.get("gait",0.0))),"bones":[Transform3D.IDENTITY]}\n\tvar attack_advancing: bool =');}
   s=replace(s,'static func bone_for(part: Dictionary) -> int:',`static func bone_for(part: Dictionary) -> int:\n\tif ${count} == 1 or part.get("head",false) or part.get("shield",false): return 0`);
  }
  if(variant==='pool'){
