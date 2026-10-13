@@ -10,22 +10,22 @@ static func validate(game, check: Callable) -> void:
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
 	var equipment = sim.equipment
-	check.call(p.weapon1 == 0 and p.weapon2 == 3 and p.slot_ammo == [30,6],"Fixed loadout starts with rifle and revolver")
+	check.call(p.weapon1 == 0 and p.weapon2 == 2 and p.slot_ammo == [30,15],"Fixed loadout starts with rifle and pistol")
 	check.call(p.grenades == 1 and p.grenade_capacity == 1,"New progress carries one grenade")
 	check.call(not p.has("medkits") and not p.has("healing"),"Medical inventory remains removed")
 	check.call(not equipment.pickup(p,"weapon:8") and not equipment.pickup(p,"weapon:0"),"Armory identifiers cannot exchange or refill guns")
 	p.switch = 0.0
 	p.fire_anim = 0.0
 	sim.update_arsenal(p,{"fire":true},.01)
-	check.call(p.slot_ammo == [29,6],"Firing the rifle preserves the revolver magazine")
+	check.call(p.slot_ammo == [29,15],"Firing the rifle preserves the pistol magazine")
 	p.slot = 2
 	equipment.select_weapon_slot(p,2)
-	p.ammo[3] = 1
+	p.ammo[2] = 1
 	p.switch = 0.0
 	p.fire_anim = 0.0
 	sim.update_arsenal(p,{"reload":true},.01)
 	sim.update_arsenal(p,{},1.61)
-	check.call(p.slot_ammo == [29,6] and p.slot_reserves == [510,97],"Revolver reload consumes five reserve rounds without affecting rifle inventory")
+	check.call(p.slot_ammo == [29,15] and p.slot_reserves == [510,241],"Pistol reload consumes fourteen reserve rounds without affecting rifle inventory")
 	p.slot = 1
 	equipment.select_weapon_slot(p,1)
 	check.call(p.ammo[0] == 29 and p.reserves[0] == 510,"Switching back preserves the rifle inventory")
@@ -39,7 +39,7 @@ static func validate(game, check: Callable) -> void:
 	p.grenades = 0
 	sim.defense_director.begin_wave()
 	check.call(p.hp == 35 and p.grenades == 0,"Wave start preserves health and grenade stock")
-	check.call(p.slot_ammo == [29,6] and p.slot_reserves == [510,97],"Wave start never refills firearm ammunition")
+	check.call(p.slot_ammo == [29,15] and p.slot_reserves == [510,241],"Wave start never refills firearm ammunition")
 	p.input = {"yaw":0.0,"pitch":0.0}
 	p.grenades = 1
 	check.call(equipment.throw_grenade(p) and p.grenades == 0,"Throwing consumes the initial one-grenade stock")
@@ -48,14 +48,14 @@ static func validate(game, check: Callable) -> void:
 	p.pos = game.get_node("/root/Data").Maps.Defense.SPAWN
 	check.call(not sim.shop_available(p),"Shop remains closed between later waves")
 	sim.defense_director.begin_wave()
-	check.call(p.grenades == 0 and p.slot_ammo == [29,6] and p.slot_reserves == [510,97],"Later waves preserve grenades and firearm rounds")
+	check.call(p.grenades == 0 and p.slot_ammo == [29,15] and p.slot_reserves == [510,241],"Later waves preserve grenades and firearm rounds")
 	game.ui.native_hud.sync()
 	check.call(game.ui.native_hud.equipment_slots.size() == 4,"HUD exposes four fixed equipment slots")
-	check.call(game.ui.native_hud.equipment_slots[0].title.text == "步枪" and game.ui.native_hud.equipment_slots[1].title.text == "左轮手枪","HUD names both fixed guns")
+	check.call(game.ui.native_hud.equipment_slots[0].title.text == "步枪" and game.ui.native_hud.equipment_slots[1].title.text == "半自动手枪","HUD names both fixed guns")
 	check.call(game.ui.native_hud.equipment_slots[2].title.text == "消防斧" and game.ui.native_hud.equipment_slots[3].title.text == "手雷  0 / 1","HUD displays axe and current grenade capacity")
 	game.start_solo("defense",71245)
 	p = game.local_pawn()
-	check.call(p.slot_ammo == [30,6] and p.slot_reserves == [510,102],"Restarting a run restores both firearms")
+	check.call(p.slot_ammo == [30,15] and p.slot_reserves == [510,255],"Restarting a run restores both firearms")
 	game.return_home()
 	progress.store = previous
 	game.start_solo("defense",71245)

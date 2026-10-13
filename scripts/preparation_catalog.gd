@@ -2,11 +2,11 @@ extends RefCounted
 ## Shared world positions, gaze selection and compact descriptions.
 const Layout = preload("res://scripts/defense_layout.gd")
 const HOLD_SECONDS = 1.2
-const NAMES = {"rifle":"步枪","revolver":"左轮","axe":"消防斧","grenade":"手雷","strong":"强壮","precise":"精准","swift":"迅捷","supply":"补给","turret_left":"炮塔","turret_right":"炮塔","bridge_gate":"栅栏门","bridge_entry_gate":"栅栏门","crystal_mine":"地雷","ramp_mine":"地雷","gate_mine":"地雷","alarm":"警报器","crystal":"水晶"}
+const NAMES = {"rifle":"步枪","pistol":"手枪","axe":"消防斧","grenade":"手雷","strong":"强壮","precise":"精准","swift":"迅捷","supply":"补给","turret_left":"炮塔","turret_right":"炮塔","bridge_gate":"栅栏门","bridge_entry_gate":"栅栏门","crystal_mine":"地雷","ramp_mine":"地雷","gate_mine":"地雷","alarm":"警报器","crystal":"水晶"}
 
 static func stations() -> Array:
 	var result: Array = []
-	var ids = ["rifle","revolver","axe","grenade","strong","precise","swift","supply"]
+	var ids = ["rifle","pistol","axe","grenade","strong","precise","swift","supply"]
 	for i in ids.size():
 		result.append({"id":ids[i],"position":Vector3([-9.0,-3.0,3.0,9.0][i%4],4.15,Layout.SHOP_WALL_Z-2.3 if i < 4 else Layout.SHOP_WALL_Z-7.5),"radius":.85,"range":3.2})
 	result.append({"id":"alarm","position":Vector3(-4,4.15,Layout.SHOP_AREA.position.y-2),"radius":.7,"range":3.2})
@@ -62,7 +62,7 @@ static func description(sim, id: String) -> String:
 	var level_text = "LV%d" % (profile.level(id)+1) if id not in profile.TALENTS else "LV%d / 10" % profile.level(id)
 	var detail = ""
 	if id in profile.WEAPONS:
-		var index: int = {"rifle":0,"revolver":3,"axe":6}[id]
+		var index: int = {"rifle":0,"pistol":2,"axe":6}[id]
 		detail = "伤害 %s" % number(sim.arena.get_node("/root/Data").weapons[index].damage*profile.weapon_multiplier(id))
 	elif id == "grenade": detail = "容量 %d / 5" % profile.grenade_capacity()
 	elif id in profile.MINES:

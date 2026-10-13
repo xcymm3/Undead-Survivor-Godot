@@ -1,5 +1,5 @@
 extends "res://scripts/equipment_core.gd"
-## Fixed rifle, revolver, axe and grenade loadout.
+## Fixed rifle, pistol, axe and grenade loadout.
 const DefenseLayout = preload("res://scripts/defense_layout.gd")
 
 func _init(defense_director) -> void:
@@ -7,13 +7,13 @@ func _init(defense_director) -> void:
 
 func initialize() -> void:
 	for p in sim.pawns.values():
-		# Two independent weapon inventories; grenades refill only when a wave starts.
+		# Two independent weapon inventories; grenades replenish on their fifteen-second timer.
 		p.weapon1 = 0
-		p.weapon2 = 3
+		p.weapon2 = 2
 		p.slot = 1
 		p.weapon_slot = 1
-		p.slot_ammo = [int(Data.weapons[0].capacity),int(Data.weapons[3].capacity)]
-		p.slot_reserves = [roundi(Data.defense_full_reserve(0)*sim.progression.reserve_multiplier()),roundi(Data.defense_full_reserve(3)*sim.progression.reserve_multiplier())]
+		p.slot_ammo = [int(Data.weapons[0].capacity),int(Data.weapons[2].capacity)]
+		p.slot_reserves = [roundi(Data.defense_full_reserve(0)*sim.progression.reserve_multiplier()),roundi(Data.defense_full_reserve(2)*sim.progression.reserve_multiplier())]
 		p.grenade_capacity = sim.progression.grenade_capacity()
 		p.grenades = p.grenade_capacity
 		p.max_hp = sim.progression.max_health()

@@ -277,7 +277,7 @@ func sync() -> void:
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "defense":
-		controls_hint.text = "1 步枪 · 2 左轮 · 3 消防斧 · 4 手雷 · R 换弹 · ESC 暂停" if defense.get("started",false) else "靠近并瞄准目标 · 长按 E 整备 / 启动警报"
+		controls_hint.text = "1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷 · R 换弹 · ESC 暂停" if defense.get("started",false) else "靠近并瞄准目标 · 长按 E 整备 / 启动警报"
 		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id)+1]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
 		ammo_note.text = "无需弹药" if infinite else "R 换弹 · 清波 +2 备弹夹"

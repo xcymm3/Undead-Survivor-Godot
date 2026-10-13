@@ -64,7 +64,7 @@ func build_station(entry: Dictionary) -> void:
 	prop.name = "DisplayObject"
 	root.add_child(prop)
 	prop.position.y = 1.25
-	if entry.id in ["rifle","revolver","axe"]:
+	if entry.id in ["rifle","pistol","axe"]:
 		var model = preload("res://scripts/weapon_view.gd").create_model(entry.id)
 		prop.add_child(model)
 		var bounds = preload("res://scripts/world_geometry.gd").posed_bounds(model)
@@ -147,7 +147,7 @@ func sync(state: Dictionary) -> void:
 		station.cover.visible = closed and id != "alarm"
 		station.prop.visible = not closed or id == "alarm"
 		station.light.light_energy = 0.0 if closed else 1.1
-		if id in ["rifle","revolver","axe"]:
+		if id in ["rifle","pistol","axe"]:
 			station.prop.basis = Basis(Vector3.UP,float(state.get("prop_clock",0.0))*TAU/40.0)*station.display_basis
 	if alarm_light:
 		alarm_light.light_color = Color("ff654b") if closed else Color("72e6b0")

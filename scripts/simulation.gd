@@ -478,11 +478,11 @@ func purchase_upgrade(id: String, p: Dictionary) -> bool:
 	p.hp = mini(p.max_hp,p.hp+p.max_hp-old_health)
 	p.grenade_capacity = progression.grenade_capacity()
 	p.grenades += p.grenade_capacity-old_grenades
-	for index in [0,3]:
+	for index in [0,2]:
 		p.reserves[index] += roundi(Data.defense_full_reserve(index)*progression.reserve_multiplier())-roundi(Data.defense_full_reserve(index)*old_reserve)
 	equipment.save_weapon_slot(p)
 	# The other firearm slot also tracks its increased reserve.
-	p.slot_reserves = [p.reserves[0],p.reserves[3]]
+	p.slot_reserves = [p.reserves[0],p.reserves[2]]
 	defense_director.structures.refresh_purchase(id)
 	defense_director.sync_world()
 	return true

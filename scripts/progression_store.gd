@@ -1,7 +1,8 @@
 extends RefCounted
 ## Permanent economy, separate from the disposable combat simulation.
 const MAX_CURRENCY = 9000000000000000
-const WEAPONS = ["rifle","revolver","axe"]
+const WEAPONS = ["rifle","pistol","axe"]
+const OLD_WEAPONS = ["rifle","revolver","axe"]
 const TALENTS = ["strong","precise","swift","supply"]
 const LEGACY_BUILDINGS = ["turret_left","turret_right","bridge_gate"]
 const GATES = ["bridge_gate","bridge_entry_gate"]
@@ -14,7 +15,7 @@ var notice = ""
 var data: Dictionary = defaults()
 
 static func defaults() -> Dictionary:
-	return {"version":2,"coins":0,"diamonds":0,"grenade_level":0,"weapons":{"rifle":0,"revolver":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
+	return {"version":3,"coins":0,"diamonds":0,"grenade_level":0,"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
 
 func _init(save_path := "") -> void:
 	path = save_path
@@ -24,19 +25,19 @@ static func bounded_integer(value, maximum: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and value >= 0 and value <= maximum and float(value) == floor(float(value))
 
 static func valid(value) -> bool:
-	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,2) or value.version < 1: return false
+	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,3) or value.version < 1: return false
 	for key in ["coins","diamonds","best_wave","cleared_total"]:
 		if not bounded_integer(value[key],MAX_CURRENCY): return false
 	if not bounded_integer(value.grenade_level,4): return false
 	if not value.weapons is Dictionary or not value.talents is Dictionary or not value.buildings is Dictionary: return false
-	for key in WEAPONS:
+	for key in OLD_WEAPONS if value.version < 3 else WEAPONS:
 		if not value.weapons.has(key) or not bounded_integer(value.weapons[key],48): return false
 	for key in TALENTS:
 		if not value.talents.has(key) or not bounded_integer(value.talents[key],10): return false
 	for key in LEGACY_BUILDINGS if value.version == 1 else BUILDINGS:
 		var entry = value.buildings.get(key)
 		if not entry is Dictionary or not entry.has_all(["owned","level"]) or not entry.owned is bool or not bounded_integer(entry.level,48) or (not entry.owned and entry.level != 0): return false
-	if value.version == 2:
+	if value.version >= 2:
 		if not value.get("mines") is Dictionary: return false
 		for key in MINES:
 			if not value.mines.get(key) is bool: return false
@@ -51,7 +52,7 @@ func read_save(file_path: String) -> Dictionary:
 	# JSON numbers deserialize as floats. Restore validated integer fields before
 	# migration so a second reload has exactly the same permanent state.
 	for key in ["version","coins","diamonds","best_wave","cleared_total","grenade_level"]: parsed[key] = int(parsed[key])
-	for key in WEAPONS: parsed.weapons[key] = int(parsed.weapons[key])
+	for key in OLD_WEAPONS if parsed.version < 3 else WEAPONS: parsed.weapons[key] = int(parsed.weapons[key])
 	for key in TALENTS: parsed.talents[key] = int(parsed.talents[key])
 	for key in LEGACY_BUILDINGS if parsed.version == 1 else BUILDINGS: parsed.buildings[key].level = int(parsed.buildings[key].level)
 	return parsed
@@ -74,6 +75,11 @@ func load_save() -> void:
 			data.buildings.bridge_entry_gate = {"owned":false,"level":0}
 			data.mines = defaults().mines
 			data.mines.crystal_mine = true
+			dirty = true
+		if data.version == 2:
+			data.weapons.pistol = data.weapons.revolver
+			data.weapons.erase("revolver")
+			data.version = 3
 			dirty = true
 
 func save() -> bool:
