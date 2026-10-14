@@ -249,7 +249,7 @@ func validate_rifle_penetration() -> void:
 	sim.progression.data.weapons.rifle = 1
 	for z in sim.zombies: z.hp = 2000; z.body = 2000
 	sim.fire(p,w)
-	check(is_equal_approx(2000-sim.zombies[-1].hp,132) and is_equal_approx(2000-sim.zombies[-2].hp,88),"Permanent rifle upgrades scale penetration damage without changing attenuation")
+	check(is_equal_approx(2000-sim.zombies[-1].hp,144) and is_equal_approx(2000-sim.zombies[-2].hp,96),"Permanent rifle upgrades scale penetration damage without changing attenuation")
 	sim.progression.data.weapons.rifle = 0
 	w.headshotMultiplier = 2
 	for z in sim.zombies: z.hp = 2000; z.body = 2000
@@ -405,7 +405,7 @@ func validate_interaction_motion() -> void:
 	var p: Dictionary = game.local_pawn()
 	var fixture = preload("res://tools/preparation-fixture.gd")
 	check(not game.paused and game.ui.current.is_empty(),"Preparation begins directly in the world without a modal")
-	check(game.arena.scenery.preparation.stations.size() == 9,"Eight equipment and talent stations plus one alarm exist")
+	check(game.arena.scenery.preparation.stations.size() == 11,"Ten equipment and talent stations plus one alarm exist")
 	var scenery = game.arena.scenery
 	var visual_state = sim.defense.duplicate(true)
 	visual_state.prop_clock = 0.0
@@ -434,14 +434,14 @@ func validate_interaction_motion() -> void:
 	fixture.face(sim,p,"rifle")
 	game.arena.scenery.sync_focus(sim,p)
 	check(game.arena.scenery.preparation.focus_label.visible,"Nearby aimed station shows its details")
-	p.yaw += PI
+	p.pitch = PI/2
 	game.arena.scenery.sync_focus(sim,p)
 	check(not game.arena.scenery.preparation.focus_label.visible and not sim.purchase_upgrade("rifle",p),"Looking away hides details and rejects purchases")
 	fixture.face(sim,p,"rifle")
 	sim.progression.data.coins = 100
 	fixture.hold(sim,p,.6)
 	check(sim.progression.level("rifle") == 0 and p.interaction == "rifle","Short E hold advances work without spending")
-	p.yaw += PI
+	p.pitch = PI/2
 	fixture.hold(sim,p,.1)
 	check(p.interact_time == 0 and p.interaction.is_empty(),"Turning away cancels incomplete work")
 	fixture.face(sim,p,"rifle")
@@ -453,7 +453,7 @@ func validate_interaction_motion() -> void:
 	p.input = {"interact":false}
 	d.interactions(.01)
 	sim.progression.data.coins = 0
-	fixture.hold(sim,p,3.1)
+	fixture.hold(sim,p,1.1)
 	check(sim.progression.level("rifle") == 1 and p.interact_time == 0,"Insufficient money produces feedback without purchase")
 	var blocker = game.arena.scenery.block("WorkOccluder",Vector3(p.pos.x,4.4,p.pos.y+.8),Vector3(1.5,2,.2),"454545",true,false)
 	await physics_frame
@@ -463,9 +463,9 @@ func validate_interaction_motion() -> void:
 	fixture.face(sim,p,"alarm")
 	p.input = {"interact":false}
 	d.interactions(.01)
-	fixture.hold(sim,p,3.1)
+	fixture.hold(sim,p,1.1)
 	check(sim.defense.started,"The world alarm starts the attack")
-	check(preload("res://scripts/preparation_catalog.gd").targets(sim).size() == 10,"Closed empty construction sites do not expose invisible interaction targets")
+	check(preload("res://scripts/preparation_catalog.gd").targets(sim).size() == 12,"Closed empty construction sites do not expose invisible interaction targets")
 	check(game.arena.scenery.preparation.stations.rifle.cover.visible and not game.arena.scenery.preparation.stations.rifle.prop.visible,"Attack physically closes station covers and hides goods")
 	check(game.ui.native_hud.find_child("CoinIcon",true,false).texture != null and game.ui.native_hud.find_child("DiamondIcon",true,false).texture != null,"Wallet uses distinct coin and diamond icons")
 	check(not sim.purchase_upgrade("rifle",p),"Starting wave one closes transactions")

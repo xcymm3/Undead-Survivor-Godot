@@ -141,7 +141,7 @@ func sync_work(p: Dictionary, enabled: bool) -> void:
 		work_id = ""
 		work_time = 0.0
 		return
-	work.volume_db = -28+14*clampf(time/3.0,0,1)
-	if (id != work_id or time < work_time) and playback_enabled(): work.play(minf(time,2.99))
+	work.volume_db = -28+14*clampf(time/preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS,0,1)
+	if (id != work_id or time < work_time) and playback_enabled(): work.play(minf(time,preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS-.01))
 	work_id = id
 	work_time = time

@@ -5,8 +5,9 @@ static func face(sim, p: Dictionary, id: String) -> void:
 	for entry in Catalog.targets(sim):
 		if entry.id != id: continue
 		var point: Vector3 = entry.position
-		var station: bool = id in sim.progression.WEAPONS or id in sim.progression.TALENTS or id in ["grenade","alarm"]
+		var station: bool = id in sim.progression.WEAPONS or id in sim.progression.MAGAZINES or id in sim.progression.TALENTS or id in ["grenade","alarm"]
 		p.pos = Vector2(point.x,point.z)+Vector2(0,-2 if station else 2)
+		if id in sim.progression.MAGAZINES: p.pos = Vector2(point.x-2,point.z)
 		p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 		var direction = (point-eye).normalized()

@@ -537,16 +537,19 @@ func show_legacy_multiplayer() -> void:
 func shop_description(profile, id: String) -> String:
 	if id in profile.WEAPONS:
 		var index: int = {"rifle":0,"pistol":2,"axe":6}[id]
-		return "伤害 %.1f → %.1f · 每次 +10%%，下次价格翻倍" % [Data.weapons[index].damage*profile.weapon_multiplier(id),Data.weapons[index].damage*profile.weapon_multiplier(id)*1.1]
+		return "伤害 %.1f → %.1f · 每次 +20%%，下次价格翻倍" % [Data.weapons[index].damage*profile.weapon_multiplier(id),Data.weapons[index].damage*profile.weapon_multiplier(id)*1.2]
+	if id in profile.MAGAZINES:
+		var base: int = int(Data.weapons[0 if id == "rifle_magazine" else 2].capacity)
+		return "弹匣 %d → %d · 每级 +20%% · 上限10级，价格翻倍" % [roundi(base*profile.magazine_multiplier(id.trim_suffix("_magazine"))),roundi(base*profile.magazine_multiplier(id.trim_suffix("_magazine"))*1.2)]
 	if id == "grenade": return "持有上限 %d / 5 · 每次 +1 · 每15秒补充1颗" % profile.grenade_capacity()
 	if id in profile.MINES: return "永久购买 · 无升级 · 每波恢复 · 僵尸触发后 1.5 秒爆炸"
-	if id in profile.GATES: return "耐久 %d · 就地升级 +10%% · 价格与枪械相同并逐次翻倍 · 战斗中不复活" % roundi(1000*profile.building_multiplier(id))
-	if id in profile.BUILDINGS: return "每发伤害 %.1f · 就地升级伤害 +10%% · 价格与枪械相同并逐次翻倍 · 战斗中不复活" % (60*profile.building_multiplier(id))
+	if id in profile.GATES: return "耐久 %d · 就地升级 +20%% · 价格与枪械相同并逐次翻倍 · 战斗中不复活" % roundi(1000*profile.building_multiplier(id))
+	if id in profile.BUILDINGS: return "每发伤害 %.1f · 就地升级伤害 +20%% · 价格与枪械相同并逐次翻倍 · 战斗中不复活" % (60*profile.building_multiplier(id))
 	match id:
 		"strong": return "最大生命 %d · 脱战 5 秒后每秒回复 %d 生命 · 每级 +10 生命、+1 回复" % [profile.max_health(),profile.level(id)]
-		"precise": return "爆头倍率 +%d%% · 每级 +10%%" % (profile.level(id)*10)
+		"precise": return "爆头倍率 +%d%% · 每级 +20%%" % (profile.level(id)*20)
 		"swift": return "移速 +%d%% · 每级 +5%%" % (profile.level(id)*5)
-		"supply": return "开局备弹 +%d%% · 每级 +10%% · 清波固定补 2 备弹夹" % (profile.level(id)*10)
+		"supply": return "开局备弹 +%d%% · 每级 +20%% · 清波固定补 2 备弹夹" % (profile.level(id)*20)
 	return ""
 
 func show_result() -> void:

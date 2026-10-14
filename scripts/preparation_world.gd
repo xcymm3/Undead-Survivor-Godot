@@ -70,6 +70,15 @@ func build_station(entry: Dictionary) -> void:
 		elif bounds.size.z > bounds.size.x: prop.rotation.y = PI/2
 		var fitted: AABB = preload("res://scripts/world_geometry.gd").posed_bounds(model)
 		prop.position.y += maxf(0,3.98-fitted.position.y)
+	elif entry.id in ["rifle_magazine","pistol_magazine"]:
+		var origin = prop.global_position
+		var before_parts = get_children()
+		for x in [-.28,.28]:
+			block("MagazineCase",origin+Vector3(x,0,0),Vector3(.23,.48,.18),"485650",false)
+			for row in 3: block("MagazineRib",origin+Vector3(x,-.16+row*.14,-.1),Vector3(.25,.035,.04),"788579",false)
+			cylinder(origin+Vector3(x,.28,0),.045,.12,"d1aa58")
+		for child in get_children():
+			if child not in before_parts: child.reparent(prop)
 	elif entry.id == "grenade":
 		for x in [-.45,0,.45]:
 			var model = preload("res://scripts/equipment_props.gd").model(4)

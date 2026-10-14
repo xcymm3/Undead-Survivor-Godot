@@ -12,7 +12,7 @@ func initialize() -> void:
 		p.weapon2 = 2
 		p.slot = 1
 		p.weapon_slot = 1
-		p.slot_ammo = [int(Data.weapons[0].capacity),int(Data.weapons[2].capacity)]
+		p.slot_ammo = [sim.weapon_capacity(0),sim.weapon_capacity(2)]
 		p.slot_reserves = [roundi(Data.defense_full_reserve(0)*sim.progression.reserve_multiplier()),roundi(Data.defense_full_reserve(2)*sim.progression.reserve_multiplier())]
 		p.grenade_capacity = sim.progression.grenade_capacity()
 		p.grenades = p.grenade_capacity
@@ -33,9 +33,9 @@ func initialize() -> void:
 		p.weapon = p.weapon1
 		p.requested = p.weapon1
 		p.ammo.fill(0)
-		p.ammo[p.weapon1] = int(Data.weapons[p.weapon1].capacity)
+		p.ammo[p.weapon1] = sim.weapon_capacity(p.weapon1)
 		p.reserves[p.weapon1] = p.slot_reserves[0]
-		p.ammo[p.weapon2] = int(Data.weapons[p.weapon2].capacity)
+		p.ammo[p.weapon2] = sim.weapon_capacity(p.weapon2)
 		p.reserves[p.weapon2] = p.slot_reserves[1]
 		p.reserve = p.reserves[p.weapon1]
 	director.state.projectiles = []
@@ -46,7 +46,7 @@ func award_wave_ammo(p: Dictionary) -> void:
 	# Add to reserve only, including the stowed gun; preserve magazines and reloads.
 	for index in 2:
 		var weapon: int = p.weapon1 if index == 0 else p.weapon2
-		p.reserves[weapon] += int(Data.weapons[weapon].capacity)*2
+		p.reserves[weapon] += sim.weapon_capacity(weapon)*2
 		p.slot_reserves[index] = p.reserves[weapon]
 	p.reserve = p.reserves[p.weapon]
 

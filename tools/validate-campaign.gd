@@ -74,16 +74,16 @@ func run() -> void:
 	var turret: Dictionary = sim.defense_director.structures.find("turret_left")
 	Fixture.face(sim,p,"turret_left")
 	sim.events.clear()
-	Fixture.hold(sim,p,3.1)
+	Fixture.hold(sim,p,1.1)
 	check(sim.events.any(func(event): return event.kind == "world_upgrade" and event.id == "turret_left"),"Onsite E hold generates workshop feedback")
 	game.handle_effects(sim.events)
 	check(game.ui.current.is_empty() and not game.paused,"Onsite upgrade keeps the player in the world")
-	check(sim.progression.cost("turret_left") == 40 and is_equal_approx(turret.damage_multiplier,1.1),"Onsite upgrade adds ten percent and doubles price")
+	check(sim.progression.cost("turret_left") == 40 and is_equal_approx(turret.damage_multiplier,1.2),"Onsite upgrade adds twenty percent and doubles price")
 	p.pos = data.Maps.Defense.SPAWN
 	check(Fixture.buy(sim,p,"bridge_gate"),"Shop can manufacture a gate")
 	var gate: Dictionary = sim.defense_director.structures.find("bridge_gate")
 	p.pos = gate.pos+Vector2(0,2)
-	check(Fixture.buy(sim,p,"bridge_gate") and gate.max_hp == 1100 and sim.progression.cost("bridge_gate") == 40,"Gate onsite upgrades increase durability and double the gun-equivalent price")
+	check(Fixture.buy(sim,p,"bridge_gate") and gate.max_hp == 1200 and sim.progression.cost("bridge_gate") == 40,"Gate onsite upgrades increase durability and double the gun-equivalent price")
 	check(not sim.building_available("turret_right",p),"Unbuilt structures cannot expose upgrades")
 	p.pos = data.Maps.Defense.SPAWN
 	p.height = 3

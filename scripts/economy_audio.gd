@@ -2,7 +2,7 @@ extends RefCounted
 ## Glass resonances, a small pickup chime and a rising preparation cue.
 static func make(cue: String) -> AudioStreamWAV:
 	var rate = 22050
-	var duration = 3.0 if cue == "purchase" else .52 if cue == "crystal-hit" else .24
+	var duration = preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS if cue == "purchase" else .52 if cue == "crystal-hit" else .24
 	var samples = PackedByteArray()
 	samples.resize(int(rate*duration)*2)
 	for i in samples.size()/2:
@@ -10,8 +10,8 @@ static func make(cue: String) -> AudioStreamWAV:
 		var value = 0.0
 		if cue == "purchase":
 			var progress = t/duration
-			var phase = TAU*(440*t+110*t*t)
-			var pulse = .65+.35*sin(TAU*(4*t+t*t))
+			var phase = TAU*(440*t+110*t*t/duration)
+			var pulse = .65+.35*sin(TAU*(4*t+3*t*t/duration))
 			value = (sin(phase)+.25*sin(phase*1.5))*pulse*(.06+.18*progress)*minf(1,t*40)*minf(1,(duration-t)*30)
 		else:
 			var base = 2300.0 if cue == "crystal-hit" else 1250.0

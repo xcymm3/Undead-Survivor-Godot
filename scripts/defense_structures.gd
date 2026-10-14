@@ -195,7 +195,7 @@ static func valid_state(value) -> bool:
 		var base: Dictionary = expected[index]
 		if not item is Dictionary or not item.has_all(base.keys()): return false
 		if item.id != base.id or item.kind != base.kind or item.pos != base.pos or item.height != base.height or not item.get("owned") is bool: return false
-		var maximum = roundi(base.max_hp*pow(1.1,48)) if item.kind == "gate" else int(base.max_hp)
+		var maximum = roundi(base.max_hp*pow(1.2,preload("res://scripts/progression_store.gd").MAX_UPGRADE_LEVEL)) if item.kind == "gate" else int(base.max_hp)
 		if not item.max_hp is int or item.max_hp < base.max_hp or item.max_hp > maximum: return false
 		if not item.hp is int or item.hp < 0 or item.hp > item.max_hp or (not item.owned and item.hp != 0): return false
 		for key in ["cooldown","yaw","pitch","destroyed_at","fuse"]:

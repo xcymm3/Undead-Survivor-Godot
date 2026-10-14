@@ -41,12 +41,12 @@ func run() -> void:
 	game.handle_effects(sim.events)
 	check(sim.events.filter(func(e): return e.kind == "crystal_hit").size() == 1 and game.sound.spatial_index == sound_count+1 and game.sound.spatial_players[0].stream == game.sound.streams["crystal-hit"],"Each crystal damage event routes its distinct glass collision sound")
 	sim.defense.crystal_hp = 3000
-	check(is_equal_approx(game.sound.streams.purchase.get_length(),3.0),"Purchase sound covers the three-second hold")
+	check(is_equal_approx(game.sound.streams.purchase.get_length(),1.0),"Purchase sound covers the one-second hold")
 	p.interaction = "rifle"
-	p.interact_time = .3
+	p.interact_time = .1
 	game.sound.sync_work(p,true)
 	var early_gain: float = game.sound.work.volume_db
-	p.interact_time = 2.7
+	p.interact_time = .9
 	game.sound.sync_work(p,true)
 	check(game.sound.work.volume_db > early_gain+10,"Held purchase gradually increases its sound gain")
 	game.sound.sync_work(p,false)

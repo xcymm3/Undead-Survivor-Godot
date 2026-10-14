@@ -604,6 +604,10 @@ func step_coins(dt: float) -> void:
 func shop_available(p: Dictionary) -> bool:
 	return defense_director != null and not defense.started and not failed and not won and p.get("hp",0) > 0 and defense_director.near(p,Data.Maps.Defense.SHOP_POINT,4.0)
 
+func weapon_capacity(index: int) -> int:
+	var definition: Dictionary = Data.weapons[index]
+	return roundi(float(definition.capacity)*progression.magazine_multiplier(str(definition.id))) if mode == "defense" else int(definition.capacity)
+
 func purchase_upgrade(id: String, p: Dictionary) -> bool:
 	var focus: Dictionary = preload("res://scripts/preparation_catalog.gd").focus(self,p)
 	if focus.is_empty() or focus.id != id or not preload("res://scripts/preparation_catalog.gd").available(self,id): return false
@@ -649,6 +653,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.aim = false
 		return
 	var w: Dictionary = Data.weapons[p.weapon]
+	var capacity: int = weapon_capacity(p.weapon)
 	update_melee_swing(p,w)
 	var requested: int = input.get("weapon",p.weapon)
 	if defense_director: requested = defense_director.choose_weapon(p,requested)
@@ -679,13 +684,13 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		if p.reload <= 0:
 			if w.get("shellReload",false):
 				var loaded = mini(1,p.reserves[p.weapon]) if equipment else 1
-				p.ammo[p.weapon] = mini(int(w.capacity),p.ammo[p.weapon]+loaded)
+				p.ammo[p.weapon] = mini(capacity,p.ammo[p.weapon]+loaded)
 				if equipment and not w.get("infiniteReserve",false): p.reserves[p.weapon] -= loaded
 				p.reload = w.reloadDuration
 				events.append({"kind":"reload","player":p.id,"weapon":p.weapon})
-				if p.ammo[p.weapon] >= w.capacity or (equipment and p.reserves[p.weapon] <= 0): p.reloading = false
+				if p.ammo[p.weapon] >= capacity or (equipment and p.reserves[p.weapon] <= 0): p.reloading = false
 			else:
-				var loaded = mini(int(w.capacity)-p.ammo[p.weapon],p.reserves[p.weapon]) if equipment and not w.get("infiniteReserve",false) else int(w.capacity)-p.ammo[p.weapon]
+				var loaded = mini(capacity-p.ammo[p.weapon],p.reserves[p.weapon]) if equipment and not w.get("infiniteReserve",false) else capacity-p.ammo[p.weapon]
 				p.ammo[p.weapon] += loaded
 				if equipment and not w.get("infiniteReserve",false): p.reserves[p.weapon] -= loaded
 				p.reloading = false
@@ -694,7 +699,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.switch = .4
 		p.aim = false
 		return
-	var can_reload: bool = not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < w.capacity and (not equipment or w.get("infiniteReserve",false) or p.reserves[p.weapon] > 0)
+	var can_reload: bool = not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < capacity and (not equipment or w.get("infiniteReserve",false) or p.reserves[p.weapon] > 0)
 	if (input.get("reload",false) or p.ammo[p.weapon] <= 0) and can_reload: p.reload_queued = true
 	p.input.reload = false
 	if p.reload_queued and p.fire_anim <= 0:
