@@ -30,7 +30,7 @@ func run() -> void:
 	check(manager.select_slot(2) and manager.store.data.coins == 0,"Third slot also starts at zero")
 	var reopened = load("res://scripts/progression.gd").new()
 	reopened.configure(directory)
-	check(reopened.active_slot == 2 and reopened.slots[0].data.coins == 80 and reopened.slots[0].level("rifle") == 1 and reopened.slots[1].data.coins == 45,"Restart restores the selected slot and separate progress files")
+	check(reopened.active_slot == 2 and reopened.slots[0].data.coins == 50 and reopened.slots[0].level("rifle") == 1 and reopened.slots[1].data.coins == 45,"Restart restores the selected slot and separate progress files")
 	check(not reopened.select_slot(-1) and not reopened.select_slot(3) and reopened.active_slot == 2,"Invalid slots cannot change active progress")
 	reopened.selection_path = directory.path_join("absent/selection.json")
 	check(not reopened.select_slot(0) and reopened.active_slot == 2,"Failed slot selection write leaves the active slot intact")
@@ -78,12 +78,12 @@ func run() -> void:
 	check(sim.events.any(func(event): return event.kind == "world_upgrade" and event.id == "turret_left"),"Onsite E hold generates workshop feedback")
 	game.handle_effects(sim.events)
 	check(game.ui.current.is_empty() and not game.paused,"Onsite upgrade keeps the player in the world")
-	check(sim.progression.cost("turret_left") == 40 and is_equal_approx(turret.damage_multiplier,1.2),"Onsite upgrade adds twenty percent and doubles price")
+	check(sim.progression.cost("turret_left") == 100 and is_equal_approx(turret.damage_multiplier,1.2),"Onsite upgrade adds twenty percent and uses fixed prices")
 	p.pos = data.Maps.Defense.SPAWN
 	check(Fixture.buy(sim,p,"bridge_gate"),"Shop can manufacture a gate")
 	var gate: Dictionary = sim.defense_director.structures.find("bridge_gate")
 	p.pos = gate.pos+Vector2(0,2)
-	check(Fixture.buy(sim,p,"bridge_gate") and gate.max_hp == 1200 and sim.progression.cost("bridge_gate") == 40,"Gate onsite upgrades increase durability and double the gun-equivalent price")
+	check(Fixture.buy(sim,p,"bridge_gate") and gate.max_hp == 1200 and sim.progression.cost("bridge_gate") == 100,"Gate onsite upgrades increase durability and use the next gun-equivalent fixed price")
 	check(not sim.building_available("turret_right",p),"Unbuilt structures cannot expose upgrades")
 	p.pos = data.Maps.Defense.SPAWN
 	p.height = 3
@@ -193,7 +193,10 @@ func run() -> void:
 	var below: float = view.pose_state(rising,0,false).root.origin.y
 	sim.update_zombie(rising,sim.crystal_target(),1.4)
 	check(view.pose_state(rising,0,false).root.origin.y > below+1 and rising.emerge_remaining == 0,"Summoned zombie rises out of the ground using the shared hit pose")
+	var victory_coins: int = sim.progression.data.coins
+	var victory_drops: int = sim.coin_drops.size()
 	sim.hit_enemy(boss,1000000,false,p,Vector3(8,5,23))
+	check(sim.progression.data.coins == victory_coins+2000 and sim.coin_drops.size() == victory_drops+1,"Boss victory awards its 2000 coins while all summoned army deaths produce no money or coin animation")
 	var count: int = sim.zombies.size()
 	Boss.step(sim,20)
 	check(sim.zombies.size() == count,"Dead boss cannot summon more zombies")

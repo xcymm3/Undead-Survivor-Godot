@@ -1097,15 +1097,16 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		kills += 1
 		p.kills += 1
 		paths.erase(z.id)
-		var reward = progression.award_kill(str(z.get("original",z.kind)))
+		var reward = 0 if z.get("summoned",false) else progression.award_kill(str(z.get("original",z.kind)))
 		earned_coins += reward
-		var receiver = str(p.id) if pawns.has(p.id) else str(pawns.keys()[0]) if not pawns.is_empty() else ""
-		var origin = Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+.7,z.pos.y)
-		var coin_random = RandomNumberGenerator.new()
-		coin_random.seed = z.id*104729+7841
-		var angle = coin_random.randf()*TAU
-		coin_drops.append({"owner":receiver,"pos":origin,"origin":origin,"scatter":Vector3(cos(angle)*.65,0,sin(angle)*.65),"arrival":0.0,"age":0.0,"value":reward})
-		if coin_drops.size() > 512: coin_drops.pop_front()
+		if reward > 0:
+			var receiver = str(p.id) if pawns.has(p.id) else str(pawns.keys()[0]) if not pawns.is_empty() else ""
+			var origin = Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+.7,z.pos.y)
+			var coin_random = RandomNumberGenerator.new()
+			coin_random.seed = z.id*104729+7841
+			var angle = coin_random.randf()*TAU
+			coin_drops.append({"owner":receiver,"pos":origin,"origin":origin,"scatter":Vector3(cos(angle)*.65,0,sin(angle)*.65),"arrival":0.0,"age":0.0,"value":reward})
+			if coin_drops.size() > 512: coin_drops.pop_front()
 		events.append({"kind":"death","player":p.id,"position":position})
 		if z.get("original",z.kind) == "dancer": complete_boss_victory(p)
 	else:

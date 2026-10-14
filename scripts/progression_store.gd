@@ -2,6 +2,7 @@ extends RefCounted
 ## Permanent economy, separate from the disposable combat simulation.
 const MAX_CURRENCY = 9000000000000000
 const MAX_UPGRADE_LEVEL = 10
+const UPGRADE_PRICES = [50,100,150,200,300,450,650,1000,1500,2000]
 const MAGAZINES = ["rifle_magazine","pistol_magazine"]
 const WEAPONS = ["rifle","pistol","axe"]
 const OLD_WEAPONS = ["rifle","revolver","axe"]
@@ -10,7 +11,7 @@ const LEGACY_BUILDINGS = ["turret_left","turret_right","bridge_gate"]
 const GATES = ["bridge_gate","bridge_entry_gate"]
 const BUILDINGS = ["turret_left","turret_right","bridge_gate","bridge_entry_gate"]
 const MINES = ["crystal_mine","ramp_mine","gate_mine"]
-const COIN_REWARDS = {"normal":1,"crawler":1,"cone":2,"bucket":3,"imp":3,"shield":5,"berserker":10,"giant":10,"football":20,"dancer":200}
+const COIN_REWARDS = {"normal":1,"crawler":1,"cone":2,"bucket":5,"imp":10,"shield":25,"berserker":100,"giant":150,"football":250,"dancer":2000}
 var path = ""
 var dirty = false
 var notice = ""
@@ -144,18 +145,14 @@ func currency(id: String) -> String:
 	return "diamonds" if id in TALENTS else "coins"
 
 func cost(id: String) -> int:
-	var base = 20
 	if id in MINES: return -1 if owned(id) else 100
 	if id in TALENTS: return level(id)+1 if level(id) < 10 else -1
 	if id == "grenade":
 		if level(id) >= 4: return -1
-		base = 30
 	elif id in BUILDINGS:
 		if not owned(id): return 80 if id in GATES else 100
-		base = 20
 	elif id not in WEAPONS and id not in MAGAZINES: return -1
-	var price = float(base)*pow(2,level(id))
-	return int(price) if level(id) < MAX_UPGRADE_LEVEL and price <= MAX_CURRENCY else -1
+	return int(UPGRADE_PRICES[level(id)]) if level(id) < MAX_UPGRADE_LEVEL else -1
 
 func purchase(id: String) -> bool:
 	var price = cost(id)

@@ -21,18 +21,29 @@ func run() -> void:
 	check(not profile.purchase("rifle") and profile.level("rifle") == 0,"Insufficient coins cannot purchase an upgrade")
 	for kind in Store.COIN_REWARDS:
 		check(profile.award_kill(kind) == Store.COIN_REWARDS[kind],"Reward tier: "+kind)
+	var expected_rewards = {"normal":1,"cone":2,"bucket":5,"imp":10,"shield":25,"berserker":100,"giant":150,"football":250,"dancer":2000}
+	for kind in expected_rewards: check(Store.COIN_REWARDS[kind] == expected_rewards[kind],"Authored staircase reward: "+kind)
+	var defense_population = preload("res://scripts/defense_population.gd")
+	var expected_wave_rewards = [69,118,235,209,452,535,889,765,1140,3480]
+	var wave_income_total = 0
+	for wave in range(1,11):
+		var income = 0
+		for kind in defense_population.roster(wave,1,RandomNumberGenerator.new()): income += Store.COIN_REWARDS[kind]
+		wave_income_total += income
+		check(income == expected_wave_rewards[wave-1],"Staircase reward total for wave "+str(wave))
+	check(wave_income_total == 7892 and Store.UPGRADE_PRICES.reduce(func(total,value): return total+value,0) == 6400,"One complete campaign funds all ten rifle upgrades with 1492 coins to spare")
 	profile.data.coins = 100000
 	for id in Store.WEAPONS:
-		check(profile.cost(id) == 20 and profile.purchase(id) and profile.cost(id) == 40,"First weapon upgrade doubles its next cost: "+id)
+		check(profile.cost(id) == 50 and profile.purchase(id) and profile.cost(id) == 100,"First weapon upgrade uses the next fixed price: "+id)
 		check(profile.purchase(id) and is_equal_approx(profile.weapon_multiplier(id),1.44),"Weapon damage compounds by twenty percent: "+id)
 	for count in range(2,6):
-		check(profile.purchase("grenade") and profile.grenade_capacity() == count,"Grenade capacity increases to "+str(count))
+		check(profile.cost("grenade") == [50,100,150,200][count-2] and profile.purchase("grenade") and profile.grenade_capacity() == count,"Grenade capacity increases to "+str(count))
 	check(not profile.purchase("grenade") and profile.cost("grenade") == -1,"Grenade capacity cannot exceed five")
 	for id in Store.BUILDINGS:
 		check(profile.cost(id) == (80 if id in Store.GATES else 100),"Each building uses its confirmed manufacturing price: "+id)
 		check(not profile.owned(id) and profile.purchase(id) and profile.owned(id),"Manufacturing grants persistent ownership: "+id)
 		var first: int = profile.cost(id)
-		check(profile.purchase(id) and profile.cost(id) == first*2 and is_equal_approx(profile.building_multiplier(id),1.2),"Building upgrade compounds and doubles cost: "+id)
+		check(profile.purchase(id) and profile.cost(id) == first*2 and is_equal_approx(profile.building_multiplier(id),1.2),"Building upgrade compounds and uses fixed prices: "+id)
 	for id in Store.MINES:
 		var coins: int = profile.data.coins
 		check(not profile.owned(id) and profile.cost(id) == 100 and profile.purchase(id) and profile.data.coins == coins-100,"Mine permanently costs exactly one hundred coins: "+id)
@@ -47,25 +58,25 @@ func run() -> void:
 	capped.data.coins = Store.MAX_CURRENCY
 	for id in Store.WEAPONS+Store.MAGAZINES+Store.BUILDINGS:
 		if id in Store.BUILDINGS: check(capped.purchase(id),"Cap fixture manufactures "+id)
-		for rank in range(1,11): check(capped.purchase(id) and capped.level(id) == rank,"Upgrade purchases through rank ten: "+id+str(rank))
+		for rank in range(1,11): check(capped.cost(id) == [50,100,150,200,300,450,650,1000,1500,2000][rank-1] and capped.purchase(id) and capped.level(id) == rank,"Upgrade purchases through rank ten: "+id+str(rank))
 		var wallet: int = capped.data.coins
 		check(capped.cost(id) == -1 and not capped.purchase(id) and capped.data.coins == wallet,"Rank eleven is blocked without payment: "+id)
 	check(is_equal_approx(capped.magazine_multiplier("rifle"),pow(1.2,10)) and is_equal_approx(capped.magazine_multiplier("pistol"),pow(1.2,10)),"Magazine capacity compounds independently to rank ten")
 	# Unique temporary files exercise actual JSON writes without touching player saves.
 	var path = OS.get_cache_dir().path_join("undead-progress-qa-"+str(Time.get_ticks_usec())+".json")
 	var saved = Store.new(path)
-	saved.data.coins = 100
+	saved.data.coins = 200
 	saved.dirty = true
 	check(saved.save() and saved.purchase("rifle"),"Permanent transaction writes its upgraded state")
 	var reloaded = Store.new(path)
-	check(reloaded.data.coins == 80 and reloaded.level("rifle") == 1 and reloaded.cost("rifle") == 40,"Reload restores coins, levels and subsequent prices")
+	check(reloaded.data.coins == 150 and reloaded.level("rifle") == 1 and reloaded.cost("rifle") == 100,"Reload restores coins, levels and subsequent prices")
 	check(reloaded.purchase("rifle"),"Reloaded progress remains purchasable")
 	var bad = FileAccess.open(path,FileAccess.WRITE)
 	bad.store_string("{broken")
 	bad.close()
 	var recovered = Store.new(path)
-	check(recovered.data.coins == 80 and recovered.level("rifle") == 1 and not recovered.notice.is_empty(),"Corrupt primary save recovers the last complete backup")
-	check(recovered.save() and Store.new(path).data.coins == 80,"Recovered state repairs the primary save")
+	check(recovered.data.coins == 150 and recovered.level("rifle") == 1 and not recovered.notice.is_empty(),"Corrupt primary save recovers the last complete backup")
+	check(recovered.save() and Store.new(path).data.coins == 150,"Recovered state repairs the primary save")
 	var legacy: Dictionary = Store.defaults()
 	legacy.version = 1
 	legacy.weapons.revolver = 4
@@ -159,7 +170,7 @@ func run() -> void:
 	sim.progression.data.coins = 10000
 	sim.progression.data.diamonds = 100
 	check(not game.paused and game.ui.current.is_empty(),"Preparation remains in the world")
-	check(Fixture.buy(sim,p,"rifle") and sim.progression.cost("rifle") == 40,"Rifle station updates permanent level and next price")
+	check(Fixture.buy(sim,p,"rifle") and sim.progression.cost("rifle") == 100,"Rifle station updates permanent level and next price")
 	check(game.arena.scenery.preparation.stations.has("strong"),"Four talents have physical stations")
 	check(Fixture.buy(sim,p,"strong") and sim.progression.level("strong") == 1 and p.max_hp == 110 and p.hp == 60,"Medical station raises maximum and current health")
 	check(Fixture.buy(sim,p,"precise") and Fixture.buy(sim,p,"swift") and Fixture.buy(sim,p,"supply"),"Each talent upgrades at its own station")
@@ -188,7 +199,7 @@ func run() -> void:
 		p.height = shop_height
 	var manager = sim.defense_director.structures
 	check(manager.find("bridge_gate").max_hp == 1200 and is_equal_approx(manager.find("turret_left").damage_multiplier,1.2) and manager.find("turret_right").hp == 0,"Purchased building upgrades affect only their owned targets")
-	check(manager.find("bridge_entry_gate").max_hp == 1200 and sim.progression.cost("bridge_entry_gate") == 40,"Bridge-end gate uses the weapon upgrade price and doubles its next price")
+	check(manager.find("bridge_entry_gate").max_hp == 1200 and sim.progression.cost("bridge_entry_gate") == 100,"Bridge-end gate uses the weapon upgrade price and uses the next fixed price")
 	check(view.actors.turret_left.root.visible and view.actors.turret_left.body.collision_layer == 1 and view.actors.bridge_gate.root.visible,"Manufacturing creates visible native building collision")
 	var turret: Dictionary = manager.find("turret_left")
 	sim.spawn(turret.pos+Vector2(0,4),"normal")
@@ -239,12 +250,21 @@ func run() -> void:
 	check(z.kind == "normal" and z.original == "bucket","Broken armor retains the original reward tier")
 	sim.hit_enemy(z,10000,false,p,Vector3(12,4,25))
 	sim.hit_enemy(z,10000,false,p,Vector3(12,4,25))
-	check(sim.progression.data.coins == coins_before+3 and sim.coin_drops.size() == 1,"A kill pays its original tier exactly once")
+	check(sim.progression.data.coins == coins_before+5 and sim.coin_drops.size() == 1,"A kill pays its original tier exactly once")
 	var initial_coin: Vector3 = sim.coin_drops[0].pos
 	sim.step_coins(.9)
 	check(sim.coin_drops[0].pos.distance_to(Vector3(p.pos.x,p.height+1.05,p.pos.y)) < initial_coin.distance_to(Vector3(p.pos.x,p.height+1.05,p.pos.y)),"Coin magnet moves the drop toward the player")
 	sim.step_coins(5)
-	check(sim.coin_drops.is_empty() and sim.progression.data.coins == coins_before+3,"Cosmetic pickup removal cannot pay coins again")
+	check(sim.coin_drops.is_empty() and sim.progression.data.coins == coins_before+5,"Cosmetic pickup removal cannot pay coins again")
+	for kind in ["bucket","shield","berserker","imp"]:
+		sim.spawn(Vector2(12,25),kind)
+		var summoned_enemy: Dictionary = sim.zombies[-1]
+		summoned_enemy.summoned = true
+		var before_coins: int = sim.progression.data.coins
+		var before_drops: int = sim.coin_drops.size()
+		var before_kills: int = sim.kills
+		sim.hit_enemy(summoned_enemy,summoned_enemy.hp+1,true,p,Vector3(12,4,25))
+		check(sim.progression.data.coins == before_coins and sim.coin_drops.size() == before_drops and sim.kills == before_kills+1,"Summoned enemy grants a kill but no money or coin animation: "+kind)
 	p.ammo[0] = 7
 	p.reserves[0] = 23
 	p.reserves[2] = 765
