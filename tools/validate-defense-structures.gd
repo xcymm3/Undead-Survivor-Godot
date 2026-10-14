@@ -165,9 +165,11 @@ func run() -> void:
 			sim.elapsed += .05
 			sim.update_zombie(z,sim.choose_zombie_target(z,sim.pawns.values()),.05)
 		check(attacked.hp < 200,"%s reaches and damages a turret through normal enemy attacks (pos=%s target=%s attack=%.2f visible=%s)" % [kind,z.pos,sim.choose_zombie_target(z,sim.pawns.values()).id,z.attack_time,manager.visible(z,manager.target(attacked,z.pos))])
-		sim.pawns.solo.pos = z.pos+Vector2(0,-.5)
+		# Keep the nearby player on the same clear side of the gate. Faster
+		# football melee can destroy the turret and reach its gate margin.
+		sim.pawns.solo.pos = z.pos+Vector2(0,.5)
 		var chosen: Dictionary = sim.choose_zombie_target(z,sim.pawns.values())
-		check(chosen.id == (attacked.id if kind in ["imp","giant"] else "solo"),"%s preserves nearest-target priority and dedicated crystal-attacker rules" % kind)
+		check(chosen.id == (attacked.id if kind in ["imp","giant"] else "solo"),"%s preserves nearest-target priority and dedicated crystal-attacker rules (enemy=%s player=%s chosen=%s gate=%s)" % [kind,z.pos,sim.pawns.solo.pos,chosen.id,manager.find("bridge_gate").hp])
 	# Every type attacks the barrier, including dedicated crystal attackers.
 	for kind in data.enemies.keys():
 		sim = fresh()
