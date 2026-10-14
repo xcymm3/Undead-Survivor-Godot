@@ -72,7 +72,10 @@
         -0.095,
         -0.4
       ],
-      "tier": "C"
+      "tier": "C",
+      "piercing": true,
+      "penetrationTargets": 2,
+      "penetrationDamage": 0.5
     },
     {
       "id": "revolver",

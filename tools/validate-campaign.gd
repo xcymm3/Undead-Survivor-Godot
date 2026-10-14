@@ -196,7 +196,7 @@ func run() -> void:
 	var victory_coins: int = sim.progression.data.coins
 	var victory_drops: int = sim.coin_drops.size()
 	sim.hit_enemy(boss,1000000,false,p,Vector3(8,5,23))
-	check(sim.progression.data.coins == victory_coins+2000 and sim.coin_drops.size() == victory_drops+1,"Boss victory awards its 2000 coins while all summoned army deaths produce no money or coin animation")
+	check(sim.progression.data.coins == victory_coins+2000 and sim.coin_drops.size() == victory_drops+20,"Boss victory awards its 2000 coins while all summoned army deaths produce no money or coin animation")
 	var count: int = sim.zombies.size()
 	Boss.step(sim,20)
 	check(sim.zombies.size() == count,"Dead boss cannot summon more zombies")

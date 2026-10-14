@@ -159,6 +159,7 @@ func reset_game() -> void:
 	running = true
 	paused = false
 	finished = false
+	if ui and ui.victory_caption: ui.victory_caption.hide()
 	death_timer = 0.0
 	yaw = 0
 	pitch = 0
@@ -432,12 +433,13 @@ func update_finish_camera(dt: float) -> void:
 	arena.scenery.sync(sim.defense)
 	for z in sim.zombies:
 		if z.hp <= 0: z.down = maxf(0,z.down-dt)
+	ui.sync_victory_caption(death_timer,sim.boss_victory)
 	var focus = finish_focus
 	var end = focus+(Vector3(2.4,1.6,2.8) if not sim.won and sim.cause != "crystal" else Vector3(3.8,2.8,4.8))
 	var target = Transform3D(Basis.IDENTITY,end).looking_at(focus)
 	var amount = smoothstep(0.0,1.0,death_timer/1.8)
-	camera.global_transform = finish_camera_start.interpolate_with(target,amount)
-	if death_timer > 3.8 and ui.current != "result": ui.show_result()
+	camera.global_transform = finish_camera_start if sim.boss_victory else finish_camera_start.interpolate_with(target,amount)
+	if death_timer >= (5.8 if sim.boss_victory else 3.8) and ui.current != "result": ui.show_result()
 func pause_game() -> void:
 	if not running or finished: return
 	reset_mouse_buttons()
@@ -468,6 +470,7 @@ func return_home() -> void:
 	running = false
 	paused = false
 	finished = false
+	if ui and ui.victory_caption: ui.victory_caption.hide()
 	if sim: sim.dispose()
 	sim = null
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

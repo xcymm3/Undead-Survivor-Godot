@@ -588,7 +588,7 @@ func step_coins(dt: float) -> void:
 			continue
 		var destination = Vector3(owner.pos.x,owner.height+1.05,owner.pos.y)
 		if drop.age < .45:
-			var t: float = drop.age/.45
+			var t: float = maxf(0,drop.age)/.45
 			drop.pos = drop.origin+drop.scatter*t+Vector3.UP*sin(t*PI)*.9
 		else:
 			var t: float = clampf((drop.age-.45)/1.1,0,1)
@@ -670,7 +670,8 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	if p.switch > 0:
 		var before: float = p.switch
 		p.switch = maxf(0,p.switch-dt)
-		if before > .2 and p.switch <= .2: p.weapon = p.requested
+		var middle: float = float(p.get("switch_duration",.4))*.75 if p.has("switch_duration") else .2
+		if before > middle and p.switch <= middle: p.weapon = p.requested
 		return
 	if p.reloading:
 		if w.id == "shotgun" and input.get("fire",false) and p.ammo[p.weapon] > 0 and p.cooldown <= 0 and p.fire_anim <= 0 and (not equipment or p.interaction == ""):
@@ -696,7 +697,8 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 				p.reloading = false
 		return
 	if p.requested != p.weapon and p.fire_anim <= 0:
-		p.switch = .4
+		p.switch_duration = .9 if Data.weapons[p.requested].id in ["rifle","pistol"] else .4
+		p.switch = p.switch_duration
 		p.aim = false
 		return
 	var can_reload: bool = not w.get("infiniteAmmo",false) and p.ammo[p.weapon] < capacity and (not equipment or w.get("infiniteReserve",false) or p.reserves[p.weapon] > 0)
@@ -939,7 +941,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 				elif victim.get("is_crystal",false):
 					if not crystal_attack_visible(z): continue
 				elif not arena.surface_hit(Vector3(z.pos.x,1.1+Data.enemy_ground_height(z.pos,map_id),z.pos.y),Vector3(victim.pos.x,victim.height+1.1,victim.pos.y)).is_empty(): continue
-				hit = damage_target(victim,z,10) or hit
+				hit = damage_target(victim,z,30 if z.kind in ["football","dancer"] else 10) or hit
 			events.append({"kind":"enemy_impact" if hit else "enemy_miss","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
 		if z.attack_time >= profile.y: z.attack_time = 0.0
 		return
@@ -1104,9 +1106,12 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 			var origin = Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+.7,z.pos.y)
 			var coin_random = RandomNumberGenerator.new()
 			coin_random.seed = z.id*104729+7841
-			var angle = coin_random.randf()*TAU
-			coin_drops.append({"owner":receiver,"pos":origin,"origin":origin,"scatter":Vector3(cos(angle)*.65,0,sin(angle)*.65),"arrival":0.0,"age":0.0,"value":reward})
-			if coin_drops.size() > 512: coin_drops.pop_front()
+			var pieces = 20 if z.get("original",z.kind) == "dancer" else 1
+			for piece in pieces:
+				var angle = TAU*piece/pieces+coin_random.randf_range(-.12,.12)
+				var radius = coin_random.randf_range(1.4,3.2) if pieces > 1 else .65
+				coin_drops.append({"owner":receiver,"pos":origin,"origin":origin,"scatter":Vector3(cos(angle)*radius,0,sin(angle)*radius),"arrival":0.0,"age":-.025*piece,"value":int(reward/pieces),"burst":pieces > 1})
+			while coin_drops.size() > 512: coin_drops.pop_front()
 		events.append({"kind":"death","player":p.id,"position":position})
 		if z.get("original",z.kind) == "dancer": complete_boss_victory(p)
 	else:

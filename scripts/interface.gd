@@ -12,6 +12,7 @@ var hit_flash = 0.0
 var hurt_flash = 0.0
 var message = ""
 var portraits: Dictionary = {}
+var victory_caption: Label
 var native_hud
 var settings_tab = 0
 var overlay_state: Array = []
@@ -48,6 +49,17 @@ func _ready() -> void:
 	hud.add_child(native_hud)
 	native_hud.setup(self)
 	native_hud.visible = false
+	victory_caption = label("已击败-DiscoKing",48)
+	victory_caption.name = "BossDefeatedCaption"
+	victory_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	victory_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	victory_caption.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	victory_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	victory_caption.add_theme_color_override("font_color",Color("f2d796"))
+	victory_caption.add_theme_color_override("font_outline_color",Color("151c24"))
+	victory_caption.add_theme_constant_override("outline_size",8)
+	root.add_child(victory_caption)
+	victory_caption.hide()
 	Session.changed.connect(func():
 		if current == "multiplayer": show_multiplayer())
 
@@ -692,3 +704,11 @@ func create_portrait(pawn: Dictionary) -> SubViewport:
 	world.environment.ambient_light_energy = .65
 	viewport.add_child(world)
 	return viewport
+
+static func victory_caption_alpha(age: float) -> float:
+	if age < 0 or age >= 5.8: return 0.0
+	return smoothstep(0.0,.8,age) if age < .8 else 1.0-smoothstep(5.0,5.8,age)
+
+func sync_victory_caption(age: float, enabled: bool) -> void:
+	victory_caption.modulate.a = victory_caption_alpha(age)
+	victory_caption.visible = enabled and age < 5.8 and current != "result"

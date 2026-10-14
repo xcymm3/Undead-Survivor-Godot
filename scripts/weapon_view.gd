@@ -95,14 +95,31 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	var visual_target = aim_target.normalized()*maxf(6,aim_target.length())
 	quaternion = Quaternion(Vector3.FORWARD,(visual_target-position).normalized())
 	if w.id in ["p90","pistol","revolver","heavy-machine-gun"]: quaternion = quaternion.slerp(Quaternion.IDENTITY,ads)
-	if p.switch > 0 and p.get("pickup_remaining",0.0) <= 0: position.y -= sin(clampf(1-p.switch/.4,0,1)*PI)*.5
+	var equip_phase = -1.0
+	if p.switch > 0 and p.get("pickup_remaining",0.0) <= 0:
+		var total: float = float(p.get("switch_duration",.4))
+		var phase = clampf(1-p.switch/total,0,1)
+		if p.weapon != p.requested:
+			position.y -= smoothstep(0,.25,phase)*.35
+		else:
+			equip_phase = clampf((phase-.25)/.75,0,1)
+			var lift = sin(PI*equip_phase)
+			if w.id == "rifle":
+				position += Vector3(-.04,.05,-.015)*lift
+				rotation.x += .95*lift
+			elif w.id == "pistol":
+				position += Vector3(-.06,.07,0)*lift
+				rotation.x += TAU*smoothstep(0,.82,equip_phase)
+			else: position.y -= lift*.5
 	if p.reloading and w.id != "revolver":
 		var reload_pulse = sin(clampf(1-p.reload/maxf(.1,w.reloadDuration),0,1)*PI)
 		position.y -= reload_pulse*.07
 		rotation.z -= reload_pulse*.22
 		rotation.x -= reload_pulse*.1
 	var reload_phase = clampf(1-p.get("reload",0.0)/maxf(.1,w.reloadDuration),0,1) if p.reloading else 0.0
-	if w.id == "rifle": models[active].pose(p.reloading,reload_phase,p.fire_anim/w.fireDuration)
+	if w.id == "rifle":
+		models[active].pose(p.reloading,reload_phase,p.fire_anim/w.fireDuration)
+		if equip_phase >= 0: models[active].bolt.position.z += .16*sin(PI*clampf((equip_phase-.42)/.36,0,1))
 	var player: AnimationPlayer = animations[active]
 	if player:
 		var clip = ""
