@@ -347,8 +347,8 @@ func run() -> void:
 	check(shared_population.COST.imp == 3 and shared_population.COST.shield == 4 and shared_population.COST.berserker == 8 and shared_population.COST.giant == 8 and shared_population.COST.football == 12,"Unified costs include budget-generated football zombies")
 	var actual_budgets: Array = []
 	for current_wave in range(1,9): actual_budgets.append(population.budget(current_wave,1,"normal"))
-	check(actual_budgets == [138,159,178,194,208,220,230,239],"Wave generation preserves the existing solo budget curve")
-	check(population.budget(8,2,"normal") == roundi(population.base_budget(8)*1.2*population.budget_multiplier(8)) and population.budget(8,4,"normal") == roundi(population.base_budget(8)*1.6*population.budget_multiplier(8)),"Party scaling remains unchanged")
+	check(actual_budgets == [69,79,89,97,104,110,115,119],"Solo wave budgets are halved with fractional points rounded down")
+	check(population.budget(8,2,"normal") == floori(roundi(population.base_budget(8)*1.2*population.budget_multiplier(8))*.5) and population.budget(8,4,"normal") == floori(roundi(population.base_budget(8)*1.6*population.budget_multiplier(8))*.5),"Party coefficients remain unchanged before the final budget halving")
 	check(population.base_budget(20)-population.base_budget(19) == 5 and population.base_budget(1000000) == population.base_budget(20)+(1000000-20)*5,"Large-wave arithmetic preserves the five-point tail")
 
 	var reduced_budgets_valid = true
@@ -366,8 +366,8 @@ func run() -> void:
 	for party_size in range(1,5):
 		for current_wave in [1,3,6,9,10,100]:
 			var normal_budget: int = population.normal_budget(current_wave,party_size)
-			difficulty_budgets_valid = difficulty_budgets_valid and population.budget(current_wave,party_size,"normal") == normal_budget and population.budget(current_wave,party_size,"easy") == roundi(normal_budget*.7) and population.budget(current_wave,party_size,"hard") == roundi(normal_budget*1.3)
-	check(difficulty_budgets_valid,"Difficulty changes only the final budget by 70, 100 or 130 percent")
+			difficulty_budgets_valid = difficulty_budgets_valid and population.budget(current_wave,party_size,"normal") == floori(normal_budget*.5) and population.budget(current_wave,party_size,"easy") == floori(roundi(normal_budget*.7)*.5) and population.budget(current_wave,party_size,"hard") == floori(roundi(normal_budget*1.3)*.5)
+	check(difficulty_budgets_valid,"All difficulty and party budgets are halved after existing rounding")
 
 	var fixed_health = true
 	for kind in data.enemies:

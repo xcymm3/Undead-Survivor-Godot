@@ -8,6 +8,7 @@ const GROWTH_OFFSET = 3
 const MIN_GROWTH = 5
 const FINAL_BALANCE_WAVE = 10
 const FINAL_BUDGET_MULTIPLIER = .85
+const WAVE_BUDGET_SCALE = .5
 const DIFFICULTIES = ["easy","normal","hard"]
 const DIFFICULTY_MULTIPLIERS = {"easy":.7,"normal":1.0,"hard":1.3}
 const DIFFICULTY_LABELS = {"easy":"简单","normal":"普通","hard":"困难"}
@@ -44,7 +45,7 @@ static func normal_budget(wave: int, party_size: int) -> int:
 	return roundi(base_budget(wave)*Population.party_multiplier(party_size)*budget_multiplier(wave))
 
 static func budget(wave: int, party_size: int, difficulty := "normal") -> int:
-	return roundi(normal_budget(wave,party_size)*difficulty_multiplier(difficulty))
+	return floori(roundi(normal_budget(wave,party_size)*difficulty_multiplier(difficulty))*WAVE_BUDGET_SCALE)
 
 const WAVE_KINDS = [
 	["normal"],
@@ -53,10 +54,10 @@ const WAVE_KINDS = [
 	["normal","imp"],
 	["cone","bucket","shield"],
 	["bucket","shield","imp"],
-	["bucket","giant"],
+	["cone","bucket","giant"],
 	["bucket","shield","imp","berserker"],
 	["shield","football","berserker","giant","imp","bucket"],
-	["shield","football","berserker","giant","imp","bucket"]
+	["football","berserker","giant","imp","bucket"]
 ]
 
 static func kinds(wave: int) -> Array:

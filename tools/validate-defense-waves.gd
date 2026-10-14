@@ -45,10 +45,10 @@ func run() -> void:
 	var expected_lists = [
 		["normal"],["normal","cone"],["normal","cone","bucket"],
 		["normal","imp"],["cone","bucket","shield"],
-		["bucket","shield","imp"],["bucket","giant"],
+		["bucket","shield","imp"],["cone","bucket","giant"],
 		["bucket","shield","imp","berserker"],
 		["shield","football","berserker","giant","imp","bucket"],
-		["shield","football","berserker","giant","imp","bucket"]
+		["football","berserker","giant","imp","bucket"]
 	]
 	check(Population.COST.normal == 1 and Population.COST.cone == 1 and Population.COST.bucket == 1 and Population.COST.imp == 3 and Population.COST.shield == 4 and Population.COST.berserker == 8 and Population.COST.giant == 8 and Population.COST.football == 12,"All eight types use the agreed integer prices")
 	for wave in range(1,11): check(Defense.kinds(wave) == expected_lists[wave-1],"Authored type list matches wave "+str(wave))
@@ -89,9 +89,9 @@ func run() -> void:
 	sim.defense_director.begin_wave()
 	var initial_roster: Array = sim.roster.duplicate()
 	var first_plan: Dictionary = planner.describe().duplicate()
-	check(sim.wave_total == 138 and counts(initial_roster) == {"normal":138},"Normal solo first wave contains only 138 normals")
-	check(sim.defense.wave_budget == 138 and Population.points(initial_roster) == 138,"First wave spends its full 138-point budget")
-	check(planner.batches == 28 and is_equal_approx(planner.interval,30.0/28) and planner.batch_size == 5,"Full first wave schedules twenty-eight batches over thirty seconds")
+	check(sim.wave_total == 69 and counts(initial_roster) == {"normal":69},"Normal solo first wave contains only 69 normals")
+	check(sim.defense.wave_budget == 69 and Population.points(initial_roster) == 69,"First wave spends its full 69-point budget")
+	check(planner.batches == 14 and is_equal_approx(planner.interval,30.0/14) and planner.batch_size == 5,"Full first wave schedules fourteen batches over thirty seconds")
 	var before_clock: float = planner.clock
 	sim.defense.waiting = true
 	sim.step(.25)
@@ -120,7 +120,7 @@ func run() -> void:
 		last_id = sim.next_id
 		await physics_frame
 		if sim.roster.is_empty(): break
-	check(sim.spawned == 138 and sim.roster.is_empty() and planner.clock <= 30.02,"Real first-wave simulation releases its full budget by thirty seconds")
+	check(sim.spawned == 69 and sim.roster.is_empty() and planner.clock <= 30.02,"Real first-wave simulation releases its full budget by thirty seconds")
 	var on_time = batches.size() == planner.batches
 	for index in batches.size():
 		var scheduled = (index+1)*planner.interval
@@ -145,7 +145,7 @@ func run() -> void:
 	planner.step(.1,sim.pawns.values())
 	check(sim.spawned == 5 and sim.roster.is_empty(),"Blocked quota resumes after safe ground becomes available")
 	check(sim.zombies.all(func(z): return z.kind == "normal"),"Actual spawner replaces a legacy crawler entry with a normal zombie")
-	var output = {"seed":20260928,"mode":"solo","difficulty":"normal","budget":138,"spent":Population.points(initial_roster),"unspent":138-Population.points(initial_roster),"plan":first_plan,"counts":counts(all_spawned),"batches":batches,"spawn_safe":safe,"spawn_issues":spawn_issues,"checks":checks,"failures":failures,"scope":"actual authority physics; no browser, no full wave survival result"}
+	var output = {"seed":20260928,"mode":"solo","difficulty":"normal","budget":69,"spent":Population.points(initial_roster),"unspent":69-Population.points(initial_roster),"plan":first_plan,"counts":counts(all_spawned),"batches":batches,"spawn_safe":safe,"spawn_issues":spawn_issues,"checks":checks,"failures":failures,"scope":"actual authority physics; no browser, no full wave survival result"}
 	DirAccess.make_dir_recursive_absolute("res://artifacts")
 	var file = FileAccess.open("res://artifacts/first-wave-horde.json",FileAccess.WRITE)
 	file.store_string(JSON.stringify(output,"\t"))
