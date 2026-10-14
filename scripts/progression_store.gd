@@ -3,6 +3,9 @@ extends RefCounted
 const MAX_CURRENCY = 9000000000000000
 const MAX_UPGRADE_LEVEL = 10
 const UPGRADE_PRICES = [50,100,150,200,300,450,650,1000,1500,2000]
+const TALENT_PRICES = [1,1,2,2,3]
+const GRENADE_PRICES = [300,450,650,1000]
+const MINE_PRICES = {"crystal_mine":50,"gate_mine":200,"ramp_mine":650}
 const MAGAZINES = ["rifle_magazine","pistol_magazine"]
 const WEAPONS = ["rifle","pistol","axe"]
 const OLD_WEAPONS = ["rifle","revolver","axe"]
@@ -18,7 +21,7 @@ var notice = ""
 var data: Dictionary = defaults()
 
 static func defaults() -> Dictionary:
-	return {"version":4,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
+	return {"version":5,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
 
 func _init(save_path := "") -> void:
 	path = save_path
@@ -28,7 +31,7 @@ static func bounded_integer(value, maximum: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and value >= 0 and value <= maximum and float(value) == floor(float(value))
 
 static func valid(value) -> bool:
-	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,4) or value.version < 1: return false
+	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,5) or value.version < 1: return false
 	for key in ["coins","diamonds","best_wave","cleared_total"]:
 		if not bounded_integer(value[key],MAX_CURRENCY): return false
 	if not bounded_integer(value.grenade_level,4): return false
@@ -36,7 +39,7 @@ static func valid(value) -> bool:
 	for key in OLD_WEAPONS if value.version < 3 else WEAPONS:
 		if not value.weapons.has(key) or not bounded_integer(value.weapons[key],48 if value.version < 4 else MAX_UPGRADE_LEVEL): return false
 	for key in TALENTS:
-		if not value.talents.has(key) or not bounded_integer(value.talents[key],10): return false
+		if not value.talents.has(key) or not bounded_integer(value.talents[key],10 if value.version < 5 else TALENT_PRICES.size()): return false
 	for key in LEGACY_BUILDINGS if value.version == 1 else BUILDINGS:
 		var entry = value.buildings.get(key)
 		if not entry is Dictionary or not entry.has_all(["owned","level"]) or not entry.owned is bool or not bounded_integer(entry.level,48 if value.version < 4 else MAX_UPGRADE_LEVEL) or (not entry.owned and entry.level != 0): return false
@@ -98,6 +101,11 @@ func load_save() -> void:
 			data.version = 4
 			dirty = true
 
+		if data.version == 4:
+			for key in TALENTS: data.talents[key] = mini(TALENT_PRICES.size(),int(data.talents[key]))
+			data.version = 5
+			dirty = true
+
 func save() -> bool:
 	if path.is_empty() or not dirty: return true
 	var file = FileAccess.open(path+".tmp",FileAccess.WRITE)
@@ -145,12 +153,12 @@ func currency(id: String) -> String:
 	return "diamonds" if id in TALENTS else "coins"
 
 func cost(id: String) -> int:
-	if id in MINES: return -1 if owned(id) else 100
-	if id in TALENTS: return level(id)+1 if level(id) < 10 else -1
+	if id in MINES: return -1 if owned(id) else int(MINE_PRICES[id])
+	if id in TALENTS: return int(TALENT_PRICES[level(id)]) if level(id) < TALENT_PRICES.size() else -1
 	if id == "grenade":
-		if level(id) >= 4: return -1
+		return int(GRENADE_PRICES[level(id)]) if level(id) < GRENADE_PRICES.size() else -1
 	elif id in BUILDINGS:
-		if not owned(id): return 80 if id in GATES else 100
+		if not owned(id): return 100
 	elif id not in WEAPONS and id not in MAGAZINES: return -1
 	return int(UPGRADE_PRICES[level(id)]) if level(id) < MAX_UPGRADE_LEVEL else -1
 

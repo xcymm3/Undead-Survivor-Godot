@@ -37,23 +37,23 @@ func run() -> void:
 		check(profile.cost(id) == 50 and profile.purchase(id) and profile.cost(id) == 100,"First weapon upgrade uses the next fixed price: "+id)
 		check(profile.purchase(id) and is_equal_approx(profile.weapon_multiplier(id),1.44),"Weapon damage compounds by twenty percent: "+id)
 	for count in range(2,6):
-		check(profile.cost("grenade") == [50,100,150,200][count-2] and profile.purchase("grenade") and profile.grenade_capacity() == count,"Grenade capacity increases to "+str(count))
+		check(profile.cost("grenade") == [300,450,650,1000][count-2] and profile.purchase("grenade") and profile.grenade_capacity() == count,"Grenade capacity increases to "+str(count))
 	check(not profile.purchase("grenade") and profile.cost("grenade") == -1,"Grenade capacity cannot exceed five")
 	for id in Store.BUILDINGS:
-		check(profile.cost(id) == (80 if id in Store.GATES else 100),"Each building uses its confirmed manufacturing price: "+id)
+		check(profile.cost(id) == 100,"Each building uses its confirmed manufacturing price: "+id)
 		check(not profile.owned(id) and profile.purchase(id) and profile.owned(id),"Manufacturing grants persistent ownership: "+id)
 		var first: int = profile.cost(id)
 		check(profile.purchase(id) and profile.cost(id) == first*2 and is_equal_approx(profile.building_multiplier(id),1.2),"Building upgrade compounds and uses fixed prices: "+id)
 	for id in Store.MINES:
 		var coins: int = profile.data.coins
-		check(not profile.owned(id) and profile.cost(id) == 100 and profile.purchase(id) and profile.data.coins == coins-100,"Mine permanently costs exactly one hundred coins: "+id)
+		check(not profile.owned(id) and profile.cost(id) == Store.MINE_PRICES[id] and profile.purchase(id) and profile.data.coins == coins-Store.MINE_PRICES[id],"Mine uses its distance-tier purchase price: "+id)
 		check(profile.owned(id) and profile.level(id) == 0 and profile.cost(id) == -1 and not profile.purchase(id),"Owned mines cannot be bought again or upgraded: "+id)
 	for id in Store.TALENTS:
-		profile.data.diamonds = 55
-		for rank in range(1,11):
-			check(profile.cost(id) == rank and profile.purchase(id),"Talent rank costs its rank: "+id+str(rank))
-		check(profile.data.diamonds == 0 and profile.level(id) == 10 and not profile.purchase(id),"Ten ranks consume exactly fifty-five diamonds: "+id)
-	check(profile.max_health() == 200 and profile.regen_rate() == 10 and is_equal_approx(profile.head_multiplier(),3) and is_equal_approx(profile.move_multiplier(),1.5) and is_equal_approx(profile.reserve_multiplier(),3),"Max talents apply the confirmed values")
+		profile.data.diamonds = 9
+		for rank in range(1,6):
+			check(profile.cost(id) == [1,1,2,2,3][rank-1] and profile.purchase(id),"Talent rank costs its rank: "+id+str(rank))
+		check(profile.data.diamonds == 0 and profile.level(id) == 5 and not profile.purchase(id),"Five ranks consume exactly nine diamonds: "+id)
+	check(profile.max_health() == 150 and profile.regen_rate() == 5 and is_equal_approx(profile.head_multiplier(),2) and is_equal_approx(profile.move_multiplier(),1.25) and is_equal_approx(profile.reserve_multiplier(),2),"Max talents apply the confirmed values")
 	var capped = Store.new()
 	capped.data.coins = Store.MAX_CURRENCY
 	for id in Store.WEAPONS+Store.MAGAZINES+Store.BUILDINGS:
@@ -93,14 +93,14 @@ func run() -> void:
 	legacy_file.store_string(JSON.stringify(legacy))
 	legacy_file.close()
 	var migrated = Store.new(path)
-	check(migrated.data.version == 4 and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("pistol") == 4 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
+	check(migrated.data.version == 5 and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("pistol") == 4 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
 	check(migrated.owned("crystal_mine") and not migrated.owned("ramp_mine") and not migrated.owned("gate_mine") and not migrated.owned("bridge_entry_gate"),"Old free mine is retained while new defenses require purchase")
 	check(migrated.dirty and migrated.save() and Store.new(path).data == migrated.data,"Migrated progress persists and reloads without repeating migration")
 	var corrupt_primary = FileAccess.open(path,FileAccess.WRITE)
 	corrupt_primary.store_string("{broken")
 	corrupt_primary.close()
 	var legacy_backup = Store.new(path)
-	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == 4 and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
+	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == 5 and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
 	var version_two = Store.defaults()
 	version_two.version = 2
 	version_two.coins = 1234
@@ -111,7 +111,7 @@ func run() -> void:
 	v2_file.store_string(JSON.stringify(version_two))
 	v2_file.close()
 	var upgraded_v2 = Store.new(path)
-	check(upgraded_v2.data.version == 4 and upgraded_v2.level("pistol") == 7 and upgraded_v2.data.coins == 1234 and upgraded_v2.data.diamonds == 9 and not upgraded_v2.data.weapons.has("revolver"),"Version-two saves migrate revolver upgrades without losing currencies")
+	check(upgraded_v2.data.version == 5 and upgraded_v2.level("pistol") == 7 and upgraded_v2.data.coins == 1234 and upgraded_v2.data.diamonds == 9 and not upgraded_v2.data.weapons.has("revolver"),"Version-two saves migrate revolver upgrades without losing currencies")
 	check(upgraded_v2.save() and Store.new(path).data == upgraded_v2.data,"Migrated pistol state survives a second disk reload")
 	var old_v3 = Store.defaults()
 	old_v3.version = 3
@@ -123,7 +123,7 @@ func run() -> void:
 	old_file.store_string(JSON.stringify(old_v3))
 	old_file.close()
 	var migrated_v3 = Store.new(path)
-	check(migrated_v3.data.version == 4 and migrated_v3.data.coins == 555 and migrated_v3.level("rifle") == 10 and migrated_v3.level("bridge_gate") == 10 and migrated_v3.data.magazines == {"rifle_magazine":0,"pistol_magazine":0},"Old saves gain zero magazine levels and clamp previous upgrades to the new ten-level limit")
+	check(migrated_v3.data.version == 5 and migrated_v3.data.coins == 555 and migrated_v3.level("rifle") == 10 and migrated_v3.level("bridge_gate") == 10 and migrated_v3.data.magazines == {"rifle_magazine":0,"pistol_magazine":0},"Old saves gain zero magazine levels and clamp previous upgrades to the new ten-level limit")
 	migrated_v3.data.coins = 1000
 	check(migrated_v3.purchase("pistol_magazine") and Store.new(path).level("pistol_magazine") == 1,"Magazine purchases persist across disk reloads")
 	for suffix in ["",".tmp",".bak"]:
@@ -175,8 +175,8 @@ func run() -> void:
 	check(Fixture.buy(sim,p,"strong") and sim.progression.level("strong") == 1 and p.max_hp == 110 and p.hp == 60,"Medical station raises maximum and current health")
 	check(Fixture.buy(sim,p,"precise") and Fixture.buy(sim,p,"swift") and Fixture.buy(sim,p,"supply"),"Each talent upgrades at its own station")
 	check(p.reserves[0] == 612 and p.reserves[2] == 306,"Supply increases both finite reserves")
-	for rank in range(2,11): check(Fixture.buy(sim,p,"supply"),"Additional Supply purchase "+str(rank))
-	check(p.reserves[0] == 1530 and p.reserves[2] == 765,"Repeated Supply purchases retain exact reserve rounding")
+	for rank in range(2,6): check(Fixture.buy(sim,p,"supply"),"Additional Supply purchase "+str(rank))
+	check(p.reserves[0] == 1020 and p.reserves[2] == 510,"Repeated Supply purchases retain exact reserve rounding")
 	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),144) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),345.6),"Player damage combines weapon and headshot talent upgrades")
 	check(Fixture.buy(sim,p,"grenade") and p.grenades == 2 and p.grenade_capacity == 2,"Capacity purchase immediately grants its extra grenade")
 	check(Fixture.buy(sim,p,"bridge_entry_gate"),"New bridge-end gate can be bought")
@@ -267,7 +267,7 @@ func run() -> void:
 		check(sim.progression.data.coins == before_coins and sim.coin_drops.size() == before_drops and sim.kills == before_kills+1,"Summoned enemy grants a kill but no money or coin animation: "+kind)
 	p.ammo[0] = 7
 	p.reserves[0] = 23
-	p.reserves[2] = 765
+	p.reserves[2] = 510
 	sim.equipment.save_weapon_slot(p)
 	p.hp = 63
 	p.grenades = 0
@@ -282,30 +282,30 @@ func run() -> void:
 	sim.step(.02)
 	sim.defense_director.finish_wave()
 	check(sim.progression.data.diamonds == diamonds+1 and sim.cleared == 1,"Successful wave rewards exactly one diamond, even if completion is repeated")
-	check(p.ammo[0] == 7 and p.reserves[0] == 83 and p.reserves[2] == 795 and p.slot_reserves == [83,795] and p.reserve == 83,"Clear rewards two reserve magazines once for both guns, above capacity without filling the magazine")
+	check(p.ammo[0] == 7 and p.reserves[0] == 83 and p.reserves[2] == 540 and p.slot_reserves == [83,540] and p.reserve == 83,"Clear rewards two reserve magazines once for both guns, above capacity without filling the magazine")
 	sim.equipment.select_weapon_slot(p,2)
-	check(p.reserves[2] == 795 and p.reserve == 795,"Switching guns preserves above-capacity wave ammunition")
+	check(p.reserves[2] == 540 and p.reserve == 540,"Switching guns preserves above-capacity wave ammunition")
 	check(not sim.purchase_upgrade("rifle",p),"Shop stays closed after clearing a wave")
 	sim.defense_director.begin_wave()
-	check(manager.find("bridge_gate").hp == 0 and p.grenades == 0 and p.reserves[0] == 83 and p.reserves[2] == 795,"Next wave preserves destroyed buildings and spent grenades without extra ammunition")
+	check(manager.find("bridge_gate").hp == 0 and p.grenades == 0 and p.reserves[0] == 83 and p.reserves[2] == 540,"Next wave preserves destroyed buildings and spent grenades without extra ammunition")
 	var permanent = sim.progression.data.duplicate(true)
 	game.start_solo("defense",42)
 	await physics_frame
 	sim = game.sim
 	p = game.local_pawn()
 	check(sim.wave == 1 and sim.progression.data == permanent and sim.shop_available(p),"Restart resets combat and reopens shop while preserving permanent progress")
-	check(p.hp == 110 and p.ammo[0] == 30 and p.reserves[0] == 1530 and p.reserves[2] == 765,"Restart restores ammunition using upgraded Supply")
+	check(p.hp == 110 and p.ammo[0] == 30 and p.reserves[0] == 1020 and p.reserves[2] == 510,"Restart restores ammunition using upgraded Supply")
 	sim.defense_director.begin_wave()
 	sim.roster.clear()
 	sim.step(.02)
 	check(sim.progression.data.diamonds == diamonds+2,"Replaying wave one earns another diamond")
-	check(p.reserves[0] == 1590 and p.reserves[2] == 795,"A new match can earn the same first-wave ammo reward again")
+	check(p.reserves[0] == 1080 and p.reserves[2] == 540,"A new match can earn the same first-wave ammo reward again")
 	sim.defense_director.begin_wave()
 	sim.roster.clear()
 	sim.defense.crystal_hp = 0
 	sim.step(.02)
 	check(sim.failed and sim.progression.data.diamonds == diamonds+2,"A failed wave awards no diamond")
-	check(p.reserves[0] == 1590 and p.reserves[2] == 795,"A failed wave awards no ammunition")
+	check(p.reserves[0] == 1080 and p.reserves[2] == 540,"A failed wave awards no ammunition")
 	game.ui.native_hud.sync()
 	check(game.ui.native_hud.currency_label.text.contains(str(sim.progression.data.coins)),"Top-right HUD shows permanent currency")
 	root.get_node("Progress").store = Store.new()

@@ -18,8 +18,12 @@ func _ready() -> void:
 	letter.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	letter.outline_size = 4
 	add_child(letter)
+static func eased_progress(value: float) -> float:
+	return 1.0-pow(1.0-clampf(value,0,1),3)
+
 func sync(progress: float, eye: Vector3, enabled: bool) -> void:
 	if global_position.distance_squared_to(eye) > .0001: look_at(eye)
+	progress = eased_progress(progress)
 	var mesh = ImmediateMesh.new()
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in 64:

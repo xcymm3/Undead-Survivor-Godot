@@ -73,7 +73,7 @@ static func description(sim, id: String) -> String:
 	if id == "alarm": return "进攻中" if sim.defense.started else "开始进攻"
 	var price: int = profile.cost(id)
 	var cost_text = "%d%s" % [price,"◆" if id in profile.TALENTS else "$"] if price >= 0 else ""
-	var level_text = "LV%d" % (profile.level(id)+1) if id not in profile.TALENTS else "LV%d / 10" % profile.level(id)
+	var level_text = "LV%d" % (profile.level(id)+1) if id not in profile.TALENTS else "LV%d / 5" % profile.level(id)
 	if price < 0: level_text = "LV MAX"
 	var detail = ""
 	if id in profile.WEAPONS:
