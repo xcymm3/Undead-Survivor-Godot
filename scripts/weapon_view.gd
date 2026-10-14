@@ -105,10 +105,10 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 			equip_phase = clampf((phase-.25)/.75,0,1)
 			var lift = sin(PI*equip_phase)
 			if w.id == "rifle":
-				position += Vector3(-.04,.05,-.015)*lift
+				position += Vector3(-.08,-.12,-.30)*lift
 				rotation.x += .95*lift
 			elif w.id == "pistol":
-				position += Vector3(-.06,.07,0)*lift
+				position += Vector3(-.09,-.09,-.35)*lift
 				rotation.x += TAU*smoothstep(0,.82,equip_phase)
 			else: position.y -= lift*.5
 	if p.reloading and w.id != "revolver":
