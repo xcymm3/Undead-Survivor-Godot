@@ -42,38 +42,56 @@ func run() -> void:
 			complete = complete and quota > previous and quota-previous <= planner.batch_size
 			previous = quota
 		check(complete and previous == count and planner.scheduled_count(29.999) < count and planner.scheduled_count(30) == count,"Dynamic batches release all %d bodies at thirty seconds without oversized bursts" % count)
+	var expected_lists = [
+		["normal"],["normal","cone"],["normal","cone","bucket"],
+		["normal","imp"],["cone","bucket","shield"],
+		["bucket","shield","imp"],["bucket","giant"],
+		["bucket","shield","imp","berserker"],
+		["shield","football","berserker","giant","imp","bucket"],
+		["shield","football","berserker","giant","imp","bucket"]
+	]
+	check(Population.COST.normal == 1 and Population.COST.cone == 1 and Population.COST.bucket == 1 and Population.COST.imp == 3 and Population.COST.shield == 4 and Population.COST.berserker == 8 and Population.COST.giant == 8 and Population.COST.football == 12,"All eight types use the agreed integer prices")
+	for wave in range(1,11): check(Defense.kinds(wave) == expected_lists[wave-1],"Authored type list matches wave "+str(wave))
 	var composition_valid = true
-	var crawler_free = true
-	var late_special_share = true
-	var advanced_share_valid = true
-	check(Population.COST.cone == 1 and Population.COST.bucket == 1 and "cone" in Population.ORDINARY and "bucket" in Population.ORDINARY and not "cone" in Population.ELITES and not "bucket" in Population.ELITES,"Cones and buckets are ordinary zombies costing one point each")
-	for wave in range(1,31):
-		check(is_equal_approx(Defense.advanced_fraction(wave),.1+minf(9,wave-1)*(.5/9)),"Armored ordinary share rises from ten to sixty percent then caps: wave "+str(wave))
 	for party in range(1,5):
 		for difficulty in Defense.DIFFICULTIES:
-			for wave in [1,2,3,4,5,6,7,8,9,10,11,20,100]:
+			for wave in range(1,11):
 				var random = RandomNumberGenerator.new()
 				random.seed = 20260928+wave
 				var value = Defense.roster(wave,party,random,difficulty)
 				var budget = Defense.budget(wave,party,difficulty)
-				var spent = Population.points(value)
-				var specials = value.filter(func(kind): return kind in Population.ELITES)
-				var common = value.filter(func(kind): return kind in Population.ORDINARY)
-				var advanced_count = common.count("cone")+common.count("bucket")
-				advanced_share_valid = advanced_share_valid and absf(advanced_count-common.size()*Defense.advanced_fraction(wave)) <= 1.5 and absf(common.count("cone")-2*common.count("bucket")) <= 1.0
-				crawler_free = crawler_free and value.all(func(kind): return sim.defense_population_kind(kind) != "crawler")
-				composition_valid = composition_valid and spent <= budget and Population.points(common) <= budget*.5 and budget*.5-Population.points(common) < 1 and Population.points(specials) <= budget*.5 and value.count("football") == Defense.footballs(wave,party)
-				if wave >= 3: late_special_share = late_special_share and budget*.5-Population.points(specials) < 4
-	check(composition_valid,"All difficulties and one-to-four players respect the fixed fifty percent special cap and independent bosses")
-	check(late_special_share,"Available elite pools leave less than one cheapest elite unspent")
-	check(crawler_free,"All difficulties, party sizes and sampled early-to-endless waves spawn no crawlers")
-	check(advanced_share_valid,"Ordinary armored body share and the two-to-one cone/bucket ratio hold across waves, difficulties and party sizes")
+				var types: Array = expected_lists[wave-1]
+				var filler_count = 0
+				var remaining = budget
+				for kind in types:
+					var base_count = floori(float(budget)/float(types.size()*Population.COST[kind]))
+					remaining -= base_count*int(Population.COST[kind])
+					if Population.COST[kind] == 1:
+						filler_count += 1
+					else: composition_valid = composition_valid and value.count(kind) == base_count
+				var filler_index = 0
+				for kind in types:
+					if Population.COST[kind] != 1: continue
+					var extra = floori(float(remaining)/filler_count)+(1 if filler_index < remaining % filler_count else 0)
+					composition_valid = composition_valid and value.count(kind) == floori(float(budget)/types.size())+extra
+					filler_index += 1
+				composition_valid = composition_valid and Population.points(value) == budget and value.all(func(kind): return kind in types or (wave == 10 and kind == "dancer")) and value.count("dancer") == (1 if wave == 10 else 0)
+	check(composition_valid,"All waves, difficulties and party sizes floor equal shares and spend every remainder only on listed one-point types")
+	var ratio_roster = Population.roster(240,["normal","football"],RandomNumberGenerator.new())
+	check(counts(ratio_roster) == {"normal":120,"football":10},"Equal 120-point shares produce the requested twelve-to-one ratio")
+	check(counts(Population.roster(19,["cone","bucket","shield"],RandomNumberGenerator.new())) == {"cone":8,"bucket":7,"shield":1},"Remainder is balanced across the two listed one-point types")
+	check(Population.roster(30,[],RandomNumberGenerator.new()).is_empty() and Population.roster(0,["normal"],RandomNumberGenerator.new()).is_empty(),"Empty lists and zero budgets remain bounded")
+	var left = RandomNumberGenerator.new()
+	var right = RandomNumberGenerator.new()
+	left.seed = 4711
+	right.seed = 4711
+	check(Defense.roster(9,1,left) == Defense.roster(9,1,right),"Identical authority seeds preserve deterministic shuffled rosters")
 	sim.defense_director.begin_wave()
 	var initial_roster: Array = sim.roster.duplicate()
 	var first_plan: Dictionary = planner.describe().duplicate()
-	check(sim.wave_total == 69 and counts(initial_roster) == {"normal":62,"cone":5,"bucket":2},"Normal solo first wave contains 62 normals, five cones and two buckets")
-	check(sim.defense.wave_budget == 138 and Population.points(initial_roster) == 69,"First wave spends only its 69-point ordinary half")
-	check(planner.batches == 14 and is_equal_approx(planner.interval,30.0/14) and planner.batch_size == 5,"Reduced first wave schedules fourteen batches over thirty seconds")
+	check(sim.wave_total == 138 and counts(initial_roster) == {"normal":138},"Normal solo first wave contains only 138 normals")
+	check(sim.defense.wave_budget == 138 and Population.points(initial_roster) == 138,"First wave spends its full 138-point budget")
+	check(planner.batches == 28 and is_equal_approx(planner.interval,30.0/28) and planner.batch_size == 5,"Full first wave schedules twenty-eight batches over thirty seconds")
 	var before_clock: float = planner.clock
 	sim.defense.waiting = true
 	sim.step(.25)
@@ -102,7 +120,7 @@ func run() -> void:
 		last_id = sim.next_id
 		await physics_frame
 		if sim.roster.is_empty(): break
-	check(sim.spawned == 69 and sim.roster.is_empty() and planner.clock <= 30.02,"Real first-wave simulation releases its ordinary half by thirty seconds")
+	check(sim.spawned == 138 and sim.roster.is_empty() and planner.clock <= 30.02,"Real first-wave simulation releases its full budget by thirty seconds")
 	var on_time = batches.size() == planner.batches
 	for index in batches.size():
 		var scheduled = (index+1)*planner.interval

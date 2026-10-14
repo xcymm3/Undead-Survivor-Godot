@@ -283,10 +283,10 @@ func validate_crawler() -> void:
 	check(preload("res://scripts/enemy_population.gd").COST.crawler == 1,"Legacy crawler alias shares the ordinary one-point cost")
 	var population = preload("res://scripts/enemy_population.gd")
 	var defense_population = preload("res://scripts/defense_population.gd")
-	check(population.COST.cone == 1 and population.COST.bucket == 1 and not population.ELITES.has("cone") and not population.ELITES.has("bucket"),"Armored common zombies cost one point and do not spend the special pool")
+	check(population.COST.cone == 1 and population.COST.bucket == 1 and not population.ELITES.has("cone") and not population.ELITES.has("bucket"),"Armored common zombies cost one point")
 	for wave in [1,5,10,20]:
 		var common: Array = defense_population.roster(wave,1,RandomNumberGenerator.new()).filter(func(kind): return kind in population.ORDINARY)
-		check(absf(common.count("cone")+common.count("bucket")-common.size()*defense_population.advanced_fraction(wave)) <= 1.5,"Advanced common count follows its wave curve: "+str(wave))
+		check(common.all(func(kind): return kind in defense_population.kinds(wave)),"Common types follow the authored wave list: "+str(wave))
 	sim.zombies.clear()
 	sim.spawn(Vector2(8,36.0),"crawler")
 	var z: Dictionary = sim.zombies[-1]

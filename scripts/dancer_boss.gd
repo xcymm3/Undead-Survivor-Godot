@@ -6,10 +6,10 @@ const EMERGE_DURATION = 1.4
 const Population = preload("res://scripts/enemy_population.gd")
 
 static func roster(random: RandomNumberGenerator) -> Array:
-	var ordinary = Population.roster(25,["cone","bucket"],random,0,.6)
+	var ordinary = Population.roster(25,["cone","bucket"],random)
 	var special: Array = []
 	var remaining = 25
-	while remaining >= 4:
+	while remaining >= 3:
 		var choices = Population.ELITES.filter(func(kind): return Population.COST[kind] <= remaining)
 		if choices.is_empty(): break
 		var kind: String = choices[random.randi_range(0,choices.size()-1)]
