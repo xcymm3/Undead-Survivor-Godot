@@ -42,10 +42,24 @@ func stage() -> void:
 			face(sim,p,id)
 			p.input = {"interact":true}
 			p.input_age = 0
-			sim.defense_director.interactions(1.65)
+			sim.defense_director.interactions(.55)
 			game.camera.position = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 			game.camera.rotation = Vector3(p.pitch,p.yaw,0)
 			game.camera.fov = 74
+			game.weapon.show()
+			game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-50))
+		if scenario.begins_with("switch_"):
+			p.weapon = 0 if scenario.begins_with("switch_rifle") else 2
+			p.requested = p.weapon
+			p.switch_duration = .9
+			var phase = .53 if scenario == "switch_rifle_bolt" else .32 if scenario == "switch_pistol_spin" else .28
+			p.switch = .9*(1.0-(.25+.75*phase))
+			p.pos = Vector2(0,8)
+			p.height = 3
+			p.yaw = 0
+			p.pitch = 0
+			game.camera.position = Vector3(0,4.65,8)
+			game.camera.rotation = Vector3.ZERO
 			game.weapon.show()
 			game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-50))
 		if scenario == "crystal_half": sim.defense.crystal_hp = 1500
