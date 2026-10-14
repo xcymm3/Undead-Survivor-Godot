@@ -8,6 +8,10 @@ on:
         default: all
         options: [all, switch]
   workflow_call:
+    inputs:
+      scope:
+        type: string
+        default: switch
 permissions:
   contents: read
 jobs:
