@@ -249,11 +249,16 @@ func sync() -> void:
 	var p: Dictionary = ui.game.view_pawn()
 	if p.is_empty(): return
 	wave_label.text = "第 %02d 波" % sim.wave
-	count_label.text = "击杀 %d  ·  场上 %d" % [sim.kills,sim.alive_count()]
+	var living_count: int = sim.alive_count()
+	count_label.text = "击杀 %d  ·  场上 %d" % [sim.kills,living_count]
 	time_label.text = ui.time_text(sim.elapsed)
 	var defense: Dictionary = sim.defense_state()
 	if float(defense.get("next_wave_at",-1)) >= 0:
-		time_label.text += " · 下一波 %d 秒" % ceili(maxf(0,float(defense.next_wave_at)-sim.elapsed))
+		var gap_left: int = ceili(maxf(0,float(defense.next_wave_at)-sim.elapsed))
+		if gap_left == 0 and living_count >= 10:
+			time_label.text += " · 清理至剩余9只后接波"
+		else:
+			time_label.text += " · 下一波最早 %d 秒" % gap_left
 	var age: float = sim.elapsed-float(defense.get("wave_started_at",-100))
 	var announcement_opacity: float = announcement_alpha(age) if defense.get("started",false) and not sim.failed and not sim.won else 0.0
 	wave_announcement.visible = announcement_opacity > 0

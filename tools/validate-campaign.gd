@@ -122,7 +122,15 @@ func run() -> void:
 	check(sim.wave == 1 and sim.roster.is_empty(),"Next wave cannot begin before ten seconds")
 	check(sim.zombies[0].pos.distance_to(remaining_enemy_position) > .1,"Remaining enemies keep moving during the inter-wave gap")
 	sim.step(.1)
-	check(sim.wave == 2 and sim.alive_count() == expected and not sim.roster.is_empty(),"Ten seconds later the next wave starts without requiring kills")
+	check(sim.wave == 1 and sim.alive_count() == expected and sim.roster.is_empty(),"Expired gap cannot advance while ten or more enemies remain")
+	for index in range(10,sim.zombies.size()): sim.zombies[index].hp = 0
+	sim.step(.001)
+	check(sim.wave == 1 and sim.alive_count() == 10,"Exactly ten living enemies still block the next wave")
+	game.ui.native_hud.sync()
+	check(game.ui.native_hud.time_label.text.contains("清理至剩余9只"),"HUD explains the population gate instead of displaying a zero-second countdown")
+	sim.zombies[9].hp = 0
+	sim.step(.001)
+	check(sim.wave == 2 and sim.alive_count() == 9 and not sim.roster.is_empty(),"Nine remaining enemies permit the next wave after the existing gap")
 	check(sim.events.count({"kind":"wave_start","position":Vector3(data.Maps.Defense.CRYSTAL.x,5.0,data.Maps.Defense.CRYSTAL.y)}) == 1,"The transition emits one wave announcement event")
 	var hud = game.ui.native_hud
 	check(hud.announcement_alpha(0) == 0 and is_equal_approx(hud.announcement_alpha(.225),.5) and hud.announcement_alpha(1.2) == 1 and is_equal_approx(hud.announcement_alpha(2.675),.5) and hud.announcement_alpha(3) == 0,"Announcement fades in, holds and fades out over three seconds")
@@ -147,6 +155,7 @@ func run() -> void:
 	check(data.enemies.dancer.health == data.enemies.football.health*10,"Boss health is exactly ten football zombies")
 	sim.roster.clear()
 	sim.zombies.clear()
+	validate_summon_cap(sim)
 	sim.spawn(Vector2(8,23),"dancer")
 	var boss: Dictionary = sim.zombies[-1]
 	check(boss.chase_speed >= 4.6 and boss.chase_speed <= 5.2,"Dancing boss uses the ordinary movement speed")
@@ -200,3 +209,30 @@ func run() -> void:
 	await process_frame
 	print("CAMPAIGN VALIDATION: %d checks; %d failures" % [checks,failures])
 	quit(1 if failures else 0)
+
+func validate_summon_cap(sim) -> void:
+	sim.zombies.clear()
+	sim.events.clear()
+	sim.spawn(Vector2(8,23),"dancer")
+	var boss: Dictionary = sim.zombies[-1]
+	for index in 74: sim.spawn(Vector2(8,23),"normal")
+	Boss.step(sim,10)
+	check(sim.alive_count() == 75 and boss.summon_roster.is_empty() and boss.dance_remaining == 0 and not sim.events.any(func(event): return event.kind == "disco"),"75 living enemies plus 26 summons exceeds 100 and skips the entire dance")
+	check(boss.summon_clock == 10,"Skipped summon resets the ten-second interval instead of retrying each frame")
+	sim.zombies[-1].hp = 0
+	Boss.step(sim,9.9)
+	check(boss.summon_roster.is_empty(),"Dropping below the cap does not immediately retry a skipped summon")
+	Boss.step(sim,.11)
+	check(sim.alive_count() == 74 and boss.summon_roster.size() == 26 and boss.dance_remaining == 3,"74 living enemies plus 26 summons is exactly 100 and is allowed; dead bodies are excluded")
+	Boss.step(sim,3)
+	for tick in 20: Boss.step(sim,.016)
+	check(sim.alive_count() == 100 and boss.summon_roster.is_empty(),"The accepted boundary summon releases its full quota and stops at 100")
+	sim.zombies.clear()
+	sim.events.clear()
+	sim.spawn(Vector2(8,23),"dancer")
+	boss = sim.zombies[-1]
+	for index in 75: boss.summon_roster.append("bucket")
+	Boss.step(sim,10)
+	check(sim.alive_count()+boss.summon_roster.size() == 76 and boss.dance_remaining == 0 and not sim.events.any(func(event): return event.kind == "disco"),"Pending summons count towards admission; rejected calls still allow the existing backlog to release")
+	sim.zombies.clear()
+	sim.events.clear()

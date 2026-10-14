@@ -4,6 +4,7 @@ const INTERVAL = 10.0
 const DANCE_DURATION = 3.0
 const EMERGE_DURATION = 1.4
 const SUMMON_BUDGET = 50
+const MAX_SUMMON_POPULATION = 100
 const SUMMON_KINDS = ["bucket","shield","berserker","imp"]
 const Population = preload("res://scripts/enemy_population.gd")
 
@@ -19,11 +20,16 @@ static func step(sim, dt: float) -> void:
 			boss.dance_remaining = maxf(0,boss.dance_remaining-dt)
 		elif boss.summon_clock <= 0:
 			boss.summon_clock = INTERVAL
-			boss.dance_remaining = DANCE_DURATION
-			boss.summon_roster.append_array(roster(sim.random))
-			boss.attack_time = 0.0
-			boss.move_speed = 0.0
-			sim.events.append({"kind":"disco","position":Vector3(boss.pos.x,data.enemy_ground_height(boss.pos,sim.map_id)+1.5,boss.pos.y)})
+			var incoming: Array = roster(sim.random)
+			var committed: int = sim.alive_count()
+			for other in sim.zombies:
+				if other.hp > 0: committed += other.get("summon_roster",[]).size()
+			if committed+incoming.size() <= MAX_SUMMON_POPULATION:
+				boss.dance_remaining = DANCE_DURATION
+				boss.summon_roster.append_array(incoming)
+				boss.attack_time = 0.0
+				boss.move_speed = 0.0
+				sim.events.append({"kind":"disco","position":Vector3(boss.pos.x,data.enemy_ground_height(boss.pos,sim.map_id)+1.5,boss.pos.y)})
 		if boss.get("dance_remaining",0.0) > 0 or boss.get("summon_roster",[]).is_empty(): continue
 		var released = 0
 		for attempt in 96:

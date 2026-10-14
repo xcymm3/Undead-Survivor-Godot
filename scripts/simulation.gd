@@ -263,7 +263,7 @@ func step(dt: float) -> void:
 	if roster.is_empty():
 		if wave < 10:
 			if float(defense.get("next_wave_at",-1)) < 0: defense["next_wave_at"] = elapsed+defense_director.WAVE_GAP
-			if elapsed+.000001 >= float(defense.next_wave_at):
+			if elapsed+.000001 >= float(defense.next_wave_at) and alive_count() < 10:
 				defense.wave = wave+1
 				defense_director.begin_wave()
 		elif alive_count() == 0:
