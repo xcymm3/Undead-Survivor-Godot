@@ -3,20 +3,12 @@ extends RefCounted
 const INTERVAL = 10.0
 const DANCE_DURATION = 3.0
 const EMERGE_DURATION = 1.4
+const SUMMON_BUDGET = 50
+const SUMMON_KINDS = ["bucket","shield","berserker","imp"]
 const Population = preload("res://scripts/enemy_population.gd")
 
 static func roster(random: RandomNumberGenerator) -> Array:
-	var ordinary = Population.roster(25,["cone","bucket"],random)
-	var special: Array = []
-	var remaining = 25
-	while remaining >= 3:
-		var choices = Population.ELITES.filter(func(kind): return Population.COST[kind] <= remaining)
-		if choices.is_empty(): break
-		var kind: String = choices[random.randi_range(0,choices.size()-1)]
-		special.append(kind)
-		remaining -= int(Population.COST[kind])
-	ordinary.append_array(special)
-	return ordinary
+	return Population.roster(SUMMON_BUDGET,SUMMON_KINDS,random)
 
 static func step(sim, dt: float) -> void:
 	var data = sim.arena.get_node("/root/Data")

@@ -154,10 +154,19 @@ func run() -> void:
 	check(boss.dance_remaining == 0 and boss.summon_roster.is_empty(),"Boss cannot summon before ten seconds")
 	Boss.step(sim,.11)
 	check(boss.dance_remaining == 3 and sim.events.any(func(event): return event.kind == "disco"),"Ten-second summon starts a stopped disco dance and audio cue")
-	var ordinary: Array = boss.summon_roster.filter(func(kind): return kind in Store.COIN_REWARDS and kind in preload("res://scripts/enemy_population.gd").ORDINARY)
-	var specials: Array = boss.summon_roster.filter(func(kind): return kind in preload("res://scripts/enemy_population.gd").ELITES)
 	var population = preload("res://scripts/enemy_population.gd")
-	check(population.points(ordinary) <= 25 and 25-population.points(ordinary) < 1 and population.points(specials) <= 25 and 25-population.points(specials) < 3,"Summons respect separate ordinary and special twenty-five-point pools")
+	var expected_summons = {"bucket":18,"shield":3,"berserker":1,"imp":4}
+	var exact_summons = boss.summon_roster.size() == 26 and population.points(boss.summon_roster) == 50
+	for kind in expected_summons: exact_summons = exact_summons and boss.summon_roster.count(kind) == expected_summons[kind]
+	check(exact_summons,"Boss evenly shares fifty points and fills the remainder with buckets: 18 buckets, 3 shields, 1 berserker, 4 imps")
+	var stable_composition = true
+	for seed_value in range(30):
+		var random = RandomNumberGenerator.new()
+		random.seed = seed_value
+		var value = Boss.roster(random)
+		stable_composition = stable_composition and value.size() == 26 and population.points(value) == 50
+		for kind in expected_summons: stable_composition = stable_composition and value.count(kind) == expected_summons[kind]
+	check(stable_composition,"Every random seed preserves the exact summon composition")
 	var boss_point: Vector2 = boss.pos
 	sim.update_zombie(boss,sim.crystal_target(),.5)
 	check(boss.pos == boss_point and boss.move_speed == 0,"Boss neither walks nor attacks during the summoning dance")
