@@ -23,11 +23,12 @@ static func eased_progress(value: float) -> float:
 
 func sync(progress: float, eye: Vector3, enabled: bool) -> void:
 	if global_position.distance_squared_to(eye) > .0001: look_at(eye)
+	var complete = progress >= 1.0
 	progress = eased_progress(progress)
 	var mesh = ImmediateMesh.new()
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in 64:
-		var color = Color("f2d38b") if enabled and float(i)/64 < progress else Color("53675d")
+		var color = Color("f2d38b") if enabled and float(i)/64 < progress and (i < 63 or complete) else Color("53675d")
 		mesh.surface_set_color(color)
 		var a = PI/2-TAU*i/64.0
 		var b = PI/2-TAU*(i+1)/64.0
