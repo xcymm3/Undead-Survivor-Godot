@@ -1,4 +1,5 @@
 extends Node3D
+const EquipMotion = preload("res://scripts/equip_motion.gd")
 var models: Array[Node3D] = []
 var animations: Array = []
 var sights: Array[Node3D] = []
@@ -102,14 +103,14 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		if p.weapon != p.requested:
 			position.y -= smoothstep(0,.25,phase)*.35
 		else:
-			equip_phase = clampf((phase-.25)/.75,0,1)
+			equip_phase = EquipMotion.phase(p.switch,total)
 			var lift = sin(PI*equip_phase)
 			if w.id == "rifle":
 				position += Vector3(-.08,-.12,-.30)*lift
 				rotation.x += .95*lift
 			elif w.id == "pistol":
 				position += Vector3(-.09,-.09,-.35)*lift
-				rotation.x += TAU*smoothstep(0,.82,equip_phase)
+				rotation.x += EquipMotion.spin_angle(equip_phase)
 			else: position.y -= lift*.5
 	if p.reloading and w.id != "revolver":
 		var reload_pulse = sin(clampf(1-p.reload/maxf(.1,w.reloadDuration),0,1)*PI)
@@ -119,7 +120,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	var reload_phase = clampf(1-p.get("reload",0.0)/maxf(.1,w.reloadDuration),0,1) if p.reloading else 0.0
 	if w.id == "rifle":
 		models[active].pose(p.reloading,reload_phase,p.fire_anim/w.fireDuration)
-		if equip_phase >= 0: models[active].bolt.position.z += .16*sin(PI*clampf((equip_phase-.42)/.36,0,1))
+		if equip_phase >= 0: models[active].bolt.position.z += EquipMotion.bolt_offset(equip_phase)
 	var player: AnimationPlayer = animations[active]
 	if player:
 		var clip = ""

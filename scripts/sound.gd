@@ -5,6 +5,11 @@ var players: Array[AudioStreamPlayer] = []
 var work: AudioStreamPlayer
 var work_id = ""
 var work_time = 0.0
+var equip: AudioStreamPlayer
+var equip_id = ""
+var equip_time = 0.0
+var equip_starts = 0
+var equip_offset = 0.0
 var music: AudioStreamPlayer
 var index = 0
 var spatial_players: Array[AudioStreamPlayer3D] = []
@@ -41,6 +46,12 @@ func sync_enemy_steps(enemies: Array, listener: Vector3, dt: float) -> void:
 		if step_clock-step_due[id] > 3: step_due.erase(id)
 
 func _ready() -> void:
+	streams["equip-rifle-bolt"] = preload("res://scripts/equip_audio.gd").make(0)
+	streams["equip-pistol-spin"] = preload("res://scripts/equip_audio.gd").make(2)
+	equip = AudioStreamPlayer.new()
+	equip.max_polyphony = 1
+	equip.pitch_scale = 1.0
+	add_child(equip)
 	for cue in ["crystal-hit","coin-pickup","purchase"]: streams[cue] = preload("res://scripts/economy_audio.gd").make(cue)
 	work = AudioStreamPlayer.new()
 	work.stream = streams.purchase
@@ -112,6 +123,7 @@ func playback_enabled() -> bool:
 	return DisplayServer.get_name() != "headless" and "--silent" not in OS.get_cmdline_user_args()
 
 func clear_effects() -> void:
+	sync_equip({},false)
 	sync_work({},false)
 	step_due.clear()
 	step_clock = 0.0
@@ -123,6 +135,8 @@ func clear_effects() -> void:
 		player.stream = null
 
 func _exit_tree() -> void:
+	equip.stop()
+	equip.stream = null
 	music.stop()
 	music.stream_paused = false
 	music.stream = null
@@ -145,3 +159,22 @@ func sync_work(p: Dictionary, enabled: bool) -> void:
 	if (id != work_id or time < work_time) and playback_enabled(): work.play(minf(time,preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS-.01))
 	work_id = id
 	work_time = time
+
+func sync_equip(p: Dictionary, enabled: bool) -> void:
+	var state = preload("res://scripts/equip_motion.gd").audio_state(p) if enabled else {}
+	if state.is_empty():
+		equip.stop()
+		equip_id = ""
+		equip_time = 0.0
+		return
+	if state.cue != equip_id or state.age < equip_time:
+		equip.stop()
+		equip.stream = streams[state.cue]
+		equip.volume_db = -11 if state.cue == "equip-rifle-bolt" else -15
+		equip.pitch_scale = .9/maxf(.001,float(p.get("switch_duration",.4)))
+		equip_offset = minf(state.age*equip.pitch_scale,equip.stream.get_length()-.001)
+		equip_starts += 1
+		# Seek into the matching animation phase when a frame arrives late.
+		if playback_enabled(): equip.play(equip_offset)
+	equip_id = state.cue
+	equip_time = state.age
