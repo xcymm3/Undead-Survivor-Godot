@@ -123,17 +123,17 @@ static func face_vertices() -> Array:
 		var x = side*.104
 		face_print(result,[Vector3(x-.060,1.7975,.2265),Vector3(x-.060,1.8525,.2265),Vector3(x+.060,1.8525,.2265),Vector3(x+.060,1.7975,.2265)],Color.BLACK)
 	# Stepped, slightly uneven opening based on the blocky zombie reference.
-	# 0 = skin, 1 = dark mouth, 2 = muted inner mouth; no separate lip or teeth.
-	var mouth = ["0000111000","0011111100","0011222110","0112222210","1122222211","1100000011"]
+	# 0 = skin, 1 = complete dark border, 2 = muted red interior; no teeth.
+	var mouth = ["0000111000","0011111100","0011222110","0112222210","1122222211","1111111111"]
 	for row in mouth.size():
 		for column in mouth[row].length():
 			var pixel: String = mouth[row][column]
 			if pixel == "0": continue
-			var left = (column-5)*.021
-			var right = left+.021
+			var left = (column-5)*.024
+			var right = left+.024
 			var top = 1.745-row*.020
 			var bottom = top-.020
-			face_print(result,[Vector3(left,top,.2265),Vector3(left,bottom,.2265),Vector3(right,bottom,.2265),Vector3(right,top,.2265)],Color("242821") if pixel == "1" else Color("68534b"))
+			face_print(result,[Vector3(left,top,.2265),Vector3(left,bottom,.2265),Vector3(right,bottom,.2265),Vector3(right,top,.2265)],Color("242821") if pixel == "1" else Color("854e4c"))
 	return result
 
 static func face_print(result: Array, points: Array, color: Color) -> void:
