@@ -200,7 +200,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		blade.transform = inverse*motion.blade
 		scabbard.transform = inverse*motion.sheath
 		var wrist: Vector3 = motion.blade*Vector3(0,-.24,0)
-		pose_blade_arm(blade_right_arm,Vector3(.48,-.58,-.48),wrist,inverse)
+		pose_blade_arm(blade_right_arm,blade_elbow(wrist),wrist,inverse)
 		if motion.support > .001:
 			blade_left_hand.visible = true
 			blade_left_arm.visible = true
@@ -212,6 +212,10 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		blade_motion.reset()
 	muzzle.global_position = muzzle_position()
 	muzzle.visible = not hide_scope and p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") == "gun"
+
+static func blade_elbow(wrist: Vector3) -> Vector3:
+	# Bend below the drawing hand instead of covering the exposed blade with a sleeve.
+	return Vector3(clampf(wrist.x-.18,-.48,.40),-.62,-.46)
 
 static func pose_blade_arm(arm: MeshInstance3D, elbow: Vector3, wrist: Vector3, inverse: Transform3D) -> void:
 	var direction = wrist-elbow
