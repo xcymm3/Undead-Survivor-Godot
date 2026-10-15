@@ -11,6 +11,11 @@ on:
         description: '仅执行整备场景隔离截图，不打包 EXE'
         type: boolean
         default: false
+      visual_scope:
+        description: 隔离截图范围
+        type: choice
+        options: [switch, normal, all]
+        default: switch
       enemy_lab_counts:
         description: 'CPU正式矩阵人数（完整或300只重点确认）'
         type: choice
@@ -32,6 +37,8 @@ jobs:
   preparation-visual:
     if: inputs.visual_only == true && inputs.enemy_profile_only != true
     uses: ./.github/workflows/preparation-visual.yml
+    with:
+      scope: ${{ inputs.visual_scope || 'switch' }}
   enemy-cpu-experiments:
     if: inputs.enemy_profile_only == true
     uses: ./.github/workflows/enemy-cpu-experiments.yml

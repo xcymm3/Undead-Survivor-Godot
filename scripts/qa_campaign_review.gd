@@ -8,6 +8,9 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
+	if scenario.begins_with("normal_"):
+		await stage_normal_zombie(scenario)
+		return
 	if scenario in ["home","home_hover","settings"]:
 		game.ui.show_home()
 		if scenario == "home_hover":
@@ -119,3 +122,58 @@ func face(sim, p: Dictionary, id: String) -> void:
 		p.pitch = asin(direction.y)
 		p.input_age = 0
 		return
+
+func stage_normal_zombie(scenario: String) -> void:
+	# Only reachable behind --automation + Web + explicit review URL.
+	game.start_solo("defense",42)
+	await get_tree().physics_frame
+	game.running = false
+	game.ui.root.hide()
+	game.weapon.hide()
+	game.sim.roster.clear()
+	game.sim.zombies.clear()
+	var studio: bool = scenario != "normal_night"
+	var lineup: bool = scenario == "normal_lineup"
+	var center = Vector3(0,4.05,10)
+	if studio:
+		game.arena.scenery.hide()
+		game.arena.sun.hide()
+		var environment: Environment = game.arena.find_children("*","WorldEnvironment",true,false)[0].environment
+		environment.background_color = Color("344552")
+		environment.fog_enabled = false
+		environment.ambient_light_color = Color("d1e0e5")
+		environment.ambient_light_energy = .5
+		var ground = MeshInstance3D.new()
+		ground.mesh = PlaneMesh.new()
+		ground.mesh.size = Vector2(80,80)
+		ground.position = Vector3(0,3,10)
+		var material = StandardMaterial3D.new()
+		material.albedo_color = Color("53616a")
+		material.roughness = .85
+		ground.material_override = material
+		game.add_child(ground)
+		for entry in [[Vector3(-3,8,15),Color("ffe5bc"),1.5],[Vector3(4,6,8),Color("abcff0"),.6]]:
+			var light = DirectionalLight3D.new()
+			game.add_child(light)
+			light.position = entry[0]
+			light.look_at(center)
+			light.light_color = entry[1]
+			light.light_energy = entry[2]
+			light.shadow_enabled = true
+	for index in 5 if lineup else 1:
+		game.sim.spawn(Vector2((index-2)*1.5 if lineup else 0,10),"normal")
+		var z: Dictionary = game.sim.zombies[-1]
+		z.outfit = index if lineup else 1
+		z.heading = -.12 if lineup else -.18
+		z.move_speed = 0.0
+		z.gait = .6
+	game.enemies.sync(game.sim.zombies,.3,true)
+	game.camera.fov = 38 if lineup else 32
+	game.camera.position = Vector3(2.6,5.2,21) if lineup else Vector3(2.1,4.65,14.5)
+	game.camera.look_at(center)
+	game.get_viewport().scaling_3d_scale = 1.0
+	RenderingServer.render_loop_enabled = false
+	for i in 6: await get_tree().process_frame
+	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+	RenderingServer.force_draw(true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"count":game.sim.zombies.size(),"head_size":[.49,.49,.45],"roughness":game.enemies.toy_material.roughness,"studio":studio}),true)
