@@ -142,7 +142,7 @@ func stage_normal_zombie(scenario: String) -> void:
 		environment.background_color = Color("344552")
 		environment.fog_enabled = false
 		environment.ambient_light_color = Color("d1e0e5")
-		environment.ambient_light_energy = .5
+		environment.ambient_light_energy = .25
 		var ground = MeshInstance3D.new()
 		ground.mesh = PlaneMesh.new()
 		ground.mesh.size = Vector2(80,80)
@@ -152,7 +152,7 @@ func stage_normal_zombie(scenario: String) -> void:
 		material.roughness = .85
 		ground.material_override = material
 		game.add_child(ground)
-		for entry in [[Vector3(-3,8,15),Color("ffe5bc"),1.5],[Vector3(4,6,8),Color("abcff0"),.6]]:
+		for entry in [[Vector3(-3,8,15),Color("ffe5bc"),.75],[Vector3(4,6,8),Color("abcff0"),.25]]:
 			var light = DirectionalLight3D.new()
 			game.add_child(light)
 			light.position = entry[0]
@@ -160,6 +160,12 @@ func stage_normal_zombie(scenario: String) -> void:
 			light.light_color = entry[1]
 			light.light_energy = entry[2]
 			light.shadow_enabled = true
+		var highlight = OmniLight3D.new()
+		game.add_child(highlight)
+		highlight.position = Vector3(1.6,5.3,13.5)
+		highlight.light_color = Color("fff0cf")
+		highlight.light_energy = .65
+		highlight.omni_range = 8.0
 	for index in 5 if lineup else 1:
 		game.sim.spawn(Vector2((index-2)*1.5 if lineup else 0,10),"normal")
 		var z: Dictionary = game.sim.zombies[-1]

@@ -91,6 +91,12 @@ static func box_vertices(size: Vector3, bevel: float) -> Array:
 			for sz in [-1.0,1.0]:
 				var signs = Vector3(sx,sy,sz)
 				face(result,[Vector3(h.x,inner.y,inner.z)*signs,Vector3(inner.x,h.y,inner.z)*signs,Vector3(inner.x,inner.y,h.z)*signs],signs.normalized())
+	# Weighted corner normals soften only the tiny bevels, with no extra faces.
+	# The broad planes retain a nearly flat center and catch restrained plastic glints.
+	for vertex in result:
+		var direction: Vector3 = vertex.position
+		var weights = (direction.abs()-inner+Vector3.ONE*(bevel*.22)).max(Vector3.ZERO)
+		vertex.normal = (weights*direction.sign()).normalized()
 	return result
 
 static func face(result: Array, points: Array, normal: Vector3) -> void:
