@@ -87,7 +87,7 @@ func sight_profile(kind: String) -> PackedVector2Array:
 	for part in Data.parts:
 		if part.has("kind") and part.kind != kind: continue
 		var center: Vector3 = Data.v3(part.position)
-		var edge: Vector3 = center.abs()+Data.v3(part.size)*.5
+		var edge: Vector3 = center.abs()+preload("res://scripts/normal_zombie_art.gd").part_size(part,kind)*.5
 		var width = Vector2(edge.x,edge.z).length()
 		top = maxf(top,edge.y)
 		if part.get("head",false):

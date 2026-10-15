@@ -632,6 +632,7 @@ func run() -> void:
 	await validate_inventory()
 	await validate_combat_revision()
 	await validate_outfits()
+	load("res://tools/validate-normal-zombie.gd").validate(game,check)
 	await validate_interaction_motion()
 	await validate_crawler()
 	await validate_flame()

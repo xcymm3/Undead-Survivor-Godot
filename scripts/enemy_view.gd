@@ -4,8 +4,10 @@ var meshes: Dictionary = {}
 var actors: Dictionary = {}
 var skin: Skin
 var material: StandardMaterial3D
+var toy_material: StandardMaterial3D
 var rage_eye_material: StandardMaterial3D
 var kinds = ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football","dancer"]
+const Toy = preload("res://scripts/normal_zombie_art.gd")
 const Wardrobe = preload("res://scripts/zombie_outfits.gd")
 
 func _ready() -> void:
@@ -14,6 +16,11 @@ func _ready() -> void:
 	material = StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 1.0
+	toy_material = StandardMaterial3D.new()
+	toy_material.vertex_color_use_as_albedo = true
+	toy_material.roughness = .30
+	toy_material.metallic = 0.0
+	toy_material.metallic_specular = .65
 	rage_eye_material = StandardMaterial3D.new()
 	rage_eye_material.albedo_color = Color("ff170d")
 	rage_eye_material.emission_enabled = true
@@ -22,13 +29,14 @@ func _ready() -> void:
 	rage_eye_material.roughness = .25
 
 func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1) -> ArrayMesh:
+	if kind == "normal" and outfit < 0: outfit = 1
 	var dressed = outfit >= 0 and kind in ["normal","crawler","cone","bucket"]
 	var key = kind+str(outfit if dressed else palette)+str(rage)+str(armor)+str(dressed)
 	if meshes.has(key): return meshes[key]
 	var cube = BoxMesh.new().get_mesh_arrays()
 	var surface = SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	surface.set_material(material)
+	surface.set_material(toy_material if kind == "normal" else material)
 	for j in Data.parts.size():
 		var part: Dictionary = Data.parts[j]
 		if (part.has("kind") and part.kind != kind) or (part.get("armor",false) and not armor): continue
@@ -39,6 +47,16 @@ func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1)
 			color = {"imp":Color(.341,.251,.373),"shield":Color(.275,.365,.396),"berserker":Color(.714,.231,.173) if rage else Color(.494,.220,.184),"giant":Color(.443,.349,.263),"football":Color(.561,.157,.188)}.get(kind,color)
 			if kind == "dancer": color = Color("eee2d5")
 		if dressed: color = Wardrobe.part_color(outfit,part,color)
+		if kind == "normal":
+			color = Toy.color_for(part,j,outfit)
+			var size = Toy.part_size(part,kind)
+			for vertex in Toy.box_vertices(size,Toy.bevel_for(part,size)):
+				surface.set_normal(vertex.normal)
+				surface.set_color(color)
+				surface.set_bones(PackedInt32Array([bone_for(part),0,0,0]))
+				surface.set_weights(PackedFloat32Array([1,0,0,0]))
+				surface.add_vertex(vertex.position+Data.v3(part.position))
+			continue
 		for index in cube[Mesh.ARRAY_INDEX]:
 			surface.set_normal(cube[Mesh.ARRAY_NORMAL][index])
 			surface.set_color(color)
@@ -46,7 +64,7 @@ func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1)
 			surface.set_weights(PackedFloat32Array([1,0,0,0]))
 			surface.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*Data.v3(part.size)+Data.v3(part.position))
 	if dressed:
-		for patch in Wardrobe.patches(outfit):
+		for patch in Toy.patches(outfit) if kind == "normal" else Wardrobe.patches(outfit):
 			for index in cube[Mesh.ARRAY_INDEX]:
 				surface.set_normal(cube[Mesh.ARRAY_NORMAL][index])
 				surface.set_color(patch.color)
@@ -214,7 +232,7 @@ static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array
 		if (part.has("kind") and part.kind != z.kind) or (part.get("armor",false) and z.armor <= 0):
 			result.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*.00001),Vector3(0,-100,0)))
 		else:
-			result.append(state.root * state.bones[bone_for(part)] * Transform3D(Basis.IDENTITY.scaled(Data.v3(part.size)),Data.v3(part.position)))
+			result.append(state.root * state.bones[bone_for(part)] * Transform3D(Basis.IDENTITY.scaled(Toy.part_size(part,z.kind)),Data.v3(part.position)))
 	return result
 
 func sync(zombies: Array, elapsed: float, stationary: bool) -> void:
