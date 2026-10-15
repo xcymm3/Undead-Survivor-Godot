@@ -61,6 +61,8 @@ func fit_in_view(pose: Transform3D) -> Transform3D:
 		for y in [-.35,1.11]:
 			for z in [-.05,.05]:
 				var vertex: Vector3 = pose*Vector3(x,y,z)
-				retreat = maxf(retreat,maxf(vertex.z+absf(vertex.x)/(tangent*(4.0/3.0)*.88),vertex.z+absf(vertex.y)/(tangent*.88)))
+				# Leave the right-side weapon HUD unobstructed as well as the screen edge.
+				var horizontal_margin = .68 if vertex.x > 0 else .88
+				retreat = maxf(retreat,maxf(vertex.z+absf(vertex.x)/(tangent*(4.0/3.0)*horizontal_margin),vertex.z+absf(vertex.y)/(tangent*.88)))
 	pose.origin.z -= retreat
 	return pose

@@ -28,6 +28,7 @@ func validate_blade_motion(game) -> void:
 				for aspect in [4.0/3.0,1.6,16.0/9.0]:
 					var half_height = -point.z*tan(deg_to_rad(61.0)*.5)
 					bounds_valid = bounds_valid and point.z < -.04 and absf(point.x) < half_height*aspect*.95 and absf(point.y) < half_height*.95
+					if is_equal_approx(aspect,1.6): bounds_valid = bounds_valid and point.x < half_height*aspect*.62
 			check(bounds_valid,"Wide slash keeps blade tip and grip within desktop camera bounds: "+str(step)+" / "+str(direction))
 	check(motion_type.slash_data.clips.size() == 2 and motion_type.slash_data.clips[0].name.ends_with("Sword_Slash1") and motion_type.slash_data.clips[1].name.ends_with("Sword_Slash2"),"Both distinct authored CC0 slash clips are present")
 	check(motion_type.slash_data.clips.all(func(clip): return clip.samples.size() == 121 and is_equal_approx(clip.source_seconds,5.0/6.0)),"Reference animations preserve their source timing and dense baked wrist samples")
