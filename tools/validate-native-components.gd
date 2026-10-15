@@ -43,7 +43,7 @@ func validate_combat_revision() -> void:
 		sim.zombies.clear()
 		sim.spawn(Vector2(8,27),kind)
 		var z: Dictionary = sim.zombies[0]
-		if kind == "shield": check(z.hp == 1200 and z.body == 200 and z.armor == 1000,"Shield armor doubles without changing body health")
+		if kind == "shield": check(z.hp == 2400 and z.body == 400 and z.armor == 2000,"Shield doubles armor and body health")
 		var initial: Vector2 = z.pos
 		z.shove_time = .4
 		z.shove_velocity = Vector2(0,-5)
@@ -58,9 +58,9 @@ func validate_combat_revision() -> void:
 		sim.zombies.clear()
 		sim.spawn(Vector2(8,27),kind)
 		var z: Dictionary = sim.zombies[0]
-		check(z.hp == (9000 if kind == "football" else 3000),"Updated boss health "+kind)
+		check(z.hp == (18000 if kind == "football" else 6000),"Updated boss health "+kind)
 		if kind == "football":
-			check(z.body == 3000 and z.armor == 6000,"Football has six thousand armor and three thousand body health")
+			check(z.body == 6000 and z.armor == 12000,"Football has twelve thousand armor and six thousand body health")
 			check(z.chase_speed >= 4.6 and z.chase_speed <= 5.2,"Football pursuit uses the ordinary random speed range")
 			z.state = "charging"
 		else:
@@ -68,16 +68,16 @@ func validate_combat_revision() -> void:
 			z.body = 1501
 			sim.hit_enemy(z,2,false,p,Vector3(0,1,27))
 		check(z.pos == Vector2(8,27),"Charge or half-health rage prevents hit displacement "+kind)
-		if kind == "berserker": check(z.rage,"Berserker rages at half of its three thousand health")
+		if kind == "berserker": check(z.rage,"Berserker rages below half of its doubled health")
 	sim.zombies.clear()
 	sim.spawn(Vector2(8,27),"giant")
 	var armored_giant: Dictionary = sim.zombies[0]
-	check(armored_giant.hp == 6000 and armored_giant.body == 4000 and armored_giant.armor == 2000,"Giant splits unchanged total health into helmet armor and body health")
+	check(armored_giant.hp == 12000 and armored_giant.body == 8000 and armored_giant.armor == 4000,"Giant splits doubled health into doubled helmet armor and body health")
 	var giant_position: Vector2 = armored_giant.pos
 	var giant_torso_hit: Dictionary = load("res://scripts/enemy_view.gd").hit(armored_giant,Vector3(8,4.8,31),Vector3(0,0,-1),8,sim.elapsed,true)
 	check(not giant_torso_hit.is_empty() and giant_torso_hit.armor,"Giant body hits use the same full-body armor rule as buckets and football zombies")
 	sim.hit_enemy(armored_giant,100,true,p,Vector3(8,2,27))
-	check(armored_giant.armor == 1900 and armored_giant.body == 4000 and armored_giant.pos == giant_position,"Any giant hit consumes armor first without firearm displacement")
+	check(armored_giant.armor == 3900 and armored_giant.body == 8000 and armored_giant.pos == giant_position,"Any giant hit consumes armor first without firearm displacement")
 	var calm_berserker: ArrayMesh = game.enemies.mesh_for("berserker",0,false,false)
 	var raging_berserker: ArrayMesh = game.enemies.mesh_for("berserker",0,true,false)
 	var glowing_eyes: StandardMaterial3D = raging_berserker.surface_get_material(1)
@@ -1194,7 +1194,7 @@ func validate_inventory() -> void:
 		for step in 10:
 			p.fire_anim = maxf(0,p.fire_anim-.056)
 			sim.update_melee_swing(p,w)
-		check((sim.zombies[0].hp > 0) == (distance > 3.5),"Axe expanded reach with unchanged lethal damage at "+str(distance))
+		check(sim.zombies[0].hp < 200 if distance <= 3.5 else sim.zombies[0].hp == 200,"Axe retains reach against doubled health at "+str(distance))
 	game.return_home()
 	game.start_solo("defense",71245)
 	await physics_frame

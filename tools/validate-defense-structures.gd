@@ -278,8 +278,8 @@ func run() -> void:
 		z.armor = float(data.enemies.giant.armor)
 		z.hp = z.body+z.armor
 		z.pos = mine.pos+Vector2(0,[0,-5,-10,-12][i])
-	sim.equipment.explode({"id":-1,"owner":"solo","pos":Vector3(mine.pos.x,mine.height+.16,mine.pos.y)})
-	check(sim.zombies.map(func(z): return z.hp) == mine_health,"Mine exactly matches grenade damage falloff and armor at every sampled distance")
+	sim.equipment.explode({"id":-1,"owner":"solo","damage_scale":.5,"pos":Vector3(mine.pos.x,mine.height+.16,mine.pos.y)})
+	check(sim.zombies.map(func(z): return z.hp) == mine_health,"Mine matches its explicit half-strength grenade falloff and armor at every sampled distance")
 	var after: Array = sim.zombies.map(func(z): return z.hp)
 	manager.step(5.0)
 	check(sim.zombies.map(func(z): return z.hp) == after,"Spent mine cannot detonate a second time")

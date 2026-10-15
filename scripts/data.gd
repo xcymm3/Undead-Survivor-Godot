@@ -24,7 +24,7 @@ const PALETTE = [0x355747,0x365d73,0x794638,0x987f4c,0x663a4b,0x4b595b]
 const DEFENSE_RESERVE_MAGAZINES = 17
 
 func defense_full_reserve(weapon_index: int) -> int:
-	return DEFENSE_RESERVE_MAGAZINES*int(weapons[weapon_index].capacity)
+	return roundi(DEFENSE_RESERVE_MAGAZINES*int(weapons[weapon_index].capacity)*.5)
 
 static func ads_enabled(weapon: Dictionary) -> bool:
 	return weapon.get("adsEnabled",true) == true

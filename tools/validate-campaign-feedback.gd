@@ -135,7 +135,7 @@ func run() -> void:
 	check(boss.chase_speed >= 4.6 and boss.chase_speed <= 5.2,"Boss speed is the ordinary sampled speed")
 	sim.spawn(Vector2(2,3),"bucket")
 	game.ui.native_hud.sync()
-	check(game.ui.native_hud.boss_title.text.contains("90000") and game.ui.native_hud.boss_title.get_parent().visible,"Boss health HUD shows exact health on arrival")
+	check(game.ui.native_hud.boss_title.text.contains(str(int(root.get_node("Data").enemies.dancer.health))) and game.ui.native_hud.boss_title.get_parent().visible,"Boss health HUD shows exact health on arrival")
 	sim.hit_enemy(boss,1000000,true,p,Vector3(0,4,3))
 	check(sim.won and sim.alive_count() == 0 and sim.earned_coins > 0 and sim.earned_diamonds == 1,"Boss defeat clears and rewards the army and wins immediately")
 	check(sim.coin_drops.filter(func(drop): return drop.get("burst",false)).size() == 20,"Boss bursts into twenty coins without duplicating currency")

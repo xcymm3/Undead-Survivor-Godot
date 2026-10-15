@@ -143,8 +143,8 @@ func step_mine(item: Dictionary, dt: float) -> void:
 	if item.fuse <= 0:
 		item.spent = true
 		item.hp = 0
-		# Reuse the exact grenade damage, radius, cover, armor and stun rules.
-		sim.equipment.explode({"id":-1,"owner":item.id,"pos":Vector3(item.pos.x,item.height+.16,item.pos.y)})
+		# Keep mine damage unchanged; share grenade cover, radius, stun and explosion audio.
+		sim.equipment.explode({"id":-1,"owner":item.id,"damage_scale":.5,"pos":Vector3(item.pos.x,item.height+.16,item.pos.y)})
 
 func step_turret(item: Dictionary, dt: float) -> void:
 	var rifle: Dictionary = Data.weapons[0]
