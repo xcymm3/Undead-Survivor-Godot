@@ -84,10 +84,15 @@ func sight_profile(kind: String) -> PackedVector2Array:
 	var shoulders = Vector2(.35,1.1)
 	var head = Vector2(.25,1.8)
 	var top = 0.0
-	for part in Data.parts:
-		if part.has("kind") and part.kind != kind: continue
-		var center: Vector3 = Data.v3(part.position)
-		var edge: Vector3 = center.abs()+preload("res://scripts/normal_zombie_art.gd").part_size(part,kind)*.5
+	var art = preload("res://scripts/normal_zombie_art.gd")
+	for index in Data.parts.size():
+		var part: Dictionary = Data.parts[index]
+		if not art.part_visible(index,kind) or (part.has("kind") and part.kind != kind): continue
+		var frame: Transform3D = art.part_frame(part,kind)
+		var center: Vector3 = frame.origin
+		var half_size: Vector3 = art.part_size(part,kind)*.5
+		var extent: Vector3 = frame.basis.x.abs()*half_size.x+frame.basis.y.abs()*half_size.y+frame.basis.z.abs()*half_size.z
+		var edge: Vector3 = center.abs()+extent
 		var width = Vector2(edge.x,edge.z).length()
 		top = maxf(top,edge.y)
 		if part.get("head",false):

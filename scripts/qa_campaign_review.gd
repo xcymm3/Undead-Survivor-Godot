@@ -12,7 +12,7 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
-	if scenario.begins_with("normal_"):
+	if scenario.begins_with("normal_") or scenario.begins_with("toy_"):
 		await stage_normal_zombie(scenario)
 		return
 	if scenario in ["home","home_hover","settings"]:
@@ -137,7 +137,11 @@ func stage_normal_zombie(scenario: String) -> void:
 	game.sim.roster.clear()
 	game.sim.zombies.clear()
 	var studio: bool = scenario != "normal_night"
-	var lineup: bool = scenario == "normal_lineup"
+	var all_toys: bool = scenario == "toy_lineup"
+	var toy_review: bool = scenario.begins_with("toy_")
+	var lineup: bool = scenario == "normal_lineup" or all_toys
+	var selected_kind: String = scenario.trim_prefix("toy_").trim_suffix("_rage") if toy_review and not all_toys else "normal"
+	var display_kinds: Array = preload("res://scripts/zombie_toy_styles.gd").KINDS if all_toys else [selected_kind]
 	var walking: bool = scenario == "normal_walk"
 	action_name = scenario.trim_prefix("normal_")
 	var animated: bool = action_name in ["walk","idle","attack","hit","shove","stunned","death","emerge"]
@@ -175,16 +179,29 @@ func stage_normal_zombie(scenario: String) -> void:
 		highlight.light_color = Color("fff0cf")
 		highlight.light_energy = .65
 		highlight.omni_range = 8.0
-	for index in 5 if lineup else 1:
-		game.sim.spawn(Vector2((index-2)*1.5 if lineup else 0,10),"normal")
+	var count: int = display_kinds.size() if all_toys else 5 if lineup else 1
+	for index in count:
+		var kind: String = display_kinds[index] if all_toys else selected_kind
+		var x: float = (index-(count-1)*.5)*(2.6 if all_toys else 1.5) if lineup else 0.0
+		game.sim.spawn(Vector2(x,10),kind)
 		var z: Dictionary = game.sim.zombies[-1]
-		z.outfit = index if lineup else 1
+		if kind in ["normal","cone","bucket"]: z.outfit = index if lineup and not all_toys else 1
 		z.heading = -.12 if lineup else -.18
+		z.rage = scenario == "toy_berserker_rage"
 		z.move_speed = 4.9 if walking else 0.0
 		z.gait = .6
 	game.enemies.sync(game.sim.zombies,.3,not walking)
 	game.camera.fov = 38 if lineup else 32
 	game.camera.position = Vector3(2.6,5.2,21) if lineup else Vector3(2.1,4.65,14.5)
+	if toy_review:
+		if all_toys:
+			center = Vector3(0,4.9,10)
+			game.camera.fov = 30
+			game.camera.position = Vector3(1.5,6,36)
+		else:
+			var height: float = Data.enemy_scale(selected_kind)*{"cone":2.82,"bucket":2.56,"dancer":2.36}.get(selected_kind,2.12)
+			center = Vector3(0,3+height*.52,10)
+			game.camera.position = center+Vector3(height*.65,height*.16,height*1.95)
 	game.camera.look_at(center)
 	game.get_viewport().scaling_3d_scale = 1.0
 	RenderingServer.render_loop_enabled = false
@@ -195,7 +212,7 @@ func stage_normal_zombie(scenario: String) -> void:
 		action_callback = JavaScriptBridge.create_callback(draw_action_frame)
 		JavaScriptBridge.get_interface("window").__drawNormalAction = action_callback
 		JavaScriptBridge.eval("window.__normalActionFrame=-1",true)
-	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"count":game.sim.zombies.size(),"head_size":[.49,.49,.45],"roughness":game.enemies.toy_material.roughness,"studio":studio,"frames":action_frames if animated else 0,"fps":action_fps}),true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"count":game.sim.zombies.size(),"head_size":[.49,.49,.45],"roughness":game.enemies.toy_material.roughness,"studio":studio,"kinds":display_kinds,"frames":action_frames if animated else 0,"fps":action_fps}),true)
 
 func draw_action_frame(args: Array) -> void:
 	# Deterministic pose previews of actual shared engine animations, not timed video.

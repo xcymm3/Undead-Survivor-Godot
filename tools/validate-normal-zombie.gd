@@ -8,7 +8,7 @@ static func validate(game, check: Callable) -> void:
 		if part.get("head",false):
 			check.call(Toy.part_size(part,"normal") == original,"Ordinary toy retains exact original head/face dimensions")
 		for kind in ["cone","bucket","giant","dancer"]:
-			check.call(Toy.part_size(part,kind) == original,"Special enemy geometry remains unchanged: "+kind)
+			if part.get("head",false): check.call(Toy.part_size(part,kind) == original,"Toy redesign retains head and helmet dimensions: "+kind)
 	check.call(Toy.part_size(data.parts[18],"normal").x > data.parts[18].size[0] and Toy.part_size(data.parts[14],"normal").z > data.parts[14].size[2],"Ordinary hands and boots gain a modest toy silhouette")
 	for outfit in 5:
 		var mesh = game.enemies.mesh_for("normal",0,false,false,outfit)
@@ -21,7 +21,8 @@ static func validate(game, check: Callable) -> void:
 		var valid_bones = true
 		for bone in arrays[Mesh.ARRAY_BONES]: valid_bones = valid_bones and bone >= 0 and bone < 7
 		check.call(valid_bones,"Toy retains original seven-bone rig")
-	check.call(game.enemies.mesh_for("bucket",0,false,true,1).surface_get_material(0) == game.enemies.material and game.enemies.material.roughness == 1.0,"Armored enemies retain their original matte material")
+	var bucket = game.enemies.mesh_for("bucket",0,false,true,1)
+	check.call(bucket.get_surface_count() == 2 and bucket.surface_get_material(0) == game.enemies.toy_material and bucket.surface_get_material(1) == game.enemies.bucket_material,"Bucket shares toy skin but retains a separate metal surface")
 	var sim = game.sim
 	sim.spawn(Vector2(8,36),"normal")
 	var z: Dictionary = sim.zombies[-1]
@@ -48,13 +49,13 @@ static func validate(game, check: Callable) -> void:
 		var c: Vector3 = vertices[index+2].position
 		winding = winding and (b-a).cross(c-a).dot(vertices[index].normal) < 0
 	check.call(vertices.size() == 132 and winding,"Beveled primitive has forty-four outward clockwise triangles")
-	check.call(not Toy.part_visible(4,"normal") and Toy.part_visible(4,"bucket"),"Only ordinary zombie loses its hair cap")
+	check.call(not Toy.part_visible(4,"normal") and not Toy.part_visible(4,"bucket") and Toy.part_visible(4,"crawler"),"Active toys remove the old hair cap while the legacy crawler stays unchanged")
 	var printed_face = Toy.face_vertices()
 	var print_in_head = true
 	for vertex in printed_face:
 		print_in_head = print_in_head and absf(vertex.position.x) < .233 and vertex.position.y > 1.557 and vertex.position.y < 2.023 and vertex.position.z >= .225 and vertex.position.z <= .228
 	check.call(printed_face.size() > 0 and print_in_head,"Printed toy face fits original head silhouette without a raised plate")
-	check.call(not Toy.part_visible(11,"normal") and Toy.part_visible(11,"bucket"),"Raised cheek plate is removed only from ordinary zombie mesh and hit boxes")
+	check.call(not Toy.part_visible(11,"normal") and not Toy.part_visible(11,"bucket"),"Active toys share removal of raised cheek plates from mesh and hit boxes")
 	z.attack_time = 0.0
 	z.move_speed = 4.9
 	z.gait = .05
@@ -93,6 +94,7 @@ static func validate(game, check: Callable) -> void:
 	var idle_b: Dictionary = View.pose_state(z,0,false)
 	check.call(idle_a.bones[1].is_equal_approx(idle_b.bones[1]),"Idle ordinary zombie does not keep stepping")
 	validate_actions(game,z,check)
+	validate_toy_roster(game,check)
 	sim.zombies.clear()
 
 static func validate_actions(game, base: Dictionary, check: Callable) -> void:
@@ -154,3 +156,45 @@ static func validate_actions(game, base: Dictionary, check: Callable) -> void:
 			var pose: Transform3D = transforms[index]
 			low = minf(low,pose.origin.y-.5*(absf(pose.basis.x.y)+absf(pose.basis.y.y)+absf(pose.basis.z.y))-data.enemy_ground_height(z.pos))
 		check.call(low >= -.001 and low <= .025,"Rigid death stays above terrain throughout fall: "+str(frame))
+
+static func validate_toy_roster(game, check: Callable) -> void:
+	var data = game.get_node("/root/Data")
+	var sim = game.sim
+	for kind in preload("res://scripts/zombie_toy_styles.gd").KINDS:
+		sim.zombies.clear()
+		sim.spawn(Vector2(8,36),kind)
+		var z: Dictionary = sim.zombies[-1]
+		z.heading = -.18
+		var mesh = game.enemies.mesh_for(kind,0,false,z.armor > 0,int(z.get("outfit",-1)))
+		var bones_valid = true
+		var triangles = 0
+		for surface in mesh.get_surface_count():
+			var arrays: Array = mesh.surface_get_arrays(surface)
+			triangles += arrays[Mesh.ARRAY_INDEX].size()/3
+			for bone in arrays[Mesh.ARRAY_BONES]: bones_valid = bones_valid and bone >= 0 and bone < 7
+		check.call(bones_valid and mesh.get_surface_count() <= 2 and triangles < 1800,"Toy roster keeps seven bones and bounded cached geometry: "+kind)
+		check.call(mesh.surface_get_material(0) == (game.enemies.dancer_material if kind == "dancer" else game.enemies.toy_material),"Toy roster uses shared molded material: "+kind)
+		for time in [0.0,.25,.7]:
+			z.attack_time = time
+			var state = View.pose_state(z,time,false)
+			var poses = View.transforms(z,time,false)
+			var matching = true
+			for index in data.parts.size():
+				var part: Dictionary = data.parts[index]
+				if not Toy.part_visible(index,kind) or (part.has("kind") and part.kind != kind) or (part.get("armor",false) and z.armor <= 0): continue
+				if index not in [0,3,14,18] and not part.has("kind"): continue
+				var size = Toy.part_size(part,kind)
+				var render: Transform3D = state.root*state.bones[View.bone_for(part)]*Toy.part_frame(part,kind)
+				var inverse: Transform3D = poses[index].affine_inverse()
+				for vertex in Toy.box_vertices(size,Toy.bevel_for(part,size)):
+					var local: Vector3 = inverse*(render*vertex.position)
+					matching = matching and local.abs().x <= .5005 and local.abs().y <= .5005 and local.abs().z <= .5005
+			check.call(matching,"Toy mesh and authority agree for resized bodies and tilted equipment: "+kind+" / "+str(time))
+		z.attack_time = 0.0
+		var state = View.pose_state(z,0,false)
+		var head: Vector3 = state.root*state.bones[6]*data.v3(data.parts[3].position)
+		var forward: Vector3 = state.root.basis.z.normalized()
+		var hit = View.hit(z,head+forward*5,-forward,10,0,false)
+		check.call(not hit.is_empty() and hit.z.id == z.id,"Head remains hittable after cosmetic redesign: "+kind)
+	var football_bare = game.enemies.mesh_for("football",0,false,false)
+	check.call(football_bare != game.enemies.mesh_for("football",0,false,true),"Football armor break selects an independently cached bare model")

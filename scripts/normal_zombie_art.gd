@@ -1,5 +1,6 @@
 extends RefCounted
-## Ordinary enemies only: inexpensive rigid toy geometry and clean molded colours.
+## Shared toy geometry; legacy file name retained for existing ordinary animation users.
+const Styles = preload("res://scripts/zombie_toy_styles.gd")
 const Wardrobe = preload("res://scripts/zombie_outfits.gd")
 const MECHANICAL_LEG_ANGLES = [-.52,-.52,.12,.58,.58,-.12]
 const COLORS = [
@@ -9,16 +10,21 @@ const COLORS = [
 	["e4e8d7","e4e8d7","4c9e98","707d73"],
 	["48596b","48596b","364655","303b40"]]
 
+static func styled(kind: String) -> bool:
+	return kind in Styles.KINDS
+
 static func part_size(part: Dictionary, kind: String) -> Vector3:
-	var size = Vector3(part.size[0],part.size[1],part.size[2])
-	if kind != "normal" or part.get("head",false): return size
-	var limb: float = absf(float(part.get("limb",0.0)))
-	if limb >= 1:
-		return Vector3(.28,.16,.46) if part.position[1] < .2 else Vector3(.25,.71,.32)
-	if limb > 0:
-		return Vector3(.245,.245,.49) if part.get("shirt",false) else Vector3(.24,.24,.30)
-	if part.get("shirt",false): return Vector3(.68,.7,.38)
-	return size
+	return Styles.size_for(part,kind)
+
+static func part_frame(part: Dictionary, kind: String) -> Transform3D:
+	return Styles.frame_for(part,kind)
+
+static func style_color(part: Dictionary, index: int, kind: String, outfit: int, rage: bool) -> Color:
+	if kind in ["normal","cone","bucket"] and index < 20: return color_for(part,index,outfit)
+	return Styles.color_for(part,index,kind,rage)
+
+static func details(kind: String) -> Array:
+	return Styles.details(kind)
 
 static func color_for(part: Dictionary, index: int, outfit: int) -> Color:
 	var colors: Array = COLORS[clampi(outfit,0,4)]
@@ -114,27 +120,33 @@ static func face(result: Array, points: Array, normal: Vector3) -> void:
 
 static func part_visible(index: int, kind: String) -> bool:
 	# Bald head; replace the raised old face with flat molded-on toy printing.
-	return kind != "normal" or index < 4 or index > 11
+	return not styled(kind) or (index not in [1,2,4,5,6,7,8,9,10,11] and not (kind == "imp" and index == 30))
 
-static func face_vertices() -> Array:
-	# Simple printed features retain the existing molded plastic head.
+static func eye_vertices(kind := "normal") -> Array:
 	var result: Array = []
+	if kind == "dancer": return result # Its molded sunglasses supply the eyes.
+	var profile = Styles.face_profile(kind)
 	for side in [-1.0,1.0]:
-		var x = side*.104
-		face_print(result,[Vector3(x-.060,1.7975,.2265),Vector3(x-.060,1.8525,.2265),Vector3(x+.060,1.8525,.2265),Vector3(x+.060,1.7975,.2265)],Color.BLACK)
-	# Stepped, slightly uneven opening based on the blocky zombie reference.
-	# Complete dark border; its lower edge rises centrally and drops at both ends.
-	# The central opening stays the same size; only the corners extend downward.
-	var mouth = ["0000111000","0011111100","0011222110","0112222210","1122222211","1121111211","1110000111"]
+		var x: float = side*profile.eye_gap
+		var half_width: float = profile.eye_width*.5
+		var low: float = profile.eye_y-profile.eye_height*.5
+		var high: float = profile.eye_y+profile.eye_height*.5
+		face_print(result,[Vector3(x-half_width,low,.2265),Vector3(x-half_width,high,.2265),Vector3(x+half_width,high,.2265),Vector3(x+half_width,low,.2265)],Color.BLACK)
+	return result
+
+static func face_vertices(kind := "normal") -> Array:
+	var result = eye_vertices(kind)
+	var profile = Styles.face_profile(kind)
+	var mouth: Array = profile.mouth
 	for row in mouth.size():
 		for column in mouth[row].length():
 			var pixel: String = mouth[row][column]
 			if pixel == "0": continue
-			var left = (column-5)*.024
-			var right = left+.024
-			var top = 1.745-row*.020
+			var left: float = (column-5)*profile.mouth_width
+			var right: float = left+profile.mouth_width
+			var top: float = profile.mouth_y-row*.020
 			var bottom = top-.020
-			face_print(result,[Vector3(left,top,.2265),Vector3(left,bottom,.2265),Vector3(right,bottom,.2265),Vector3(right,top,.2265)],Color("242821") if pixel == "1" else Color("854e4c"))
+			face_print(result,[Vector3(left,top,.2265),Vector3(left,bottom,.2265),Vector3(right,bottom,.2265),Vector3(right,top,.2265)],Color("242821") if pixel == "1" else Color(profile.inside))
 	return result
 
 static func face_print(result: Array, points: Array, color: Color) -> void:
@@ -150,13 +162,13 @@ static func walk_sample(phase: float) -> Vector3:
 	var frame = floori(fposmod(phase,TAU)/TAU*6.0)%6
 	return Vector3(MECHANICAL_LEG_ANGLES[frame],MECHANICAL_LEG_ANGLES[(frame+3)%6],sin(phase))
 
-static func plant_feet(root: Transform3D, bones: Array, parts: Array, ground: float) -> Transform3D:
+static func plant_feet(root: Transform3D, bones: Array, parts: Array, ground: float, kind := "normal") -> Transform3D:
 	# Two transformed-box support points; no raycasts or extra physics bodies.
 	var low = INF
 	for index in [14,15]:
 		var part: Dictionary = parts[index]
 		var point = Vector3(part.position[0],part.position[1],part.position[2])
-		var half_size = part_size(part,"normal")*.5
+		var half_size = part_size(part,kind)*.5
 		var pose: Transform3D = root*bones[1 if index == 14 else 2]
 		var center: Vector3 = pose*point
 		var radius = absf(pose.basis.x.y)*half_size.x+absf(pose.basis.y.y)*half_size.y+absf(pose.basis.z.y)*half_size.z

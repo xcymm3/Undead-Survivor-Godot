@@ -6,6 +6,8 @@ var skin: Skin
 var material: StandardMaterial3D
 var toy_material: StandardMaterial3D
 var rage_eye_material: StandardMaterial3D
+var bucket_material: StandardMaterial3D
+var dancer_material: StandardMaterial3D
 var kinds = ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football","dancer"]
 const Motion = preload("res://scripts/normal_zombie_motion.gd")
 const Toy = preload("res://scripts/normal_zombie_art.gd")
@@ -22,6 +24,14 @@ func _ready() -> void:
 	toy_material.roughness = .30
 	toy_material.metallic = 0.0
 	toy_material.metallic_specular = .65
+	bucket_material = StandardMaterial3D.new()
+	bucket_material.vertex_color_use_as_albedo = true
+	bucket_material.roughness = .42
+	bucket_material.metallic = .55
+	dancer_material = StandardMaterial3D.new()
+	dancer_material.vertex_color_use_as_albedo = true
+	dancer_material.roughness = .22
+	dancer_material.metallic_specular = .65
 	rage_eye_material = StandardMaterial3D.new()
 	rage_eye_material.albedo_color = Color("ff170d")
 	rage_eye_material.emission_enabled = true
@@ -30,77 +40,72 @@ func _ready() -> void:
 	rage_eye_material.roughness = .25
 
 func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1) -> ArrayMesh:
-	if kind == "normal" and outfit < 0: outfit = 1
+	if kind in ["normal","cone","bucket"] and outfit < 0: outfit = 1
 	var dressed = outfit >= 0 and kind in ["normal","crawler","cone","bucket"]
 	var key = kind+str(outfit if dressed else palette)+str(rage)+str(armor)+str(dressed)
 	if meshes.has(key): return meshes[key]
-	var cube = BoxMesh.new().get_mesh_arrays()
+	var styled = Toy.styled(kind)
 	var surface = SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	surface.set_material(toy_material if kind == "normal" else material)
+	surface.set_material(dancer_material if kind == "dancer" else toy_material if styled else material)
+	var metal = SurfaceTool.new()
+	metal.begin(Mesh.PRIMITIVE_TRIANGLES)
+	metal.set_material(bucket_material)
+	var metal_parts = false
 	for j in Data.parts.size():
 		var part: Dictionary = Data.parts[j]
 		if not Toy.part_visible(j,kind): continue
 		if (part.has("kind") and part.kind != kind) or (part.get("armor",false) and not armor): continue
-		if dressed and j in [1,2]: continue # Replace old shirt patches with outfit details.
-		var color = Color("ff170d") if kind == "berserker" and rage and j in [5,6,7,8] else Data.rgb(int(part.color))
-		if part.get("shirt",false):
-			color = [Color(.349,.392,.314),Color(.424,.345,.353),Color(.329,.408,.467),Color(.510,.443,.341)][palette]
-			color = {"imp":Color(.341,.251,.373),"shield":Color(.275,.365,.396),"berserker":Color(.714,.231,.173) if rage else Color(.494,.220,.184),"giant":Color(.443,.349,.263),"football":Color(.561,.157,.188)}.get(kind,color)
-			if kind == "dancer": color = Color("eee2d5")
-		if dressed: color = Wardrobe.part_color(outfit,part,color)
-		if kind == "normal":
-			color = Toy.color_for(part,j,outfit)
-			var size = Toy.part_size(part,kind)
-			for vertex in Toy.box_vertices(size,Toy.bevel_for(part,size)):
-				surface.set_normal(vertex.normal)
-				surface.set_color(color)
-				surface.set_bones(PackedInt32Array([bone_for(part),0,0,0]))
-				surface.set_weights(PackedFloat32Array([1,0,0,0]))
-				surface.add_vertex(vertex.position+Data.v3(part.position))
-			continue
-		for index in cube[Mesh.ARRAY_INDEX]:
-			surface.set_normal(cube[Mesh.ARRAY_NORMAL][index])
-			surface.set_color(color)
-			surface.set_bones(PackedInt32Array([bone_for(part),0,0,0]))
-			surface.set_weights(PackedFloat32Array([1,0,0,0]))
-			surface.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*Data.v3(part.size)+Data.v3(part.position))
-	if kind == "normal":
-		for vertex in Toy.face_vertices():
+		if dressed and j in [1,2]: continue
+		var color = Data.rgb(int(part.color))
+		if styled:
+			color = Toy.style_color(part,j,kind,outfit,rage)
+		else:
+			if part.get("shirt",false): color = [Color(.349,.392,.314),Color(.424,.345,.353),Color(.329,.408,.467),Color(.510,.443,.341)][palette]
+			if dressed: color = Wardrobe.part_color(outfit,part,color)
+		var metallic_part = kind == "bucket" and part.get("kind","") == "bucket"
+		if metallic_part: metal_parts = true
+		var size = Toy.part_size(part,kind)
+		emit_box(metal if metallic_part else surface,Toy.part_frame(part,kind),size,color,bone_for(part),Toy.bevel_for(part,size) if styled else 0.0)
+	if styled:
+		for vertex in Toy.face_vertices(kind):
 			surface.set_normal(vertex.normal)
 			surface.set_color(vertex.color)
 			surface.set_bones(PackedInt32Array([6,0,0,0]))
 			surface.set_weights(PackedFloat32Array([1,0,0,0]))
 			surface.add_vertex(vertex.position)
+		for detail in Toy.details(kind):
+			if (detail.bone == 5 or detail.armor) and not armor: continue
+			emit_box(surface,Transform3D(Basis.IDENTITY,detail.position),detail.size,detail.color,detail.bone,0.0)
 	if dressed:
-		for patch in Toy.patches(outfit) if kind == "normal" else Wardrobe.patches(outfit):
-			for index in cube[Mesh.ARRAY_INDEX]:
-				surface.set_normal(cube[Mesh.ARRAY_NORMAL][index])
-				surface.set_color(patch.color)
-				surface.set_bones(PackedInt32Array([0,0,0,0]))
-				surface.set_weights(PackedFloat32Array([1,0,0,0]))
-				surface.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*patch.size+patch.position)
+		for patch in Toy.patches(outfit) if styled else Wardrobe.patches(outfit):
+			emit_box(surface,Transform3D(Basis.IDENTITY,patch.position),patch.size,patch.color,0,0.0)
 	surface.index()
 	var mesh: ArrayMesh = surface.commit()
+	if metal_parts:
+		metal.index()
+		metal.commit(mesh)
 	if kind == "berserker" and rage:
-		# A separate emissive plate makes the half-health red eyes readable in
-		# motion and at combat distance without changing the CPU hit boxes.
 		var eyes = SurfaceTool.new()
 		eyes.begin(Mesh.PRIMITIVE_TRIANGLES)
 		eyes.set_material(rage_eye_material)
-		for j in [5,6]:
-			var eye: Dictionary = Data.parts[j]
-			var size = Data.v3(eye.size)*Vector3(1.45,1.35,1.0)
-			var position = Data.v3(eye.position)+Vector3(0,0,.018)
-			for index in cube[Mesh.ARRAY_INDEX]:
-				eyes.set_normal(cube[Mesh.ARRAY_NORMAL][index])
-				eyes.set_bones(PackedInt32Array([6,0,0,0]))
-				eyes.set_weights(PackedFloat32Array([1,0,0,0]))
-				eyes.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*size+position)
+		for vertex in Toy.eye_vertices(kind):
+			eyes.set_normal(vertex.normal)
+			eyes.set_bones(PackedInt32Array([6,0,0,0]))
+			eyes.set_weights(PackedFloat32Array([1,0,0,0]))
+			eyes.add_vertex(vertex.position+Vector3(0,0,.001))
 		eyes.index()
 		eyes.commit(mesh)
 	meshes[key] = mesh
-	return meshes[key]
+	return mesh
+
+func emit_box(surface: SurfaceTool, frame: Transform3D, size: Vector3, color: Color, bone: int, bevel: float) -> void:
+	for vertex in Toy.box_vertices(size,bevel):
+		surface.set_normal(frame.basis*vertex.normal)
+		surface.set_color(color)
+		surface.set_bones(PackedInt32Array([bone,0,0,0]))
+		surface.set_weights(PackedFloat32Array([1,0,0,0]))
+		surface.add_vertex(frame*vertex.position)
 
 func create_actor(z: Dictionary) -> Dictionary:
 	var body = Node3D.new()
@@ -202,7 +207,7 @@ static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 		var pivot = Vector3(-side*.43,1.35,-.045)
 		var rotation = Basis(Vector3.RIGHT,angle)
 		bones.append(Transform3D(rotation,pivot-rotation*pivot))
-	bones.append(Transform3D(Basis.IDENTITY,Vector3(0,-.85,-.18)) if z.attack_time > 0 and z.attack_time < .45 else Transform3D.IDENTITY)
+	bones.append(Transform3D(Basis.IDENTITY,Vector3(0,-.4 if z.kind == "shield" else -.85,-.18)) if z.attack_time > 0 and z.attack_time < .45 else Transform3D.IDENTITY)
 	bones.append(Transform3D.IDENTITY)
 	if z.hp > 0 and z.get("dance_remaining",0.0) > 0:
 		var beat = sin(elapsed*TAU*2)
@@ -211,7 +216,7 @@ static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 			var rotation = Basis(Vector3.BACK,beat*.3 if index < 3 else (-1.1 if index == 3 else 1.1)+beat*.4 if index < 5 else beat*.15)
 			bones[index] = Transform3D(rotation,pivot-rotation*pivot)
 	var root = root_transform(z,elapsed,stationary,stride,toy_walk)
-	if mechanical: root = Toy.plant_feet(root,bones,Data.parts,Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense")))
+	if Toy.styled(z.kind) and z.hp > 0 and z.get("emerge_remaining",0.0) <= 0 and z.get("dance_remaining",0.0) <= 0: root = Toy.plant_feet(root,bones,Data.parts,Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense")),z.kind)
 	return {"root":root,"bones":bones}
 
 static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
@@ -254,7 +259,7 @@ static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array
 		if not Toy.part_visible(index,z.kind) or (part.has("kind") and part.kind != z.kind) or (part.get("armor",false) and z.armor <= 0):
 			result.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*.00001),Vector3(0,-100,0)))
 		else:
-			result.append(state.root * state.bones[bone_for(part)] * Transform3D(Basis.IDENTITY.scaled(Toy.part_size(part,z.kind)),Data.v3(part.position)))
+			result.append(state.root * state.bones[bone_for(part)] * Toy.part_frame(part,z.kind)*Transform3D(Basis.IDENTITY.scaled(Toy.part_size(part,z.kind)),Vector3.ZERO))
 	return result
 
 func sync(zombies: Array, elapsed: float, stationary: bool) -> void:
