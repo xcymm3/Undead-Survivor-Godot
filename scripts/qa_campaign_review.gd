@@ -4,6 +4,7 @@ var action_callback
 var action_name = ""
 var action_frames = 48
 var action_fps = 20.0
+var ultimate_frame = -1
 func _ready() -> void:
 	if not Data.automation or not OS.has_feature("web"): queue_free(); return
 	call_deferred("stage")
@@ -12,6 +13,9 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
+	if scenario.begins_with("ultimate_"):
+		await stage_ultimate(scenario)
+		return
 	if scenario.begins_with("normal_") or scenario.begins_with("toy_"):
 		await stage_normal_zombie(scenario)
 		return
@@ -113,6 +117,75 @@ func stage() -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"ring":game.arena.scenery.preparation.interaction_ring.visible,"payments":game.arena.scenery.preparation.money_flights.multimesh.visible_instance_count,"scenario":scenario,"menu":game.ui.current,"boss":game.ui.native_hud.boss_title.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible,"cracks":game.arena.scenery.crystal_damage.cracks.visible,"fragments":game.arena.scenery.crystal_damage.debris.visible}),true)
+
+func stage_ultimate(scenario: String) -> void:
+	game.start_solo("defense",42)
+	await get_tree().physics_frame
+	game.ui.clear_menu()
+	game.sim.roster.clear()
+	game.sim.zombies.clear()
+	game.sim.defense.started = true
+	game.sim.progression.data.ultimate_level = 1
+	var p: Dictionary = game.local_pawn()
+	p.pos = Vector2(0,8)
+	p.height = 3
+	p.yaw = 0
+	p.pitch = 0
+	p.switch = 0.0
+	p.fire_anim = 0.0
+	p.cooldown = 0.0
+	p.input = {}
+	p.input_age = 0
+	action_name = scenario.trim_prefix("ultimate_")
+	action_frames = 48 if action_name == "attack" else 34
+	action_fps = 20.0
+	ultimate_frame = -1
+	if action_name != "draw":
+		var command = {"ultimate":true}
+		preload("res://scripts/ultimate.gd").tick(game.sim,p,command,0)
+		p.ultimate_age = 1.2
+	game.camera.position = Vector3(0,4.65,8)
+	game.camera.rotation = Vector3.ZERO
+	game.camera.fov = 61
+	game.weapon.show()
+	game.weapon.reset_motion()
+	game.weapon.sync(p,0,game.sim.elapsed,Vector3(0,0,-50))
+	game.arena.scenery.sync(game.sim.defense)
+	game.running = true
+	game.ui.tick(0)
+	game.get_viewport().scaling_3d_scale = 1.0
+	RenderingServer.render_loop_enabled = false
+	for i in 5: await get_tree().process_frame
+	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+	RenderingServer.force_draw(true)
+	action_callback = JavaScriptBridge.create_callback(draw_ultimate_frame)
+	JavaScriptBridge.get_interface("window").__drawUltimateAction = action_callback
+	JavaScriptBridge.eval("window.__ultimateActionFrame=-1",true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"frames":action_frames,"fps":action_fps,"focus_visible":false}),true)
+
+func draw_ultimate_frame(args: Array) -> void:
+	# Replay production authority and weapon poses with fixed steps, without speeding up.
+	var frame = int(args[0])
+	if frame != ultimate_frame+1: return
+	ultimate_frame = frame
+	var time: float = frame/action_fps
+	var dt: float = 1.0/action_fps
+	var p: Dictionary = game.local_pawn()
+	var activate: bool = action_name == "draw" and frame == 4
+	var cancel: bool = action_name == "sheathe" and frame == 4
+	p.input = {"ultimate":activate or cancel,"fire":action_name == "attack" and time >= .2 and time < 1.7}
+	p.input_age = 0
+	game.sim.elapsed += dt
+	game.sim.equipment.before_movement(dt)
+	game.sim.update_pawn(p,dt)
+	game.weapon.sync(p,dt,game.sim.elapsed,Vector3(0,0,-50))
+	game.ui.tick(dt)
+	for i in 2: await get_tree().process_frame
+	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+	RenderingServer.force_draw(true)
+	await get_tree().process_frame
+	JavaScriptBridge.eval("window.__ultimateActionState="+JSON.stringify({"frame":frame,"active":preload("res://scripts/ultimate.gd").active(p),"blade":game.weapon.blade.visible,"scabbard":game.weapon.scabbard.visible,"fire":p.fire_anim,"sheathe":p.get("ultimate_sheathe",0.0),"age":p.get("ultimate_age",0.0)}),true)
+	JavaScriptBridge.eval("window.__ultimateActionFrame="+str(frame),true)
 
 func face(sim, p: Dictionary, id: String) -> void:
 	for entry in preload("res://scripts/preparation_catalog.gd").targets(sim):
