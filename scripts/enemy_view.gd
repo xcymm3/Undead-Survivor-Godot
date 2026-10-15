@@ -39,6 +39,7 @@ func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1)
 	surface.set_material(toy_material if kind == "normal" else material)
 	for j in Data.parts.size():
 		var part: Dictionary = Data.parts[j]
+		if not Toy.part_visible(j,kind): continue
 		if (part.has("kind") and part.kind != kind) or (part.get("armor",false) and not armor): continue
 		if dressed and j in [1,2]: continue # Replace old shirt patches with outfit details.
 		var color = Color("ff170d") if kind == "berserker" and rage and j in [5,6,7,8] else Data.rgb(int(part.color))
@@ -119,10 +120,15 @@ func retire_actor(actor: Dictionary) -> void:
 	actor.body.hide()
 	actor.body.queue_free()
 
-static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stride: float) -> Transform3D:
+static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stride: float, toy_walk := Vector3.INF) -> Transform3D:
 	var basis = Basis(Vector3.UP,z.heading).scaled(Vector3.ONE*Data.enemy_scale(z.kind))
 	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense"))
 	var transform = Transform3D(basis,Vector3(z.pos.x,ground+absf(stride)*.04,z.pos.y))
+	if toy_walk.is_finite():
+		var lateral = basis*Vector3.RIGHT
+		transform.origin += lateral*toy_walk.z*.035
+		transform.origin.y += .025
+		transform.basis *= Basis(Vector3.BACK,toy_walk.z*.085)
 	if z.hp > 0 and z.get("move_speed",0.0) <= .05 and z.state == "ready":
 		# Root pose is shared by skeleton rendering and CPU ray boxes: no invisible hitbox motion.
 		var breath = sin(elapsed*1.4+z.id*2.17)
@@ -166,13 +172,17 @@ static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 	var idle: bool = z.hp > 0 and z.get("move_speed",0.0) <= .05 and z.attack_time <= 0 and z.state == "ready"
 	if idle: stride = sin(elapsed*1.4+z.id*2.17)*.08
 	var running: bool = moving and z.get("move_speed",0.0) > 3.5
+	var mechanical: bool = z.kind == "normal" and moving and z.attack_time <= 0 and z.get("dance_remaining",0.0) <= 0 and z.get("emerge_remaining",0.0) <= 0
+	var toy_walk: Vector3 = Toy.walk_sample(float(z.get("gait",(elapsed-z.born)*5+z.id*2))) if mechanical else Vector3.INF
 	var bones: Array[Transform3D] = [Transform3D.IDENTITY]
 	for side in [1.0,-1.0]:
 		var pivot = Vector3(-side*.19,.83,0.0)
-		var rotation = Basis(Vector3.RIGHT,stride*side*(.75 if running else .35))
+		var angle: float = (toy_walk.x if side > 0 else toy_walk.y) if mechanical else stride*side*(.75 if running else .35)
+		var rotation = Basis(Vector3.RIGHT,angle)
 		bones.append(Transform3D(rotation,pivot-rotation*pivot))
 	for side in [1.0,-1.0]:
 		var angle = .85-stride*side*.6 if running else .65-stride*side*.2
+		if mechanical: angle = .72-(toy_walk.x if side > 0 else toy_walk.y)*.25
 		if idle: angle += stride*.35
 		if z.attack_time > 0:
 			var hit_at: float = Data.attack(z.kind,z.rage).x
@@ -191,7 +201,7 @@ static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 			var pivot = Vector3(-.19 if index == 1 else .19,.83,0) if index < 3 else Vector3(-.43 if index == 3 else .43,1.35,0) if index < 5 else Vector3(0,1.79,0)
 			var rotation = Basis(Vector3.BACK,beat*.3 if index < 3 else (-1.1 if index == 3 else 1.1)+beat*.4 if index < 5 else beat*.15)
 			bones[index] = Transform3D(rotation,pivot-rotation*pivot)
-	return {"root":root_transform(z,elapsed,stationary,stride),"bones":bones}
+	return {"root":root_transform(z,elapsed,stationary,stride,toy_walk),"bones":bones}
 
 static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
 	var moving: bool = z.hp > 0 and not stationary and z.get("move_speed",0.0) > .05 and z.state != "stunned"
@@ -228,8 +238,9 @@ static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array:
 	var state = pose_state(z,elapsed,stationary)
 	var result: Array = []
-	for part in Data.parts:
-		if (part.has("kind") and part.kind != z.kind) or (part.get("armor",false) and z.armor <= 0):
+	for index in Data.parts.size():
+		var part: Dictionary = Data.parts[index]
+		if not Toy.part_visible(index,z.kind) or (part.has("kind") and part.kind != z.kind) or (part.get("armor",false) and z.armor <= 0):
 			result.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*.00001),Vector3(0,-100,0)))
 		else:
 			result.append(state.root * state.bones[bone_for(part)] * Transform3D(Basis.IDENTITY.scaled(Toy.part_size(part,z.kind)),Data.v3(part.position)))
@@ -282,6 +293,7 @@ static func hit(z: Dictionary, origin: Vector3, direction: Vector3, distance: fl
 	var selected = -1
 	for j in Data.parts.size():
 		var part: Dictionary = Data.parts[j]
+		if not Toy.part_visible(j,z.kind): continue
 		if (part.has("kind") and part.kind != z.kind) or (part.get("armor",false) and z.armor <= 0): continue
 		var d = ray_box(origin,direction,poses[j],nearest)
 		if d < nearest:

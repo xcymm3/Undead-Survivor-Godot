@@ -30,6 +30,7 @@ static func validate(game, check: Callable) -> void:
 		var state: Dictionary = View.pose_state(z,time,false)
 		var poses: Array = View.transforms(z,time,false)
 		for index in 20:
+			if not Toy.part_visible(index,z.kind): continue
 			var part: Dictionary = data.parts[index]
 			var size = Toy.part_size(part,"normal")
 			var verts: Array = Toy.box_vertices(size,Toy.bevel_for(part,size))
@@ -47,4 +48,42 @@ static func validate(game, check: Callable) -> void:
 		var c: Vector3 = vertices[index+2].position
 		winding = winding and (b-a).cross(c-a).dot(vertices[index].normal) < 0
 	check.call(vertices.size() == 132 and winding,"Beveled primitive has forty-four outward clockwise triangles")
+	check.call(not Toy.part_visible(11,"normal") and Toy.part_visible(11,"bucket"),"Raised cheek plate is removed only from ordinary zombie mesh and hit boxes")
+	z.attack_time = 0.0
+	z.move_speed = 4.9
+	z.gait = .05
+	var early: Dictionary = View.pose_state(z,0,false)
+	z.gait = .4
+	var held: Dictionary = View.pose_state(z,0,false)
+	check.call(early.bones[1].is_equal_approx(held.bones[1]) and early.bones[2].is_equal_approx(held.bones[2]),"Mechanical legs hold one rigid pose across part of a stride")
+	z.gait = TAU*2.1/6.0
+	var next: Dictionary = View.pose_state(z,0,false)
+	check.call(not held.bones[1].is_equal_approx(next.bones[1]),"Next mechanical step changes leg pose abruptly")
+	z.gait = PI/2
+	var left: Dictionary = View.pose_state(z,0,false)
+	z.gait = PI*1.5
+	var right: Dictionary = View.pose_state(z,0,false)
+	check.call(left.root.origin.x > z.pos.x and right.root.origin.x < z.pos.x and not left.root.basis.is_equal_approx(right.root.basis),"Ordinary walking rolls and sways to opposite sides")
+	for phase in 48:
+		z.gait = phase*TAU/48.0
+		var state: Dictionary = View.pose_state(z,0,false)
+		var poses: Array = View.transforms(z,0,false)
+		var low = INF
+		for index in [14,15]:
+			for x in [-.5,.5]:
+				for y in [-.5,.5]:
+					for depth in [-.5,.5]: low = minf(low,(poses[index]*Vector3(x,y,depth)).y-data.enemy_ground_height(z.pos))
+		check.call(low >= -.035,"Mechanical foot stays above terrain through cycle: "+str(phase))
+	game.enemies.sync([z],0,false)
+	var actor: Dictionary = game.enemies.actors[z.id]
+	var authority: Dictionary = View.pose_state(z,0,false)
+	check.call(actor.body.transform.is_equal_approx(authority.root),"Mechanical render root equals authoritative hit-pose root")
+	for bone in 7: check.call(actor.skeleton.get_bone_pose(bone).is_equal_approx(authority.bones[bone]),"Mechanical render bone equals authoritative hit-pose bone")
+	check.call(View.transforms(z,0,false)[11].origin.y == -100,"Removed cheek plate is absent from authoritative hit geometry")
+	z.move_speed = 0.0
+	z.gait = .1
+	var idle_a: Dictionary = View.pose_state(z,0,false)
+	z.gait = 2.5
+	var idle_b: Dictionary = View.pose_state(z,0,false)
+	check.call(idle_a.bones[1].is_equal_approx(idle_b.bones[1]),"Idle ordinary zombie does not keep stepping")
 	sim.zombies.clear()

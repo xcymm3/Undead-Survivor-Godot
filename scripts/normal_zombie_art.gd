@@ -1,6 +1,7 @@
 extends RefCounted
 ## Ordinary enemies only: inexpensive rigid toy geometry and clean molded colours.
 const Wardrobe = preload("res://scripts/zombie_outfits.gd")
+const MECHANICAL_LEG_ANGLES = [-.52,-.52,.12,.58,.58,-.12]
 const COLORS = [
 	["ed8c39","e2d6b0","496273","403c33"],
 	["e4d5a5","e4d5a5","376e94","484034"],
@@ -110,3 +111,13 @@ static func face(result: Array, points: Array, normal: Vector3) -> void:
 			b = c
 			c = swap
 		for p in [a,b,c]: result.append({"position":p,"normal":normal})
+
+static func part_visible(index: int, kind: String) -> bool:
+	# Old raised cheek-damage plate; remove it from both mesh and hit selection.
+	return kind != "normal" or index != 11
+
+static func walk_sample(phase: float) -> Vector3:
+	# Six clockwork poses per gait cycle: two long holds and abrupt leg changes.
+	# Distance-driven phase is unchanged, so stopping movement freezes the cycle.
+	var frame = floori(fposmod(phase,TAU)/TAU*6.0)%6
+	return Vector3(MECHANICAL_LEG_ANGLES[frame],MECHANICAL_LEG_ANGLES[(frame+3)%6],sin(phase))
