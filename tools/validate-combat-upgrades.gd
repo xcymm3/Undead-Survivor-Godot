@@ -29,9 +29,16 @@ func validate_blade_motion(game) -> void:
 					var half_height = -point.z*tan(deg_to_rad(61.0)*.5)
 					bounds_valid = bounds_valid and point.z < -.04 and absf(point.x) < half_height*aspect*.95 and absf(point.y) < half_height*.95
 			check(bounds_valid,"Wide slash keeps blade tip and grip within desktop camera bounds: "+str(step)+" / "+str(direction))
-	check(motion_type.swing_pose(1,1).is_equal_approx(motion_type.swing_pose(0,-1)),"Right-to-left slash ends where the left-to-right slash begins")
-	check(motion_type.swing_pose(1,-1).is_equal_approx(motion_type.swing_pose(0,1)),"Left-to-right slash ends where the right-to-left slash begins")
+	check(motion_type.slash_data.clips.size() == 2 and motion_type.slash_data.clips[0].name.ends_with("Sword_Slash1") and motion_type.slash_data.clips[1].name.ends_with("Sword_Slash2"),"Both distinct authored CC0 slash clips are present")
+	check(motion_type.slash_data.clips.all(func(clip): return clip.samples.size() == 121 and is_equal_approx(clip.source_seconds,5.0/6.0)),"Reference animations preserve their source timing and dense baked wrist samples")
 	var motion = motion_type.new()
+	var combo = {"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":.00001,"axe_direction":1}
+	var combo_end: Transform3D = motion.sample(combo,.016,.28).blade
+	combo.fire_anim = .28
+	combo.axe_direction = -1
+	var combo_start: Transform3D = motion.sample(combo,0,.28).blade
+	check(combo_end.is_equal_approx(combo_start),"Opposite authored clip starts from the previous displayed follow-through without an idle snap")
+	motion.reset()
 	var pawn = {"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":.14,"axe_direction":1}
 	motion.sample(pawn,1.0/60,.28)
 	var before: Transform3D = motion.current

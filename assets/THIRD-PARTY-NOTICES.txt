@@ -396,3 +396,5 @@ Source: https://github.com/notofonts/noto-cjk
 Copyright 2014-2021 Adobe (http://www.adobe.com/).
 Licensed under the SIL Open Font License 1.1; full license: assets/fonts/LICENSE.txt.
 Bundled for consistent Chinese text rendering on Windows and Web.
+
+Long-blade Sword_Slash1 / Sword_Slash2 animation data adapted from BigAndCrispy/Unity-First-Person-Melee, commit 592b08e2e1fe81a51f712fa65d806fa3621e2032. Source: https://github.com/BigAndCrispy/Unity-First-Person-Melee . CC0-1.0; license: assets/animations/melee-reference-LICENSE.txt. Only baked right-wrist motion is included; no arm mesh, Unity code or Unity packages are shipped.

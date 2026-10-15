@@ -6,7 +6,7 @@ on:
         type: choice
         description: 截图范围
         default: all
-        options: [all, switch, normal, face, toys, shield_blade]
+        options: [all, switch, normal, face, toys, shield_blade, blade_attack]
   workflow_call:
     inputs:
       scope:
@@ -45,6 +45,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Web export failed' }
       - run: npx playwright test tests/browser/campaign-review.spec.mjs tests/browser/defense.spec.mjs
         env:
+          QA_BLADE_ATTACK_ONLY: ${{ inputs.scope == 'blade_attack' && '1' || '' }}
           QA_SHIELD_BLADE_ONLY: ${{ inputs.scope == 'shield_blade' && '1' || '' }}
           QA_TOYS_ONLY: ${{ inputs.scope == 'toys' && '1' || '' }}
           QA_FACE_ONLY: ${{ inputs.scope == 'face' && '1' || '' }}

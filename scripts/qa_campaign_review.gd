@@ -137,8 +137,8 @@ func stage_ultimate(scenario: String) -> void:
 	p.input = {}
 	p.input_age = 0
 	action_name = scenario.trim_prefix("ultimate_")
-	action_frames = 72 if action_name == "attack" else 66 if action_name == "sheathe" else 54
-	action_fps = 30.0
+	action_frames = 156 if action_name == "attack" else 66 if action_name == "sheathe" else 54
+	action_fps = 60.0 if action_name == "attack" else 30.0
 	ultimate_frame = -1
 	if action_name != "draw":
 		var command = {"ultimate":true}
