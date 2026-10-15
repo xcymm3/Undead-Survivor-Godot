@@ -1,10 +1,12 @@
+import {mkdir} from 'node:fs/promises';
+import path from 'node:path';
 import {test,expect} from '@playwright/test';
 test('战斗反馈、主页、设置与失败镜头隔离截图',async({page},info)=>{
  test.setTimeout(900000);
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
  page.on('console',message=>{if(/^(SCRIPT ERROR|ERROR):/.test(message.text()))errors.push(message.text());});
  await page.setViewportSize({width:1440,height:900});
- const scenarios=process.env.QA_NORMAL_ONLY ? ['normal_studio','normal_lineup','normal_night'] : process.env.QA_SWITCH_ONLY ? ['switch_rifle_raise','switch_rifle_bolt','switch_pistol_spin'] : ['switch_rifle_raise','switch_rifle_bolt','switch_pistol_spin','interaction_station','interaction_gate','crystal_half','crystal_broken','heal','boss','home','home_hover','failure_player','failure_crystal','settings'];
+ const scenarios=process.env.QA_NORMAL_ONLY ? ['normal_studio','normal_lineup','normal_night','normal_walk'] : process.env.QA_SWITCH_ONLY ? ['switch_rifle_raise','switch_rifle_bolt','switch_pistol_spin'] : ['switch_rifle_raise','switch_rifle_bolt','switch_pistol_spin','interaction_station','interaction_gate','crystal_half','crystal_broken','heal','boss','home','home_hover','failure_player','failure_crystal','settings'];
  for(const scenario of scenarios){
   await page.goto(`/?campaignReview=${scenario}`);
   await page.waitForFunction(()=>window.__campaignReviewReady,null,{timeout:90000});
@@ -21,6 +23,15 @@ test('战斗反馈、主页、设置与失败镜头隔离截图',async({page},in
   const file=info.outputPath(`${scenario}.png`);
   await page.screenshot({path:file,timeout:60000});
   await info.attach(scenario,{path:file,contentType:'image/png'});
+  if(scenario==='normal_walk'){
+   const directory=info.outputPath('normal-walk-frames');
+   await mkdir(directory,{recursive:true});
+   for(let frame=0;frame<48;frame++){
+    await page.evaluate(index=>window.__drawNormalWalk(index),frame);
+    await page.waitForFunction(index=>window.__normalWalkFrame===index,frame);
+    await page.screenshot({path:path.join(directory,`frame-${String(frame).padStart(3,'0')}.png`),timeout:60000});
+   }
+  }
   expect(await page.evaluate(()=>window.__qaSafety)).toEqual({pointerLockRequests:0,fullscreenRequests:0});
  }
  expect(errors).toEqual([]);

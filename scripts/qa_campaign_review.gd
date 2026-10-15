@@ -1,5 +1,6 @@
 extends Node
 var game
+var walk_callback
 func _ready() -> void:
 	if not Data.automation or not OS.has_feature("web"): queue_free(); return
 	call_deferred("stage")
@@ -134,6 +135,7 @@ func stage_normal_zombie(scenario: String) -> void:
 	game.sim.zombies.clear()
 	var studio: bool = scenario != "normal_night"
 	var lineup: bool = scenario == "normal_lineup"
+	var walking: bool = scenario == "normal_walk"
 	var center = Vector3(0,4.05,10)
 	if studio:
 		game.arena.scenery.hide()
@@ -171,9 +173,9 @@ func stage_normal_zombie(scenario: String) -> void:
 		var z: Dictionary = game.sim.zombies[-1]
 		z.outfit = index if lineup else 1
 		z.heading = -.12 if lineup else -.18
-		z.move_speed = 0.0
+		z.move_speed = 4.9 if walking else 0.0
 		z.gait = .6
-	game.enemies.sync(game.sim.zombies,.3,true)
+	game.enemies.sync(game.sim.zombies,.3,not walking)
 	game.camera.fov = 38 if lineup else 32
 	game.camera.position = Vector3(2.6,5.2,21) if lineup else Vector3(2.1,4.65,14.5)
 	game.camera.look_at(center)
@@ -182,4 +184,23 @@ func stage_normal_zombie(scenario: String) -> void:
 	for i in 6: await get_tree().process_frame
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
+	if walking:
+		walk_callback = JavaScriptBridge.create_callback(draw_walk_frame)
+		JavaScriptBridge.get_interface("window").__drawNormalWalk = walk_callback
+		JavaScriptBridge.eval("window.__normalWalkFrame=-1",true)
 	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"count":game.sim.zombies.size(),"head_size":[.49,.49,.45],"roughness":game.enemies.toy_material.roughness,"studio":studio}),true)
+
+func draw_walk_frame(args: Array) -> void:
+	# Deterministic real engine frames, independent of software-renderer FPS.
+	var frame = clampi(int(args[0]),0,47)
+	var z: Dictionary = game.sim.zombies[0]
+	z.gait = float(frame)*TAU/12.0
+	z.move_speed = 4.9
+	z.attack_time = 0.0
+	var time: float = z.gait/(4.9*2.3)
+	game.enemies.sync(game.sim.zombies,time,false)
+	for i in 2: await get_tree().process_frame
+	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+	RenderingServer.force_draw(true)
+	await get_tree().process_frame
+	JavaScriptBridge.eval("window.__normalWalkFrame="+str(frame),true)
