@@ -23,7 +23,7 @@ test('主页只提供普通难度水晶防线，可直接开始防守', async ({
   expect(game.mode).toBe('defense');
   expect(game.defense.waiting).toBe(true);
   expect(game.player.weapon1).toBe(0);
-  expect(game.player.reserves[0]).toBe(510);
+  expect(game.player.reserves[0]).toBe(255);
   expect(game).not.toHaveProperty('campaign');
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });
