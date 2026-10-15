@@ -22,11 +22,11 @@ def envelope(t: np.ndarray, start: float, end: float, attack: float, release: fl
 
 
 def horn() -> np.ndarray:
-    """Two overlapping brass calls, with a slow attack and a low falling answer."""
-    seconds = 2.8
+    """One brass call with its original slow attack and release."""
+    seconds = 1.68
     t = np.arange(round(RATE * seconds)) / RATE
     result = np.zeros_like(t)
-    for start, end, frequency, strength in [(0.0, 1.68, 82.41, 1.0), (1.18, 2.76, 73.42, 0.85)]:
+    for start, end, frequency, strength in [(0.0, 1.68, 82.41, 1.0)]:
         local = np.maximum(t - start, 0)
         pitch = frequency * (1 - 0.013 * np.minimum(local, 1.5))
         phase = 2 * np.pi * np.cumsum(pitch) / RATE

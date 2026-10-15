@@ -639,10 +639,10 @@ func _draw_hud() -> void:
 		hud.draw_colored_polygon(PackedVector2Array([center+direction*82,center+direction*61+side*9,center+direction*61-side*9]),tint)
 	if p.hp > 0 and p.get("healing_flash",0.0) > 0:
 		var heal: float = p.healing_flash
-		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.08,.48,.19,heal*.11))
+		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.08,.48,.19,heal*.08))
 		for layer in 8:
 			var inset = float(layer)*10.0
-			hud.draw_rect(Rect2(Vector2.ONE*inset,screen-Vector2.ONE*inset*2),Color(.18,.6,.29,heal*.11*(1.0-layer/8.0)),false,24)
+			hud.draw_rect(Rect2(Vector2.ONE*inset,screen-Vector2.ONE*inset*2),Color(.18,.6,.29,heal*.08*(1.0-layer/8.0)),false,24)
 	if hurt_flash > 0:
 		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.55,.08,.04,hurt_flash*.3),false,20)
 

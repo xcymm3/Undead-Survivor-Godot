@@ -38,9 +38,9 @@ func run() -> void:
 		check(game.sound.streams[cue].data.size() > 0,"Dedicated feedback sound exists: "+cue)
 	sim.events.clear()
 	sim.damage_crystal({},1)
-	var sound_count: int = game.sound.spatial_index
+	var sound_count: int = game.sound.index
 	game.handle_effects(sim.events)
-	check(sim.events.filter(func(e): return e.kind == "crystal_hit").size() == 1 and game.sound.spatial_index == sound_count+1 and game.sound.spatial_players[0].stream == game.sound.streams["crystal-hit"],"Each crystal damage event routes its distinct glass collision sound")
+	check(sim.events.filter(func(e): return e.kind == "crystal_hit").size() == 1 and game.sound.index == sound_count+1 and game.sound.players[sound_count%game.sound.players.size()].stream == game.sound.streams["crystal-hit"],"Each crystal damage event routes its global crystal collision sound")
 	sim.defense.crystal_hp = 3000
 	check(is_equal_approx(game.sound.streams.purchase.get_length(),1.0),"Purchase sound covers the one-second hold")
 	p.interaction = "rifle"

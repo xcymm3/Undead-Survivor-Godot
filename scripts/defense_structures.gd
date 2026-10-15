@@ -139,7 +139,11 @@ func step_mine(item: Dictionary, dt: float) -> void:
 				sim.events.append({"kind":"grenade_fuse","position":Vector3(item.pos.x,item.height+.16,item.pos.y)})
 				return # Fuse starts at this contact, not at the beginning of the tick.
 		return
+	var before_fuse: float = item.fuse
 	item.fuse = maxf(0,item.fuse-dt)
+	var cue_interval = .15 if item.fuse < .5 else .3
+	if item.fuse > 0 and floori(before_fuse/cue_interval) != floori(item.fuse/cue_interval):
+		sim.events.append({"kind":"grenade_fuse","position":Vector3(item.pos.x,item.height+.16,item.pos.y)})
 	if item.fuse <= 0:
 		item.spent = true
 		item.hp = 0

@@ -333,16 +333,16 @@ func handle_effects(events: Array) -> void:
 				sound.play_at("disco",event.position,-8)
 			"shove":
 				if event.player == Session.local_id:
-					sound.play("shove",-3)
-					if event.get("hits",0) > 0: sound.play("shove-hit",-3)
-				else: sound.play_at("shove-hit" if event.get("hits",0) > 0 else "shove",event.position,-5)
+					sound.play("shove",-12)
+					if event.get("hits",0) > 0: sound.play("shove-hit",-10)
+				else: sound.play_at("shove-hit" if event.get("hits",0) > 0 else "shove",event.position,-13)
 			"shotgun_impact":
 				sound.play_at("shove-hit",event.position,-7)
 				if event.player == Session.local_id: ui.hit_flash = .2
 			"enemy_windup", "enemy_impact", "enemy_miss":
 				sound.play_at(event.kind.replace("_","-"),event.position,-12)
 			"crystal_hit":
-				sound.play_at("crystal-hit",event.position,-7)
+				sound.play("crystal-hit",-2)
 			"turret_shot":
 				effects.eject_shell(event.from,event.to-event.from)
 				sound.play_at(sound.weapon_cue(0),event.from,-12)

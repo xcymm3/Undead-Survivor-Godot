@@ -14,8 +14,10 @@ static func make(cue: String) -> AudioStreamWAV:
 			var pulse = .65+.35*sin(TAU*(4*t+3*t*t/duration))
 			value = (sin(phase)+.25*sin(phase*1.5))*pulse*(.06+.18*progress)*minf(1,t*40)*minf(1,(duration-t)*30)
 		else:
-			var base = 2300.0 if cue == "crystal-hit" else 1250.0
+			var base = 125.0 if cue == "crystal-hit" else 2200.0
 			value = (sin(TAU*base*t)*exp(-t*13)+.45*sin(TAU*base*1.43*t)*exp(-t*20)+.23*sin(TAU*base*1.91*t)*exp(-t*31))*.35*minf(1,t*1000)
+		if cue == "crystal-hit":
+			value += .42*sin(TAU*(190*t-55*t*t))*exp(-t*18)+.13*sin(TAU*2600*t)*exp(-t*85)
 		samples.encode_s16(i*2,int(clampf(value,-.95,.95)*32767))
 	var stream = AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
