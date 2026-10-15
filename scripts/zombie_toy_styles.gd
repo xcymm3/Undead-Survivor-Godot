@@ -12,6 +12,8 @@ const PALETTES = {
 static func size_for(part: Dictionary, kind: String) -> Vector3:
 	var original = Vector3(part.size[0],part.size[1],part.size[2])
 	if kind not in KINDS: return original
+	if kind == "football" and part.get("kind","") == "football" and not part.get("head",false): return Vector3(1.02,.24,.52)
+	if kind == "dancer" and part.get("kind","") == "dancer" and is_equal_approx(original.y,.17): return Vector3(.20,.09,.075)
 	if part.get("shield",false):
 		return Vector3(1.08,1.10,.14) if original.y > 1.3 else Vector3(.12,.90,.04) if original.y > 1 else original
 	if part.get("head",false) or part.has("kind"): return original
@@ -28,6 +30,7 @@ static func size_for(part: Dictionary, kind: String) -> Vector3:
 static func frame_for(part: Dictionary, kind: String) -> Transform3D:
 	var center = Vector3(part.position[0],part.position[1],part.position[2])
 	if kind == "shield" and part.get("shield",false): center.y = 1.05
+	if kind == "football" and part.get("kind","") == "football" and not part.get("head",false): center.y = 1.42
 	if kind == "bucket" and part.get("kind","") == "bucket":
 		var tilt = Basis(Vector3.BACK,-.065)
 		var pivot = Vector3(0,1.94,0)
@@ -81,6 +84,7 @@ static func details(kind: String) -> Array:
 			add(result,Vector3(0,2.08,.316),Vector3(.075,.38,.012),"f4dda7",6,true)
 			for x in [-.19,.19]: add(result,Vector3(x,.47,.174 if x < 0 else .194),Vector3(.05,.61,.012),"b85046",1 if x < 0 else 2)
 		"dancer":
+			add(result,Vector3(0,1.53,.274),Vector3(.052,.065,.010),"f3a394")
 			for x in [-.15,.15]: add(result,Vector3(x,1.875,.311),Vector3(.082,.014,.006),"7288a0",6)
 			add(result,Vector3(0,1.854,.312),Vector3(.055,.035,.008),"d9b45c",6)
 			for y in [1.04,1.20]: add(result,Vector3(0,y,.201),Vector3(.035,.035,.012),"e7c778")

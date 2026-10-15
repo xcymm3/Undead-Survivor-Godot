@@ -196,10 +196,10 @@ func stage_normal_zombie(scenario: String) -> void:
 	if toy_review:
 		if all_toys:
 			center = Vector3(0,4.9,10)
-			game.camera.fov = 30
-			game.camera.position = Vector3(1.5,6,36)
+			game.camera.fov = 32
+			game.camera.position = Vector3(0,6,36)
 		else:
-			var height: float = Data.enemy_scale(selected_kind)*{"cone":2.82,"bucket":2.56,"dancer":2.36}.get(selected_kind,2.12)
+			var height: float = Data.enemy_scale(selected_kind)*{"cone":2.82,"bucket":2.56,"dancer":2.36,"football":2.35}.get(selected_kind,2.12)
 			center = Vector3(0,3+height*.52,10)
 			game.camera.position = center+Vector3(height*.65,height*.16,height*1.95)
 	game.camera.look_at(center)
