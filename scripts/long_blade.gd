@@ -6,7 +6,6 @@ func _init() -> void:
 	piece("Guard",Vector3.ZERO,Vector3(.25,.045,.10),Color("b39753"))
 	piece("Grip",Vector3(0,-.18,0),Vector3(.065,.32,.07),Color("342d2b"))
 	for i in 7: piece("Wrap",Vector3(0,-.04-i*.043,0),Vector3(.073,.012,.078),Color("706049"))
-	add_child(make_hand(true))
 
 func piece(title: String, at: Vector3, size: Vector3, color: Color) -> void:
 	var part = MeshInstance3D.new()
@@ -55,36 +54,4 @@ static func make_scabbard() -> Node3D:
 				edge.layers = 2
 				edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				result.add_child(edge)
-	return result
-
-static func make_hand(right: bool) -> Node3D:
-	var result = Node3D.new()
-	result.name = "GripHand" if right else "ScabbardHand"
-	var shapes = [[Vector3(0,-.19,.015),Vector3(.18,.20,.18),"65614c"],
-		[Vector3(0,-.31,.015),Vector3(.19,.065,.19),"293b46"],
-		[Vector3(.095 if right else -.095,-.15,-.025),Vector3(.075,.13,.085),"81785b"]]
-	for y in [-.12,-.18,-.24]: shapes.append([Vector3(0,y,-.085),Vector3(.17,.045,.055),"827a60"])
-	for shape in shapes:
-		var part = MeshInstance3D.new()
-		part.mesh = BoxMesh.new()
-		part.mesh.size = shape[1]
-		part.position = shape[0]
-		var material = StandardMaterial3D.new()
-		material.albedo_color = Color(shape[2])
-		material.roughness = .8
-		part.material_override = material
-		part.layers = 2
-		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		result.add_child(part)
-	return result
-
-static func make_arm() -> MeshInstance3D:
-	var result = MeshInstance3D.new()
-	result.mesh = BoxMesh.new()
-	var material = StandardMaterial3D.new()
-	material.albedo_color = Color("314652")
-	material.roughness = .85
-	result.material_override = material
-	result.layers = 2
-	result.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return result

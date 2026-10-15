@@ -53,7 +53,6 @@ func sample(p: Dictionary, dt: float, fire_duration: float) -> Dictionary:
 	var remaining: float = p.get("ultimate_sheathe",0.0)
 	var drawing: bool = ultimate.active(p) and p.get("ultimate_age",0.0) < ultimate.DRAW_TIME
 	var sheath = sheath_pose()
-	var support = 0.0
 	if remaining > 0:
 		if not sheathing: sheath_from = current
 		sheathing = true
@@ -65,14 +64,12 @@ func sample(p: Dictionary, dt: float, fire_duration: float) -> Dictionary:
 		var lower = Vector3(.10,-.48,.08)*smoothstep(.83,1,t)
 		current.origin += lower
 		sheath.origin += lower
-		support = smoothstep(0,.20,t)*(1.0-smoothstep(.86,1,t))
 	elif drawing:
 		var t = clampf(float(p.ultimate_age)/ultimate.DRAW_TIME,0,1)
 		current = draw_pose(t)
 		var lift = Vector3(.10,-.48,.08)*(1.0-smoothstep(0,.16,t))
 		current.origin += lift
 		sheath.origin += lift
-		support = smoothstep(0,.14,t)*(1.0-smoothstep(.80,1,t))
 		sheathing = false
 		firing = false
 	elif p.fire_anim > 0:
@@ -89,4 +86,4 @@ func sample(p: Dictionary, dt: float, fire_duration: float) -> Dictionary:
 		firing = false
 		resting += dt
 		if resting > .10: current = current.interpolate_with(ready_pose(),1.0-exp(-dt*9))
-	return {"blade":current,"sheath":sheath,"support":support}
+	return {"blade":current,"sheath":sheath}
