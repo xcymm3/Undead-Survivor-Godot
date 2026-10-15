@@ -117,11 +117,16 @@ static func part_visible(index: int, kind: String) -> bool:
 	return kind != "normal" or index < 4 or index > 11
 
 static func face_vertices() -> Array:
-	# Two plain rectangular eyes printed onto the existing head surface.
+	# Simple printed features retain the existing molded plastic head.
 	var result: Array = []
 	for side in [-1.0,1.0]:
-		var x = side*.104
-		face_print(result,[Vector3(x-.048,1.823,.2265),Vector3(x-.048,1.867,.2265),Vector3(x+.048,1.867,.2265),Vector3(x+.048,1.823,.2265)],Color.BLACK)
+		var x = side*.094
+		face_print(result,[Vector3(x-.060,1.7975,.2265),Vector3(x-.060,1.8525,.2265),Vector3(x+.060,1.8525,.2265),Vector3(x+.060,1.7975,.2265)],Color.BLACK)
+	# A shallow open mouth with clipped corners and two small upper teeth.
+	face_print(result,[Vector3(-.060,1.722,.2265),Vector3(-.068,1.714,.2265),Vector3(-.068,1.678,.2265),Vector3(-.060,1.670,.2265),Vector3(.060,1.670,.2265),Vector3(.068,1.678,.2265),Vector3(.068,1.714,.2265),Vector3(.060,1.722,.2265)],Color("34402f"))
+	for side in [-1.0,1.0]:
+		var x = side*.029
+		face_print(result,[Vector3(x-.015,1.721,.227),Vector3(x-.015,1.698,.227),Vector3(x+.015,1.698,.227),Vector3(x+.015,1.721,.227)],Color("f5ebcd"))
 	return result
 
 static func face_print(result: Array, points: Array, color: Color) -> void:

@@ -53,7 +53,7 @@ static func validate(game, check: Callable) -> void:
 	var print_in_head = true
 	for vertex in printed_face:
 		print_in_head = print_in_head and absf(vertex.position.x) < .233 and vertex.position.y > 1.557 and vertex.position.y < 2.023 and vertex.position.z >= .225 and vertex.position.z <= .228
-	check.call(printed_face.size() > 0 and print_in_head,"Rectangular printed eyes fit original head silhouette without a raised plate")
+	check.call(printed_face.size() > 0 and print_in_head,"Printed toy face fits original head silhouette without a raised plate")
 	check.call(not Toy.part_visible(11,"normal") and Toy.part_visible(11,"bucket"),"Raised cheek plate is removed only from ordinary zombie mesh and hit boxes")
 	z.attack_time = 0.0
 	z.move_speed = 4.9
