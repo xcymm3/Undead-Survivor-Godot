@@ -86,4 +86,57 @@ static func validate(game, check: Callable) -> void:
 	z.gait = 2.5
 	var idle_b: Dictionary = View.pose_state(z,0,false)
 	check.call(idle_a.bones[1].is_equal_approx(idle_b.bones[1]),"Idle ordinary zombie does not keep stepping")
+	validate_actions(game,z,check)
 	sim.zombies.clear()
+
+static func validate_actions(game, base: Dictionary, check: Callable) -> void:
+	var motion = preload("res://scripts/normal_zombie_motion.gd")
+	var data = game.get_node("/root/Data")
+	var states = {
+		"idle":{"move_speed":0.0},
+		"walk":{"move_speed":4.9,"gait":1.2},
+		"attack":{"attack_time":.5},
+		"hit":{"toy_hit_at":9.95,"toy_hit_side":.8},
+		"shove":{"state":"stunned","state_time":2.12,"toy_shove_at":9.0,"toy_shove_until":12.12},
+		"stunned":{"state":"stunned","state_time":1.0},
+		"death":{"hp":0.0,"down":.3},
+		"emerge":{"emerge_remaining":.8}}
+	for name in states:
+		var z = base.duplicate(true)
+		z.move_speed = 0.0
+		z.state = "ready"
+		z.attack_time = 0.0
+		z.merge(states[name],true)
+		var before = z.duplicate(true)
+		var authority = View.pose_state(z,10,false)
+		check.call(authority.animation == name,"Mechanical state selects correct exclusive action: "+name)
+		check.call(z == before,"Pose sampling never mutates gameplay state: "+name)
+		game.enemies.sync([z],10,false)
+		var actor: Dictionary = game.enemies.actors[z.id]
+		var matches: bool = actor.body.transform.is_equal_approx(authority.root)
+		for bone in 7: matches = matches and actor.skeleton.get_bone_pose(bone).is_equal_approx(authority.bones[bone])
+		check.call(matches,"Render and authoritative joints agree for action: "+name)
+		var poses = View.transforms(z,10,false)
+		var low = INF
+		for index in 20:
+			if not Toy.part_visible(index,"normal"): continue
+			for x in [-.5,.5]:
+				for y in [-.5,.5]:
+					for depth in [-.5,.5]: low = minf(low,(poses[index]*Vector3(x,y,depth)).y-data.enemy_ground_height(z.pos))
+		if name != "emerge": check.call(low >= -.001 and low <= .025,"Mechanical toy stays grounded: "+name)
+	var hit_at: float = data.attack("normal").x
+	check.call(is_equal_approx(motion.track(.35/hit_at,motion.ATTACK_TIMES,motion.ATTACK_ARMS),-.85),"Mechanical windup holds its loaded pose")
+	check.call(is_equal_approx(motion.track(hit_at/hit_at,motion.ATTACK_TIMES,motion.ATTACK_ARMS),.35),"Mechanical strike aligns with unchanged damage timestamp")
+	check.call(is_equal_approx(motion.track(data.attack("normal").y/hit_at,motion.ATTACK_TIMES,motion.ATTACK_ARMS),.72),"Mechanical recovery completes at unchanged attack cycle")
+	check.call(motion.track(.05,motion.RECOIL_TIMES,motion.RECOIL_WEIGHT) == motion.track(.1,motion.RECOIL_TIMES,motion.RECOIL_WEIGHT),"Hit reaction holds its rigid impact pose")
+	var z = base.duplicate(true)
+	z.hp = 0.0
+	for frame in 35:
+		z.down = .85-float(frame)/40.0
+		var transforms = View.transforms(z,10,false)
+		var low = INF
+		for index in 20:
+			if not Toy.part_visible(index,"normal"): continue
+			var pose: Transform3D = transforms[index]
+			low = minf(low,pose.origin.y-.5*(absf(pose.basis.x.y)+absf(pose.basis.y.y)+absf(pose.basis.z.y))-data.enemy_ground_height(z.pos))
+		check.call(low >= -.001 and low <= .025,"Rigid death stays above terrain throughout fall: "+str(frame))

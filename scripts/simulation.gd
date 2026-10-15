@@ -781,6 +781,9 @@ func try_shove(p: Dictionary) -> bool:
 		if not stun_immune:
 			z.state = "stunned"
 			z.state_time = SHOVE_STUN
+		if z.kind == "normal":
+			z.toy_shove_at = elapsed
+			z.toy_shove_until = elapsed+SHOVE_STUN
 		z.shove_time = .26
 		z.shove_velocity = (delta.normalized() if delta.length() > .05 else forward)*(2.8/.26)
 		paths.erase(z.id)
@@ -1118,6 +1121,11 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		events.append({"kind":"death","player":p.id,"position":position})
 		if z.get("original",z.kind) == "dancer": complete_boss_victory(p)
 	else:
+		if z.kind == "normal" and elapsed >= float(z.get("toy_hit_at",-100.0))+.18:
+			z.toy_hit_at = elapsed
+			var reaction_source: Vector2 = push_origin if push_origin.is_finite() else p.get("pos",z.pos)
+			var incoming: Vector2 = (z.pos-reaction_source).normalized()
+			z.toy_hit_side = incoming.dot(Vector2(cos(z.heading),-sin(z.heading)))
 		# Small displacement is independent of shove velocity/time and stun duration.
 		# A pellet/flame tick cannot multiply displacement within the same volley.
 		if not charging_on_hit and z.get("dance_remaining",0.0) <= 0 and z.kind != "giant" and not (z.kind == "berserker" and z.rage) and elapsed >= z.get("hit_push_at",-1.0):

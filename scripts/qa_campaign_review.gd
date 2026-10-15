@@ -1,6 +1,9 @@
 extends Node
 var game
-var walk_callback
+var action_callback
+var action_name = ""
+var action_frames = 48
+var action_fps = 20.0
 func _ready() -> void:
 	if not Data.automation or not OS.has_feature("web"): queue_free(); return
 	call_deferred("stage")
@@ -136,6 +139,10 @@ func stage_normal_zombie(scenario: String) -> void:
 	var studio: bool = scenario != "normal_night"
 	var lineup: bool = scenario == "normal_lineup"
 	var walking: bool = scenario == "normal_walk"
+	action_name = scenario.trim_prefix("normal_")
+	var animated: bool = action_name in ["walk","idle","attack","hit","shove","stunned","death","emerge"]
+	action_frames = 48 if action_name in ["walk","idle"] else 52 if action_name == "attack" else 76 if action_name == "shove" else 40
+	action_fps = 12.0*4.9*2.3/TAU if walking else 20.0
 	var center = Vector3(0,4.05,10)
 	if studio:
 		game.arena.scenery.hide()
@@ -184,23 +191,51 @@ func stage_normal_zombie(scenario: String) -> void:
 	for i in 6: await get_tree().process_frame
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
-	if walking:
-		walk_callback = JavaScriptBridge.create_callback(draw_walk_frame)
-		JavaScriptBridge.get_interface("window").__drawNormalWalk = walk_callback
-		JavaScriptBridge.eval("window.__normalWalkFrame=-1",true)
-	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"count":game.sim.zombies.size(),"head_size":[.49,.49,.45],"roughness":game.enemies.toy_material.roughness,"studio":studio}),true)
+	if animated:
+		action_callback = JavaScriptBridge.create_callback(draw_action_frame)
+		JavaScriptBridge.get_interface("window").__drawNormalAction = action_callback
+		JavaScriptBridge.eval("window.__normalActionFrame=-1",true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"count":game.sim.zombies.size(),"head_size":[.49,.49,.45],"roughness":game.enemies.toy_material.roughness,"studio":studio,"frames":action_frames if animated else 0,"fps":action_fps}),true)
 
-func draw_walk_frame(args: Array) -> void:
-	# Deterministic real engine frames, independent of software-renderer FPS.
-	var frame = clampi(int(args[0]),0,47)
+func draw_action_frame(args: Array) -> void:
+	# Deterministic pose previews of actual shared engine animations, not timed video.
+	var frame = clampi(int(args[0]),0,action_frames-1)
+	var time: float = frame/action_fps
 	var z: Dictionary = game.sim.zombies[0]
-	z.gait = float(frame)*TAU/12.0
-	z.move_speed = 4.9
+	z.hp = 200.0
+	z.down = .85
+	z.move_speed = 0.0
 	z.attack_time = 0.0
-	var time: float = z.gait/(4.9*2.3)
+	z.state = "ready"
+	z.state_time = 0.0
+	z.emerge_remaining = 0.0
+	z.toy_hit_at = -100.0
+	z.toy_shove_at = -100.0
+	z.toy_shove_until = -1.0
+	match action_name:
+		"walk":
+			z.gait = float(frame)*TAU/12.0
+			z.move_speed = 4.9
+		"attack": z.attack_time = fposmod(time,Data.attack("normal").y)
+		"hit":
+			if time >= .4:
+				z.toy_hit_at = .4
+				z.toy_hit_side = .8
+				if time < .58: z.state = "stunned"; z.state_time = .58-time
+		"shove":
+			if time >= .25 and time < 3.37:
+				z.state = "stunned"
+				z.state_time = 3.37-time
+				z.toy_shove_at = .25
+				z.toy_shove_until = 3.37
+		"stunned":
+			if time >= .25 and time < 1.5: z.state = "stunned"; z.state_time = 1.5-time
+		"death":
+			if time >= .25: z.hp = 0.0; z.down = maxf(0.0,.85-(time-.25))
+		"emerge": z.emerge_remaining = maxf(0.0,1.4-time)
 	game.enemies.sync(game.sim.zombies,time,false)
 	for i in 2: await get_tree().process_frame
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	await get_tree().process_frame
-	JavaScriptBridge.eval("window.__normalWalkFrame="+str(frame),true)
+	JavaScriptBridge.eval("window.__normalActionFrame="+str(frame),true)

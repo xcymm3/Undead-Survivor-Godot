@@ -7,6 +7,7 @@ var material: StandardMaterial3D
 var toy_material: StandardMaterial3D
 var rage_eye_material: StandardMaterial3D
 var kinds = ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football","dancer"]
+const Motion = preload("res://scripts/normal_zombie_motion.gd")
 const Toy = preload("res://scripts/normal_zombie_art.gd")
 const Wardrobe = preload("res://scripts/zombie_outfits.gd")
 
@@ -165,6 +166,7 @@ static func bone_for(part: Dictionary) -> int:
 	return 0
 
 static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
+	if z.kind == "normal": return Motion.pose(z,elapsed,stationary)
 	if z.kind == "crawler": return crawl_pose(z,elapsed,stationary)
 	var attack_advancing: bool = z.attack_time > 0 and z.attack_time < Data.attack(z.kind,z.rage).x
 	var moving: bool = not stationary and z.get("move_speed",0.0) > .05 and z.hp > 0 and (z.attack_time <= 0 or attack_advancing) and z.state not in ["windup","stunned"] and z.rage_pause <= 0
