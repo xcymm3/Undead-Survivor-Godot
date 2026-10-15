@@ -215,7 +215,8 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 
 static func pose_blade_arm(arm: MeshInstance3D, elbow: Vector3, wrist: Vector3, inverse: Transform3D) -> void:
 	var direction = wrist-elbow
-	var pose = Transform3D(Basis.looking_at(direction.normalized()).scaled(Vector3(.105,.105,direction.length())),(elbow+wrist)*.5)
+	# Scale along the arm's local axis; world-axis scaling shears its wrist endpoint.
+	var pose = Transform3D(Basis.looking_at(direction.normalized())*Basis.from_scale(Vector3(.105,.105,direction.length())),(elbow+wrist)*.5)
 	arm.transform = inverse*pose
 
 static func sample_axe(pivot: Node3D, progress: float, direction := 1) -> void:

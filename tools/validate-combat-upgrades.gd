@@ -55,6 +55,9 @@ func validate_blade_motion(game) -> void:
 	check(game.weapon.blade_right_arm.visible and game.weapon.scabbard.visible,"Active blade has a gripping hand and persistent independent scabbard")
 	var root_inverse: Transform3D = game.weapon.transform.affine_inverse()
 	check(game.weapon.scabbard.transform.is_equal_approx(root_inverse*motion_type.sheath_pose()),"Gun-root motion cannot move the camera-space scabbard anchor")
+	var wrist: Vector3 = game.weapon.blade_motion.current*Vector3(0,-.24,0)
+	var arm: Transform3D = game.weapon.transform*game.weapon.blade_right_arm.transform
+	check((arm*Vector3(0,0,-.5)).distance_to(wrist) < .00001 and (arm*Vector3(0,0,.5)).distance_to(Vector3(.48,-.58,-.48)) < .00001,"Sleeve endpoints attach to the gripping wrist and elbow without shear or gaps")
 	p.clear()
 	p.merge(restore,true)
 	game.weapon.reset_motion()
