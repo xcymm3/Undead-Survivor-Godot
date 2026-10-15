@@ -6,7 +6,7 @@ const PALETTES = {
 	"shield":["426b86","567c96","384e64","333e4a","8eae85"],
 	"berserker":["b75848","ce7357","5c4853","493b39","9bb471"],
 	"giant":["b99b66","c4ab7d","6c5845","493f33","a5b27a"],
-	"football":["ce5147","eee0c3","e6ddc6","484d5c","98b67a"],
+	"football":["8f2830","8f2830","3d4945","29352e","98b67a"],
 	"dancer":["7450a0","825dae","40375f","ceac68","9db68b"]}
 
 static func size_for(part: Dictionary, kind: String) -> Vector3:
@@ -32,7 +32,9 @@ static func frame_for(part: Dictionary, kind: String) -> Transform3D:
 	var center = Vector3(part.position[0],part.position[1],part.position[2])
 	if kind == "shield" and part.get("shield",false): center.y = 1.05
 	if kind == "giant" and part.get("kind","") == "giant" and not part.get("head",false): center = Vector3(center.x,1.39,-.015)
-	if kind == "football" and part.get("kind","") == "football" and not part.get("head",false): center.y = 1.42
+	if kind == "football" and part.get("kind","") == "football":
+		# Lower the helmet over the eyes; a broken helmet reveals the painted eyes.
+		center.y = (2.00 if part.size[1] > .4 else 1.79) if part.get("head",false) else 1.42
 	if kind == "bucket" and part.get("kind","") == "bucket":
 		var tilt = Basis(Vector3.BACK,-.065)
 		var pivot = Vector3(0,1.94,0)
@@ -48,7 +50,7 @@ static func color_for(part: Dictionary, index: int, kind: String, rage: bool) ->
 		25:"667f8b",26:"abb9bd",27:"d7dfdd",28:"647d89",29:"e1e6dc",
 		31:"ce9d5f",32:"385b78",33:"eee2bd",34:"eee2bd",
 		35:"713f3e",36:"ead09b",37:"ead09b",38:"8e704b",39:"718071",
-		40:"c94b43",41:"eee0c3",42:"dae0d8",43:"343343",44:"252a38",
+		40:"9c3034",41:"9c3034",42:"e4e4cc",43:"343343",44:"252a38",
 		45:"d56c72",46:"e3c16b",47:"e3c16b",48:"d9b45c"}
 	if equipment.has(index): return Color(equipment[index])
 	return Color("b4b36f" if kind == "berserker" and rage else palette[4])
@@ -76,15 +78,6 @@ static func details(kind: String) -> Array:
 				add(result,Vector3(x,1.16,.252),Vector3(.05,.05,.010),"e2d3ac")
 			add(result,Vector3(0,1.07,.219),Vector3(.27,.18,.012),"917348")
 			for x in [-.09,0,.09]: add(result,Vector3(x,1.09,.228),Vector3(.018,.10,.007),"e1d1a2")
-		"football":
-			# A large jersey number 08, drawn as coarse seven-segment printing.
-			for digit in 2:
-				var center = -.09 if digit == 0 else .09
-				for y in [.995,1.205]: add(result,Vector3(center,y,.200),Vector3(.10,.028,.012),"fff0d0")
-				for x in [-.05,.05]: add(result,Vector3(center+x,1.10,.200),Vector3(.026,.21,.012),"fff0d0")
-				if digit == 1: add(result,Vector3(center,1.10,.200),Vector3(.10,.026,.012),"fff0d0")
-			add(result,Vector3(0,2.08,.316),Vector3(.075,.38,.012),"f4dda7",6,true)
-			for x in [-.19,.19]: add(result,Vector3(x,.47,.174 if x < 0 else .194),Vector3(.05,.61,.012),"b85046",1 if x < 0 else 2)
 		"dancer":
 			add(result,Vector3(0,1.53,.274),Vector3(.052,.065,.010),"f3a394")
 			for x in [-.15,.15]: add(result,Vector3(x,1.875,.311),Vector3(.082,.014,.006),"7288a0",6)
@@ -97,7 +90,7 @@ static func face_profile(kind: String) -> Dictionary:
 	var profile = {"eye_width":.120,"eye_height":.055,"eye_y":1.825,"eye_gap":.104,"mouth":basic,"mouth_width":.024,"mouth_y":1.745,"inside":"854e4c"}
 	match kind:
 		"imp":
-			profile.eye_width = .130
+			profile.eye_width = .100
 			profile.mouth = ["0000000110","0011111110","0112222210","1122222211","1112222111","0111111110"]
 			profile.inside = "9b6066"
 		"shield":
@@ -106,15 +99,12 @@ static func face_profile(kind: String) -> Dictionary:
 			profile.inside = "77544f"
 		"berserker":
 			profile.eye_height = .036
-			profile.mouth = ["0011111100","0112222110","1122222211","1122222211","1122222211","0111111110"]
-			profile.inside = "9c4c4c"
 		"giant":
 			profile.eye_height = .044
 			profile.eye_gap = .100
 			profile.mouth_width = .026
 			profile.inside = "85634f"
 		"football":
-			profile.eye_y = 1.770
 			profile.mouth_y = 1.725
 			profile.eye_height = .045
 		"dancer":
