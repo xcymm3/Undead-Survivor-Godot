@@ -11,6 +11,10 @@ var muzzle: MeshInstance3D
 var scabbard: Node3D
 var blade: Node3D
 var axe_pivot: Node3D
+var blade_motion = preload("res://scripts/blade_motion.gd").new()
+var blade_right_arm: MeshInstance3D
+var blade_left_arm: MeshInstance3D
+var blade_left_hand: Node3D
 
 static func create_model(id: String, first_person := false) -> Node3D:
 	return preload("res://scripts/weapon_models.gd").create(id,first_person)
@@ -44,6 +48,15 @@ func _ready() -> void:
 	scabbard = preload("res://scripts/long_blade.gd").make_scabbard()
 	add_child(scabbard)
 	scabbard.hide()
+	blade_left_hand = preload("res://scripts/long_blade.gd").make_hand(false)
+	add_child(blade_left_hand)
+	blade_right_arm = preload("res://scripts/long_blade.gd").make_arm()
+	blade_left_arm = preload("res://scripts/long_blade.gd").make_arm()
+	add_child(blade_right_arm)
+	add_child(blade_left_arm)
+	blade_left_hand.hide()
+	blade_right_arm.hide()
+	blade_left_arm.hide()
 	var sphere = SphereMesh.new()
 	sphere.radius = .025
 	sphere.height = .06
@@ -69,6 +82,7 @@ func reset_motion() -> void:
 	ads = 0.0
 	sprint_blend = 0.0
 	sprint_phase = 0.0
+	blade_motion.reset()
 	if models.size() > 3: models[3].reset_motion()
 
 func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-180)) -> void:
@@ -175,16 +189,34 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		var bob = Vector3(sin(sprint_phase)*.018,absf(cos(sprint_phase))*.022,sin(sprint_phase*2)*.009)
 		position += (Vector3(.045,-.13,.08)+bob)*sprint_blend
 		quaternion *= Quaternion.from_euler(Vector3(-.38,.42,-.24+sin(sprint_phase)*.04)*sprint_blend)
-	scabbard.visible = ultimate_locked and (p.get("ultimate_age",0.0) < .9 or p.get("ultimate_sheathe",0.0) > 0)
+	scabbard.visible = ultimate_locked
 	blade.visible = ultimate_locked
+	blade_right_arm.visible = ultimate_locked
+	blade_left_hand.visible = false
+	blade_left_arm.visible = false
 	if ultimate_locked:
-		sample_axe(blade,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0,int(p.get("axe_direction",1)))
-		var draw = clampf(float(p.get("ultimate_age",0.0))/.9,0,1)
-		var sheath = float(p.get("ultimate_sheathe",0.0))/.8
-		scabbard.transform = blade.transform
-		blade.position -= blade.basis.y*1.1*(1.0-smoothstep(0,1,draw) if sheath <= 0 else smoothstep(0,1,1.0-sheath))
+		var motion = blade_motion.sample(p,dt,w.fireDuration)
+		var inverse = transform.affine_inverse()
+		blade.transform = inverse*motion.blade
+		scabbard.transform = inverse*motion.sheath
+		var wrist: Vector3 = motion.blade*Vector3(0,-.24,0)
+		pose_blade_arm(blade_right_arm,Vector3(.48,-.58,-.48),wrist,inverse)
+		if motion.support > .001:
+			blade_left_hand.visible = true
+			blade_left_arm.visible = true
+			var hand: Transform3D = motion.sheath
+			hand.origin += Vector3(-.23,-.26,.14)*(1.0-motion.support)
+			blade_left_hand.transform = inverse*hand
+			pose_blade_arm(blade_left_arm,Vector3(-.30,-.62,-.52),hand*Vector3(0,-.18,0),inverse)
+	else:
+		blade_motion.reset()
 	muzzle.global_position = muzzle_position()
 	muzzle.visible = not hide_scope and p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") == "gun"
+
+static func pose_blade_arm(arm: MeshInstance3D, elbow: Vector3, wrist: Vector3, inverse: Transform3D) -> void:
+	var direction = wrist-elbow
+	var pose = Transform3D(Basis.looking_at(direction.normalized()).scaled(Vector3(.105,.105,direction.length())),(elbow+wrist)*.5)
+	arm.transform = inverse*pose
 
 static func sample_axe(pivot: Node3D, progress: float, direction := 1) -> void:
 	# Sweep the grip and head together from upper right toward lower left and forward.

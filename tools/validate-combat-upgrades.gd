@@ -11,6 +11,54 @@ func check(value: bool, message: String) -> void:
 		failures += 1
 		push_error(message)
 func _initialize() -> void: call_deferred("run")
+func validate_blade_motion(game) -> void:
+	var motion_type = load("res://scripts/blade_motion.gd")
+	var sheath: Transform3D = motion_type.sheath_pose()
+	var inserted: Transform3D = motion_type.inserted_pose()
+	check((inserted*Vector3(0,1.11,0)).distance_to(sheath*Vector3(0,-1.11,0)) < .00001,"Inserted blade points into the sheath, with guard at its mouth")
+	var pulled: Transform3D = motion_type.extracted_pose()
+	check((pulled*Vector3(0,1.11,0)-motion_type.MOUTH).dot(motion_type.PULL) > 0,"Draw pulls the entire blade clear of the scabbard mouth toward the left")
+	for step in 31:
+		var t = float(step)/30
+		for direction in [-1,1]:
+			var pose: Transform3D = motion_type.swing_pose(t,direction)
+			var bounds_valid = true
+			for vertex in [Vector3(-.05,0,-.02),Vector3(.06,1.11,.02),Vector3(0,-.35,0)]:
+				var point: Vector3 = pose*vertex
+				for aspect in [4.0/3.0,1.6,16.0/9.0]:
+					var half_height = -point.z*tan(deg_to_rad(61.0)*.5)
+					bounds_valid = bounds_valid and point.z < -.04 and absf(point.x) < half_height*aspect*.95 and absf(point.y) < half_height*.95
+			check(bounds_valid,"Wide slash keeps blade tip and grip within desktop camera bounds: "+str(step)+" / "+str(direction))
+	check(motion_type.swing_pose(1,1).is_equal_approx(motion_type.swing_pose(0,-1)),"Right-to-left slash ends where the left-to-right slash begins")
+	check(motion_type.swing_pose(1,-1).is_equal_approx(motion_type.swing_pose(0,1)),"Left-to-right slash ends where the right-to-left slash begins")
+	var motion = motion_type.new()
+	var pawn = {"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":.14,"axe_direction":1}
+	motion.sample(pawn,1.0/60,.28)
+	var before: Transform3D = motion.current
+	pawn.ultimate_remaining = 0.0
+	pawn.ultimate_sheathe = Ultimate.SHEATHE_TIME
+	pawn.fire_anim = 0.0
+	var after: Dictionary = motion.sample(pawn,0,.28)
+	check(before.is_equal_approx(after.blade),"Mid-slash cancellation starts sheathing at the last displayed blade pose without snapping")
+	pawn.ultimate_sheathe -= .01
+	after = motion.sample(pawn,.01,.28)
+	check(before.origin.distance_to(after.blade.origin) < .02,"First sheathing step smoothly aligns from the interrupted swing")
+	var p: Dictionary = game.local_pawn()
+	var restore = p.duplicate(true)
+	p.weapon = 6
+	p.ultimate_remaining = 5.0
+	p.ultimate_age = 2.0
+	p.ultimate_sheathe = 0.0
+	p.fire_anim = .14
+	game.weapon.reset_motion()
+	game.weapon.sync(p,.016,0)
+	check(game.weapon.blade_right_arm.visible and game.weapon.scabbard.visible,"Active blade has a gripping hand and persistent independent scabbard")
+	var root_inverse: Transform3D = game.weapon.transform.affine_inverse()
+	check(game.weapon.scabbard.transform.is_equal_approx(root_inverse*motion_type.sheath_pose()),"Gun-root motion cannot move the camera-space scabbard anchor")
+	p.clear()
+	p.merge(restore,true)
+	game.weapon.reset_motion()
+
 func run() -> void:
 	var game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
@@ -125,6 +173,7 @@ func run() -> void:
 	p.input = {}
 	Ultimate.tick(sim,p,p.input,1)
 	check(not Ultimate.locked(p) and p.slot == 1,"Sheathing restores previous equipment slot")
+	validate_blade_motion(game)
 	p.input = {"ultimate":true}
 	Ultimate.tick(sim,p,p.input,.01)
 	check(not Ultimate.active(p) and p.ultimate_notice == "大招冷却中","Q during cooldown reports unavailability")

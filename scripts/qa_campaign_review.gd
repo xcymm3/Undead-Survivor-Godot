@@ -137,8 +137,8 @@ func stage_ultimate(scenario: String) -> void:
 	p.input = {}
 	p.input_age = 0
 	action_name = scenario.trim_prefix("ultimate_")
-	action_frames = 48 if action_name == "attack" else 34
-	action_fps = 20.0
+	action_frames = 72 if action_name == "attack" else 66 if action_name == "sheathe" else 54
+	action_fps = 30.0
 	ultimate_frame = -1
 	if action_name != "draw":
 		var command = {"ultimate":true}
@@ -171,9 +171,11 @@ func draw_ultimate_frame(args: Array) -> void:
 	var time: float = frame/action_fps
 	var dt: float = 1.0/action_fps
 	var p: Dictionary = game.local_pawn()
-	var activate: bool = action_name == "draw" and frame == 4
-	var cancel: bool = action_name == "sheathe" and frame == 4
-	p.input = {"ultimate":activate or cancel,"fire":action_name == "attack" and time >= .2 and time < 1.7}
+	var activate: bool = action_name == "draw" and frame == 6
+	# Cancel in the middle of a real second swing, rather than from an idle pose.
+	var cancel: bool = action_name == "sheathe" and frame == 16
+	var attack: bool = (action_name == "attack" and time >= .2 and time < 1.7) or (action_name == "sheathe" and time >= .1 and frame < 16)
+	p.input = {"ultimate":activate or cancel,"fire":attack}
 	p.input_age = 0
 	game.sim.elapsed += dt
 	game.sim.equipment.before_movement(dt)
