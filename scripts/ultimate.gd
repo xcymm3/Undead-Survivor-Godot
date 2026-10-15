@@ -2,8 +2,8 @@ extends RefCounted
 ## Authority owns duration, cooldown and inventory locking.
 const DURATION = 10.0
 const COOLDOWN = 60.0
-const DRAW_TIME = .9
-const SHEATHE_TIME = .8
+const DRAW_TIME = 1.1
+const SHEATHE_TIME = .95
 
 static func active(p: Dictionary) -> bool:
 	return p.get("ultimate_remaining",0.0) > 0

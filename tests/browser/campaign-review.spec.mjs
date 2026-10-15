@@ -46,8 +46,8 @@ test('战斗反馈、主页、设置与失败镜头隔离截图',async({page},in
     await page.screenshot({path:path.join(directory,`frame-${String(frame).padStart(3,'0')}.png`),timeout:60000});
    }
    expect(samples.some(s=>s.blade)).toBe(true);
-   if(scenario==='ultimate_draw'){expect(samples[0].active).toBe(false);expect(samples.at(-1).active).toBe(true);expect(samples.some(s=>s.scabbard)).toBe(true);}
-   if(scenario==='ultimate_attack')expect(samples.some(s=>s.fire>0)).toBe(true);
+   if(scenario==='ultimate_draw'){expect(samples[0].active).toBe(false);expect(samples.at(-1).active).toBe(true);expect(samples.some(s=>s.scabbard)).toBe(true);expect(samples.at(-1).scabbard).toBe(false);}
+   if(scenario==='ultimate_attack'){expect(samples.some(s=>s.fire>0)).toBe(true);expect(samples.every(s=>!s.scabbard)).toBe(true);}
    if(scenario==='ultimate_sheathe'){expect(samples.some(s=>s.sheathe>0)).toBe(true);expect(samples.at(-1).blade).toBe(false);}
    await info.attach(`${scenario}-timing`,{body:JSON.stringify({frames:state.frames,fps:state.fps,samples}),contentType:'application/json'});
   }

@@ -177,7 +177,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		var bob = Vector3(sin(sprint_phase)*.018,absf(cos(sprint_phase))*.022,sin(sprint_phase*2)*.009)
 		position += (Vector3(.045,-.13,.08)+bob)*sprint_blend
 		quaternion *= Quaternion.from_euler(Vector3(-.38,.42,-.24+sin(sprint_phase)*.04)*sprint_blend)
-	scabbard.visible = ultimate_locked
+	scabbard.visible = p.get("ultimate_sheathe",0.0) > 0 or (ultimate.active(p) and p.get("ultimate_age",0.0) < ultimate.DRAW_TIME)
 	blade.visible = ultimate_locked
 	if ultimate_locked:
 		var motion = blade_motion.sample(p,dt,w.fireDuration)

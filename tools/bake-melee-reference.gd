@@ -58,7 +58,7 @@ func fit_in_view(pose: Transform3D) -> Transform3D:
 	var retreat = 0.0
 	var tangent = tan(deg_to_rad(61.0)*.5)
 	for x in [-.125,.125]:
-		for y in [-.35,1.11]:
+		for y in [-.38,1.55]:
 			for z in [-.05,.05]:
 				var vertex: Vector3 = pose*Vector3(x,y,z)
 				# Leave the right-side weapon HUD unobstructed as well as the screen edge.

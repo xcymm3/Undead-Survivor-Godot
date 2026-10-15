@@ -1,9 +1,9 @@
 extends RefCounted
 ## Camera-space choreography; the scabbard axis and the blade insertion axis oppose.
 const SIZE = .56
-const LENGTH = 1.11*SIZE
-const MOUTH = Vector3(.36,-.21,-1.08)
-const PULL = Vector3(-.76,.47,-.45)
+const LENGTH = preload("res://scripts/long_blade.gd").TIP*SIZE
+const MOUTH = Vector3(.36,-.28,-1.42)
+const PULL = Vector3(-.82,.43,-.37)
 static var slash_data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/animations/blade-slashes.json"))
 var current = ready_pose()
 var sheath_from = ready_pose()
@@ -19,7 +19,7 @@ static func pose(grip: Vector3, axis: Vector3) -> Transform3D:
 	return Transform3D(Basis(x,y,x.cross(y)).scaled(Vector3.ONE*SIZE),grip)
 
 static func ready_pose() -> Transform3D:
-	return pose(Vector3(.34,-.24,-1.04),Vector3(.64,.56,-.53))
+	return pose(Vector3(.20,-.30,-1.35),Vector3(.50,.72,-.48))
 
 static func sheath_pose() -> Transform3D:
 	return pose(MOUTH,PULL)
@@ -69,12 +69,16 @@ func sample(p: Dictionary, dt: float, fire_duration: float) -> Dictionary:
 		var lower = Vector3(.10,-.48,.08)*smoothstep(.83,1,t)
 		current.origin += lower
 		sheath.origin += lower
+		# Bring the empty scabbard up while the blade aligns, before insertion.
+		sheath.origin += Vector3(.10,-.65,.08)*(1.0-smoothstep(0,.30,t))
 	elif drawing:
 		var t = clampf(float(p.ultimate_age)/ultimate.DRAW_TIME,0,1)
 		current = draw_pose(t)
 		var lift = Vector3(.10,-.48,.08)*(1.0-smoothstep(0,.16,t))
 		current.origin += lift
 		sheath.origin += lift
+		# Once the tip is clear, lower the empty scabbard out of view.
+		sheath.origin += Vector3(.10,-.65,.08)*smoothstep(.74,1,t)
 		sheathing = false
 		firing = false
 	elif p.fire_anim > 0:
