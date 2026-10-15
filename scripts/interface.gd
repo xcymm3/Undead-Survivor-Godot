@@ -341,6 +341,7 @@ func show_save_slots() -> void:
 	for index in 3:
 		var profile = Progress.slots[index]
 		button(column,"存档 %d%s · 金币 %d · 钻石 %d · 最佳波次 %d" % [index+1,"（当前）" if index == Progress.active_slot else "",profile.data.coins,profile.data.diamonds,profile.data.best_wave],game.select_save_slot.bind(index),index == Progress.active_slot)
+		button(column,"永久删除存档 %d" % (index+1),confirm_delete_slot.bind(index))
 	button(column,"返回",show_home)
 
 func show_pause() -> void:
@@ -712,3 +713,15 @@ static func victory_caption_alpha(age: float) -> float:
 func sync_victory_caption(age: float, enabled: bool) -> void:
 	victory_caption.modulate.a = victory_caption_alpha(age)
 	victory_caption.visible = enabled and age < 5.8 and current != "result"
+
+func confirm_delete_slot(index: int) -> void:
+	current = "delete_save"
+	var column = panel("永久删除存档 %d？" % (index+1),"金币、钻石、所有升级和备份将永久删除，无法恢复。",660,true)
+	button(column,"取消，保留存档",show_save_slots,true)
+	button(column,"确认永久删除",delete_confirmed_slot.bind(index))
+
+func delete_confirmed_slot(index: int) -> void:
+	if Progress.delete_slot(index): show_save_slots()
+	else:
+		var column = panel("删除失败","无法访问存档文件，请检查用户目录权限。")
+		button(column,"返回",show_save_slots)

@@ -41,3 +41,17 @@ func _process(dt: float) -> void:
 	if save_timer >= 1.0:
 		save_timer = 0.0
 		store.save()
+
+func delete_slot(index: int) -> bool:
+	if index < 0 or index >= slots.size(): return false
+	var old = slots[index]
+	if not old.path.is_empty():
+		var folder = DirAccess.open(old.path.get_base_dir())
+		if not folder: return false
+		var filename: String = old.path.get_file()
+		for entry in folder.get_files():
+			if entry in [filename,filename+".bak",filename+".tmp"] or entry.begins_with(filename+".corrupt-"):
+				if folder.remove(entry) != OK: return false
+	slots[index] = Store.new(old.path)
+	if index == active_slot: store = slots[index]
+	return true
