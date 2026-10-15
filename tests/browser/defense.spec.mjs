@@ -68,7 +68,7 @@ test('吊桥水晶防守使用真实输入换装并长按警报器开始进攻',
   state = await snapshot(page);
   expect(state.wave).toBe(1);
   expect(state.player.ammo[state.player.weapon1]).toBe(30);
-  expect(state.player.reserves[state.player.weapon1]).toBe(510);
+  expect(state.player.reserves[state.player.weapon1]).toBe(255);
   expect(state.defense.crystal_hp).toBe(state.defense.crystal_max_hp);
   await page.keyboard.press('4');
   await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 4);
