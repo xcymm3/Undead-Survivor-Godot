@@ -28,7 +28,7 @@ test('战斗反馈、主页、设置与失败镜头隔离截图',async({page},in
    await mkdir(directory,{recursive:true});
    for(let frame=0;frame<48;frame++){
     await page.evaluate(index=>window.__drawNormalWalk(index),frame);
-    await page.waitForFunction(index=>window.__normalWalkFrame===index,frame);
+    await page.waitForFunction(index=>window.__normalWalkFrame===index,frame,{timeout:15000});
     await page.screenshot({path:path.join(directory,`frame-${String(frame).padStart(3,'0')}.png`),timeout:60000});
    }
   }
