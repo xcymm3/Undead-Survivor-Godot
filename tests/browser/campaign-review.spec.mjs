@@ -6,7 +6,7 @@ test('战斗反馈、主页、设置与失败镜头隔离截图',async({page},in
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
  page.on('console',message=>{if(/^(SCRIPT ERROR|ERROR):/.test(message.text()))errors.push(message.text());});
  await page.setViewportSize({width:1440,height:900});
- const scenarios=process.env.QA_NORMAL_ONLY ? ['normal_studio','normal_lineup','normal_night','normal_walk','normal_idle','normal_attack','normal_hit','normal_shove','normal_stunned','normal_death','normal_emerge'] : process.env.QA_SWITCH_ONLY ? ['switch_rifle_raise','switch_rifle_bolt','switch_pistol_spin'] : ['switch_rifle_raise','switch_rifle_bolt','switch_pistol_spin','interaction_station','interaction_gate','crystal_half','crystal_broken','heal','boss','home','home_hover','failure_player','failure_crystal','settings'];
+ const scenarios=process.env.QA_FACE_ONLY ? ['normal_studio','normal_lineup','normal_night'] : process.env.QA_NORMAL_ONLY ? ['normal_studio','normal_lineup','normal_night','normal_walk','normal_idle','normal_attack','normal_hit','normal_shove','normal_stunned','normal_death','normal_emerge'] : process.env.QA_SWITCH_ONLY ? ['switch_rifle_raise','switch_rifle_bolt','switch_pistol_spin'] : ['switch_rifle_raise','switch_rifle_bolt','switch_pistol_spin','interaction_station','interaction_gate','crystal_half','crystal_broken','heal','boss','home','home_hover','failure_player','failure_crystal','settings'];
  for(const scenario of scenarios){
   await page.goto(`/?campaignReview=${scenario}`);
   await page.waitForFunction(()=>window.__campaignReviewReady,null,{timeout:90000});
