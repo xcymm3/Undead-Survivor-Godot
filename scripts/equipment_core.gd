@@ -137,7 +137,8 @@ func explode(grenade: Dictionary) -> void:
 		if distance > GRENADE_RADIUS or not sim.arena.surface_hit(grenade.pos,target).is_empty(): continue
 		var health_before: float = z.hp
 		var kind_before: String = z.kind
-		sim.hit_enemy(z,lerpf(1400,300,distance/GRENADE_RADIUS)*float(grenade.get("damage_scale",1.0)),true,owner,target,Vector2(grenade.pos.x,grenade.pos.z))
+		# Area blasts retain armor-first overflow; they are not a single shield contact.
+		sim.hit_enemy(z,lerpf(1400,300,distance/GRENADE_RADIUS)*float(grenade.get("damage_scale",1.0)),true,owner,target,Vector2(grenade.pos.x,grenade.pos.z),true)
 		if not record.is_empty():
 			record.hits.append({"id":z.id,"kind":kind_before,"distance":distance,"damage":health_before-z.hp,"killed":z.hp <= 0})
 			record.damage += health_before-z.hp

@@ -220,6 +220,87 @@ func validate_sniper_penetration() -> void:
 	sim.fire(p,w)
 	check(sim.zombies[0].hp == health,"Sniper cannot penetrate the armory wall")
 
+func validate_shield_contacts() -> void:
+	game.return_home()
+	game.start_solo("defense",71245)
+	await physics_frame
+	var sim = game.sim
+	var p: Dictionary = game.local_pawn()
+	var data = root.get_node("Data")
+	var view = load("res://scripts/enemy_view.gd")
+	for heading in [0.0,1.1]:
+		for attack_time in [0.0,.25,.7]:
+			sim.zombies.clear()
+			sim.spawn(Vector2(8,27),"shield")
+			var z: Dictionary = sim.zombies[-1]
+			z.heading = heading
+			z.attack_time = attack_time
+			var pose = view.pose_state(z,0,true)
+			var forward: Vector3 = pose.root.basis.z.normalized()
+			var side: Vector3 = pose.root.basis.x.normalized()
+			var chest: Vector3 = pose.root*Vector3(0,1.20,0)
+			var hit = view.hit(z,chest+forward*5,-forward,10,0,true)
+			check(not hit.is_empty() and hit.armor and not hit.head,"Actual shield blocks a frontal chest ray, including while lowered")
+			var head: Vector3 = pose.root*Vector3(0,1.79,0)
+			hit = view.hit(z,head+forward*5,-forward,10,0,true)
+			var lowered: bool = attack_time > 0 and attack_time < .45
+			check(not hit.is_empty() and hit.armor != lowered and hit.head == lowered,"Shield movement physically covers or exposes the head")
+			var crown: Vector3 = pose.root*Vector3(0,1.99,0)
+			hit = view.hit(z,crown+forward*5,-forward,10,0,true)
+			check(not hit.is_empty() and not hit.armor and hit.head,"Exposed upper head can be shot from the front despite intact armor")
+			hit = view.hit(z,head-forward*5,forward,10,0,true)
+			check(not hit.is_empty() and not hit.armor and hit.head,"Rear headshot bypasses the shield")
+			hit = view.hit(z,chest+side*5,-side,10,0,true)
+			check(not hit.is_empty() and not hit.armor and not hit.head,"Side body shot bypasses the shield")
+			var leg: Vector3 = pose.root*Vector3(-.19,.40,0)
+			if not lowered:
+				hit = view.hit(z,leg+forward*5,-forward,10,0,true)
+				check(not hit.is_empty() and not hit.armor and not hit.head,"Leg below the raised shield can be shot directly")
+			var shield_edge: Vector3 = pose.root*pose.bones[5]*Vector3(.48,.65,.72)
+			hit = view.hit(z,shield_edge-forward*5,forward,10,0,true)
+			check(not hit.is_empty() and hit.armor and not hit.head,"A ray striking the shield from behind still damages the shield")
+	# Integrate ray classification, headshot scaling and damage allocation.
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,27),"shield")
+	var z: Dictionary = sim.zombies[-1]
+	var pose = view.pose_state(z,0,true)
+	var forward: Vector3 = pose.root.basis.z.normalized()
+	var chest: Vector3 = pose.root*Vector3(0,1.20,0)
+	var hit = view.hit(z,chest+forward*5,-forward,10,0,true)
+	var body: float = z.body
+	var initial_armor: float = z.armor
+	sim.hit_enemy(z,50,hit.armor,p,chest)
+	check(z.armor == initial_armor-50 and z.body == body,"A shield contact reduces only shield durability")
+	z.armor = 25.0
+	z.hp = body+z.armor
+	sim.hit_enemy(z,200,hit.armor,p,chest)
+	check(z.armor == 0 and z.body == body and z.hp == body,"Overkill breaks the shield without transferring excess damage to the body")
+	pose = view.pose_state(z,0,true)
+	chest = pose.root*Vector3(0,1.20,0)
+	hit = view.hit(z,chest+forward*5,-forward,10,0,true)
+	check(not hit.is_empty() and not hit.armor,"Broken shield no longer intercepts a frontal chest shot")
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,27),"shield")
+	z = sim.zombies[-1]
+	pose = view.pose_state(z,0,true)
+	var crown: Vector3 = pose.root*Vector3(0,1.99,0)
+	hit = view.hit(z,crown+forward*5,-forward,10,0,true)
+	var armor: float = z.armor
+	sim.progression.data.weapons.rifle = 0
+	var w: Dictionary = {"id":"rifle","damage":50.0,"headshotMultiplier":2.0}
+	sim.hit_enemy(z,sim.weapon_damage(w,hit.head),hit.armor,p,crown)
+	check(z.body == body-100 and z.armor == armor,"Exposed headshot applies its multiplier to body health without consuming shield armor")
+	sim.hit_enemy(z,10000,false,p,crown)
+	check(z.hp == 0 and z.body == 0 and z.armor == 0,"Body death kills the wielder even with an intact shield")
+	sim.zombies.clear()
+	sim.spawn(Vector2(8,27),"shield")
+	z = sim.zombies[-1]
+	z.armor = 25.0
+	z.hp = z.body+z.armor
+	sim.hit_enemy(z,200,true,p,crown,Vector2.INF,true)
+	check(z.armor == 0 and z.body == body-175,"Area blast explicitly preserves its existing armor-first overflow")
+	sim.zombies.clear()
+
 func validate_rifle_penetration() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
@@ -637,6 +718,7 @@ func run() -> void:
 	await validate_crawler()
 	await validate_flame()
 	await validate_sniper_penetration()
+	await validate_shield_contacts()
 	await validate_rifle_penetration()
 	await validate_pistol_and_equip()
 	validate_close_combat()

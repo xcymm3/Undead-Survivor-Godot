@@ -263,7 +263,7 @@ func run() -> void:
 		var before_coins: int = sim.progression.data.coins
 		var before_drops: int = sim.coin_drops.size()
 		var before_kills: int = sim.kills
-		sim.hit_enemy(summoned_enemy,summoned_enemy.hp+1,true,p,Vector3(12,4,25))
+		sim.hit_enemy(summoned_enemy,summoned_enemy.hp+1,false,p,Vector3(12,4,25))
 		check(sim.progression.data.coins == before_coins and sim.coin_drops.size() == before_drops and sim.kills == before_kills+1,"Summoned enemy grants a kill but no money or coin animation: "+kind)
 	p.ammo[0] = 7
 	p.reserves[0] = 23

@@ -15,8 +15,7 @@ static func size_for(part: Dictionary, kind: String) -> Vector3:
 	if kind == "giant" and part.get("kind","") == "giant" and not part.get("head",false): return Vector3(.92,.28,.48)
 	if kind == "football" and part.get("kind","") == "football" and not part.get("head",false): return Vector3(1.02,.24,.52)
 	if kind == "dancer" and part.get("kind","") == "dancer" and is_equal_approx(original.y,.17): return Vector3(.20,.09,.075)
-	if part.get("shield",false):
-		return Vector3(1.08,1.10,.14) if original.y > 1.3 else Vector3(.12,.90,.04) if original.y > 1 else original
+	if part.get("shield",false): return original
 	if part.get("head",false) or part.has("kind"): return original
 	var limb = absf(float(part.get("limb",0.0)))
 	if limb >= 1:
@@ -30,7 +29,6 @@ static func size_for(part: Dictionary, kind: String) -> Vector3:
 
 static func frame_for(part: Dictionary, kind: String) -> Transform3D:
 	var center = Vector3(part.position[0],part.position[1],part.position[2])
-	if kind == "shield" and part.get("shield",false): center.y = 1.05
 	if kind == "giant" and part.get("kind","") == "giant" and not part.get("head",false): center = Vector3(center.x,1.39,-.015)
 	if kind == "football" and part.get("kind","") == "football":
 		# Lower the helmet over the eyes; a broken helmet reveals the painted eyes.
@@ -66,8 +64,8 @@ static func details(kind: String) -> Array:
 			add(result,Vector3(0,1.03,.211),Vector3(.12,.10,.010),"e7bc70")
 			for x in [-.20,.20]: add(result,Vector3(x,1.30,.199),Vector3(.055,.28,.012),"d6badd")
 		"shield":
-			add(result,Vector3(0,1.05,.819),Vector3(.26,.26,.012),"dc9b50",5)
-			for x in [-.065,.065]: add(result,Vector3(x,1.05,.829),Vector3(.026,.16,.006),"385b78",5)
+			add(result,Vector3(0,1.25,.819),Vector3(.26,.26,.012),"dc9b50",5)
+			for x in [-.065,.065]: add(result,Vector3(x,1.25,.829),Vector3(.026,.16,.006),"385b78",5)
 			for x in [-.23,.23]: add(result,Vector3(x,1.37,.201),Vector3(.07,.07,.012),"dfc28b")
 		"berserker":
 			add(result,Vector3(0,.91,.199),Vector3(.65,.09,.012),"743d3e")

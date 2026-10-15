@@ -316,7 +316,6 @@ static func hit(z: Dictionary, origin: Vector3, direction: Vector3, distance: fl
 			nearest = d
 			selected = j
 	if selected < 0: return {}
-	var shield = false
-	if z.kind == "shield" and z.armor > 0 and not (z.attack_time > 0 and z.attack_time < .45):
-		shield = Vector2(sin(z.heading),cos(z.heading)).dot((Vector2(origin.x,origin.z)-z.pos).normalized()) >= cos(deg_to_rad(75))
+	# Only the nearest intersected shield part protects the body, from any angle.
+	var shield: bool = z.kind == "shield" and Data.parts[selected].get("shield",false)
 	return {"z":z,"distance":nearest,"head":Data.parts[selected].get("head",false) and not shield,"armor":shield if z.kind == "shield" else true}

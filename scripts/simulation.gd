@@ -1071,13 +1071,13 @@ func complete_boss_victory(p: Dictionary) -> void:
 	roster.clear()
 	for enemy in zombies:
 		if enemy.kind == "dancer": enemy.summon_roster.clear()
-		if enemy.hp > 0: hit_enemy(enemy,enemy.hp+1,true,p,Vector3(enemy.pos.x,3,enemy.pos.y))
+		if enemy.hp > 0: hit_enemy(enemy,enemy.hp+1,false,p,Vector3(enemy.pos.x,3,enemy.pos.y))
 	defense_director.reward_finished_waves()
 	won = true
 	defense.objective = "游戏通关 · 舞王已击败"
 	defense_director.sync_world()
 
-func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary, position: Vector3, push_origin := Vector2.INF) -> void:
+func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary, position: Vector3, push_origin := Vector2.INF, allow_shield_overflow := false) -> void:
 	if z.hp <= 0: return
 	var charging_on_hit: bool = z.kind == "football" and z.state == "charging"
 	var armor_kind: String = z.kind if z.armor > 0 and armor_contact else ""
@@ -1085,6 +1085,8 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		var absorbed = minf(z.armor,amount)
 		z.armor -= absorbed
 		amount -= absorbed
+		# A shield impact never transfers leftover damage to the wielder.
+		if armor_kind == "shield" and not allow_shield_overflow: amount = 0.0
 	z.body = maxf(0,z.body-amount)
 	z.hp = z.body+z.armor
 	if not armor_kind.is_empty():
