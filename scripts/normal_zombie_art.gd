@@ -122,18 +122,19 @@ static func face_vertices() -> Array:
 	for side in [-1.0,1.0]:
 		var x = side*.104
 		face_print(result,[Vector3(x-.060,1.7975,.2265),Vector3(x-.060,1.8525,.2265),Vector3(x+.060,1.8525,.2265),Vector3(x+.060,1.7975,.2265)],Color.BLACK)
-	# Keep the mouth visibly open; both corners droop below the middle.
-	face_band(result,[Vector3(-.090,1.683,1.648),Vector3(-.060,1.716,1.652),Vector3(-.030,1.732,1.660),Vector3(0,1.737,1.664),Vector3(.030,1.732,1.660),Vector3(.060,1.716,1.652),Vector3(.090,1.683,1.648)],.2265,Color("a63f46"))
-	# A darker red opening sits inside the red lips, with no teeth.
-	face_band(result,[Vector3(-.072,1.688,1.660),Vector3(-.036,1.716,1.670),Vector3(0,1.722,1.674),Vector3(.036,1.716,1.670),Vector3(.072,1.688,1.660)],.227,Color("61252e"))
+	# Stepped, slightly uneven opening based on the blocky zombie reference.
+	# 0 = skin, 1 = dark mouth, 2 = muted inner mouth; no separate lip or teeth.
+	var mouth = ["0000111000","0011111100","0011222110","0112222210","1122222211","1100000011"]
+	for row in mouth.size():
+		for column in mouth[row].length():
+			var pixel: String = mouth[row][column]
+			if pixel == "0": continue
+			var left = (column-5)*.021
+			var right = left+.021
+			var top = 1.745-row*.020
+			var bottom = top-.020
+			face_print(result,[Vector3(left,top,.2265),Vector3(left,bottom,.2265),Vector3(right,bottom,.2265),Vector3(right,top,.2265)],Color("242821") if pixel == "1" else Color("68534b"))
 	return result
-
-static func face_band(result: Array, profile: Array, depth: float, color: Color) -> void:
-	# Each sample stores x, upper lip and lower lip; strips support concave curves.
-	for index in range(1,profile.size()):
-		var a: Vector3 = profile[index-1]
-		var b: Vector3 = profile[index]
-		face_print(result,[Vector3(a.x,a.y,depth),Vector3(b.x,b.y,depth),Vector3(b.x,b.z,depth),Vector3(a.x,a.z,depth)],color)
 
 static func face_print(result: Array, points: Array, color: Color) -> void:
 	var vertices: Array = []
