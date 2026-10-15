@@ -122,12 +122,12 @@ static func face_vertices() -> Array:
 	for side in [-1.0,1.0]:
 		var x = side*.104
 		face_print(result,[Vector3(x-.060,1.7975,.2265),Vector3(x-.060,1.8525,.2265),Vector3(x+.060,1.8525,.2265),Vector3(x+.060,1.7975,.2265)],Color.BLACK)
-	# Wider red mouth with four upper and three staggered lower teeth.
-	face_print(result,[Vector3(-.075,1.729,.2265),Vector3(-.085,1.719,.2265),Vector3(-.085,1.673,.2265),Vector3(-.075,1.663,.2265),Vector3(.075,1.663,.2265),Vector3(.085,1.673,.2265),Vector3(.085,1.719,.2265),Vector3(.075,1.729,.2265)],Color("a63f46"))
-	# x, bottom, top, width; small uneven lengths avoid a mirrored denture.
-	for tooth in [Vector4(-.057,1.711,1.728,.022),Vector4(-.019,1.707,1.728,.024),Vector4(.019,1.709,1.728,.024),Vector4(.057,1.712,1.728,.022),Vector4(-.046,1.664,1.679,.024),Vector4(0,1.664,1.683,.028),Vector4(.046,1.664,1.681,.025)]:
-		var half_width: float = tooth.w*.5
-		face_print(result,[Vector3(tooth.x-half_width,tooth.z,.227),Vector3(tooth.x-half_width,tooth.y,.227),Vector3(tooth.x+half_width,tooth.y,.227),Vector3(tooth.x+half_width,tooth.z,.227)],Color("f5ebcd"))
+	# A toothless downturned mouth: raised middle and lowered corners.
+	var lip: Array[Vector2] = [Vector2(-.085,1.679),Vector2(-.056,1.704),Vector2(-.028,1.720),Vector2(0,1.725),Vector2(.028,1.720),Vector2(.056,1.704),Vector2(.085,1.679)]
+	for index in range(1,lip.size()):
+		var a = lip[index-1]
+		var b = lip[index]
+		face_print(result,[Vector3(a.x,a.y,.2265),Vector3(b.x,b.y,.2265),Vector3(b.x,b.y-.016,.2265),Vector3(a.x,a.y-.016,.2265)],Color("a63f46"))
 	return result
 
 static func face_print(result: Array, points: Array, color: Color) -> void:
