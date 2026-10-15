@@ -15,8 +15,9 @@ const SHOVE_WEIGHT = [0.0,1.0,1.0,.65,.55,.55,.15,0.0]
 const STUN_TICKS = [-1.0,-1.0,.65,.65,.2,.2]
 const DEATH_TIMES = [0.0,.08,.22,.30,.44,.58,.68,.75,.85]
 const DEATH_FALL = [0.0,0.0,-.18,-.18,-1.05,-PI/2,-1.48,-PI/2,-PI/2]
-const EMERGE_TIMES = [0.0,.18,.28,.46,.56,.70,.82,1.0]
-const EMERGE_HEIGHT = [-2.5,-2.5,-1.35,-1.35,-.25,-.25,.02,0.0]
+
+static func emerge_height(progress: float) -> float:
+	return lerpf(-2.5,0.0,smoothstep(0.0,1.0,progress))
 
 static func track(time: float, times: Array, values: Array) -> float:
 	if time <= times[0]: return float(values[0])
@@ -58,11 +59,12 @@ static func pose(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
 	elif z.get("emerge_remaining",0.0) > 0:
 		animation = "emerge"
 		var progress = clampf(1.0-float(z.emerge_remaining)/1.4,0,1)
-		height = track(progress,EMERGE_TIMES,EMERGE_HEIGHT)*scale
-		var spring = 1.0-smoothstep(.7,1,progress)
+		height = emerge_height(progress)*scale
+		var spring = 1.0-smoothstep(0,1,progress)
 		arms = Vector2(-.65,-.65).lerp(Vector2(.72,.72),1-spring)
 		head.x = -.12*spring
-		roll = .055*spring*(1.0 if progress < .46 else -1.0)
+		lean = lerpf(-.10,.025,1-spring)
+		roll = .035*sin(progress*TAU)*spring
 	elif z.get("state","") == "stunned" and shove_age >= 0 and elapsed < z.get("toy_shove_until",-1.0):
 		animation = "shove"
 		var weight = track(shove_age,SHOVE_TIMES,SHOVE_WEIGHT)

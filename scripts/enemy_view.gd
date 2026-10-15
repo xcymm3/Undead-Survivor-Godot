@@ -65,6 +65,13 @@ func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1)
 			surface.set_bones(PackedInt32Array([bone_for(part),0,0,0]))
 			surface.set_weights(PackedFloat32Array([1,0,0,0]))
 			surface.add_vertex(cube[Mesh.ARRAY_VERTEX][index]*Data.v3(part.size)+Data.v3(part.position))
+	if kind == "normal":
+		for vertex in Toy.face_vertices():
+			surface.set_normal(vertex.normal)
+			surface.set_color(vertex.color)
+			surface.set_bones(PackedInt32Array([6,0,0,0]))
+			surface.set_weights(PackedFloat32Array([1,0,0,0]))
+			surface.add_vertex(vertex.position)
 	if dressed:
 		for patch in Toy.patches(outfit) if kind == "normal" else Wardrobe.patches(outfit):
 			for index in cube[Mesh.ARRAY_INDEX]:

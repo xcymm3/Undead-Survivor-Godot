@@ -113,8 +113,35 @@ static func face(result: Array, points: Array, normal: Vector3) -> void:
 		for p in [a,b,c]: result.append({"position":p,"normal":normal})
 
 static func part_visible(index: int, kind: String) -> bool:
-	# Old raised cheek-damage plate; remove it from both mesh and hit selection.
-	return kind != "normal" or index != 11
+	# Bald head; replace the raised old face with flat molded-on toy printing.
+	return kind != "normal" or index < 4 or index > 11
+
+static func face_vertices() -> Array:
+	# Flat printed features share the existing head bone and cached draw surface.
+	var result: Array = []
+	for side in [-1.0,1.0]:
+		face_ellipse(result,Vector2(side*.104,1.845),Vector2(.040,.054),Color("303c38"),.2265)
+		face_ellipse(result,Vector2(side*.104-.012,1.865),Vector2(.012,.014),Color("fff6dc"),.227)
+		face_ellipse(result,Vector2(side*.164,1.744),Vector2(.032,.017),Color("df9c87"),.2265)
+	# A small upturned smile, with one ivory tooth to retain a zombie identity.
+	var smile: Array[Vector3] = [Vector3(-.066,1.711,.2265),Vector3(-.046,1.678,.2265),Vector3(0,1.662,.2265),Vector3(.046,1.678,.2265),Vector3(.066,1.711,.2265)]
+	face_print(result,smile,Color("465347"))
+	face_print(result,[Vector3(-.019,1.711,.227),Vector3(-.019,1.688,.227),Vector3(.004,1.688,.227),Vector3(.004,1.711,.227)],Color("fff0d1"))
+	return result
+
+static func face_ellipse(result: Array, center: Vector2, radius: Vector2, color: Color, depth: float) -> void:
+	var points: Array[Vector3] = []
+	for index in 12:
+		var angle = TAU*index/12.0
+		points.append(Vector3(center.x+cos(angle)*radius.x,center.y+sin(angle)*radius.y,depth))
+	face_print(result,points,color)
+
+static func face_print(result: Array, points: Array, color: Color) -> void:
+	var vertices: Array = []
+	face(vertices,points,Vector3.BACK)
+	for vertex in vertices:
+		vertex.color = color
+		result.append(vertex)
 
 static func walk_sample(phase: float) -> Vector3:
 	# Six clockwork poses per gait cycle: two long holds and abrupt leg changes.

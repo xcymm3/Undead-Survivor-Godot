@@ -48,6 +48,12 @@ static func validate(game, check: Callable) -> void:
 		var c: Vector3 = vertices[index+2].position
 		winding = winding and (b-a).cross(c-a).dot(vertices[index].normal) < 0
 	check.call(vertices.size() == 132 and winding,"Beveled primitive has forty-four outward clockwise triangles")
+	check.call(not Toy.part_visible(4,"normal") and Toy.part_visible(4,"bucket"),"Only ordinary zombie loses its hair cap")
+	var printed_face = Toy.face_vertices()
+	var print_in_head = true
+	for vertex in printed_face:
+		print_in_head = print_in_head and absf(vertex.position.x) < .233 and vertex.position.y > 1.557 and vertex.position.y < 2.023 and vertex.position.z >= .225 and vertex.position.z <= .228
+	check.call(printed_face.size() > 0 and print_in_head,"Cute printed face fits original head silhouette without a raised plate")
 	check.call(not Toy.part_visible(11,"normal") and Toy.part_visible(11,"bucket"),"Raised cheek plate is removed only from ordinary zombie mesh and hit boxes")
 	z.attack_time = 0.0
 	z.move_speed = 4.9
@@ -124,6 +130,14 @@ static func validate_actions(game, base: Dictionary, check: Callable) -> void:
 				for y in [-.5,.5]:
 					for depth in [-.5,.5]: low = minf(low,(poses[index]*Vector3(x,y,depth)).y-data.enemy_ground_height(z.pos))
 		if name != "emerge": check.call(low >= -.001 and low <= .025,"Mechanical toy stays grounded: "+name)
+	check.call(is_equal_approx(motion.emerge_height(0),-2.5) and is_equal_approx(motion.emerge_height(1),0.0),"Continuous emergence retains buried and standing endpoints")
+	var smooth_rise = true
+	var previous: float = motion.emerge_height(0)
+	for frame in range(1,101):
+		var height: float = motion.emerge_height(frame/100.0)
+		smooth_rise = smooth_rise and height > previous and height-previous < .04
+		previous = height
+	check.call(smooth_rise,"Emergence rises continuously without held steps or sudden jumps")
 	var hit_at: float = data.attack("normal").x
 	check.call(is_equal_approx(motion.track(.35/hit_at,motion.ATTACK_TIMES,motion.ATTACK_ARMS),-.85),"Mechanical windup holds its loaded pose")
 	check.call(is_equal_approx(motion.track(hit_at/hit_at,motion.ATTACK_TIMES,motion.ATTACK_ARMS),.35),"Mechanical strike aligns with unchanged damage timestamp")
