@@ -123,8 +123,9 @@ static func face_vertices() -> Array:
 		var x = side*.104
 		face_print(result,[Vector3(x-.060,1.7975,.2265),Vector3(x-.060,1.8525,.2265),Vector3(x+.060,1.8525,.2265),Vector3(x+.060,1.7975,.2265)],Color.BLACK)
 	# Stepped, slightly uneven opening based on the blocky zombie reference.
-	# 0 = skin, 1 = complete dark border, 2 = muted red interior; no teeth.
-	var mouth = ["0000111000","0011111100","0011222110","0112222210","1122222211","1111111111"]
+	# Complete dark border; its lower edge rises centrally and drops at both ends.
+	# The central opening stays the same size; only the corners extend downward.
+	var mouth = ["0000111000","0011111100","0011222110","0112222210","1122222211","1121111211","1110000111"]
 	for row in mouth.size():
 		for column in mouth[row].length():
 			var pixel: String = mouth[row][column]
