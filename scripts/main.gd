@@ -26,6 +26,7 @@ var requested_weapon = 0
 var jump_pending = false
 var reload_pending = false
 var aim_pending = false
+var ultimate_pending = false
 var shove_pending = false
 var fire_pending = false
 var fire_held = false
@@ -204,11 +205,12 @@ func input_state() -> Dictionary:
 	var enabled = running and not paused and focused and not finished
 	var local: Dictionary = local_pawn() if sim else {}
 	if not local.is_empty() and not Data.ads_enabled(Data.weapons[int(local.weapon)]): aim_held = false
-	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"wave_ready":enabled and Input.is_action_just_pressed("start_wave"),"crouch":enabled and Input.is_action_pressed("crouch"),"sprint":enabled and Input.is_action_pressed("sprint"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held,"shove":enabled and shove_pending}
+	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"wave_ready":enabled and Input.is_action_just_pressed("start_wave"),"crouch":enabled and Input.is_action_pressed("crouch"),"sprint":enabled and Input.is_action_pressed("sprint"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"aim":enabled and aim_held,"shove":enabled and shove_pending,"ultimate":enabled and ultimate_pending}
 	if sim and sim.mode == "defense":
 		if not preload("res://scripts/equipment_core.gd").slot_available(local_pawn(),requested_slot): requested_slot = int(local_pawn().get("slot",1))
 		command.slot = requested_slot
 		command.use_self = enabled and fire_pending
+	ultimate_pending = false
 	shove_pending = false
 	aim_pending = false
 	jump_pending = false
@@ -284,6 +286,7 @@ func _process(dt: float) -> void:
 			aim_target = camera.position-camera.global_basis.z*aim_distance
 	weapon.sync(p,dt,visual_time,camera.to_local(aim_target))
 	sound.sync_equip(p,running and not paused and focused and not finished)
+	sound.sync_ultimate(p,running and not paused and focused and not finished)
 	var equipment_slot: int = p.get("slot",1)
 	weapon.visible = equipment_slot < 4 and not finished
 	if equipment_prop_slot != equipment_slot:
@@ -325,6 +328,8 @@ func handle_effects(events: Array) -> void:
 	for event in events:
 		if not event is Dictionary or not event.has("kind"): continue
 		match event.kind:
+			"ultimate_start", "ultimate_end":
+				if event.player == Session.local_id: sound.play("blade-draw",-11)
 			"coin_pickup":
 				if event.player == Session.local_id: sound.play("coin-pickup",-18)
 			"world_upgrade":
@@ -362,7 +367,7 @@ func handle_effects(events: Array) -> void:
 				var index = clampi(int(event.get("weapon",0)),0,9)
 				var w: Dictionary = Data.weapons[index]
 				var kind: String = w.get("kind","gun")
-				var cue: String = sound.weapon_cue(index)
+				var cue: String = "blade-draw" if event.get("ultimate",false) else sound.weapon_cue(index)
 				var gain: float = sound.weapon_gain(index)
 				if event.player == Session.local_id: sound.play(cue,gain)
 				else: sound.play_at(cue,event.from,gain)
@@ -526,6 +531,7 @@ func apply_graphics() -> void:
 	request_draw()
 
 func reset_mouse_buttons() -> void:
+	ultimate_pending = false
 	shove_pending = false
 	aim_pending = false
 	fire_pending = false
@@ -580,6 +586,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	else:
 		if event.is_action_pressed("weapon_previous"): requested_weapon = posmod(requested_weapon-1,10)
 		if event.is_action_pressed("weapon_next"): requested_weapon = (requested_weapon+1)%10
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_Q: ultimate_pending = true
 	if event.is_action_pressed("jump"): jump_pending = true
 	if event.is_action_pressed("reload"): reload_pending = true
 	for i in 10:

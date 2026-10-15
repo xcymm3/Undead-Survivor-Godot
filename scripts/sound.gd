@@ -10,6 +10,7 @@ var equip_id = ""
 var equip_time = 0.0
 var equip_starts = 0
 var equip_offset = 0.0
+var ultimate_music: AudioStreamPlayer
 var music: AudioStreamPlayer
 var index = 0
 var spatial_players: Array[AudioStreamPlayer3D] = []
@@ -46,6 +47,11 @@ func sync_enemy_steps(enemies: Array, listener: Vector3, dt: float) -> void:
 		if step_clock-step_due[id] > 3: step_due.erase(id)
 
 func _ready() -> void:
+	ultimate_music = AudioStreamPlayer.new()
+	ultimate_music.stream = preload("res://scripts/ultimate_audio.gd").make(true)
+	ultimate_music.volume_db = -17
+	add_child(ultimate_music)
+	streams["blade-draw"] = preload("res://scripts/ultimate_audio.gd").make(false)
 	streams["equip-rifle-bolt"] = preload("res://scripts/equip_audio.gd").make(0)
 	streams["equip-pistol-spin"] = preload("res://scripts/equip_audio.gd").make(2)
 	equip = AudioStreamPlayer.new()
@@ -86,6 +92,7 @@ func _ready() -> void:
 	add_child(music)
 
 func set_playing(value: bool) -> void:
+	ultimate_music.stream_paused = not value
 	if not playback_enabled(): return
 	if value:
 		if not music.playing: music.play(music_position)
@@ -123,6 +130,7 @@ func playback_enabled() -> bool:
 	return DisplayServer.get_name() != "headless" and "--silent" not in OS.get_cmdline_user_args()
 
 func clear_effects() -> void:
+	ultimate_music.stop()
 	sync_equip({},false)
 	sync_work({},false)
 	step_due.clear()
@@ -135,6 +143,8 @@ func clear_effects() -> void:
 		player.stream = null
 
 func _exit_tree() -> void:
+	ultimate_music.stop()
+	ultimate_music.stream = null
 	equip.stop()
 	equip.stream = null
 	music.stop()
@@ -178,3 +188,11 @@ func sync_equip(p: Dictionary, enabled: bool) -> void:
 		if playback_enabled(): equip.play(equip_offset)
 	equip_id = state.cue
 	equip_time = state.age
+
+func sync_ultimate(p: Dictionary, enabled: bool) -> void:
+	var active: bool = preload("res://scripts/ultimate.gd").active(p) and p.get("hp",0) > 0
+	if not active:
+		ultimate_music.stop()
+		return
+	ultimate_music.stream_paused = not enabled
+	if enabled and not ultimate_music.playing and playback_enabled(): ultimate_music.play(float(p.get("ultimate_age",0.0)))

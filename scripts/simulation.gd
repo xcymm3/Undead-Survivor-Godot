@@ -188,7 +188,7 @@ func submit(id: String, input: Dictionary) -> void:
 	clean.yaw = wrapf(clean.yaw,-PI,PI)
 	clean.pitch = clampf(clean.pitch,-deg_to_rad(85),deg_to_rad(85))
 	clean.weapon = clampi(int(clean.weapon),0,9)
-	for key in ["jump","fire","reload","aim","crouch","sprint","interact","wave_ready","use_self","shove"]: clean[key] = input.get(key,false) == true
+	for key in ["jump","fire","reload","aim","crouch","sprint","interact","wave_ready","use_self","shove","ultimate"]: clean[key] = input.get(key,false) == true
 	if equipment:
 		var slot = input.get("slot",pawns[id].slot)
 		if not slot is int or slot < 1 or slot > 4: return
@@ -196,7 +196,7 @@ func submit(id: String, input: Dictionary) -> void:
 	# Network polling can deliver several commands before the next physics tick.
 	# Keep a jump edge until update_pawn consumes it, even if a newer packet releases it.
 	clean.jump = clean.jump or pawns[id].input.get("jump",false)
-	for action in ["use_self","shove","wave_ready"]: clean[action] = clean[action] or pawns[id].input.get(action,false)
+	for action in ["use_self","shove","wave_ready","ultimate"]: clean[action] = clean[action] or pawns[id].input.get(action,false)
 	pawns[id].input = clean
 	pawns[id].input_age = 0.0
 
@@ -429,6 +429,7 @@ func damage_crystal(z: Dictionary, amount: int) -> bool:
 	defense.objective = "水晶遭到攻击 · 剩余 %d / %d" % [defense.crystal_hp,defense.crystal_max_hp]
 	defense.wave = wave
 	arena.sync_defense(defense)
+	defense["crystal_alert_until"] = elapsed+1.6
 	events.append({"kind":"crystal_hit","position":Vector3(Data.Maps.Defense.CRYSTAL.x,5.0,Data.Maps.Defense.CRYSTAL.y)})
 	if defense.crystal_hp <= 0: culprit = int(z.get("id",-1))
 	return true
@@ -490,6 +491,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	if p.get("slot",1) in [1,2] and p.ammo[p.weapon] == 0 and p.get("reserves",[]).size() > p.weapon and p.reserves[p.weapon] > 0: action_busy = true
 	if p.get("slot",1) == 4 and p.get("use_latch",false): action_busy = true
 	p.sprinting = input.get("sprint",false) and movement.length_squared() > .0001 and p.crouch < .01 and not p.crouching and not action_busy
+	if preload("res://scripts/ultimate.gd").active(p): p.sprinting = true
 	var move_multiplier = progression.move_multiplier()*(PLAYER_SPRINT_MULTIPLIER if p.sprinting else 1.0)
 	var ground_velocity = wish*PLAYER_MOVE_SPEED*move_multiplier*lerpf(1.0,.55,p.crouch)
 	# Store world-space m/s, so looking around cannot rotate existing momentum.
@@ -652,7 +654,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	if p.get("shove_anim",0.0) > 0 and not p.reloading:
 		p.aim = false
 		return
-	var w: Dictionary = Data.weapons[p.weapon]
+	var w: Dictionary = combat_weapon(p)
 	var capacity: int = weapon_capacity(p.weapon)
 	update_melee_swing(p,w)
 	var requested: int = input.get("weapon",p.weapon)
@@ -697,7 +699,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 				p.reloading = false
 		return
 	if p.requested != p.weapon and p.fire_anim <= 0:
-		p.switch_duration = .9 if Data.weapons[p.requested].id in ["rifle","pistol"] else .4
+		p.switch_duration = 1.5 if Data.weapons[p.requested].id in ["rifle","pistol"] else .4
 		p.switch = p.switch_duration
 		p.aim = false
 		return
@@ -711,6 +713,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.aim = false
 		events.append({"kind":"reload","player":p.id,"weapon":p.weapon})
 		return
+	if not input.get("fire",false): p.axe_next_direction = 1
 	var trigger: bool = input.get("fire",false) and (not equipment or p.interaction == "")
 	if trigger and (w.automatic or not p.trigger) and p.cooldown <= 0 and p.fire_anim <= .00001:
 		if p.ammo[p.weapon] > 0 or w.get("infiniteAmmo",false):
@@ -1143,6 +1146,10 @@ func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 		var last = clampf((progress-MELEE_START)/(MELEE_END-MELEE_START),0,1)
 		var right_edge = deg_to_rad(lerpf(65,-65,first)+MELEE_HALF_WIDTH)
 		var left_edge = deg_to_rad(lerpf(65,-65,last)-MELEE_HALF_WIDTH)
+		if p.get("axe_direction",1) == -1:
+			var old_right = right_edge
+			right_edge = -left_edge
+			left_edge = -old_right
 		var origin = Vector3(p.pos.x,p.height+PlayerBody.eye_height(p)-.5,p.pos.y)
 		var facing = Basis(Vector3.UP,p.yaw)
 		var reach: float = w.range
@@ -1188,9 +1195,11 @@ func update_melee_swing(p: Dictionary, w: Dictionary) -> void:
 
 func fire(p: Dictionary, w: Dictionary) -> void:
 	if w.get("kind","gun") == "melee":
+		p.axe_direction = int(p.get("axe_next_direction",1))
+		p.axe_next_direction = -p.axe_direction
 		melee_swings[p.id] = {"weapon":p.weapon,"progress":0.0,"damaged":{},"landed":false}
 		var origin = Vector3(p.pos.x,p.height+PlayerBody.eye_height(p)-.5,p.pos.y)
-		events.append({"kind":"shot","player":p.id,"weapon":p.weapon,"from":origin,"to":origin})
+		events.append({"kind":"shot","player":p.id,"weapon":p.weapon,"ultimate":preload("res://scripts/ultimate.gd").active(p),"from":origin,"to":origin})
 		return
 	var camera = Transform3D(Basis.from_euler(Vector3(p.pitch,p.yaw,0)),Vector3(p.pos.x,p.height+PlayerBody.eye_height(p),p.pos.y))
 	var forward = -camera.basis.z
@@ -1310,3 +1319,6 @@ func apply_snapshot(state: Dictionary) -> void:
 
 func defense_state() -> Dictionary:
 	return defense.duplicate(true) if mode == "defense" and not defense.is_empty() else defense_replica
+
+func combat_weapon(p: Dictionary) -> Dictionary:
+	return preload("res://scripts/ultimate.gd").weapon(p,progression,Data.weapons[p.weapon])

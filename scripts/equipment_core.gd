@@ -39,6 +39,7 @@ static func slot_available(p: Dictionary, slot: int) -> bool:
 func before_movement(_dt: float) -> void:
 	for p in sim.pawns.values():
 		var input: Dictionary = p.input if p.input_age < .5 else {}
+		if preload("res://scripts/ultimate.gd").tick(sim,p,input,_dt): continue
 		var requested: int = int(input.get("slot",p.slot))
 		if not slot_available(p,requested): requested = p.slot if slot_available(p,p.slot) else int(p.weapon_slot)
 		if requested != p.slot:
@@ -74,7 +75,8 @@ func select_weapon_slot(p: Dictionary, slot: int, save_current := true) -> void:
 	p.ammo[p.weapon] = p.slot_ammo[slot-1]
 	p.reserves[p.weapon] = p.slot_reserves[slot-1]
 	p.reserve = p.reserves[p.weapon]
-	p.switch = .4
+	p.switch_duration = 1.5 if p.weapon in [0,2] else .4
+	p.switch = p.switch_duration
 	p.reloading = false
 	p.reload_queued = false
 	p.reload = 0.0

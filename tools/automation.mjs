@@ -115,6 +115,9 @@ try {
   const feedback = await run('campaign-feedback', engine, [...godotArgs, '--script', 'res://tools/validate-campaign-feedback.gd', '--', '--silent', '--automation']);
   if (!/CAMPAIGN FEEDBACK: \d+ checks; 0 failures/.test(feedback)) throw new Error('Missing campaign feedback check marker.');
 
+  const combatUpgrades = await run('combat-upgrades', engine, [...godotArgs, '--script', 'res://tools/validate-combat-upgrades.gd', '--', '--silent', '--automation']);
+  if (!/COMBAT UPGRADES: \d+ checks; 0 failures/.test(combatUpgrades)) throw new Error('Missing combat upgrade check marker.');
+
   if (full) {
     const navigation = await powershell('navigation-regressions', 'tools/validate-headless.ps1', ['-Mode', 'NavigationRegressions'], 300_000);
     if (!/NAVIGATION REGRESSIONS: \d+ checks; 0 failures/.test(navigation)) throw new Error('Missing navigation regression check marker.');

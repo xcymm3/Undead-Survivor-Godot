@@ -93,14 +93,14 @@ func run() -> void:
 	legacy_file.store_string(JSON.stringify(legacy))
 	legacy_file.close()
 	var migrated = Store.new(path)
-	check(migrated.data.version == 5 and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("pistol") == 4 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
+	check(migrated.data.version == 6 and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("pistol") == 4 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
 	check(migrated.owned("crystal_mine") and not migrated.owned("ramp_mine") and not migrated.owned("gate_mine") and not migrated.owned("bridge_entry_gate"),"Old free mine is retained while new defenses require purchase")
 	check(migrated.dirty and migrated.save() and Store.new(path).data == migrated.data,"Migrated progress persists and reloads without repeating migration")
 	var corrupt_primary = FileAccess.open(path,FileAccess.WRITE)
 	corrupt_primary.store_string("{broken")
 	corrupt_primary.close()
 	var legacy_backup = Store.new(path)
-	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == 5 and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
+	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == 6 and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
 	var version_two = Store.defaults()
 	version_two.version = 2
 	version_two.coins = 1234
@@ -111,7 +111,7 @@ func run() -> void:
 	v2_file.store_string(JSON.stringify(version_two))
 	v2_file.close()
 	var upgraded_v2 = Store.new(path)
-	check(upgraded_v2.data.version == 5 and upgraded_v2.level("pistol") == 7 and upgraded_v2.data.coins == 1234 and upgraded_v2.data.diamonds == 9 and not upgraded_v2.data.weapons.has("revolver"),"Version-two saves migrate revolver upgrades without losing currencies")
+	check(upgraded_v2.data.version == 6 and upgraded_v2.level("pistol") == 7 and upgraded_v2.data.coins == 1234 and upgraded_v2.data.diamonds == 9 and not upgraded_v2.data.weapons.has("revolver"),"Version-two saves migrate revolver upgrades without losing currencies")
 	check(upgraded_v2.save() and Store.new(path).data == upgraded_v2.data,"Migrated pistol state survives a second disk reload")
 	var old_v3 = Store.defaults()
 	old_v3.version = 3
@@ -123,7 +123,7 @@ func run() -> void:
 	old_file.store_string(JSON.stringify(old_v3))
 	old_file.close()
 	var migrated_v3 = Store.new(path)
-	check(migrated_v3.data.version == 5 and migrated_v3.data.coins == 555 and migrated_v3.level("rifle") == 10 and migrated_v3.level("bridge_gate") == 10 and migrated_v3.data.magazines == {"rifle_magazine":0,"pistol_magazine":0},"Old saves gain zero magazine levels and clamp previous upgrades to the new ten-level limit")
+	check(migrated_v3.data.version == 6 and migrated_v3.data.coins == 555 and migrated_v3.level("rifle") == 10 and migrated_v3.level("bridge_gate") == 10 and migrated_v3.data.magazines == {"rifle_magazine":0,"pistol_magazine":0},"Old saves gain zero magazine levels and clamp previous upgrades to the new ten-level limit")
 	migrated_v3.data.coins = 1000
 	check(migrated_v3.purchase("pistol_magazine") and Store.new(path).level("pistol_magazine") == 1,"Magazine purchases persist across disk reloads")
 	for suffix in ["",".tmp",".bak"]:
@@ -157,8 +157,8 @@ func run() -> void:
 	var p: Dictionary = game.local_pawn()
 	check(sim.defense.structures.all(func(item): return item.hp == 0 and not item.owned),"Fresh player owns no turrets, gates or mines")
 	var view = game.arena.scenery.structure_view
-	check(not view.actors.turret_left.root.visible and view.actors.turret_left.body.collision_layer == 0 and not view.actors.bridge_gate.root.visible,"Unowned buildings are invisible and have no collision")
-	check(not view.actors.bridge_entry_gate.root.visible and view.actors.bridge_entry_gate.body.collision_layer == 0 and Store.MINES.all(func(id): return not view.actors[id].root.visible),"Unbought bridge-end gate and all three mines stay absent")
+	check(view.actors.turret_left.root.visible and view.actors.turret_left.body.collision_layer == 0 and view.actors.bridge_gate.root.visible,"Unowned buildings show nonblocking construction ghosts")
+	check(view.actors.bridge_entry_gate.root.visible and view.actors.bridge_entry_gate.body.collision_layer == 0 and Store.MINES.all(func(id): return not view.actors[id].root.visible),"Unbuilt bridge-end gate is a ghost while unbought mines stay absent")
 	sim.spawn(sim.defense_director.structures.find("ramp_mine").pos,"normal")
 	sim.defense_director.structures.step_mine(sim.defense_director.structures.find("ramp_mine"),10)
 	check(not sim.defense_director.structures.find("ramp_mine").triggered and sim.zombies[-1].hp > 0,"An unowned mine cannot trigger or damage enemies")
@@ -314,7 +314,7 @@ func run() -> void:
 	sim = game.sim
 	p = game.local_pawn()
 	sim.progression.data.coins = 100000
-	check(game.arena.scenery.preparation.stations.has("rifle_magazine") and game.arena.scenery.preparation.stations.has("pistol_magazine"),"Both magazine upgrades have physical preparation stations")
+	check(game.arena.scenery.preparation.stations.has("rifle_magazine") and not game.arena.scenery.preparation.stations.has("pistol_magazine"),"Both magazine upgrades share one physical preparation station")
 	Fixture.face(sim,p,"rifle_magazine")
 	Fixture.hold(sim,p,.99)
 	check(sim.progression.level("rifle_magazine") == 0,"A hold shorter than one second cannot buy")

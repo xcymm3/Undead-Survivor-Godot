@@ -2,6 +2,7 @@ extends Node3D
 ## Snapshot-driven models, collapse motion and persistent nonblocking wreckage.
 const Structures = preload("res://scripts/defense_structures.gd")
 var actors: Dictionary = {}
+var preview_material: StandardMaterial3D
 var materials: Dictionary = {}
 const DAMAGE_THRESHOLD = .5
 
@@ -225,14 +226,23 @@ func sync(state: Dictionary) -> void:
 	for item in state.get("structures",Structures.initial_state()):
 		var actor: Dictionary = actors.get(item.id,{})
 		if actor.is_empty(): actor = create_actor(item)
-		actor.root.visible = item.get("owned",false) and (item.kind != "mine" or not item.spent)
+		var ghost: bool = not item.get("owned",false) and not state.get("started",false) and item.kind != "mine"
+		if actor.get("ghost",false) != ghost:
+			actor.ghost = ghost
+			for mesh in actor.root.find_children("*","MeshInstance3D",true,false):
+				if not mesh.has_meta("built_material"): mesh.set_meta("built_material",mesh.material_override)
+				mesh.material_override = ghost_material() if ghost else mesh.get_meta("built_material")
+				if not mesh.has_meta("built_shadow"): mesh.set_meta("built_shadow",mesh.cast_shadow)
+				mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if ghost else mesh.get_meta("built_shadow")
+		actor.root.visible = ghost or (item.get("owned",false) and (item.kind != "mine" or not item.spent))
 		if item.kind != "mine" and not actor.root.visible:
 			actor.body.collision_layer = 0
 			continue
 		if item.kind == "mine":
 			actor.led.visible = item.triggered and fmod(item.fuse,.4) < .2
 			continue
-		actor.body.collision_layer = 1 if item.hp > 0 else 0
+		actor.body.collision_layer = 1 if item.hp > 0 and not ghost else 0
+		if ghost: continue
 		var collapse = clampf((clock-item.destroyed_at)/.8,0,1) if item.hp <= 0 else 0.0
 		var damaged: bool = item.hp <= item.max_hp*DAMAGE_THRESHOLD
 		if item.kind == "turret":
@@ -254,3 +264,12 @@ func sync(state: Dictionary) -> void:
 			actor.panel.rotation.x = collapse*1.48
 			# Keep fallen steel above the bridge planks instead of burying them.
 			actor.panel.position.y = collapse*.18
+
+func ghost_material() -> StandardMaterial3D:
+	if preview_material: return preview_material
+	var result = StandardMaterial3D.new()
+	result.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	result.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	result.albedo_color = Color(.32,.85,.78,.24)
+	preview_material = result
+	return result

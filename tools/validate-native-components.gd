@@ -448,7 +448,7 @@ func validate_interaction_motion() -> void:
 	var p: Dictionary = game.local_pawn()
 	var fixture = preload("res://tools/preparation-fixture.gd")
 	check(not game.paused and game.ui.current.is_empty(),"Preparation begins directly in the world without a modal")
-	check(game.arena.scenery.preparation.stations.size() == 11,"Ten equipment and talent stations plus one alarm exist")
+	check(game.arena.scenery.preparation.stations.size() == 9,"Shared damage, capacity, ultimate, grenade, four talents and alarm exist")
 	var scenery = game.arena.scenery
 	var visual_state = sim.defense.duplicate(true)
 	visual_state.prop_clock = 0.0
@@ -466,7 +466,7 @@ func validate_interaction_motion() -> void:
 	scenery.sync(visual_state)
 	check(scenery.preparation.stations.rifle.prop.basis.is_equal_approx(display_pose),"Display rotation loops every forty seconds")
 	scenery.sync(sim.defense)
-	for id in ["rifle","pistol","axe"]:
+	for id in ["rifle"]:
 		var station: Dictionary = game.arena.scenery.preparation.stations[id]
 		var bounds: AABB = preload("res://scripts/world_geometry.gd").posed_bounds(station.prop.get_child(0))
 		check(bounds.get_center().distance_to(station.prop.global_position) < .35 and bounds.size.length() > 1.0,"Display geometry is centered above its actual world-space desk: "+id)
@@ -508,7 +508,7 @@ func validate_interaction_motion() -> void:
 	d.interactions(.01)
 	fixture.hold(sim,p,1.1)
 	check(sim.defense.started,"The world alarm starts the attack")
-	check(preload("res://scripts/preparation_catalog.gd").targets(sim).size() == 12,"Closed empty construction sites do not expose invisible interaction targets")
+	check(preload("res://scripts/preparation_catalog.gd").targets(sim).size() == 10,"Closed empty construction sites do not expose invisible interaction targets")
 	check(game.arena.scenery.preparation.stations.rifle.cover.visible and not game.arena.scenery.preparation.stations.rifle.prop.visible,"Attack physically closes station covers and hides goods")
 	check(game.ui.native_hud.find_child("CoinIcon",true,false).texture != null and game.ui.native_hud.find_child("DiamondIcon",true,false).texture != null,"Wallet uses distinct coin and diamond icons")
 	check(not sim.purchase_upgrade("rifle",p),"Starting wave one closes transactions")

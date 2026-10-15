@@ -84,6 +84,11 @@ func build_station(entry: Dictionary) -> void:
 			var model = preload("res://scripts/equipment_props.gd").model(4)
 			prop.add_child(model)
 			model.position.x = x
+	elif entry.id == "ultimate":
+		var model = preload("res://scripts/long_blade.gd").new()
+		prop.add_child(model)
+		model.rotation.z = PI/2
+		model.scale = Vector3.ONE*.8
 	else:
 		build_talent(prop,entry.id)
 	var cover = MeshInstance3D.new()
@@ -155,9 +160,24 @@ func sync(state: Dictionary) -> void:
 		alarm_light.light_color = Color("ff654b") if closed else Color("72e6b0")
 		alarm_light.light_energy = 1.5 if closed else 1.1
 	for item in state.get("structures",[]):
-		for marker in blueprints.get(item.id,[]): marker.visible = not item.get("owned",false) and not closed
+		for marker in blueprints.get(item.id,[]): marker.visible = item.kind == "mine" and not item.get("owned",false) and not closed
 
 func sync_focus(sim, p: Dictionary) -> void:
+	if not sim.defense.started:
+		var id: String = Data.weapons[int(p.weapon)].id
+		var station: Dictionary = stations.rifle
+		if station.get("held","") != id and id in ["rifle","pistol","axe"]:
+			station.held = id
+			for old in station.prop.get_children():
+				station.prop.remove_child(old)
+				old.queue_free()
+			var model = preload("res://scripts/weapon_view.gd").create_model(id)
+			station.prop.add_child(model)
+			var bounds = preload("res://scripts/world_geometry.gd").posed_bounds(model)
+			var center = model.to_local(bounds.get_center())
+			var factor = 1.4/maxf(.01,bounds.size.length())
+			model.scale *= factor
+			model.position -= center*factor
 	var choice: Dictionary = Catalog.focus(sim,p)
 	interaction_ring.visible = not choice.is_empty() and Catalog.available(sim,choice.get("id",""))
 	var drops: Array = []
@@ -169,14 +189,17 @@ func sync_focus(sim, p: Dictionary) -> void:
 		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 		interaction_ring.sync(time/Catalog.HOLD_SECONDS,eye,enabled)
 		if enabled and price > 0:
-			var from = eye+Basis.from_euler(Vector3(p.pitch,p.yaw,0))*Vector3(.3,-.35,-.6)
+			var from = Vector3(p.pos.x,p.height+.8,p.pos.y)
 			var interval = Catalog.payment_interval(price)
 			for i in ceili(time/interval):
 				var age = time-i*interval
 				if age <= 0 or age >= .8: continue
-				var t = age/.8
-				var point = from.lerp(choice.position,t)+Vector3(0,sin(t*PI)*.23,0)
-				drops.append({"pos":point,"age":age,"value":1,"scale":.2,"arrival":maxf(0,(t-.8)*5)})
+				var angle = i*2.39996
+				var scatter = from+Vector3(cos(angle),0,sin(angle))*(.7+fmod(i*.37,.8))
+				var t = clampf((age-.24)/.56,0,1)
+				var point = from.lerp(scatter,minf(1,age/.24)) if age < .24 else scatter.lerp(choice.position,t*t)
+				point.y += sin(minf(1,age/.24)*PI)*.5 if age < .24 else sin(t*PI)*.4
+				drops.append({"pos":point,"age":age,"value":1,"scale":1.15,"arrival":maxf(0,(t-.8)*5)})
 	money_flights.sync(drops)
 	focus_label.visible = not choice.is_empty()
 	if choice.is_empty(): return

@@ -8,6 +8,8 @@ var sprint_blend = 0.0
 var sprint_phase = 0.0
 var active = 0
 var muzzle: MeshInstance3D
+var scabbard: Node3D
+var blade: Node3D
 var axe_pivot: Node3D
 
 static func create_model(id: String, first_person := false) -> Node3D:
@@ -36,6 +38,12 @@ func _ready() -> void:
 		for child in model.find_children("*","MeshInstance3D",true,false):
 			child.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			child.layers = 2
+	blade = preload("res://scripts/long_blade.gd").new()
+	add_child(blade)
+	blade.hide()
+	scabbard = preload("res://scripts/long_blade.gd").make_scabbard()
+	add_child(scabbard)
+	scabbard.hide()
 	var sphere = SphereMesh.new()
 	sphere.radius = .025
 	sphere.height = .06
@@ -65,13 +73,15 @@ func reset_motion() -> void:
 
 func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-180)) -> void:
 	active = int(p.weapon)
-	var w: Dictionary = Data.weapons[active]
+	var ultimate = preload("res://scripts/ultimate.gd")
+	var ultimate_locked: bool = ultimate.locked(p)
+	var w: Dictionary = ultimate.weapon(p,Progress.store,Data.weapons[active])
 	var sprinting: bool = p.get("sprinting",false)
 	ads = move_toward(ads,1.0 if p.aim and not sprinting else 0.0,dt*7)
 	sprint_blend = move_toward(sprint_blend,1.0 if sprinting else 0.0,dt*9)
 	sprint_phase += dt*12.0
 	var hide_scope: bool = w.id == "sniper" and ads > .8
-	for i in models.size(): models[i].visible = i == active and not hide_scope and p.get("pickup_remaining",0.0) <= .08
+	for i in models.size(): models[i].visible = i == active and not ultimate_locked and not hide_scope and p.get("pickup_remaining",0.0) <= .08
 	for i in sights.size(): sights[i].visible = i == active and p.get("pickup_remaining",0.0) <= .08
 	if active != 3: models[3].reset_motion()
 	var hip = Vector3(.19,-.085 if w.length < .6 else -.10,-.46)
@@ -112,15 +122,19 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 				position += Vector3(-.09,-.09,-.35)*lift
 				rotation.x += EquipMotion.spin_angle(equip_phase)
 			else: position.y -= lift*.5
+	models[active].rotation = Vector3.ZERO
 	if p.reloading and w.id != "revolver":
 		var reload_pulse = sin(clampf(1-p.reload/maxf(.1,w.reloadDuration),0,1)*PI)
-		position.y -= reload_pulse*.07
-		rotation.z -= reload_pulse*.22
-		rotation.x -= reload_pulse*.1
+		models[active].rotation.z = -reload_pulse*.22
+		models[active].rotation.x = -reload_pulse*.1
 	var reload_phase = clampf(1-p.get("reload",0.0)/maxf(.1,w.reloadDuration),0,1) if p.reloading else 0.0
 	if w.id == "rifle":
 		models[active].pose(p.reloading,reload_phase,p.fire_anim/w.fireDuration)
-		if equip_phase >= 0: models[active].bolt.position.z += EquipMotion.bolt_offset(equip_phase)
+		models[active].rack_hand.visible = equip_phase >= EquipMotion.BOLT_START and equip_phase <= EquipMotion.BOLT_END
+		if equip_phase >= 0:
+			models[active].bolt.position.z += EquipMotion.bolt_offset(equip_phase)
+			models[active].rack_hand.position.z = models[active].bolt.position.z
+			rotation.z -= .4*sin(PI*equip_phase)
 	var player: AnimationPlayer = animations[active]
 	if player:
 		var clip = ""
@@ -141,7 +155,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 			if w.id == "axe": progress = 0.0
 			player.seek(progress*player.get_animation(clip).length,true)
 	if w.id == "axe" and axe_pivot:
-		sample_axe(axe_pivot,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0)
+		sample_axe(axe_pivot,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0,int(p.get("axe_direction",1)))
 	if w.id == "revolver": models[3].sync_pose(p,dt,elapsed,ads)
 	if p.fire_anim > 0 and w.get("kind","gun") != "melee" and w.id != "revolver":
 		var pulse = sin((1-p.fire_anim/w.fireDuration)*PI)
@@ -157,14 +171,22 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 			position.z -= push*.12
 	# Carry the gun low and across the body; hands follow their shared weapon root.
 	# The two-foot rhythm adds vertical bounce and a slower lateral sway.
-	if sprint_blend > 0:
+	if sprint_blend > 0 and not ultimate_locked:
 		var bob = Vector3(sin(sprint_phase)*.018,absf(cos(sprint_phase))*.022,sin(sprint_phase*2)*.009)
 		position += (Vector3(.045,-.13,.08)+bob)*sprint_blend
 		quaternion *= Quaternion.from_euler(Vector3(-.38,.42,-.24+sin(sprint_phase)*.04)*sprint_blend)
+	scabbard.visible = ultimate_locked and (p.get("ultimate_age",0.0) < .9 or p.get("ultimate_sheathe",0.0) > 0)
+	blade.visible = ultimate_locked
+	if ultimate_locked:
+		sample_axe(blade,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0,int(p.get("axe_direction",1)))
+		var draw = clampf(float(p.get("ultimate_age",0.0))/.9,0,1)
+		var sheath = float(p.get("ultimate_sheathe",0.0))/.8
+		scabbard.transform = blade.transform
+		blade.position -= blade.basis.y*1.1*(1.0-smoothstep(0,1,draw) if sheath <= 0 else smoothstep(0,1,1.0-sheath))
 	muzzle.global_position = muzzle_position()
 	muzzle.visible = not hide_scope and p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") == "gun"
 
-static func sample_axe(pivot: Node3D, progress: float) -> void:
+static func sample_axe(pivot: Node3D, progress: float, direction := 1) -> void:
 	# Sweep the grip and head together from upper right toward lower left and forward.
 	# Modest pitch keeps the handle upright instead of folding the head onto the right.
 	var times = [0.0,.22,.52,.66,.82,1.0]
@@ -176,6 +198,12 @@ static func sample_axe(pivot: Node3D, progress: float) -> void:
 		Vector3(-.12,-.65,-.24), Vector3(.50,-1.05,-.12),
 		Vector3(-.30,-.90,.38), Vector3(-.48,-.80,.50),
 		Vector3(-.25,-.70,.12), Vector3(-.12,-.65,-.24)]
+	if direction == -1:
+		# Reverse the stroke while returning both hands to the same resting pose.
+		for index in range(1,positions.size()-1):
+			positions[index].x *= -1
+			angles[index].y *= -1
+			angles[index].z *= -1
 	for i in range(times.size()-1):
 		if progress > times[i+1]: continue
 		var weight = smoothstep(times[i],times[i+1],progress)

@@ -1,5 +1,9 @@
 extends Control
 ## Retained native widgets; Canvas drawing is reserved for the aiming overlay.
+var crystal_alert: Label
+var grenade_ring: Control
+var ultimate_ring: Control
+var ultimate_notice: Label
 var controls_hint: Label
 var wave_label: Label
 var count_label: Label
@@ -89,6 +93,21 @@ func setup(owner_ui) -> void:
 		var note = text(detail,12)
 		equipment_slots.append({"panel":panel,"icon":icon,"title":title,"note":note,
 			"selected":slot_style(true),"idle":slot_style(false)})
+	var cooldown_row = HBoxContainer.new()
+	column.add_child(cooldown_row)
+	grenade_ring = preload("res://scripts/cooldown_ring.gd").new()
+	ultimate_ring = preload("res://scripts/cooldown_ring.gd").new()
+	cooldown_row.add_child(grenade_ring)
+	cooldown_row.add_child(ultimate_ring)
+	ultimate_notice = text(column,14)
+	crystal_alert = text(content,28)
+	crystal_alert.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	crystal_alert.offset_top = 110
+	crystal_alert.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	crystal_alert.text = "水晶正在被攻击！"
+	crystal_alert.add_theme_color_override("font_color",Color("ff785b"))
+	crystal_alert.add_theme_constant_override("outline_size",4)
+	crystal_alert.add_theme_color_override("font_outline_color",Color("191c1c"))
 	health_row = HBoxContainer.new()
 	health_row.add_theme_constant_override("separation",12)
 	health_row.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -275,15 +294,22 @@ func sync() -> void:
 		crystal_bar.max_value = defense.get("crystal_max_hp",1)
 		crystal_bar.value = defense.get("crystal_hp",0)
 		crystal_bar.modulate = Color("7fe7ef") if crystal_bar.value > crystal_bar.max_value*.3 else Color("ee6658")
-	var w: Dictionary = Data.weapons[int(p.weapon)]
+	crystal_alert.visible = float(defense.get("crystal_alert_until",-1)) > sim.elapsed
+	grenade_ring.visible = sim.mode == "defense"
+	ultimate_ring.visible = sim.mode == "defense"
+	grenade_ring.sync(1.0-float(p.get("grenade_replenish",15.0))/15.0 if p.get("grenades",0) < p.get("grenade_capacity",1) else 1.0,"手雷", "补充 %ds" % ceili(p.get("grenade_replenish",15.0)) if p.get("grenades",0) < p.get("grenade_capacity",1) else "已备齐")
+	var charge = 1.0-float(p.get("ultimate_cd",0.0))/60.0 if sim.progression.level("ultimate") > 0 else 0.0
+	ultimate_ring.sync(charge,"%d%%" % floori(charge*100) if not preload("res://scripts/ultimate.gd").active(p) else "Q","未学习" if sim.progression.level("ultimate") == 0 else "长刀 %ds" % ceili(p.ultimate_remaining) if preload("res://scripts/ultimate.gd").active(p) else "大招 · Q")
+	ultimate_notice.text = p.get("ultimate_notice","") if p.get("ultimate_notice_until",0.0) > sim.elapsed else ""
+	var w: Dictionary = sim.combat_weapon(p)
 	weapon_label.text = str(w.label)
 	var infinite: bool = w.get("infiniteAmmo",false)
 	ammo_label.text = "∞  近战" if infinite else "%02d / ∞" % p.ammo[int(p.weapon)]
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "defense":
-		controls_hint.text = "1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷 · R 换弹 · ESC 暂停" if defense.get("started",false) else "靠近并瞄准目标 · 长按 E 整备 / 启动警报"
-		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id)+1]
+		controls_hint.text = "1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷 · Q 大招 · R 换弹 · ESC 暂停" if defense.get("started",false) else "靠近并瞄准目标 · 长按 E 整备 / 启动警报"
+		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id) if w.id == "ultimate" else sim.progression.level(w.id)+1]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
 		ammo_note.text = "无需弹药" if infinite else "容量 %d · R 换弹 · 清波 +2 备弹夹" % sim.weapon_capacity(p.weapon)
 		if p.slot == 4:

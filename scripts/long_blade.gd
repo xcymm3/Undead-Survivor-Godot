@@ -1,0 +1,41 @@
+extends Node3D
+func _init() -> void:
+	name = "UltimateLongBlade"
+	piece("Blade",Vector3(0,.56,0),Vector3(.085,1.1,.025),Color("c1ced0"))
+	piece("Edge",Vector3(.048,.56,0),Vector3(.012,1.08,.03),Color("f1f0dd"))
+	piece("Guard",Vector3.ZERO,Vector3(.25,.045,.10),Color("b39753"))
+	piece("Grip",Vector3(0,-.18,0),Vector3(.065,.32,.07),Color("342d2b"))
+	for i in 7: piece("Wrap",Vector3(0,-.04-i*.043,0),Vector3(.073,.012,.078),Color("706049"))
+
+func piece(title: String, at: Vector3, size: Vector3, color: Color) -> void:
+	var part = MeshInstance3D.new()
+	part.name = title
+	part.mesh = BoxMesh.new()
+	part.mesh.size = size
+	var material = StandardMaterial3D.new()
+	material.albedo_color = color
+	material.metallic = .5
+	material.roughness = .55
+	part.material_override = material
+	part.position = at
+	part.layers = 2
+	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(part)
+
+static func make_scabbard() -> Node3D:
+	var result = Node3D.new()
+	result.name = "LongBladeScabbard"
+	for side in [-1.0,1.0]:
+		for plane in 2:
+			var part = MeshInstance3D.new()
+			part.mesh = BoxMesh.new()
+			part.mesh.size = Vector3(.012,1.15,.075) if plane == 0 else Vector3(.12,1.15,.012)
+			part.position = Vector3(side*.06,-.575,0) if plane == 0 else Vector3(0,-.575,side*.0375)
+			var material = StandardMaterial3D.new()
+			material.albedo_color = Color("493c32")
+			material.roughness = .8
+			part.material_override = material
+			part.layers = 2
+			part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			result.add_child(part)
+	return result

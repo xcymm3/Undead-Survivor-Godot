@@ -2,15 +2,14 @@ extends RefCounted
 ## Shared world positions, gaze selection and compact descriptions.
 const Layout = preload("res://scripts/defense_layout.gd")
 const HOLD_SECONDS = 1.0
-const NAMES = {"rifle":"步枪","rifle_magazine":"步枪弹匣","pistol_magazine":"手枪弹匣","pistol":"手枪","axe":"消防斧","grenade":"手雷","strong":"强壮","precise":"精准","swift":"迅捷","supply":"补给","turret_left":"炮塔","turret_right":"炮塔","bridge_gate":"栅栏门","bridge_entry_gate":"栅栏门","crystal_mine":"地雷","ramp_mine":"地雷","gate_mine":"地雷","alarm":"警报器","crystal":"水晶"}
+const NAMES = {"rifle":"步枪","rifle_magazine":"步枪弹匣","pistol_magazine":"手枪弹匣","pistol":"手枪","axe":"消防斧","grenade":"手雷","ultimate":"大招","strong":"强壮","precise":"精准","swift":"迅捷","supply":"补给","turret_left":"炮塔","turret_right":"炮塔","bridge_gate":"栅栏门","bridge_entry_gate":"栅栏门","crystal_mine":"地雷","ramp_mine":"地雷","gate_mine":"地雷","alarm":"警报器","crystal":"水晶"}
 
 static func stations() -> Array:
 	var result: Array = []
-	var ids = ["rifle","pistol","axe","grenade","strong","precise","swift","supply"]
+	var ids = ["rifle","rifle_magazine","ultimate","grenade","strong","precise","swift","supply"]
 	for i in ids.size():
 		result.append({"id":ids[i],"position":Vector3([-9.0,-3.0,3.0,9.0][i%4],4.15,Layout.SHOP_WALL_Z-2.3 if i < 4 else Layout.SHOP_WALL_Z-7.5),"radius":.85,"range":3.2})
-	for entry in [["rifle_magazine",-9.0],["pistol_magazine",9.0]]:
-		result.append({"id":entry[0],"position":Vector3(entry[1],4.15,Layout.SHOP_WALL_Z-4.9),"radius":.85,"range":3.2})
+
 	result.append({"id":"alarm","position":Vector3(-4,4.15,Layout.SHOP_AREA.position.y-2),"radius":.7,"range":3.2})
 	return result
 
@@ -57,6 +56,11 @@ static func focus(sim, p: Dictionary) -> Dictionary:
 		if not sim.arena.surface_hit(eye,endpoint,entry.id).is_empty(): continue
 		nearest = along
 		selected = entry
+	if selected.get("id","") in ["rifle","rifle_magazine"]:
+		var base: Dictionary = sim.arena.get_node("/root/Data").weapons[int(p.weapon)]
+		var capacity: bool = selected.id == "rifle_magazine"
+		selected = selected.duplicate()
+		selected.id = base.id+("_magazine" if capacity else "") if base.id in (["rifle","pistol"] if capacity else ["rifle","pistol","axe"]) and p.get("slot",1) != 4 else "unsupported_weapon"
 	return selected
 
 static func available(sim, id: String) -> bool:
@@ -69,6 +73,7 @@ static func available(sim, id: String) -> bool:
 
 static func description(sim, id: String) -> String:
 	var profile = sim.progression
+	if id == "unsupported_weapon": return "此装备无需升级"
 	if id == "crystal": return "水晶\n%d / %d" % [sim.defense.crystal_hp,sim.defense.crystal_max_hp]
 	if id == "alarm": return "进攻中" if sim.defense.started else "开始进攻"
 	var price: int = profile.cost(id)
@@ -78,9 +83,12 @@ static func description(sim, id: String) -> String:
 	var detail = ""
 	if id in profile.WEAPONS:
 		var index: int = {"rifle":0,"pistol":2,"axe":6}[id]
-		detail = "伤害 %s" % number(sim.arena.get_node("/root/Data").weapons[index].damage*profile.weapon_multiplier(id))
+		detail = NAMES[id]+"伤害 %s" % number(sim.arena.get_node("/root/Data").weapons[index].damage*profile.weapon_multiplier(id))
 	elif id in profile.MAGAZINES:
-		detail = "弹匣 %d" % sim.weapon_capacity(0 if id == "rifle_magazine" else 2)
+		detail = "%s容量 %d" % [NAMES[id],sim.weapon_capacity(0 if id == "rifle_magazine" else 2)]
+	elif id == "ultimate":
+		level_text = "LV%d / 4" % profile.level(id) if price >= 0 else "LV MAX"
+		detail = "长刀 %s · Q" % number(300*pow(1.2,maxi(0,profile.level(id)-1)))
 	elif id == "grenade": detail = "容量 %d / 5" % profile.grenade_capacity()
 	elif id in profile.MINES:
 		var item = sim.defense_director.structures.find(id)

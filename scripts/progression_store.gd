@@ -21,7 +21,7 @@ var notice = ""
 var data: Dictionary = defaults()
 
 static func defaults() -> Dictionary:
-	return {"version":5,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
+	return {"version":6,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
 
 func _init(save_path := "") -> void:
 	path = save_path
@@ -31,7 +31,7 @@ static func bounded_integer(value, maximum: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and value >= 0 and value <= maximum and float(value) == floor(float(value))
 
 static func valid(value) -> bool:
-	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,5) or value.version < 1: return false
+	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,6) or value.version < 1: return false
 	for key in ["coins","diamonds","best_wave","cleared_total"]:
 		if not bounded_integer(value[key],MAX_CURRENCY): return false
 	if not bounded_integer(value.grenade_level,4): return false
@@ -51,6 +51,7 @@ static func valid(value) -> bool:
 		if not value.get("magazines") is Dictionary: return false
 		for key in MAGAZINES:
 			if not bounded_integer(value.magazines.get(key),MAX_UPGRADE_LEVEL): return false
+	if value.version >= 6 and not bounded_integer(value.get("ultimate_level"),4): return false
 	return true
 
 func read_save(file_path: String) -> Dictionary:
@@ -62,6 +63,7 @@ func read_save(file_path: String) -> Dictionary:
 	# JSON numbers deserialize as floats. Restore validated integer fields before
 	# migration so a second reload has exactly the same permanent state.
 	for key in ["version","coins","diamonds","best_wave","cleared_total","grenade_level"]: parsed[key] = int(parsed[key])
+	if parsed.version >= 6: parsed.ultimate_level = int(parsed.ultimate_level)
 	for key in OLD_WEAPONS if parsed.version < 3 else WEAPONS: parsed.weapons[key] = int(parsed.weapons[key])
 	for key in TALENTS: parsed.talents[key] = int(parsed.talents[key])
 	for key in LEGACY_BUILDINGS if parsed.version == 1 else BUILDINGS: parsed.buildings[key].level = int(parsed.buildings[key].level)
@@ -105,6 +107,10 @@ func load_save() -> void:
 			for key in TALENTS: data.talents[key] = mini(TALENT_PRICES.size(),int(data.talents[key]))
 			data.version = 5
 			dirty = true
+		if data.version == 5:
+			data.ultimate_level = 0
+			data.version = 6
+			dirty = true
 
 func save() -> bool:
 	if path.is_empty() or not dirty: return true
@@ -142,6 +148,7 @@ func level(id: String) -> int:
 	if id in MAGAZINES: return int(data.magazines[id])
 	if id in TALENTS: return int(data.talents[id])
 	if id == "grenade": return int(data.grenade_level)
+	if id == "ultimate": return int(data.get("ultimate_level",0))
 	if id in BUILDINGS: return int(data.buildings[id].level)
 	return 0
 
@@ -155,7 +162,7 @@ func currency(id: String) -> String:
 func cost(id: String) -> int:
 	if id in MINES: return -1 if owned(id) else int(MINE_PRICES[id])
 	if id in TALENTS: return int(TALENT_PRICES[level(id)]) if level(id) < TALENT_PRICES.size() else -1
-	if id == "grenade":
+	if id in ["grenade","ultimate"]:
 		return int(GRENADE_PRICES[level(id)]) if level(id) < GRENADE_PRICES.size() else -1
 	elif id in BUILDINGS:
 		if not owned(id): return 100
@@ -172,6 +179,7 @@ func purchase(id: String) -> bool:
 	elif id in MAGAZINES: data.magazines[id] = level(id)+1
 	elif id in TALENTS: data.talents[id] = level(id)+1
 	elif id == "grenade": data.grenade_level = level(id)+1
+	elif id == "ultimate": data.ultimate_level = level(id)+1
 	elif id in MINES: data.mines[id] = true
 	elif id in BUILDINGS:
 		if owned(id): data.buildings[id].level = level(id)+1

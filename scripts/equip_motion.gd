@@ -10,7 +10,8 @@ static func phase(remaining: float, duration: float) -> float:
 	return clampf((1.0-remaining/maxf(.001,duration)-DRAW_START)/DRAW_SPAN,0,1)
 
 static func bolt_offset(value: float) -> float:
-	return .16*sin(PI*clampf((value-BOLT_START)/(BOLT_END-BOLT_START),0,1))
+	var t = clampf((value-BOLT_START)/(BOLT_END-BOLT_START),0,1)
+	return .27*smoothstep(0,.45,t)*(1.0-smoothstep(.68,1,t))
 
 static func spin_angle(value: float) -> float:
 	return TAU*smoothstep(0,SPIN_END,value)

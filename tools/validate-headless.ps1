@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Progression', 'Campaign', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'DefenseWaves', 'NavigationRegressions', 'SpreadBallistics', 'ExportWeb', 'NativeSmoke', 'CpuOptimizations')]
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'Progression', 'Campaign', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'DefenseWaves', 'NavigationRegressions', 'SpreadBallistics', 'ExportWeb', 'NativeSmoke', 'CpuOptimizations', 'CombatUpgrades')]
     [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
@@ -14,6 +14,7 @@ $arguments = @('--headless', '--audio-driver', 'Dummy', '--path', ('"' + $projec
 if ($VerboseEngine) { $arguments += '--verbose' }
 switch ($Mode) {
     'NativeSmoke' { $arguments += @('--', '--automation', '--silent', '--qa-native-smoke') }
+    'CombatUpgrades' { $arguments += @('--script', 'res://tools/validate-combat-upgrades.gd', '--', '--silent', '--automation') }
     'CpuOptimizations' { $arguments += @('--script', 'res://tools/validate-cpu-optimizations.gd', '--', '--silent', '--automation') }
     'NavigationRegressions' { $arguments += @('--script', 'res://tools/validate-navigation-regressions.gd', '--', '--silent', '--automation') }
     'ExportWeb' {

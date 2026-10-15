@@ -1,0 +1,190 @@
+extends SceneTree
+const Ultimate = preload("res://scripts/ultimate.gd")
+const Store = preload("res://scripts/progression_store.gd")
+const Fixture = preload("res://tools/preparation-fixture.gd")
+const Catalog = preload("res://scripts/preparation_catalog.gd")
+var failures = 0
+var checks = 0
+func check(value: bool, message: String) -> void:
+	checks += 1
+	if not value:
+		failures += 1
+		push_error(message)
+func _initialize() -> void: call_deferred("run")
+func run() -> void:
+	var game = load("res://scenes/main.tscn").instantiate()
+	root.add_child(game)
+	await process_frame
+	await physics_frame
+	game.set_process(false)
+	game.set_physics_process(false)
+	game.start_solo("defense",47)
+	var sim = game.sim
+	var p: Dictionary = sim.pawns.solo
+	var data = root.get_node("Data")
+	for kind in {"normal":100,"cone":200,"bucket":400,"imp":400,"shield":1200,"berserker":3000,"giant":6000,"football":9000,"dancer":90000}:
+		var original = {"normal":100,"cone":200,"bucket":400,"imp":400,"shield":1200,"berserker":3000,"giant":6000,"football":9000,"dancer":90000}
+		check(data.enemies[kind].health == original[kind]*2,"Doubled health: "+kind)
+	for kind in {"cone":100,"bucket":300,"shield":1000,"giant":2000,"football":6000}:
+		var original = {"cone":100,"bucket":300,"shield":1000,"giant":2000,"football":6000}
+		check(data.enemies[kind].armor == original[kind]*2,"Doubled armor: "+kind)
+	check(p.slot_ammo == [30,15] and p.slot_reserves == [255,128],"Full magazines with halved initial reserve")
+	p.slot = 2
+	sim.equipment.select_weapon_slot(p,2)
+	check(is_equal_approx(p.switch,1.5),"Fixed-loadout pistol uses the longer real switch duration")
+	p.switch = .55
+	game.weapon.sync(p,0,sim.elapsed)
+	check(absf(game.weapon.rotation.x) > .5,"Pistol spin has a visible intermediate pose")
+	p.slot = 1
+	sim.equipment.select_weapon_slot(p,1)
+	p.switch = .45
+	game.weapon.sync(p,0,sim.elapsed)
+	check(game.weapon.models[0].rack_hand.visible and game.weapon.models[0].bolt.position.z > .08,"Rifle charging handle and racking glove visibly travel together")
+	p.switch = 0
+	game.weapon.sync(p,0,sim.elapsed)
+	check(not game.weapon.models[0].rack_hand.visible and is_equal_approx(game.weapon.models[0].bolt.position.z,-.11),"Rifle rack returns home and withdraws the racking hand")
+	var world = game.arena.scenery
+	for item in sim.defense.structures:
+		if item.kind == "mine": continue
+		var actor: Dictionary = world.structure_view.actors[item.id]
+		check(actor.root.visible and actor.get("ghost",false) and actor.body.collision_layer == 0,"Unbuilt prep structure is a nonblocking ghost: "+item.id)
+		for mesh in actor.root.find_children("*","MeshInstance3D",true,false):
+			check(mesh.material_override.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA,"Ghost uses transparent override")
+	sim.progression.data.coins = 100000
+	for id in ["rifle","pistol","axe","rifle_magazine","pistol_magazine"]:
+		Fixture.face(sim,p,id)
+		check(Catalog.focus(sim,p).get("id","") == id,"Shared stand resolves held weapon: "+id)
+		check(Catalog.description(sim,id).contains(Catalog.NAMES[id]),"Description identifies the upgraded weapon: "+id)
+		check(sim.purchase_upgrade(id,p),"Shared stand buys correct upgrade: "+id)
+	check(world.preparation.stations.size() == 9,"Shared stands remove redundant weapon desks")
+	Fixture.face(sim,p,"ultimate")
+	check(sim.purchase_upgrade("ultimate",p) and sim.progression.level("ultimate") == 1,"Learning the ultimate uses its physical stand")
+	for price in [450,650,1000]:
+		check(sim.progression.cost("ultimate") == price and sim.progression.purchase("ultimate"),"Ultimate next price: "+str(price))
+	check(sim.progression.cost("ultimate") == -1 and Store.valid(sim.progression.data),"Ultimate caps at four and its save is valid")
+	p.slot = 1
+	p.weapon = 0
+	p.requested = 0
+	p.switch = 0
+	p.reloading = true
+	p.reload = .8
+	p.ammo[0] = 1
+	p.reserves[0] = 40
+	check(sim.try_shove(p),"Shove can start during a magazine reload")
+	sim.update_arsenal(p,{},.1)
+	check(p.reloading and is_equal_approx(p.reload,.7),"Reload advances while shove is active")
+	p.shove_anim = .22 # Pose sampled 0.1 seconds after shove begins.
+	game.weapon.sync(p,0,sim.elapsed)
+	check(absf(game.weapon.models[0].rotation.z) > .01 and game.weapon.position.z < -.5,"Model reload tilt and root shove coexist")
+	p.reloading = false
+	p.shove_anim = 0
+	p.slot = 3
+	p.weapon = 6
+	p.requested = 6
+	p.axe_next_direction = 1
+	sim.fire(p,data.weapons[6])
+	check(p.axe_direction == 1,"First axe swing goes right to left")
+	sim.fire(p,data.weapons[6])
+	check(p.axe_direction == -1,"Held next axe swing reverses")
+	sim.advance_arsenal(p,{"fire":false},.01)
+	sim.fire(p,data.weapons[6])
+	check(p.axe_direction == 1,"Releasing fire resets axe direction")
+	var pivot = Node3D.new()
+	var view = load("res://scripts/weapon_view.gd")
+	view.sample_axe(pivot,1.0,1)
+	var resting: Transform3D = pivot.transform
+	view.sample_axe(pivot,1.0,-1)
+	check(resting.is_equal_approx(pivot.transform),"Both axe directions recover to the same resting pose")
+	view.sample_axe(pivot,.5,1)
+	var right_pose: Vector3 = pivot.position
+	view.sample_axe(pivot,.5,-1)
+	check(right_pose.distance_to(pivot.position) > .5,"Opposite axe strokes visibly cross opposite sides")
+	pivot.free()
+	p.slot = 1
+	p.weapon = 0
+	p.requested = 0
+	p.fire_anim = 0
+	sim.defense.started = true
+	p.input = {"ultimate":true}
+	check(Ultimate.tick(sim,p,p.input,.01) and Ultimate.active(p),"Q activates learned ultimate")
+	var sword: Dictionary = sim.combat_weapon(p)
+	check(is_equal_approx(sword.damage,300*pow(1.2,3)) and is_equal_approx(sword.fireDuration,data.weapons[6].fireDuration*.5),"Long blade damage scales and attack animation runs twice as fast")
+	check(p.ultimate_cd == 0 and p.weapon == 6 and not p.reloading,"Active ultimate locks blade and has no cooldown yet")
+	p.input = {"slot":2,"weapon":2}
+	Ultimate.tick(sim,p,p.input,1)
+	check(p.slot == 3 and p.weapon == 6 and p.input.slot == 3,"Ultimate ignores weapon switch requests")
+	p.input = {"x":0.0,"y":-1.0,"fire":true}
+	p.input_age = 0
+	sim.update_pawn(p,.01)
+	check(p.sprinting,"Ultimate keeps sprint speed while attacking without Shift")
+	game.weapon.sync(p,0,sim.elapsed)
+	check(game.weapon.blade.visible and not game.weapon.models[6].visible,"Ultimate replaces axe with long blade")
+	p.input = {"ultimate":true}
+	Ultimate.tick(sim,p,p.input,.01)
+	check(not Ultimate.active(p) and p.ultimate_cd == 60 and p.ultimate_sheathe > 0,"Q early finish starts sixty-second cooldown and sheath animation")
+	p.input = {}
+	Ultimate.tick(sim,p,p.input,1)
+	check(not Ultimate.locked(p) and p.slot == 1,"Sheathing restores previous equipment slot")
+	p.input = {"ultimate":true}
+	Ultimate.tick(sim,p,p.input,.01)
+	check(not Ultimate.active(p) and p.ultimate_notice == "大招冷却中","Q during cooldown reports unavailability")
+	p.ultimate_cd = 0
+	p.input = {"ultimate":true}
+	Ultimate.tick(sim,p,p.input,.01)
+	p.input = {}
+	Ultimate.tick(sim,p,p.input,10.01)
+	check(not Ultimate.active(p) and p.ultimate_cd == 60,"Natural ten-second expiration starts full cooldown")
+	var disk_path = OS.get_cache_dir().path_join("undead-ultimate-qa-"+str(Time.get_ticks_usec())+".json")
+	var persisted = Store.new(disk_path)
+	persisted.data = sim.progression.data.duplicate(true)
+	persisted.dirty = true
+	check(persisted.save() and Store.new(disk_path).level("ultimate") == 4,"Ultimate rank survives an actual disk reload")
+	for suffix in ["",".bak",".tmp"]:
+		if FileAccess.file_exists(disk_path+suffix): DirAccess.remove_absolute(disk_path+suffix)
+	var key = InputEventKey.new()
+	key.physical_keycode = KEY_Q
+	key.pressed = true
+	game._unhandled_input(key)
+	check(game.input_state().ultimate and not game.input_state().ultimate,"Physical Q submits one input edge")
+	game.ui.native_hud.sync()
+	check(game.ui.native_hud.ultimate_ring.caption == "0%","Ultimate ring shows charge percentage after ending")
+	sim.damage_crystal({},1)
+	game.ui.native_hud.sync()
+	check(game.ui.native_hud.crystal_alert.visible,"Crystal damage shows top-of-screen alert")
+	# Compare uncapped armor damage at an identical blast position.
+	sim.zombies.clear()
+	var blast = Vector3(8,4.0,27)
+	sim.spawn(Vector2(8,27),"giant")
+	var victim: Dictionary = sim.zombies[0]
+	var hp: float = victim.hp
+	sim.equipment.explode({"id":-1,"owner":p.id,"pos":blast,"damage_scale":.5})
+	var mine_damage: float = hp-victim.hp
+	victim.body = 8000.0
+	victim.armor = 4000.0
+	victim.hp = 12000.0
+	victim.pos = Vector2(8,27)
+	sim.equipment.explode({"id":-1,"owner":p.id,"pos":blast})
+	check(is_equal_approx(hp-victim.hp,mine_damage*2),"Hand grenade deals twice mine damage at the same distance")
+	# Real disk deletion under a unique temporary directory, never the user's saves.
+	var folder = OS.get_cache_dir().path_join("undead-delete-qa-"+str(Time.get_ticks_usec()))
+	DirAccess.make_dir_recursive_absolute(folder)
+	var manager = load("res://scripts/progression.gd").new()
+	manager.configure(folder)
+	manager.slots[0].data.coins = 123
+	manager.slots[0].dirty = true
+	check(manager.slots[0].save(),"Deletion fixture creates a real save")
+	var filename: String = manager.slots[0].path
+	DirAccess.copy_absolute(filename,filename+".bak")
+	DirAccess.copy_absolute(filename,filename+".corrupt-test")
+	manager.slots[1].data.coins = 99
+	manager.slots[1].dirty = true
+	manager.slots[1].save()
+	check(manager.delete_slot(0) and not FileAccess.file_exists(filename) and not FileAccess.file_exists(filename+".bak") and not FileAccess.file_exists(filename+".corrupt-test"),"Confirmed deletion removes primary and recoverable copies")
+	check(manager.store.data.coins == 0 and manager.slots[1].data.coins == 99,"Deleted current slot resets while another slot is preserved")
+	var directory = DirAccess.open(folder)
+	for file in directory.get_files(): directory.remove(file)
+	DirAccess.remove_absolute(folder)
+	manager.free()
+	game.free()
+	print("COMBAT UPGRADES: %d checks; %d failures" % [checks,failures])
+	quit(1 if failures else 0)

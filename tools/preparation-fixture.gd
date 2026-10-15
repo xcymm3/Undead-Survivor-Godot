@@ -2,10 +2,17 @@ extends RefCounted
 const Catalog = preload("res://scripts/preparation_catalog.gd")
 
 static func face(sim, p: Dictionary, id: String) -> void:
+	var anchor = id
+	if id in sim.progression.WEAPONS or id in sim.progression.MAGAZINES:
+		var weapon = id.trim_suffix("_magazine")
+		p.weapon = {"rifle":0,"pistol":2,"axe":6}[weapon]
+		p.requested = p.weapon
+		p.slot = {"rifle":1,"pistol":2,"axe":3}[weapon]
+		anchor = "rifle_magazine" if id in sim.progression.MAGAZINES else "rifle"
 	for entry in Catalog.targets(sim):
-		if entry.id != id: continue
+		if entry.id != anchor: continue
 		var point: Vector3 = entry.position
-		var station: bool = id in sim.progression.WEAPONS or id in sim.progression.MAGAZINES or id in sim.progression.TALENTS or id in ["grenade","alarm"]
+		var station: bool = id in sim.progression.WEAPONS or id in sim.progression.MAGAZINES or id in sim.progression.TALENTS or id in ["grenade","alarm","ultimate"]
 		p.pos = Vector2(point.x,point.z)+Vector2(0,-2 if station else 2)
 		if id in sim.progression.MAGAZINES: p.pos = Vector2(point.x-2,point.z)
 		p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
