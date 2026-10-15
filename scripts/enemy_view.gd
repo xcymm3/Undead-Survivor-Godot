@@ -201,7 +201,9 @@ static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 			var pivot = Vector3(-.19 if index == 1 else .19,.83,0) if index < 3 else Vector3(-.43 if index == 3 else .43,1.35,0) if index < 5 else Vector3(0,1.79,0)
 			var rotation = Basis(Vector3.BACK,beat*.3 if index < 3 else (-1.1 if index == 3 else 1.1)+beat*.4 if index < 5 else beat*.15)
 			bones[index] = Transform3D(rotation,pivot-rotation*pivot)
-	return {"root":root_transform(z,elapsed,stationary,stride,toy_walk),"bones":bones}
+	var root = root_transform(z,elapsed,stationary,stride,toy_walk)
+	if mechanical: root = Toy.plant_feet(root,bones,Data.parts,Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense")))
+	return {"root":root,"bones":bones}
 
 static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
 	var moving: bool = z.hp > 0 and not stationary and z.get("move_speed",0.0) > .05 and z.state != "stunned"

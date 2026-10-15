@@ -121,3 +121,17 @@ static func walk_sample(phase: float) -> Vector3:
 	# Distance-driven phase is unchanged, so stopping movement freezes the cycle.
 	var frame = floori(fposmod(phase,TAU)/TAU*6.0)%6
 	return Vector3(MECHANICAL_LEG_ANGLES[frame],MECHANICAL_LEG_ANGLES[(frame+3)%6],sin(phase))
+
+static func plant_feet(root: Transform3D, bones: Array, parts: Array, ground: float) -> Transform3D:
+	# Two transformed-box support points; no raycasts or extra physics bodies.
+	var low = INF
+	for index in [14,15]:
+		var part: Dictionary = parts[index]
+		var point = Vector3(part.position[0],part.position[1],part.position[2])
+		var half_size = part_size(part,"normal")*.5
+		var pose: Transform3D = root*bones[1 if index == 14 else 2]
+		var center: Vector3 = pose*point
+		var radius = absf(pose.basis.x.y)*half_size.x+absf(pose.basis.y.y)*half_size.y+absf(pose.basis.z.y)*half_size.z
+		low = minf(low,center.y-radius)
+	root.origin.y += ground+.015-low
+	return root

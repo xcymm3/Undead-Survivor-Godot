@@ -73,7 +73,7 @@ static func validate(game, check: Callable) -> void:
 			for x in [-.5,.5]:
 				for y in [-.5,.5]:
 					for depth in [-.5,.5]: low = minf(low,(poses[index]*Vector3(x,y,depth)).y-data.enemy_ground_height(z.pos))
-		check.call(low >= -.035,"Mechanical foot stays above terrain through cycle: "+str(phase))
+		check.call(low >= -.001 and low <= .025,"Mechanical supporting foot stays planted through cycle: "+str(phase))
 	game.enemies.sync([z],0,false)
 	var actor: Dictionary = game.enemies.actors[z.id]
 	var authority: Dictionary = View.pose_state(z,0,false)
