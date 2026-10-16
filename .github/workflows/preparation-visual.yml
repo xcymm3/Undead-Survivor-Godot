@@ -6,7 +6,7 @@ on:
         type: choice
         description: 截图范围
         default: all
-        options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon]
+        options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif]
   workflow_call:
     inputs:
       scope:
@@ -36,18 +36,27 @@ jobs:
       - run: npx playwright install chromium --only-shell
       - run: npm run verify
       - run: ./tools/validate-headless.ps1 -Mode Defense
+        if: inputs.scope != 'axe_gif'
       - run: ./tools/setup-web-templates.ps1
       - name: 导出软件渲染场景
+        if: inputs.scope != 'axe_gif'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force build/web | Out-Null
           & ./.runtime/Godot_v4.5.2-stable_win64_console.exe --headless --audio-driver Dummy --path . --export-release 'Web QA'
           if ($LASTEXITCODE -ne 0) { throw 'Web export failed' }
+      - name: 隔离录制消防斧连续劈砍
+        if: inputs.scope == 'axe_gif'
+        run: |
+          node tools/trailer/capture.mjs --prepare
+          if ($LASTEXITCODE -ne 0) { throw 'Axe capture export failed' }
+          node tools/trailer/capture.mjs --capture --shot=axe
+          if ($LASTEXITCODE -ne 0) { throw 'Axe frame capture failed' }
       - name: 本次地雷与菜单截图
         if: inputs.scope == 'noon'
         run: npx playwright test tests/browser/noon-visual.spec.mjs
       - run: npx playwright test tests/browser/campaign-review.spec.mjs tests/browser/defense.spec.mjs
-        if: inputs.scope != 'noon'
+        if: inputs.scope != 'noon' && inputs.scope != 'axe_gif'
         env:
           QA_BLADE_ATTACK_ONLY: ${{ inputs.scope == 'blade_attack' && '1' || '' }}
           QA_SHIELD_BLADE_ONLY: ${{ inputs.scope == 'shield_blade' && '1' || '' }}

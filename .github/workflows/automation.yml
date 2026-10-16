@@ -14,7 +14,7 @@ on:
       visual_scope:
         description: 隔离截图范围
         type: choice
-        options: [switch, normal, face, toys, shield_blade, blade_attack, noon, all]
+        options: [switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, all]
         default: switch
       enemy_lab_counts:
         description: 'CPU正式矩阵人数（完整或300只重点确认）'
