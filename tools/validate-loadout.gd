@@ -6,6 +6,7 @@ static func validate(game, check: Callable) -> void:
 	progress.store = load("res://scripts/progression_store.gd").new()
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await game.get_tree().physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
@@ -54,9 +55,11 @@ static func validate(game, check: Callable) -> void:
 	check.call(game.ui.native_hud.equipment_slots[0].title.text == "步枪" and game.ui.native_hud.equipment_slots[1].title.text == "半自动手枪","HUD names both fixed guns")
 	check.call(game.ui.native_hud.equipment_slots[2].title.text == "消防斧" and game.ui.native_hud.equipment_slots[3].title.text == "手雷  0 / 1","HUD displays axe and current grenade capacity")
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	p = game.local_pawn()
 	check.call(p.slot_ammo == [30,15] and p.slot_reserves == [255,128],"Restarting a run restores both firearms")
 	game.return_home()
 	progress.store = previous
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await game.get_tree().physics_frame

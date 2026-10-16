@@ -46,11 +46,13 @@ func run() -> void:
 	check(game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text.begins_with("存档 ")),"Homepage exposes save-slot selection")
 	data.test_money = true
 	game.start_solo("defense",20261012)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	check(game.sim.progression.data.coins == 1000000000 and game.sim.progression.data.diamonds == 10000,"Test-money checkbox configures one billion coins and ten thousand diamonds on entry")
 	game.return_home()
 	data.test_money = false
 	game.select_save_slot(1)
+	game.sim.defense.erase("intro_elapsed") # Economy fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()

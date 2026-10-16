@@ -12,6 +12,7 @@ func check(value: bool, message: String) -> void:
 func validate_combat_revision() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
@@ -144,6 +145,7 @@ func validate_combat_revision() -> void:
 	sim.zombies.clear()
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 
 func validate_flame() -> void:
@@ -164,6 +166,7 @@ func validate_flame() -> void:
 	fx.collision_query = original_query
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
@@ -197,6 +200,7 @@ func validate_flame() -> void:
 func validate_sniper_penetration() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
@@ -229,6 +233,7 @@ func validate_sniper_penetration() -> void:
 func validate_shield_contacts() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
@@ -310,6 +315,7 @@ func validate_shield_contacts() -> void:
 func validate_rifle_penetration() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
@@ -363,6 +369,7 @@ func validate_rifle_penetration() -> void:
 func validate_pistol_and_equip() -> void:
 	game.return_home()
 	game.start_solo("defense",734)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
@@ -419,6 +426,7 @@ func validate_pistol_and_equip() -> void:
 func validate_crawler() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var data = root.get_node("Data")
@@ -504,6 +512,7 @@ func validate_crawler() -> void:
 func validate_outfits() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var counts = [0,0,0,0,0]
@@ -544,6 +553,7 @@ func validate_outfits() -> void:
 func validate_interaction_motion() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var d = sim.defense_director
@@ -573,7 +583,7 @@ func validate_interaction_motion() -> void:
 		var station: Dictionary = game.arena.scenery.preparation.stations[id]
 		var bounds: AABB = preload("res://scripts/world_geometry.gd").posed_bounds(station.prop.get_child(0))
 		check(bounds.get_center().distance_to(station.prop.global_position) < .35 and bounds.size.length() > 1.0,"Display geometry is centered above its actual world-space desk: "+id)
-	check(scenery.preparation.focus_label.no_depth_test and scenery.preparation.stations.rifle.root.has_node("ToyStationTitle"),"Toy nameplates accompany the unobstructed contextual label")
+	check(scenery.preparation.focus_label.no_depth_test and not scenery.preparation.stations.rifle.root.has_node("ToyNamePlate"),"Restored stands retain the unobstructed contextual label")
 	fixture.face(sim,p,"crystal")
 	game.arena.scenery.sync_focus(sim,p)
 	check(preload("res://scripts/preparation_catalog.gd").focus(sim,p).get("id","") == "crystal" and game.arena.scenery.preparation.focus_label.text.contains("修复完成立即开始"),"The broken crystal exposes its immediate-start repair warning")
@@ -641,6 +651,7 @@ func run() -> void:
 	check(not ray.is_empty(),"Baked ground participates in native physics rays")
 	check(RenderingServer.render_loop_enabled,"Normal rendering uses the engine loop")
 	game.start_solo("defense")
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	var network = root.get_node("Session")
 	var original_members: Dictionary = network.members.duplicate()
 	network.members = {"solo":"测试玩家"}
@@ -775,6 +786,7 @@ func run() -> void:
 	check(game.display_buffer.history.size() == 2,"World receiver feeds the display buffer")
 	check(game.sim.zombies[0].pos == world.zombies[0].pos,"Rendering retains the latest authoritative enemy position")
 	session.playing = false
+	await load("res://tools/validate-first-attempt-intro.gd").validate(game,check)
 	await load("res://tools/validate-map-redesign.gd").validate(game,check)
 	game.return_home()
 	check(not game.ui.native_hud.visible,"HUD hides on return to menu")
@@ -1266,6 +1278,7 @@ func validate_enemy_overlap() -> void:
 func validate_inventory() -> void:
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
@@ -1312,12 +1325,14 @@ func validate_inventory() -> void:
 		check(sim.zombies[0].hp < 200 if distance <= 3.5 else sim.zombies[0].hp == 200,"Axe retains reach against doubled health at "+str(distance))
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 
 func validate_equipment() -> void:
 	for party in [1,2]:
 		game.return_home()
 		game.start_solo("defense",71245)
+		game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 		if party == 2:
 			game.sim.add_pawn("equipment_peer","队友",1)
 			game.sim.start("defense")
@@ -1348,5 +1363,6 @@ func validate_equipment() -> void:
 		if party == 2: check(sim.pawns.equipment_peer.hp == 100,"Grenade does not damage teammate")
 	game.return_home()
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	await process_frame

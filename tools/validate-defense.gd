@@ -86,6 +86,7 @@ func run() -> void:
 	check(shop_walls.size() == 1 and shop_walls[0].position.x == 0 and is_equal_approx(shop_walls[0].position.z+.325,layout.PLATEAU.end.y),"Shop is centered and flush with the rear perimeter")
 
 	game.start_solo("defense")
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var pawn: Dictionary = sim.pawns.solo
@@ -414,6 +415,7 @@ func run() -> void:
 	check(sim.won and sim.wave == 10,"Final-wave clear ends the campaign without wave eleven")
 	# The dormant shared host simulation also advances without repeated input.
 	game.start_solo("defense")
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	sim.add_pawn("two","二号",1)
@@ -427,6 +429,7 @@ func run() -> void:
 
 	# Failure is driven by non-recoverable crystal health, independent of player health.
 	game.start_solo("defense")
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	pawn = sim.pawns.solo

@@ -15,6 +15,7 @@ func run() -> void:
 	game.set_physics_process(false)
 	check(not game.sound.streams.has("equip-rifle-bolt") and not game.sound.streams.has("equip-pistol-spin"),"Removed weapon switch sounds are not registered")
 	game.start_solo("defense",42)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	var sim = game.sim
 	var p: Dictionary = sim.pawns.solo
 	var catalog = load("res://scripts/preparation_catalog.gd")
@@ -127,6 +128,7 @@ func run() -> void:
 	game.arena.scenery.sync(state)
 	check(damage.fragments[0].node.position != point,"Crystal fragments actually move over time")
 	game.start_solo("defense",42)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	sim = game.sim
 	p = sim.pawns.solo
 	sim.wave = 10
@@ -175,6 +177,7 @@ func run() -> void:
 	var returns = game.ui.menu.find_children("*","Button",true,false).filter(func(n): return n.text == "返回")
 	check(not returns.is_empty() and returns[0].get_global_rect().end.y <= returns[0].get_parent().get_parent().get_global_rect().end.y+1,"Settings return button fits the visible panel without outer scrolling")
 	game.start_solo("defense",42)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	sim = game.sim
 	p = sim.pawns.solo
 	p.hp = 0

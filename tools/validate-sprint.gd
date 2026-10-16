@@ -24,6 +24,7 @@ static func reset_pawn(sim, p: Dictionary) -> void:
 
 static func validate(game, check: Callable) -> void:
 	game.start_solo("defense",42)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await game.get_tree().physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
@@ -97,5 +98,6 @@ static func validate(game, check: Callable) -> void:
 		game.weapon.sync(p,.2,1.23)
 		check.call(game.weapon.sprint_blend == 0,"Sprint returns to a ready stance: "+str(weapon))
 	game.start_solo("defense",42)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await game.get_tree().physics_frame
 	check.call(game.weapon.sprint_blend == 0 and game.weapon.sprint_phase == 0,"Restart clears sprint pose history")

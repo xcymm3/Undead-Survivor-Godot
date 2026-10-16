@@ -9,6 +9,7 @@ func run() -> void:
 	game.set_process(false)
 	game.set_physics_process(false)
 	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var pawn: Dictionary = game.local_pawn()
 	pawn.pos = Vector2(8,36)

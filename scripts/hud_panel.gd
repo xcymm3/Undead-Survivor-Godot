@@ -178,9 +178,10 @@ func setup(owner_ui) -> void:
 	wave_announcement = text(content,48)
 	wave_announcement.name = "WaveAnnouncement"
 	wave_announcement.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	wave_announcement.offset_left = 290
-	wave_announcement.offset_right = -290
+	wave_announcement.offset_left = 180
+	wave_announcement.offset_right = -180
 	wave_announcement.offset_top = 200
+	wave_announcement.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	wave_announcement.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	wave_announcement.add_theme_color_override("font_outline_color",Color(.035,.04,.05,.9))
 	wave_announcement.add_theme_constant_override("outline_size",6)
@@ -280,10 +281,14 @@ func sync() -> void:
 			time_label.text += " · 下一波最早 %d 秒" % gap_left
 	var age: float = sim.elapsed-float(defense.get("wave_started_at",-100))
 	var announcement_opacity: float = announcement_alpha(age) if defense.get("started",false) and not sim.failed and not sim.won else 0.0
+	var intro = preload("res://scripts/first_attempt_intro.gd")
+	var intro_active: bool = intro.active(defense)
+	if intro_active: announcement_opacity = intro.alpha(defense)
 	wave_announcement.visible = announcement_opacity > 0
 	wave_announcement.modulate = Color(1,1,1,announcement_opacity)
 	wave_announcement.text = "第10波-最后一波！" if sim.wave == 10 else "第%d波" % sim.wave
-	wave_announcement.add_theme_color_override("font_color",Color("ffab62") if sim.wave == 10 else Color("ffe8ae"))
+	if intro_active: wave_announcement.text = intro.caption(defense)
+	wave_announcement.add_theme_color_override("font_color",Color("ffab62") if sim.wave == 10 and not intro_active else Color("ffe8ae"))
 	crystal_label.visible = sim.mode == "defense"
 	crystal_bar.visible = sim.mode == "defense"
 	if sim.mode == "defense":
@@ -309,6 +314,7 @@ func sync() -> void:
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "defense":
 		controls_hint.text = "1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷 · Q 大招 · R 换弹 · ESC 暂停" if defense.get("started",false) else "先过桥整备 · 长按 E 修复水晶后立即开波"
+		if intro_active: controls_hint.text = "ESC 暂停"
 		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id) if w.id == "ultimate" else sim.progression.level(w.id)+1]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
 		ammo_note.text = "无需弹药" if infinite else "容量 %d · R 换弹 · 清波 +2 备弹夹" % sim.weapon_capacity(p.weapon)

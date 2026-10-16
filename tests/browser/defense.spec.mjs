@@ -53,6 +53,7 @@ test('吊桥水晶防守使用真实输入换装并过桥后长按E修复水晶�
   const deltaX = Math.atan2(Math.sin(aimed.yaw - targetYaw), Math.cos(aimed.yaw - targetYaw)) / .0022;
   const deltaY = (aimed.pitch - targetPitch) / .0022;
   await page.mouse.move(480 + deltaX, 300 + deltaY, { steps: Math.max(1, Math.ceil(Math.max(Math.abs(deltaX), Math.abs(deltaY)) / 100)) });
+  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 20, null, { timeout: 30_000 });
   await page.waitForFunction(() => window.__survivorSnapshot.player.focus?.id === 'crystal');
   await page.keyboard.down('e');
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });

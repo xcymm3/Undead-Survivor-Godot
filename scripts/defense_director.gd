@@ -10,6 +10,7 @@ var structures
 var rewarded_waves: Dictionary = {}
 var launched_waves: Dictionary = {}
 const WAVE_GAP = 10.0
+const Intro = preload("res://scripts/first_attempt_intro.gd")
 
 func _init(world) -> void:
 	owner_ref = weakref(world)
@@ -87,6 +88,13 @@ func target(p: Dictionary) -> Dictionary:
 
 func interactions(dt: float) -> void:
 	state.party = sim.pawns.size()
+	var intro_blocked = Intro.active(state)
+	if intro_blocked:
+		state.intro_elapsed = minf(Intro.DURATION,float(state.intro_elapsed)+dt)
+		if not Intro.active(state):
+			sim.progression.data["intro_seen"] = true
+			sim.progression.dirty = true
+			sim.progression.save()
 	state.prop_clock += dt
 	for p in sim.pawns.values(): p.pickup_remaining = maxf(0,p.get("pickup_until",0.0)-state.prop_clock)
 	for motion in state.get("pickup_motion",[]):
@@ -98,6 +106,13 @@ func interactions(dt: float) -> void:
 		var input: Dictionary = p.input if p.input_age < .5 else {}
 		p.input["wave_ready"] = false
 		if not input.get("interact",false): p.pickup_latched = false
+		if intro_blocked:
+			p.pickup_latched = bool(input.get("interact",false))
+			p["focus"] = {}
+			p.hint = ""
+			p.interaction = ""
+			p.interact_time = 0.0
+			continue
 		var choice := target(p)
 		p["focus"] = choice
 		p.hint = ""

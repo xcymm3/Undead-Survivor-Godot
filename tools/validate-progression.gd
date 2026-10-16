@@ -152,6 +152,7 @@ func run() -> void:
 	game.set_physics_process(false)
 	root.get_node("Progress").store = Store.new()
 	game.start_solo("defense",42)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
@@ -290,6 +291,7 @@ func run() -> void:
 	check(manager.find("bridge_gate").hp == 0 and p.grenades == 0 and p.reserves[0] == 83 and p.reserves[2] == 540,"Next wave preserves destroyed buildings and spent grenades without extra ammunition")
 	var permanent = sim.progression.data.duplicate(true)
 	game.start_solo("defense",42)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	p = game.local_pawn()
@@ -310,6 +312,7 @@ func run() -> void:
 	check(game.ui.native_hud.currency_label.text.contains(str(sim.progression.data.coins)),"Top-right HUD shows permanent currency")
 	root.get_node("Progress").store = Store.new()
 	game.start_solo("defense",913)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	p = game.local_pawn()
@@ -340,6 +343,7 @@ func run() -> void:
 	check(p.reserves[0] == 136 and p.reserves[2] == 118,"Clear rewards use two upgraded reserve magazines per gun")
 	var capacity_state = sim.progression.data.duplicate(true)
 	game.start_solo("defense",913)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	p = game.local_pawn()

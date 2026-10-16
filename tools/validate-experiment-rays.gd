@@ -6,6 +6,7 @@ func run() -> void:
 	game.set_process(false)
 	game.set_physics_process(false)
 	game.start_solo("defense",42029)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	sim.zombies.clear()

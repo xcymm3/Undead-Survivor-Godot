@@ -26,6 +26,7 @@ static func targets(sim) -> Array:
 	return result
 
 static func focus(sim, p: Dictionary) -> Dictionary:
+	if preload("res://scripts/first_attempt_intro.gd").active(sim.defense): return {}
 	if sim.defense.get("started",false): return {}
 	if p.get("hp",0) <= 0: return {}
 	var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
@@ -62,6 +63,7 @@ static func focus(sim, p: Dictionary) -> Dictionary:
 	return selected
 
 static func available(sim, id: String) -> bool:
+	if preload("res://scripts/first_attempt_intro.gd").active(sim.defense): return false
 	if sim.defense.started or sim.failed or sim.won: return false
 	if id == "crystal": return sim.defense.get("crystal_repair_required",false)
 	if id in sim.progression.BUILDINGS:

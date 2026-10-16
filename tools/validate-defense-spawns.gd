@@ -34,6 +34,7 @@ func run() -> void:
 	check(arena.surface_hit(Vector3(0,10,-72),Vector3(0,5,-72)).is_empty(),"Spawn platform remains open above")
 	var goal = Vector2(0,-59.5)
 	game.start_solo("defense",20260929)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var planner = sim.defense_spawner

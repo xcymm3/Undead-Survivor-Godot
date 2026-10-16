@@ -19,6 +19,7 @@ func stage() -> void:
 	if not building_id.is_empty() and parts[1] != "unbuilt":
 		if building_id in Progress.store.MINES: Progress.store.data.mines[building_id] = true
 		else: Progress.store.data.buildings[building_id].owned = true
+	Progress.store.data["intro_seen"] = not scenario.begins_with("intro_")
 	game.start_solo("defense",42)
 	await get_tree().physics_frame
 	game.running = false
@@ -114,7 +115,7 @@ func stage() -> void:
 				p.yaw = game.camera.rotation.y
 				p.pitch = game.camera.rotation.x
 			game.arena.scenery.sync_focus(game.sim,p)
-	if scenario.begins_with("map_") or scenario.begins_with("toy_") or scenario in ["crystal_broken","crystal_repaired"]:
+	if scenario.begins_with("intro_") or scenario.begins_with("map_") or scenario.begins_with("toy_") or scenario in ["crystal_broken","crystal_repaired"]:
 		await stage_redesign(scenario,p)
 	game.running = true
 	game.ui.native_hud.sync()
@@ -132,7 +133,9 @@ func stage() -> void:
 func stage_redesign(scenario: String, p: Dictionary) -> void:
 	var layout = Data.Maps.Defense
 	var center = Vector3(layout.CRYSTAL.x,4.6,layout.CRYSTAL.y)
-	if scenario == "map_spawn":
+	if scenario.begins_with("intro_"):
+		game.sim.defense.intro_elapsed = float(scenario.get_slice("_",1))*5.0+2.5
+	if scenario == "map_spawn" or scenario.begins_with("intro_"):
 		game.camera.position = Vector3(p.pos.x,p.height+1.65,p.pos.y)
 		game.camera.rotation = Vector3(0,p.yaw,0)
 		game.camera.fov = 70

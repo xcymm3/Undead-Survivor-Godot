@@ -21,7 +21,7 @@ var notice = ""
 var data: Dictionary = defaults()
 
 static func defaults() -> Dictionary:
-	return {"version":6,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
+	return {"version":6,"intro_seen":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
 
 func _init(save_path := "") -> void:
 	path = save_path
@@ -32,6 +32,7 @@ static func bounded_integer(value, maximum: int) -> bool:
 
 static func valid(value) -> bool:
 	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,6) or value.version < 1: return false
+	if value.has("intro_seen") and not value.intro_seen is bool: return false
 	for key in ["coins","diamonds","best_wave","cleared_total"]:
 		if not bounded_integer(value[key],MAX_CURRENCY): return false
 	if not bounded_integer(value.grenade_level,4): return false

@@ -22,6 +22,7 @@ func fresh():
 	for id in game.get_node("/root/Progress").store.MINES:
 		game.get_node("/root/Progress").store.data.mines[id] = true
 	game.start_solo("defense",42)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	game.running = false
 	game.sim.defense.started = true
 	game.sim.defense.waiting = false
@@ -326,6 +327,7 @@ func run() -> void:
 	snapshot.defense.structures[0].hp = 201
 	check(not root.get_node("Session").valid_world(snapshot),"Malformed structure health is rejected by network validation")
 	game.start_solo("defense",42)
+	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	check(game.sim.defense.structures == owned_initial(),"Starting a new match restores all purchased buildings and mines")
 	sim = fresh()
 	await physics_frame

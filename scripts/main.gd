@@ -129,6 +129,8 @@ func start_solo(mode: String = "defense", random_seed := -1) -> void:
 	sim.pawns.solo.yaw = yaw
 	if random_seed >= 0: sim.random.seed = random_seed
 	sim.start(mode)
+	if mode == "defense" and not Progress.store.data.get("intro_seen",false):
+		sim.defense["intro_elapsed"] = 0.0
 	resume_game()
 
 func start_coop() -> void:
