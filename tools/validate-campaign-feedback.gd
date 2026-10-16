@@ -150,7 +150,9 @@ func run() -> void:
 	game.update_finish_camera(4)
 	check(game.ui.current != "result" and game.ui.victory_caption.visible,"Boss caption holds through five seconds")
 	game.update_finish_camera(.81)
-	check(game.ui.current == "result" and game.ui.menu.find_children("*","Label",true,false).any(func(n): return n.text.contains("本局获得")),"Result shows session coin and diamond earnings after camera sequence")
+	var earned_coins = game.ui.menu.find_child("EarnedCoins",true,false)
+	var earned_diamonds = game.ui.menu.find_child("EarnedDiamonds",true,false)
+	check(game.ui.current == "result" and earned_coins != null and earned_diamonds != null and earned_coins.text == "+%d" % sim.earned_coins and earned_diamonds.text == "+%d" % sim.earned_diamonds,"Result shows exact session coin and diamond earnings after camera sequence")
 	game.return_home()
 	await process_frame
 	await process_frame

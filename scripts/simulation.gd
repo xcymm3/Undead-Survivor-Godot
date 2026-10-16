@@ -218,6 +218,10 @@ func step(dt: float) -> void:
 	if equipment: equipment.before_movement(dt)
 	for p in pawns.values(): update_pawn(p,dt)
 	if equipment: equipment.step_projectiles(dt)
+	var living: Array = pawns.values().filter(func(p): return p.hp > 0)
+	if living.is_empty():
+		fail_from_player_death()
+		return
 	if mode == "defense":
 		defense_director.interactions(dt)
 		if not defense.get("started",false): return
@@ -227,10 +231,6 @@ func step(dt: float) -> void:
 		var key = Vector2i(floori(z.pos.x/3),floori(z.pos.y/3))
 		if not crowd_buckets.has(key): crowd_buckets[key] = []
 		crowd_buckets[key].append(z)
-	var living: Array = pawns.values().filter(func(p): return p.hp > 0)
-	if living.is_empty():
-		failed = true
-		return
 	preload("res://scripts/dancer_boss.gd").step(self,dt)
 	for z in zombies:
 		if z.hp <= 0:
@@ -256,7 +256,7 @@ func step(dt: float) -> void:
 		arena.sync_defense(defense)
 		return
 	if pawns.values().all(func(p): return p.hp <= 0):
-		failed = true
+		fail_from_player_death()
 		return
 	if mode == "defense" and defense.get("waiting",false): return
 	defense_director.reward_finished_waves()
@@ -274,6 +274,14 @@ func step(dt: float) -> void:
 	defense_spawner.step(dt,living)
 	if roster.is_empty() and wave < 10 and float(defense.get("next_wave_at",-1)) < 0:
 		defense["next_wave_at"] = elapsed+defense_director.WAVE_GAP
+
+func fail_from_player_death() -> void:
+	# The defeat shot preserves crystal health and appearance. A new match
+	# initializes its own broken crystal; killer attribution remains intact.
+	failed = true
+	if mode == "defense":
+		defense.objective = "守卫阵亡"
+		arena.sync_defense(defense)
 
 func safe_spawn() -> Vector2:
 	for p in map_definition.safe:

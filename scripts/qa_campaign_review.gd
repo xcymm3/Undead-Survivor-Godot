@@ -32,6 +32,7 @@ func stage() -> void:
 			game.ui.show_settings()
 		if scenario == "saves": game.ui.show_save_slots()
 	else:
+		if scenario.begins_with("result_"): Progress.store.data["intro_seen"] = true
 		game.start_solo("defense",42)
 		await get_tree().physics_frame
 		game.ui.clear_menu()
@@ -98,6 +99,25 @@ func stage() -> void:
 			game.enemies.sync(sim.zombies,sim.elapsed,false)
 			game.camera.position = Vector3(0,4.8,12)
 			game.camera.look_at(Vector3(0,4.5,2))
+		if scenario.begins_with("result_"):
+			sim.defense.started = false
+			sim.defense_director.begin_wave()
+			sim.roster.clear()
+			sim.elapsed = 12.3
+			# Small controlled match: rewards come from actual kills and wave logic.
+			for index in 3:
+				sim.spawn(Vector2(8+index,26),"normal")
+				sim.hit_enemy(sim.zombies[-1],1000,false,p,Vector3(8+index,4,26))
+			sim.defense_director.reward_finished_waves()
+			if scenario == "result_crystal":
+				sim.damage_crystal({},3000)
+			else:
+				sim.spawn(p.pos+Vector2(0,-1),"normal")
+				p.protection = 0.0
+				sim.damage_pawn(p,sim.zombies[-1],100)
+			sim.step(.02)
+			game.finish_run()
+			game.update_finish_camera(4.0)
 		if scenario.begins_with("failure"):
 			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
 			game.camera.look_at(center)

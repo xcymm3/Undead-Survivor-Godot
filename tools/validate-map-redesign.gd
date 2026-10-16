@@ -64,6 +64,68 @@ static func validate(game, check: Callable) -> void:
 	for station in world.preparation.stations.values():
 		check.call(not station.root.has_meta("art_style") and not station.root.has_node("ToyNamePlate"),"Preparation stand restores its original appearance")
 	check.call(world.crystal.find_children("AssemblySeam*","MeshInstance3D",true,false).is_empty(),"Crystal has no gray assembly seam rings")
+	await validate_player_death(game,check)
 	progress.store = saved
 	game.start_solo("defense",71245)
 	await game.get_tree().physics_frame
+
+static func validate_player_death(game, check: Callable) -> void:
+	for scenario in ["enemy","during_tick","fall","preparation","coop","damaged"]:
+		game.start_solo("defense",491)
+		await game.get_tree().physics_frame
+		var sim = game.sim
+		var p: Dictionary = game.local_pawn()
+		if scenario != "preparation": sim.defense_director.begin_wave()
+		sim.roster.clear()
+		p.pos = Layout.CRYSTAL+Vector2(0,4)
+		p.height = Layout.height(p.pos)
+		p.hp = 10
+		p.protection = 0.0
+		sim.spawn(p.pos+Vector2(0,-1.1),"normal")
+		var attacker: Dictionary = sim.zombies[-1]
+		if scenario == "coop":
+			sim.add_pawn("survivor","幸存队友",1)
+			sim.defense_director.equipment.initialize()
+			p.hp = 10
+		if scenario == "damaged":
+			sim.defense.crystal_hp = 1234
+			game.arena.scenery.sync(sim.defense)
+		var crystal_hp: int = sim.defense.crystal_hp
+		var repair_required: bool = sim.defense.crystal_repair_required
+		var broken_at: float = sim.defense.get("crystal_broken_at",-1.0)
+		var fragments: bool = game.arena.scenery.crystal_damage.debris.visible
+		var collider_layer: int = game.arena.scenery.get_node("CrystalBody").collision_layer
+		if scenario == "fall":
+			sim.recover_defense_fall(p,sim.player_body(p))
+		elif scenario != "during_tick":
+			sim.damage_pawn(p,attacker,10)
+		if scenario == "during_tick":
+			for tick in 15:
+				sim.step(.1)
+				if sim.failed: break
+		else:
+			sim.step(.02)
+		if scenario == "coop":
+			check.call(not sim.failed and sim.defense.crystal_hp == 3000,"A living coop teammate prevents defeat and crystal shattering")
+			var teammate: Dictionary = sim.pawns.survivor
+			attacker.pos = teammate.pos+Vector2(0,-1)
+			sim.damage_pawn(teammate,attacker,100)
+			sim.step(.02)
+		check.call(sim.failed and p.hp == 0 and sim.cause == ("fall" if scenario == "fall" else "zombie"),"Player-death defeat preserves its actual cause: "+scenario)
+		check.call(sim.culprit == (-1 if scenario == "fall" else int(attacker.id)),"Crystal consequence preserves the killer attribution: "+scenario)
+		check.call(sim.defense.crystal_hp == crystal_hp and sim.defense.crystal_repair_required == repair_required,"Player death preserves crystal health and repair flag until restart: "+scenario)
+		check.call(game.arena.scenery.crystal_damage.debris.visible == fragments and game.arena.scenery.get_node("CrystalBody").collision_layer == collider_layer,"Player death preserves crystal appearance and collision: "+scenario)
+		game.finish_run()
+		game.update_finish_camera(4.0)
+		check.call(game.arena.scenery.crystal_damage.debris.visible == fragments and sim.defense.get("crystal_broken_at",-1.0) == broken_at,"Defeat camera and result dialog cannot shatter the crystal: "+scenario)
+		check.call(game.ui.current == "result" and game.ui.menu.has_node("FieldMenuStage"),"Player death opens the native game-style result panel: "+scenario)
+		sim.step(.02)
+		check.call(sim.events.is_empty() and sim.defense.get("crystal_broken_at",-1.0) == broken_at,"Failed ticks do not restart crystal shattering: "+scenario)
+		game.start_solo("defense",492)
+		await game.get_tree().physics_frame
+		sim = game.sim
+		p = game.local_pawn()
+		check.call(not sim.failed and not sim.defense.started and sim.defense.crystal_hp == 0 and sim.defense.crystal_repair_required,"Re-entering after player death requires rebuilding the crystal: "+scenario)
+		Fixture.face(sim,p,"crystal")
+		Fixture.hold(sim,p,1.01)
+		check.call(sim.defense.started and sim.defense.crystal_hp == 3000,"Rebuilding after player death restores the crystal and starts wave one: "+scenario)

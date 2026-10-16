@@ -6,7 +6,7 @@ on:
         type: choice
         description: 截图范围
         default: all
-        options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, map_toys, ultimate_ring]
+        options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, map_toys, ultimate_ring, dialogs]
   workflow_call:
     inputs:
       scope:
@@ -64,8 +64,11 @@ jobs:
       - name: 大招充能环截图
         if: inputs.scope == 'ultimate_ring'
         run: npx playwright test tests/browser/ultimate-ring-visual.spec.mjs
+      - name: 结束设置与存档弹窗截图
+        if: inputs.scope == 'dialogs'
+        run: npx playwright test tests/browser/dialogs-visual.spec.mjs
       - run: npx playwright test tests/browser/campaign-review.spec.mjs tests/browser/defense.spec.mjs
-        if: inputs.scope != 'noon' && inputs.scope != 'axe_gif' && inputs.scope != 'map_toys' && inputs.scope != 'ultimate_ring'
+        if: inputs.scope != 'noon' && inputs.scope != 'axe_gif' && inputs.scope != 'map_toys' && inputs.scope != 'ultimate_ring' && inputs.scope != 'dialogs'
         env:
           QA_BLADE_ATTACK_ONLY: ${{ inputs.scope == 'blade_attack' && '1' || '' }}
           QA_SHIELD_BLADE_ONLY: ${{ inputs.scope == 'shield_blade' && '1' || '' }}
