@@ -19,6 +19,10 @@ func fresh(owned := false):
 	for id in progress.BUILDINGS: progress.data.buildings[id].owned = owned
 	game.start_solo("defense",19457)
 	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	game.sim.defense_director.begin_wave()
+	game.sim.roster.clear()
+	game.local_pawn().pos = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()
+	game.local_pawn().height = root.get_node("Data").Maps.Defense.height(game.local_pawn().pos)
 	game.running = false
 	return game.sim
 

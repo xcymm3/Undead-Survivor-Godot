@@ -33,6 +33,9 @@ func run() -> void:
 	game.running = false
 	await physics_frame
 	var sim = game.sim
+	# Observe the battle from the shop, after walking in and repairing the crystal.
+	game.local_pawn().pos = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()
+	game.local_pawn().height = root.get_node("Data").Maps.Defense.height(game.local_pawn().pos)
 	var planner = sim.defense_spawner
 	for count in [1,3,7,20,150,151,300,1000]:
 		planner.reset(count)

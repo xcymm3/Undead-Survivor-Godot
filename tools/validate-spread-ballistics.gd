@@ -13,6 +13,7 @@ func run() -> void:
 	await physics_frame
 	var pawn: Dictionary = game.local_pawn()
 	pawn.pos = Vector2(8,36)
+	pawn.height = data.Maps.Defense.height(pawn.pos)
 	pawn.yaw = 0
 	pawn.pitch = 0
 	game.sim.zombies.clear()
