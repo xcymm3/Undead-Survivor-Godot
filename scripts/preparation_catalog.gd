@@ -20,10 +20,9 @@ static func targets(sim) -> Array:
 		if item.kind == "mine" and item.get("spent",false): continue
 		var point: Vector3 = Vector3(item.pos.x,item.height+.7,item.pos.y)
 		if item.kind == "turret" and item.get("owned",false): point.y = item.height+1.25
-		# The lower gate's end posts border the sealed shelf/cliff. Keep its
-		# interaction on the accessible bridge-facing panel inside the rail.
-		if item.kind == "gate": point.x = -1.8 if item.id == "bridge_entry_gate" else -4.65
-		result.append({"id":item.id,"position":point,"radius":.8,"range":3.2,"gate_body":item.kind == "gate" and item.get("owned",false)})
+		# Gate labels use the centre as an anchor; gaze selection uses the entire
+		# face volume, including the unbuilt preview, rather than this point.
+		result.append({"id":item.id,"position":point,"radius":.8,"range":3.2,"gate_body":item.kind == "gate"})
 	result.append({"id":"crystal","position":Vector3(Layout.CRYSTAL.x,5.0,Layout.CRYSTAL.y),"radius":1.1,"range":5.0})
 	return result
 
