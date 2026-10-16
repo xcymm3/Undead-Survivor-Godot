@@ -32,11 +32,14 @@ func _ready() -> void:
 func stage() -> void:
 	for id in ["turret_left","turret_right","bridge_gate"]: Progress.store.data.buildings[id].owned = true
 	Progress.store.data.mines.crystal_mine = true
+	Progress.store.data["intro_seen"] = true
 	game.start_solo("defense",42)
 	await get_tree().physics_frame
+	game.sim.defense_director.begin_wave()
 	game.sim.roster.clear()
-	game.sim.defense.started = true
-	game.sim.defense.waiting = false
+	# Combat fixture keeps the observer away from building targets.
+	game.local_pawn().pos = Data.Maps.Defense.SHOP_AREA.get_center()
+	game.local_pawn().height = Data.Maps.Defense.height(game.local_pawn().pos)
 	var manager = game.sim.defense_director.structures
 	if scenario == "gate":
 		# Isolate barrier pathing; supporting turret fire is tested separately.
