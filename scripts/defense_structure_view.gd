@@ -110,11 +110,28 @@ func create_actor(item: Dictionary) -> Dictionary:
 	if item.kind == "mine":
 		if item.pos.y > Structures.Layout.RAMP.position.y and item.pos.y < Structures.Layout.RAMP.end.y:
 			root.rotation.x = -atan2(3.0,Structures.Layout.RAMP.size.y)
-		cylinder(root,"BuriedPlate",Vector3(0,.05,0),.46,.08,"4a4c33")
-		cylinder(root,"PressureCap",Vector3(0,.105,0),.28,.045,"777958")
-		var led = box(root,"FuseLight",Vector3(.18,.14,.1),Vector3(.075,.025,.075),"d94b30")
-		led.material_override = material("ff4c26",true)
+		cylinder(root,"MineBase",Vector3(0,.12,0),.66,.24,"252d29")
+		cylinder(root,"ArmoredCase",Vector3(0,.25,0),.59,.18,"66724a")
+		cylinder(root,"WarningRim",Vector3(0,.35,0),.52,.045,"c9a241")
+		cylinder(root,"PressureCap",Vector3(0,.395,0),.40,.075,"343e46")
+		for i in 8:
+			var angle = TAU*i/8.0
+			var at = Vector3(cos(angle)*.53,.36,sin(angle)*.53)
+			cylinder(root,"CaseBolt%d" % i,at,.035,.045,"a4afb5")
+			var stripe = box(root,"HazardStripe",Vector3(cos(angle)*.47,.378,sin(angle)*.47),Vector3(.12,.012,.12),"252d29")
+			stripe.rotation.y = -angle
+		for side in [-1.0,1.0]:
+			box(root,"CarryMount",Vector3(side*.66,.19,0),Vector3(.12,.14,.32),"a4afb5")
+		box(root,"FuseHousing",Vector3(0,.42,.12),Vector3(.25,.14,.30),"252d29")
+		var led = cylinder(root,"FuseLight",Vector3(0,.53,.12),.105,.09,"79e7a1")
 		actor.led = led
+		var light = OmniLight3D.new()
+		light.name = "ArmedIndicator"
+		light.position = Vector3(0,.65,.12)
+		light.omni_range = 1.8
+		light.shadow_enabled = false
+		root.add_child(light)
+		actor.light = light
 	elif item.kind == "turret":
 		actor.body = collider(root,item)
 		cylinder(root,"AnchorPlate",Vector3(0,.14,0),.68,.22,"3b4139")
@@ -239,7 +256,12 @@ func sync(state: Dictionary) -> void:
 			actor.body.collision_layer = 0
 			continue
 		if item.kind == "mine":
-			actor.led.visible = item.triggered and fmod(item.fuse,.4) < .2
+			var lit: bool = fposmod(item.fuse,.24) < .12 if item.triggered else fposmod(clock,1.2) < .55
+			var color = "ff4c26" if item.triggered else "79e7a1"
+			actor.led.material_override = material(color,true) if lit else material("26372d")
+			actor.light.light_color = Color(color)
+			actor.light.light_energy = .9 if lit else 0.0
+			actor.light.visible = actor.root.visible and lit
 			continue
 		actor.body.collision_layer = 1 if item.hp > 0 and not ghost else 0
 		if ghost: continue
