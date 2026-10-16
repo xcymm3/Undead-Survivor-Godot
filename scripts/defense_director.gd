@@ -18,7 +18,7 @@ func _init(world) -> void:
 		"started":false,"waiting":true,"ready_players":[],"crystal_hp":0,
 		"crystal_repair_required":true,"crystal_broken_at":-3.0,
 		"crystal_max_hp":Layout.CRYSTAL_MAX_HP,"wave":1,
-		"objective":"过桥整备 · 修复水晶后立即开始","party":world.pawns.size(),"prop_clock":0.0,
+		"objective":"修复水晶","party":world.pawns.size(),"prop_clock":0.0,
 		"difficulty":world.defense_difficulty,"difficulty_multiplier":preload("res://scripts/defense_population.gd").difficulty_multiplier(world.defense_difficulty)
 	}
 	structures = preload("res://scripts/defense_structures.gd").new(self)
@@ -141,7 +141,7 @@ func interactions(dt: float) -> void:
 		p.interaction = ""
 		p.interact_time = 0.0
 	for p in sim.pawns.values(): p.input.interact = false
-	if state.waiting: state.objective = "过桥整备 · 修复水晶后立即开始"
+	if state.waiting: state.objective = "修复水晶"
 	sync_world()
 
 func sync_world() -> void:

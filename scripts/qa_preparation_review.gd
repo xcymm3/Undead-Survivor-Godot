@@ -20,6 +20,7 @@ func stage() -> void:
 		if building_id in Progress.store.MINES: Progress.store.data.mines[building_id] = true
 		else: Progress.store.data.buildings[building_id].owned = true
 	Progress.store.data["intro_seen"] = not scenario.begins_with("intro_")
+	if scenario.begins_with("ultimate_"): Progress.store.data.ultimate_level = 1
 	game.start_solo("defense",42)
 	await get_tree().physics_frame
 	game.running = false
@@ -117,6 +118,8 @@ func stage() -> void:
 			game.arena.scenery.sync_focus(game.sim,p)
 	if scenario.begins_with("intro_") or scenario.begins_with("map_") or scenario.begins_with("toy_") or scenario in ["crystal_broken","crystal_repaired"]:
 		await stage_redesign(scenario,p)
+	if scenario.begins_with("ultimate_"):
+		p.ultimate_cd = 60.0*(1.0-float(scenario.get_slice("_",1))/100.0)
 	game.running = true
 	game.ui.native_hud.sync()
 	game.running = false
@@ -128,7 +131,8 @@ func stage() -> void:
 	for i in 5: await get_tree().process_frame
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
-	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37,"announcement":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a,"focus_text":game.arena.scenery.preparation.focus_label.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible}),true)
+	var ring_rect = game.ui.native_hud.ultimate_ring.get_global_rect()
+	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"ring_rect":{"x":ring_rect.position.x,"y":ring_rect.position.y,"width":ring_rect.size.x,"height":ring_rect.size.y},"ring_count":game.ui.native_hud.ultimate_ring.get_parent().get_child_count(),"charge":game.ui.native_hud.ultimate_ring.progress,"objective_text":game.ui.native_hud.wave_label.text,"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37,"announcement":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a,"focus_text":game.arena.scenery.preparation.focus_label.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible}),true)
 
 func stage_redesign(scenario: String, p: Dictionary) -> void:
 	var layout = Data.Maps.Defense
