@@ -55,10 +55,15 @@ func make_crystal() -> void:
 func make_bridge() -> void:
 	# 连续碰撞板负责角色行走；独立木板、桥塔和垂索塑造吊桥轮廓。
 	block("BridgeCollision",Vector3(0,-.22,-45),Vector3(8,.44,34),"493a2d",true,false)
-	# Continuous waist-high rails are physical, unlike the decorative suspension
-	# cables, and keep both walking and knockback safely on the bridge deck.
+	# Tall steel guards exceed a jump even from the lower gate. The collision
+	# extends onto both banks, and the visible grid explains the blocked edge.
 	for x in [-3.86,3.86]:
-		block("BridgeGuardRail",Vector3(x,.72,-45),Vector3(.28,1.45,34),"4b5049",true,false)
+		var guard = block("BridgeGuardRail",Vector3(x,2.1,-45),Vector3(.28,4.2,35),"4b5049",true,false)
+		guard.get_child(0).visible = false
+		for z in [-62.5,-60,-57.5,-55,-52.5,-50,-47.5,-45,-42.5,-40,-37.5,-35,-32.5,-30,-27.5]:
+			block("BridgeGuardPost",Vector3(x,2.1,z),Vector3(.11,4.2,.11),"4b5049",false)
+		for y in [.55,1.15,1.75,2.35,2.95,3.55,4.15]:
+			block("BridgeGuardMesh",Vector3(x,y,-45),Vector3(.065,.065,35),"6f7772",false)
 	for z in range(-61,-27,2):
 		block("BridgePlank",Vector3(0,.045,z),Vector3(7.7,.16,1.7),"76583b",false)
 	for z in [-62,-28]:
