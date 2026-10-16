@@ -70,7 +70,7 @@ func sync_enemy_steps(enemies: Array, listener: Vector3, dt: float, map_id := "g
 func _ready() -> void:
 	cc0 = JSON.parse_string(FileAccess.get_file_as_string("res://assets/data/audio.json"))
 	for cue in cc0.cues: streams[cue] = load("res://assets/audio/%s.wav" % cue)
-	for id in ["reload","blade"]:
+	for id in ["reload","blade","axe"]:
 		var voice = AudioStreamPlayer.new()
 		voice.max_polyphony = 1
 		add_child(voice)
@@ -209,7 +209,7 @@ func sync_action(id: String, state: Dictionary, enabled: bool) -> void:
 	if track.key != key or state.age < track.age-.0001:
 		voice.stop()
 		voice.stream = streams[state.cue]
-		voice.volume_db = -13 if id == "reload" else -11
+		voice.volume_db = -13 if id == "reload" else -9 if id == "axe" else -11
 		voice.pitch_scale = 1.0
 		track.offset = minf(state.age,maxf(0,voice.stream.get_length()-.001))
 		track.starts += 1
@@ -220,6 +220,7 @@ func sync_action(id: String, state: Dictionary, enabled: bool) -> void:
 func sync_weapon_actions(p: Dictionary, enabled: bool) -> void:
 	sync_action("reload",Timeline.reload_state(p,Data.weapons),enabled)
 	sync_action("blade",Timeline.blade_state(p,Data.weapons),enabled)
+	sync_action("axe",Timeline.axe_state(p,Data.weapons),enabled)
 
 func sync_ultimate(p: Dictionary, enabled: bool) -> void:
 	var active: bool = preload("res://scripts/ultimate.gd").active(p) and p.get("hp",0) > 0

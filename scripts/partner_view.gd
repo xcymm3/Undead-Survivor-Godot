@@ -9,6 +9,7 @@ var equipment_prop: Node3D
 var equipment_slot = -1
 var weapon_animation: AnimationPlayer
 var axe_pivot: Node3D
+var axe_motion = preload("res://scripts/axe_motion.gd").new()
 var skeleton: Skeleton3D
 var gun_model: Node3D
 var flash: MeshInstance3D
@@ -55,6 +56,7 @@ func setup(p: Dictionary) -> void:
 func update_weapon(index: int) -> void:
 	if weapon_index == index: return
 	weapon_index = index
+	axe_motion.reset()
 	axe_pivot = null
 	for node in held.get_children():
 		held.remove_child(node)
@@ -99,7 +101,7 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 			if w.id == "axe": progress = 0.0
 			weapon_animation.seek(progress*weapon_animation.get_animation(clip).length,true)
 	if axe_pivot:
-		preload("res://scripts/weapon_view.gd").sample_axe(axe_pivot,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0)
+		axe_pivot.transform = axe_motion.sample(p,dt,w.fireDuration)
 	avatar.animate(p,moving,dt)
 	var item_slot: int = p.get("slot",1)
 	if item_slot != equipment_slot:

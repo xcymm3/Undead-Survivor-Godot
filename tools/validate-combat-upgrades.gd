@@ -182,14 +182,20 @@ func run() -> void:
 	check(p.axe_direction == 1,"Releasing fire resets axe direction")
 	var pivot = Node3D.new()
 	var view = load("res://scripts/weapon_view.gd")
-	view.sample_axe(pivot,1.0,1)
-	var resting: Transform3D = pivot.transform
-	view.sample_axe(pivot,1.0,-1)
-	check(resting.is_equal_approx(pivot.transform),"Both axe directions recover to the same resting pose")
-	view.sample_axe(pivot,.5,1)
-	var right_pose: Vector3 = pivot.position
-	view.sample_axe(pivot,.5,-1)
-	check(right_pose.distance_to(pivot.position) > .5,"Opposite axe strokes visibly cross opposite sides")
+	var motion_type = load("res://scripts/axe_motion.gd")
+	var recovered: Array[Transform3D] = []
+	for direction in [1,-1]:
+		var motion = motion_type.new()
+		var state = {"hp":100,"weapon":6,"requested":6,"fire_anim":.00001,"shots":1,"axe_direction":direction}
+		motion.sample(state,0,data.weapons[6].fireDuration)
+		state.fire_anim = 0.0
+		recovered.append(motion.sample(state,.30,data.weapons[6].fireDuration))
+	check(recovered[0].is_equal_approx(recovered[1]) and recovered[0].is_equal_approx(motion_type.ready_pose()),"Both axe directions recover to the same rest after releasing the combo")
+	view.sample_axe(pivot,.66,1)
+	var right_edge: Vector3 = pivot.transform*motion_type.EDGE_POINT
+	view.sample_axe(pivot,.66,-1)
+	var left_edge: Vector3 = pivot.transform*motion_type.EDGE_POINT
+	check(right_edge.x < -.7 and left_edge.x > .7,"Opposite axe cutting edges traverse opposite sides")
 	pivot.free()
 	p.slot = 1
 	p.weapon = 0

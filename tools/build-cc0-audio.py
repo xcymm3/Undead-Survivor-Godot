@@ -131,7 +131,7 @@ def build():
     gun_edits = {"rifle":(.40,1.0,None),"p90":(.23,1.05,None),"pistol":(.36,1.0,None),"revolver":(.54,1.0,None),"shotgun":(.67,1.0,None),"sniper":(.70,1.0,None),"auto-shotgun":(.43,1.0,None),"heavy-machine-gun":(.48,.84,5500)}
     for weapon,(duration,speed,lowpass) in gun_edits.items():
         one("weapon-"+weapon,"gun-"+weapon,duration,"实录枪声的首个独立枪响，去前导静音、缩短尾声并保留峰值余量；非对应型号者为明确记录的替代拟音",speed=speed,lowpass=lowpass,end=duration*speed)
-    emit("weapon-axe",.56,[("cloth1",.015,.20,{"end":.18}),("swish-7",.14,1,{"speed":.85})],"厚重破风配合斧头挥动，不把命中撞击混入空挥")
+    emit("weapon-axe",.56,[("cloth1",.015,.20,{"end":.18}),("swish-7",.193,1,{"speed":.85})],"厚重破风主瞬态对齐0.46阶段的过中线劈砍；衣物声对应起手，命中撞击独立",events=[{"phase":.22,"seconds":.1232,"action":"cut_start"},{"phase":.46,"seconds":.2576,"action":"cut_centre"},{"phase":.66,"seconds":.3696,"action":"cut_end"}])
     one("weapon-flamethrower","flame",.18,"已有CC0燃烧素材截取为短连续喷射片段，渐入渐出控制叠加",start=.08,end=.26)
     emit("blade-draw",1.1,[("cloth1",.025,.15,{"end":.13}),("seax-unsheathe-01",.176,1,{"duration":.638})],"出鞘录音放在拔刀阶段16%至74%的实际抽刀区间")
     emit("blade-sheathe",.95,[("seax-sheathe-01",.361,1,{"duration":.427}),("metalLatch",.789,.22,{"end":.10})],"入鞘录音放在收刀阶段38%至83%，末端短卡扣对应到位")
@@ -181,7 +181,7 @@ def build():
         emit("reload-"+w["id"],duration,layers,"按实际换弹动作阶段定位；逐发装填每循环一次；暂停或取消时停止",events)
     emit("ultimate-music",10.0,[("ultimate-music",0,1,{})],"nene原创Rock/Metal短曲中选取38–48秒的高能量段，技能结束前淡出",stereo=True,peak=.70)
     manifest = {"version":1,"license":"CC0-1.0","license_url":source_index["license_url"],"builder_sha256":sha(Path(__file__)),"sources_index_sha256":sha(INPUTS/"index.json"),"death_variants":6,"step_variants":3,"cues":cues}
-    motions = ["scripts/ak_rifle.gd","scripts/revolver_model.gd","scripts/blade_motion.gd","scripts/ultimate.gd"]
+    motions = ["scripts/ak_rifle.gd","scripts/revolver_model.gd","scripts/blade_motion.gd","scripts/ultimate.gd","scripts/axe_motion.gd"]
     motions += ["assets/models/"+w["id"]+".glb" for w in rules["weapons"] if w["id"] not in ["rifle","revolver","axe"]]
     manifest["motion_sources"] = {name:sha(ROOT/name) for name in motions}
     MANIFEST.write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")

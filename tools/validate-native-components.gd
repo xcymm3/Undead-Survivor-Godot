@@ -740,6 +740,7 @@ func run() -> void:
 	await load("res://tools/validate-loadout.gd").validate(game,check)
 	load("res://tools/validate-weapon-audio.gd").validate(game,check)
 	load("res://tools/validate-cc0-audio.gd").validate(game,check)
+	load("res://tools/validate-axe-motion.gd").validate(game,check)
 	load("res://tools/validate-weapon-feedback.gd").validate(game,check)
 	validate_buffer()
 	var session = root.get_node("Session")

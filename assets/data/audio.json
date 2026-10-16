@@ -2,7 +2,7 @@
   "version": 1,
   "license": "CC0-1.0",
   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-  "builder_sha256": "311aa8543d6f86b3bd90821d042a2994b74367f6b534c99ee35f0b5efc14c0df",
+  "builder_sha256": "2eb792e497b7c6e27771c282d6fbddd0243f0914687856002065bcb552db676a",
   "sources_index_sha256": "948f43de2aff5884dc480d8180d9202a2aae146171fd92601f9c7a3ef57f20f6",
   "death_variants": 6,
   "step_variants": 3,
@@ -280,7 +280,7 @@
     "weapon-axe": {
       "seconds": 0.56,
       "channels": 1,
-      "sha256": "559c4bba23451c8de7d660435f5a1b64efe4d9d035003210a3e2fdd11eec55d7",
+      "sha256": "fa6ceddab4810bd4dde509e1f61653b84578feab72dfb30e6a9a4068fc023402",
       "sources": [
         "cloth1",
         "swish-7"
@@ -296,14 +296,31 @@
         },
         {
           "source": "swish-7",
-          "at": 0.14,
+          "at": 0.193,
           "gain": 1,
           "edit": {
             "speed": 0.85
           }
         }
       ],
-      "reason": "厚重破风配合斧头挥动，不把命中撞击混入空挥"
+      "reason": "厚重破风主瞬态对齐0.46阶段的过中线劈砍；衣物声对应起手，命中撞击独立",
+      "events": [
+        {
+          "phase": 0.22,
+          "seconds": 0.1232,
+          "action": "cut_start"
+        },
+        {
+          "phase": 0.46,
+          "seconds": 0.2576,
+          "action": "cut_centre"
+        },
+        {
+          "phase": 0.66,
+          "seconds": 0.3696,
+          "action": "cut_end"
+        }
+      ]
     },
     "weapon-flamethrower": {
       "seconds": 0.18,
@@ -1567,6 +1584,7 @@
     "scripts/revolver_model.gd": "5c532e2a0cc4b7c974aba32a114eeb1b68d59f2812bdf2ca49a2bab39e283887",
     "scripts/blade_motion.gd": "1b008dd8e669ebd1fb4616013310243e46e8e169479ae1a693311fd43f9b074e",
     "scripts/ultimate.gd": "18b77d8e10b693712a277bdb481cfe7d09d9ff93c00174a35360705224306a7a",
+    "scripts/axe_motion.gd": "7510f48c50819613cb499ce9d175ce4e31d3f7323666c0a2c49b0654f6eefbbb",
     "assets/models/p90.glb": "6ce9113c9fd7b8c93b01ffff7d270930ab21a0c0d33c4d364c2ca855c2eee117",
     "assets/models/pistol.glb": "2e1482a59da73e81262eb68153a3e261ab716848bd4987a9a8e2ace0382bdfb7",
     "assets/models/shotgun.glb": "4c5a3b9d0a98e234c4fa347b7bef447ce4a510923c04b2d4b057a22bb61ec033",

@@ -2,6 +2,11 @@ extends RefCounted
 ## Audio reads the same authoritative clocks as the weapon presentation.
 const Ultimate = preload("res://scripts/ultimate.gd")
 
+static func axe_state(p: Dictionary, weapons: Array) -> Dictionary:
+	if p.is_empty() or p.get("hp",0) <= 0 or p.get("weapon",-1) != 6 or p.get("requested",6) != 6: return {}
+	if Ultimate.locked(p) or p.get("switch",0.0) > 0 or p.get("reloading",false) or p.get("fire_anim",0.0) <= 0: return {}
+	return {"cue":"weapon-axe","serial":int(p.get("shots",0)),"age":maxf(0,float(weapons[6].fireDuration)-float(p.fire_anim))}
+
 static func reload_state(p: Dictionary, weapons: Array) -> Dictionary:
 	if p.is_empty() or p.get("hp",0) <= 0 or not p.get("reloading",false) or p.get("switch",0.0) > 0: return {}
 	var index: int = int(p.get("weapon",-1))

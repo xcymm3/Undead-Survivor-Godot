@@ -11,6 +11,7 @@ var scabbard: Node3D
 var blade: Node3D
 var axe_pivot: Node3D
 var blade_motion = preload("res://scripts/blade_motion.gd").new()
+var axe_motion = preload("res://scripts/axe_motion.gd").new()
 
 static func create_model(id: String, first_person := false) -> Node3D:
 	return preload("res://scripts/weapon_models.gd").create(id,first_person)
@@ -70,6 +71,7 @@ func reset_motion() -> void:
 	sprint_blend = 0.0
 	sprint_phase = 0.0
 	blade_motion.reset()
+	axe_motion.reset()
 	if models.size() > 3: models[3].reset_motion()
 
 func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-180)) -> void:
@@ -137,7 +139,9 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 			if w.id == "axe": progress = 0.0
 			player.seek(progress*player.get_animation(clip).length,true)
 	if w.id == "axe" and axe_pivot:
-		sample_axe(axe_pivot,clampf(1-p.fire_anim/w.fireDuration,0,1) if p.fire_anim > 0 else 0.0,int(p.get("axe_direction",1)))
+		axe_pivot.transform = axe_motion.sample(p,dt,w.fireDuration)
+	else:
+		axe_motion.reset()
 	if w.id == "revolver": models[3].sync_pose(p,dt,elapsed,ads)
 	if p.fire_anim > 0 and w.get("kind","gun") != "melee" and w.id != "revolver":
 		var pulse = sin((1-p.fire_anim/w.fireDuration)*PI)
@@ -170,29 +174,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	muzzle.visible = not hide_scope and p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") == "gun"
 
 static func sample_axe(pivot: Node3D, progress: float, direction := 1) -> void:
-	# Sweep the grip and head together from upper right toward lower left and forward.
-	# Modest pitch keeps the handle upright instead of folding the head onto the right.
-	var times = [0.0,.22,.52,.66,.82,1.0]
-	var positions = [
-		Vector3(.08,-.10,-.46), Vector3(.18,.02,-.24),
-		Vector3(-.50,-.20,-.60), Vector3(-.82,-.37,-.75),
-		Vector3(-.24,-.30,-.57), Vector3(.08,-.10,-.46)]
-	var angles = [
-		Vector3(-.12,-.65,-.24), Vector3(.50,-1.05,-.12),
-		Vector3(-.30,-.90,.38), Vector3(-.48,-.80,.50),
-		Vector3(-.25,-.70,.12), Vector3(-.12,-.65,-.24)]
-	if direction == -1:
-		# Reverse the stroke while returning both hands to the same resting pose.
-		for index in range(1,positions.size()-1):
-			positions[index].x *= -1
-			angles[index].y *= -1
-			angles[index].z *= -1
-	for i in range(times.size()-1):
-		if progress > times[i+1]: continue
-		var weight = smoothstep(times[i],times[i+1],progress)
-		pivot.position = positions[i].lerp(positions[i+1],weight)
-		pivot.quaternion = Quaternion.from_euler(angles[i]).slerp(Quaternion.from_euler(angles[i+1]),weight)
-		return
+	pivot.transform = preload("res://scripts/axe_motion.gd").pose(progress,direction)
 
 static func muzzle_offset(w: Dictionary) -> Vector3:
 	match w.id:

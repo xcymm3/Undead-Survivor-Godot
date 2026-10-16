@@ -369,7 +369,7 @@ func handle_effects(events: Array) -> void:
 				var cue: String = "blade-swing" if event.get("ultimate",false) else sound.weapon_cue(index)
 				var gain: float = sound.weapon_gain(index)
 				if event.player == Session.local_id:
-					if event.get("ultimate",false): sound.sync_weapon_actions(local_pawn(),running and not paused and focused and not finished)
+					if event.get("ultimate",false) or w.id == "axe": sound.sync_weapon_actions(local_pawn(),running and not paused and focused and not finished)
 					else: sound.play(cue,gain)
 				else: sound.play_at(cue,event.from,gain)
 				var visual_origin: Vector3 = event.from
