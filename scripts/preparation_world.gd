@@ -1,10 +1,6 @@
 extends "res://scripts/world_geometry.gd"
 const Catalog = preload("res://scripts/preparation_catalog.gd")
 const Layout = preload("res://scripts/defense_layout.gd")
-const Toy = preload("res://scripts/toy_art.gd")
-
-func material(color: String) -> StandardMaterial3D:
-	return Toy.material(color)
 var stations: Dictionary = {}
 var blueprints: Dictionary = {}
 var focus_label: Label3D
@@ -45,23 +41,17 @@ func build_station(entry: Dictionary) -> void:
 	var p: Vector3 = entry.position
 	var root = Node3D.new()
 	root.name = "Station_"+entry.id
-	root.set_meta("art_style","toy")
 	add_child(root)
 	root.position = Vector3(p.x,3,p.z)
 	var before = get_children()
-	block("StationFoot",Vector3(p.x,3.13,p.z),Vector3(2.2,.26,1.5),Toy.BLUE,false)
-	block("StationDesk",Vector3(p.x,3.52,p.z),Vector3(1.9,.65,1.25),Toy.CORAL if entry.id in ["rifle","grenade","precise","supply"] else Toy.BLUE,true,false)
+	block("StationFoot",Vector3(p.x,3.13,p.z),Vector3(2.2,.26,1.5),"303c3b",false)
+	block("StationDesk",Vector3(p.x,3.52,p.z),Vector3(1.9,.65,1.25),"66513b",true,false)
 	# Enemies can enter the shop; only actual solid furniture blocks their route.
 	get_parent().obstacles.append({"minX":p.x-.95,"maxX":p.x+.95,"minZ":p.z-.625,"maxZ":p.z+.625})
-	block("StationTop",Vector3(p.x,3.89,p.z),Vector3(2.12,.1,1.4),Toy.CREAM,false)
-	block("StationTrim",Vector3(p.x,3.95,p.z+.67),Vector3(2.12,.06,.07),Toy.YELLOW,false)
+	block("StationTop",Vector3(p.x,3.89,p.z),Vector3(2.12,.1,1.4),"b5a581",false)
+	block("StationTrim",Vector3(p.x,3.95,p.z+.67),Vector3(2.12,.06,.07),"d1b060",false)
 	for child in get_children():
 		if child not in before: child.reparent(root)
-	for x in [-.84,.84]:
-		for z in [-.48,.48]: Toy.cylinder(root,"ToyStud",Vector3(x,.97,z),.10,.10,Toy.YELLOW)
-	Toy.box(root,"ToyNamePlate",Vector3(0,.55,-.66),Vector3(1.30,.35,.065),Toy.CREAM)
-	var title: String = {"rifle":"武器强化","rifle_magazine":"弹匣工坊","ultimate":"长刀能量","grenade":"手雷补给","strong":"强壮","precise":"精准","swift":"迅捷","supply":"补给"}.get(entry.id,entry.id)
-	Toy.label(root,"ToyStationTitle",title,Vector3(0,.55,-.70),.005,true)
 	var prop = Node3D.new()
 	prop.name = "DisplayObject"
 	root.add_child(prop)
@@ -105,7 +95,7 @@ func build_station(entry: Dictionary) -> void:
 	var mesh = BoxMesh.new()
 	mesh.size = Vector3(2.15,1.25,1.43)
 	cover.mesh = mesh
-	cover.material_override = material(Toy.BLUE)
+	cover.material_override = material("3b474a")
 	cover.position.y = 1.6
 	root.add_child(cover)
 	for side in [-1.0,1.0]:
@@ -114,7 +104,7 @@ func build_station(entry: Dictionary) -> void:
 			var rib_mesh = BoxMesh.new()
 			rib_mesh.size = Vector3(2.12,.035,.04)
 			rib.mesh = rib_mesh
-			rib.material_override = material(Toy.YELLOW)
+			rib.material_override = material("596568")
 			rib.position = Vector3(0,-.5+level*.2,side*.73)
 			cover.add_child(rib)
 	cover.visible = false

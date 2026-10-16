@@ -53,7 +53,7 @@ func material(color: String, glow := false) -> StandardMaterial3D:
 	if not materials.has(key):
 		var mat = StandardMaterial3D.new()
 		mat.albedo_color = Color(color)
-		mat.roughness = .32
+		mat.roughness = .8
 		if color in ["58636b","798791","343e46","a4afb5"]:
 			mat.metallic = .8
 			mat.roughness = .38
@@ -110,9 +110,89 @@ func create_actor(item: Dictionary) -> Dictionary:
 	if item.kind == "mine":
 		if item.pos.y > Structures.Layout.RAMP.position.y and item.pos.y < Structures.Layout.RAMP.end.y:
 			root.rotation.x = -atan2(3.0,Structures.Layout.RAMP.size.y)
-		preload("res://scripts/toy_defense_props.gd").mine(self,root,actor)
+		cylinder(root,"MineBase",Vector3(0,.12,0),.66,.24,"252d29")
+		cylinder(root,"ArmoredCase",Vector3(0,.25,0),.59,.18,"66724a")
+		cylinder(root,"WarningRim",Vector3(0,.35,0),.52,.045,"c9a241")
+		cylinder(root,"PressureCap",Vector3(0,.395,0),.40,.075,"343e46")
+		for i in 8:
+			var angle = TAU*i/8.0
+			var at = Vector3(cos(angle)*.53,.36,sin(angle)*.53)
+			cylinder(root,"CaseBolt%d" % i,at,.035,.045,"a4afb5")
+			var stripe = box(root,"HazardStripe",Vector3(cos(angle)*.47,.378,sin(angle)*.47),Vector3(.12,.012,.12),"252d29")
+			stripe.rotation.y = -angle
+		for side in [-1.0,1.0]:
+			box(root,"CarryMount",Vector3(side*.66,.19,0),Vector3(.12,.14,.32),"a4afb5")
+		box(root,"FuseHousing",Vector3(0,.42,.12),Vector3(.25,.14,.30),"252d29")
+		var led = cylinder(root,"FuseLight",Vector3(0,.53,.12),.105,.09,"79e7a1")
+		actor.led = led
+		var light = OmniLight3D.new()
+		light.name = "ArmedIndicator"
+		light.position = Vector3(0,.65,.12)
+		light.omni_range = 1.8
+		light.shadow_enabled = false
+		root.add_child(light)
+		actor.light = light
 	elif item.kind == "turret":
-		preload("res://scripts/toy_defense_props.gd").turret(self,root,actor)
+		actor.body = collider(root,item)
+		cylinder(root,"AnchorPlate",Vector3(0,.14,0),.68,.22,"3b4139")
+		for side in [-1.0,1.0]:
+			var foot = box(root,"Stabilizer",Vector3(side*.45,.3,0),Vector3(.28,.55,1.05),"586354")
+			foot.rotation.z = side*.25
+		cylinder(root,"Pedestal",Vector3(0,.8,0),.22,1.15,"64715e")
+		cylinder(root,"Turntable",Vector3(0,1.29,0),.42,.16,"a18c55")
+		var yaw = Node3D.new()
+		yaw.name = "TrackingHead"
+		yaw.position.y = 1.55
+		root.add_child(yaw)
+		var pitch = Node3D.new()
+		yaw.add_child(pitch)
+		var intact = Node3D.new()
+		intact.name = "IntactHousing"
+		pitch.add_child(intact)
+		box(intact,"Receiver",Vector3(0,0,.06),Vector3(.72,.45,.78),"45574a")
+		box(intact,"AmmunitionBox",Vector3(.48,-.08,.15),Vector3(.32,.4,.55),"8d7950")
+		var damaged = Node3D.new()
+		damaged.name = "DamagedHousing"
+		pitch.add_child(damaged)
+		box(damaged,"ScorchedReceiver",Vector3(0,-.12,.06),Vector3(.72,.18,.78),"282e2b")
+		box(damaged,"ExposedMechanism",Vector3(0,.025,.06),Vector3(.44,.2,.5),"343e46")
+		for z in [-.12,.06,.24]:
+			var coil = cylinder(damaged,"ExposedCopperCoil",Vector3(.26,.04,z),.09,.24,"bb7543")
+			coil.rotation.z = PI/2
+		var flap = box(damaged,"TornTopPlate",Vector3(-.22,.24,.12),Vector3(.3,.07,.62),"58636b")
+		flap.rotation.z = -.55
+		var flap_front = box(damaged,"BentFrontPlate",Vector3(.19,.16,-.22),Vector3(.27,.07,.24),"45574a")
+		flap_front.rotation.z = .5
+		var hanging = box(damaged,"HangingSideCover",Vector3(.52,-.36,.12),Vector3(.08,.5,.56),"8d7950")
+		hanging.rotation.z = -.55
+		hanging.rotation.x = .18
+		var crushed = box(damaged,"CrushedFeedBox",Vector3(.4,-.08,.25),Vector3(.25,.25,.36),"534631")
+		crushed.rotation.x = -.25
+		for x in [.16,.3]:
+			var cable = box(damaged,"LooseCable",Vector3(x,-.29,.35),Vector3(.035,.34,.035),"bb7543")
+			cable.rotation.z = .35
+		var warning = box(damaged,"FaultLight",Vector3(.05,.13,-.28),Vector3(.18,.1,.035),"ff8b32")
+		warning.material_override = material("ff8b32",true)
+		damaged.visible = false
+		box(pitch,"Barrel",Vector3(0,0,-.61),Vector3(.16,.16,.77),"282e2b")
+		actor.shroud = box(pitch,"BarrelShroud",Vector3(0,0,-.38),Vector3(.26,.26,.3),"626d60")
+		for z in [-.55,-.7,-.85]:
+			var ring = cylinder(pitch,"CoolingRing",Vector3(0,0,z),.12,.055,"788073")
+			ring.rotation.x = PI/2
+		box(pitch,"SensorMount",Vector3(-.23,.2,-.12),Vector3(.15,.14,.37),"2d3832")
+		var lens = box(pitch,"Sensor",Vector3(-.23,.12,-.34),Vector3(.12,.12,.03),"67d4b2")
+		lens.material_override = material("67d4b2",true)
+		var flash = box(pitch,"MuzzleFlash",Vector3(0,0,-1.04),Vector3(.07,.07,.10),"ffcc67")
+		flash.material_override = material("ffcc67",true)
+		flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		flash.visible = false
+		actor.yaw = yaw
+		actor.pitch = pitch
+		actor.flash = flash
+		actor.intact = intact
+		actor.damaged = damaged
+		actor.sensor = lens
+		actor.smoke = create_smoke(root)
 	else:
 		actor.body = collider(root,item)
 		var panel = Node3D.new()
@@ -191,7 +271,7 @@ func sync(state: Dictionary) -> void:
 			actor.intact.visible = not damaged
 			actor.damaged.visible = damaged
 			actor.sensor.material_override = material("ff4c26",true) if damaged else material("67d4b2",true)
-			actor.shroud.material_override = material("243e68" if damaged else "fff0cd")
+			actor.shroud.material_override = material("282e2b" if damaged else "626d60")
 			actor.smoke.visible = damaged and item.hp > 0
 			if actor.smoke.visible: update_smoke(actor.smoke,clock)
 			actor.yaw.rotation.y = item.yaw

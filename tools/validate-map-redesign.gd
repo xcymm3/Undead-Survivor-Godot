@@ -8,6 +8,7 @@ static func validate(game, check: Callable) -> void:
 	var progress = game.get_node("/root/Progress")
 	var saved = progress.store
 	progress.store = Store.new()
+	progress.store.data["intro_seen"] = true
 	game.start_solo("defense",20261016)
 	await game.get_tree().physics_frame
 	var sim = game.sim
@@ -59,9 +60,10 @@ static func validate(game, check: Callable) -> void:
 	check.call(world.crystal.get_meta("art_style") == "toy" and world.crystal.has_node("ToyCrystalDock"),"Toy crystal retains its studded socket while broken")
 	for id in ["turret_left","crystal_mine"]:
 		var actor: Dictionary = world.structure_view.actors[id]
-		check.call(actor.root.get_meta("art_style") == "toy" and not actor.root.find_children("ToyStud","MeshInstance3D",true,false).is_empty(),"Defense prop uses moulded plastic and studs: "+id)
+		check.call(not actor.root.has_meta("art_style") and actor.root.find_children("ToyStud","MeshInstance3D",true,false).is_empty(),"Defense prop restores the original model: "+id)
 	for station in world.preparation.stations.values():
-		check.call(station.root.get_meta("art_style") == "toy" and station.root.has_node("ToyNamePlate"),"Preparation stand uses the shared toy style")
+		check.call(not station.root.has_meta("art_style") and not station.root.has_node("ToyNamePlate"),"Preparation stand restores its original appearance")
+	check.call(world.crystal.find_children("AssemblySeam*","MeshInstance3D",true,false).is_empty(),"Crystal has no gray assembly seam rings")
 	progress.store = saved
 	game.start_solo("defense",71245)
 	await game.get_tree().physics_frame

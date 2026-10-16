@@ -51,9 +51,6 @@ static func build(parent: Node3D) -> MeshInstance3D:
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	core.material_override = material
 	parent.add_child(core)
-	for tier in [[.71,.54],[1.68,.91],[2.59,.65]]:
-		var seam = Toy.cylinder(parent,"AssemblySeam",Vector3(0,tier[0],0),tier[1],.045,Toy.CREAM)
-		seam.mesh.radial_segments = 6
 	var halo = MeshInstance3D.new()
 	halo.name = "EnergyHalo"
 	var ring = TorusMesh.new()
