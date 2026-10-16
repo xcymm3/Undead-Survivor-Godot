@@ -51,7 +51,7 @@ const WAVE_KINDS = [
 	["normal"],
 	["normal","cone"],
 	["normal","cone","bucket"],
-	["normal","imp"],
+	["cone","imp"],
 	["cone","bucket","shield"],
 	["bucket","shield","imp"],
 	["cone","bucket","giant"],

@@ -44,7 +44,7 @@ func run() -> void:
 		check(complete and previous == count and planner.scheduled_count(29.999) < count and planner.scheduled_count(30) == count,"Dynamic batches release all %d bodies at thirty seconds without oversized bursts" % count)
 	var expected_lists = [
 		["normal"],["normal","cone"],["normal","cone","bucket"],
-		["normal","imp"],["cone","bucket","shield"],
+		["cone","imp"],["cone","bucket","shield"],
 		["bucket","shield","imp"],["cone","bucket","giant"],
 		["bucket","shield","imp","berserker"],
 		["shield","football","berserker","giant","imp","bucket"],

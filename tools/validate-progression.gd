@@ -24,14 +24,14 @@ func run() -> void:
 	var expected_rewards = {"normal":1,"cone":2,"bucket":5,"imp":10,"shield":25,"berserker":100,"giant":150,"football":250,"dancer":2000}
 	for kind in expected_rewards: check(Store.COIN_REWARDS[kind] == expected_rewards[kind],"Authored staircase reward: "+kind)
 	var defense_population = preload("res://scripts/defense_population.gd")
-	var expected_wave_rewards = [69,118,235,209,452,535,889,765,1140,3480]
+	var expected_wave_rewards = [69,118,235,258,452,535,889,765,1140,3480]
 	var wave_income_total = 0
 	for wave in range(1,11):
 		var income = 0
 		for kind in defense_population.roster(wave,1,RandomNumberGenerator.new()): income += Store.COIN_REWARDS[kind]
 		wave_income_total += income
 		check(income == expected_wave_rewards[wave-1],"Staircase reward total for wave "+str(wave))
-	check(wave_income_total == 7892 and Store.UPGRADE_PRICES.reduce(func(total,value): return total+value,0) == 6400,"One complete campaign funds all ten rifle upgrades with 1492 coins to spare")
+	check(wave_income_total == 7941 and Store.UPGRADE_PRICES.reduce(func(total,value): return total+value,0) == 6400,"One complete campaign funds all ten rifle upgrades with 1541 coins to spare")
 	profile.data.coins = 100000
 	for id in Store.WEAPONS:
 		check(profile.cost(id) == 50 and profile.purchase(id) and profile.cost(id) == 100,"First weapon upgrade uses the next fixed price: "+id)
