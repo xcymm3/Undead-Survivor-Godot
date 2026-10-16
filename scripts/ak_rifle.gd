@@ -4,7 +4,6 @@ const MUZZLE = Vector3(0,.055,-1.03)
 const RIGHT_GRIP = Vector3(0,-.17,.075)
 const LEFT_GRIP = Vector3(-.025,-.04,-.52)
 var magazine: Node3D
-var rack_hand: MeshInstance3D
 var bolt: MeshInstance3D
 var materials: Dictionary = {}
 
@@ -15,8 +14,6 @@ func _init() -> void:
 	box(self,"DustCover",Vector3(0,.108,-.16),Vector3(.13,.055,.42),"495052")
 	box(self,"EjectionPort",Vector3(.074,.035,-.13),Vector3(.006,.055,.19),"151b1c")
 	bolt = box(self,"ChargingHandle",Vector3(.11,.047,-.11),Vector3(.09,.025,.055),"677071")
-	rack_hand = box(self,"RackingGlove",Vector3(.14,.055,-.11),Vector3(.14,.11,.13),"665845")
-	rack_hand.hide()
 	box(self,"SafetyLever",Vector3(.078,-.01,-.09),Vector3(.012,.025,.23),"737774",-.12)
 	for z in [-.29,-.01]: box(self,"ReceiverRivet",Vector3(.08,-.027,z),Vector3(.012,.014,.014),"9b9e92")
 	# Warm wooden furniture, separate from the blued steel barrel/gas tube.

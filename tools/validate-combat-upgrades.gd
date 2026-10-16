@@ -126,18 +126,14 @@ func run() -> void:
 	check(p.slot_ammo == [30,15] and p.slot_reserves == [255,128],"Full magazines with halved initial reserve")
 	p.slot = 2
 	sim.equipment.select_weapon_slot(p,2)
-	check(is_equal_approx(p.switch,1.5),"Fixed-loadout pistol uses the longer real switch duration")
-	p.switch = .55
-	game.weapon.sync(p,0,sim.elapsed)
-	check(absf(game.weapon.rotation.x) > .5,"Pistol spin has a visible intermediate pose")
+	check(is_equal_approx(p.switch,.4),"Fixed-loadout pistol restores the short switch duration")
 	p.slot = 1
 	sim.equipment.select_weapon_slot(p,1)
-	p.switch = .45
+	check(is_equal_approx(p.switch,.4),"Fixed-loadout rifle restores the short switch duration")
+	p.switch = .2
 	game.weapon.sync(p,0,sim.elapsed)
-	check(game.weapon.models[0].rack_hand.visible and game.weapon.models[0].bolt.position.z > .08,"Rifle charging handle and racking glove visibly travel together")
+	check(is_equal_approx(game.weapon.models[0].bolt.position.z,-.11) and game.weapon.models[0].find_child("RackingGlove",true,false) == null,"Switching does not rack the rifle or create a racking hand")
 	p.switch = 0
-	game.weapon.sync(p,0,sim.elapsed)
-	check(not game.weapon.models[0].rack_hand.visible and is_equal_approx(game.weapon.models[0].bolt.position.z,-.11),"Rifle rack returns home and withdraws the racking hand")
 	var world = game.arena.scenery
 	for item in sim.defense.structures:
 		if item.kind == "mine": continue

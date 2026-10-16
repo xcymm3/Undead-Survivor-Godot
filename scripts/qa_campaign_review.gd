@@ -62,9 +62,8 @@ func stage() -> void:
 		if scenario.begins_with("switch_"):
 			p.weapon = 0 if scenario.begins_with("switch_rifle") else 2
 			p.requested = p.weapon
-			p.switch_duration = .9
-			var phase = .53 if scenario == "switch_rifle_bolt" else .32 if scenario == "switch_pistol_spin" else .28
-			p.switch = .9*(1.0-(.25+.75*phase))
+			p.switch_duration = .4
+			p.switch = .2
 			p.pos = Vector2(0,8)
 			p.height = 3
 			p.yaw = 0

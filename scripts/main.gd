@@ -240,7 +240,6 @@ func _physics_process(dt: float) -> void:
 	if sim.failed or sim.won: finish_run()
 
 func _process(dt: float) -> void:
-	if not running or paused or not focused or finished: sound.sync_equip({},false)
 	sound.sync_work(local_pawn() if sim else {},running and not paused and focused and not finished)
 	if not focused: return
 	if not running or (paused and not Session.playing) or (finished and death_timer > 1.2 and ui.current == "result"):
@@ -285,7 +284,6 @@ func _process(dt: float) -> void:
 			aim_distance = impact.distance
 			aim_target = camera.position-camera.global_basis.z*aim_distance
 	weapon.sync(p,dt,visual_time,camera.to_local(aim_target))
-	sound.sync_equip(p,running and not paused and focused and not finished)
 	sound.sync_ultimate(p,running and not paused and focused and not finished)
 	var equipment_slot: int = p.get("slot",1)
 	weapon.visible = equipment_slot < 4 and not finished
@@ -405,7 +403,6 @@ func handle_effects(events: Array) -> void:
 
 func finish_run() -> void:
 	if finished: return
-	sound.sync_equip({},false)
 	Progress.store.save()
 	reset_mouse_buttons()
 	finished = true

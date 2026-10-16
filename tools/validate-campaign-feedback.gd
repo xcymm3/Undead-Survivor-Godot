@@ -13,7 +13,7 @@ func run() -> void:
 	await physics_frame
 	game.set_process(false)
 	game.set_physics_process(false)
-	validate_equip_audio(game)
+	check(not game.sound.streams.has("equip-rifle-bolt") and not game.sound.streams.has("equip-pistol-spin"),"Removed weapon switch sounds are not registered")
 	game.start_solo("defense",42)
 	var sim = game.sim
 	var p: Dictionary = sim.pawns.solo
@@ -189,33 +189,3 @@ func run() -> void:
 	game.free()
 	print("CAMPAIGN FEEDBACK: %d checks; %d failures" % [checks,failures])
 	quit(1 if failures else 0)
-
-func validate_equip_audio(game) -> void:
-	var motion = preload("res://scripts/equip_motion.gd")
-	for weapon in [0,2]:
-		var cue = "equip-rifle-bolt" if weapon == 0 else "equip-pistol-spin"
-		var interval = motion.window(weapon,.9)
-		check(absf(game.sound.streams[cue].get_length()-interval.y) < .0001,"Equip audio length matches its motion window: "+cue)
-		for fps in [30,60,144]:
-			game.sound.sync_equip({},false)
-			var starts: int = game.sound.equip_starts
-			for tick in range(ceil(.9*fps)+2):
-				var elapsed = float(tick)/fps
-				var p = {"hp":100,"weapon":weapon,"requested":weapon,"switch_duration":.9,"switch":maxf(0,.9-elapsed)}
-				game.sound.sync_equip(p,true)
-				if not game.sound.equip_id.is_empty():
-					check(elapsed >= interval.x and elapsed < interval.x+interval.y,"Audio only plays during the animated bolt/spin phase")
-			check(game.sound.equip_starts == starts+1 and game.sound.equip_id.is_empty(),"Each action starts one voice and stops at its end at "+str(fps)+" FPS")
-	var p = {"hp":100,"weapon":0,"requested":0,"switch_duration":.9,"switch":.9-motion.window(0,.9).x-.08}
-	game.sound.sync_equip(p,true)
-	check(absf(game.sound.equip_offset-.08) < .0001,"Late render starts seek into the current bolt phase")
-	game.sound.sync_equip(p,false)
-	check(game.sound.equip_id.is_empty() and not game.sound.equip.playing,"Pause and loss of focus immediately stop the equip voice")
-	game.sound.sync_equip(p,true)
-	p.requested = 2
-	game.sound.sync_equip(p,true)
-	check(game.sound.equip_id.is_empty(),"Changing the requested weapon cancels the old audio")
-	p.weapon = 6
-	p.requested = 6
-	game.sound.sync_equip(p,true)
-	check(game.sound.equip_id.is_empty(),"Axe switching does not play either gun cue")

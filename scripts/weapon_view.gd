@@ -1,5 +1,4 @@
 extends Node3D
-const EquipMotion = preload("res://scripts/equip_motion.gd")
 var models: Array[Node3D] = []
 var animations: Array = []
 var sights: Array[Node3D] = []
@@ -108,22 +107,8 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	var visual_target = aim_target.normalized()*maxf(6,aim_target.length())
 	quaternion = Quaternion(Vector3.FORWARD,(visual_target-position).normalized())
 	if w.id in ["p90","pistol","revolver","heavy-machine-gun"]: quaternion = quaternion.slerp(Quaternion.IDENTITY,ads)
-	var equip_phase = -1.0
-	if p.switch > 0 and p.get("pickup_remaining",0.0) <= 0:
-		var total: float = float(p.get("switch_duration",.4))
-		var phase = clampf(1-p.switch/total,0,1)
-		if p.weapon != p.requested:
-			position.y -= smoothstep(0,.25,phase)*.35
-		else:
-			equip_phase = EquipMotion.phase(p.switch,total)
-			var lift = sin(PI*equip_phase)
-			if w.id == "rifle":
-				position += Vector3(-.08,-.12,-.30)*lift
-				rotation.x += .95*lift
-			elif w.id == "pistol":
-				position += Vector3(-.09,-.09,-.35)*lift
-				rotation.x += EquipMotion.spin_angle(equip_phase)
-			else: position.y -= lift*.5
+	if w.id not in ["rifle","pistol","axe"] and p.switch > 0 and p.get("pickup_remaining",0.0) <= 0:
+		position.y -= sin(clampf(1-p.switch/.4,0,1)*PI)*.5
 	models[active].rotation = Vector3.ZERO
 	if p.reloading and w.id != "revolver":
 		var reload_pulse = sin(clampf(1-p.reload/maxf(.1,w.reloadDuration),0,1)*PI)
@@ -132,11 +117,6 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	var reload_phase = clampf(1-p.get("reload",0.0)/maxf(.1,w.reloadDuration),0,1) if p.reloading else 0.0
 	if w.id == "rifle":
 		models[active].pose(p.reloading,reload_phase,p.fire_anim/w.fireDuration)
-		models[active].rack_hand.visible = equip_phase >= EquipMotion.BOLT_START and equip_phase <= EquipMotion.BOLT_END
-		if equip_phase >= 0:
-			models[active].bolt.position.z += EquipMotion.bolt_offset(equip_phase)
-			models[active].rack_hand.position.z = models[active].bolt.position.z
-			rotation.z -= .4*sin(PI*equip_phase)
 	var player: AnimationPlayer = animations[active]
 	if player:
 		var clip = ""

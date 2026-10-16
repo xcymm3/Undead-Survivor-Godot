@@ -384,16 +384,27 @@ func validate_pistol_and_equip() -> void:
 		var before: int = sim.defense.crystal_hp
 		sim.update_zombie(z,sim.crystal_target(),root.get_node("Data").attack(kind,false).x)
 		check(sim.defense.crystal_hp == before-30,"Actual ordinary melee inflicts thirty damage: "+kind)
-	for index in [0,2]:
+	p.reloading = false
+	p.fire_anim = 0.0
+	p.shove_anim = 0.0
+	p.sprinting = false
+	p.aim = false
+	for index in [0,2,6]:
 		p.weapon = index
 		p.requested = index
-		p.switch_duration = .9
-		p.switch = .9*(1-(.25+.75*.5))
-		game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-50))
-		check(absf(game.weapon.rotation.x) > .5,"Gun equip animation produces a distinct raised/spinning pose: "+str(index))
-	p.switch = 0
-	game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-50))
-	check(absf(game.weapon.rotation.x) < .2,"Equip animation returns to the resting pose")
+		p.switch_duration = .4
+		p.switch = 0.0
+		game.weapon.sync(p,1,sim.elapsed,Vector3(0,0,-50))
+		var resting: Transform3D = game.weapon.transform
+		var model_resting: Transform3D = game.weapon.models[index].transform
+		for requested in [index,(index+1)%10]:
+			p.requested = requested
+			for remaining in [.4,.3,.2,.1,.01]:
+				p.switch = remaining
+				game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-50))
+				check(game.weapon.transform.is_equal_approx(resting) and game.weapon.models[index].transform.is_equal_approx(model_resting),"Rifle, pistol and axe keep their resting pose throughout switching: "+str(index)+" / "+str(remaining))
+		p.requested = index
+	p.switch = 0.0
 
 func validate_crawler() -> void:
 	game.return_home()

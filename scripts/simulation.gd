@@ -672,7 +672,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	if p.switch > 0:
 		var before: float = p.switch
 		p.switch = maxf(0,p.switch-dt)
-		var middle: float = float(p.get("switch_duration",.4))*.75 if p.has("switch_duration") else .2
+		var middle: float = float(p.get("switch_duration",.4))*.5
 		if before > middle and p.switch <= middle: p.weapon = p.requested
 		return
 	if p.reloading:
@@ -699,7 +699,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 				p.reloading = false
 		return
 	if p.requested != p.weapon and p.fire_anim <= 0:
-		p.switch_duration = 1.5 if Data.weapons[p.requested].id in ["rifle","pistol"] else .4
+		p.switch_duration = .4
 		p.switch = p.switch_duration
 		p.aim = false
 		return
