@@ -118,6 +118,9 @@ try {
   const combatUpgrades = await run('combat-upgrades', engine, [...godotArgs, '--script', 'res://tools/validate-combat-upgrades.gd', '--', '--silent', '--automation']);
   if (!/COMBAT UPGRADES: \d+ checks; 0 failures/.test(combatUpgrades)) throw new Error('Missing combat upgrade check marker.');
 
+  const noonFixes = await run('noon-fixes', engine, [...godotArgs, '--script', 'res://tools/validate-noon-fixes.gd', '--', '--silent', '--automation']);
+  if (!/NOON FIXES: \d+ checks; 0 failures/.test(noonFixes)) throw new Error('Missing noon regression check marker.');
+
   if (full) {
     const navigation = await powershell('navigation-regressions', 'tools/validate-headless.ps1', ['-Mode', 'NavigationRegressions'], 300_000);
     if (!/NAVIGATION REGRESSIONS: \d+ checks; 0 failures/.test(navigation)) throw new Error('Missing navigation regression check marker.');

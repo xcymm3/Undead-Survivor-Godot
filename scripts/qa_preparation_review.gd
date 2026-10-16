@@ -43,6 +43,10 @@ func stage() -> void:
 		game.camera.look_at(point+Vector3(0,.3,0))
 		game.camera.fov = 65
 		game.arena.scenery.sync_focus(game.sim,p)
+	if scenario == "bridge_guard":
+		game.camera.position = Vector3(0,1.7,-48)
+		game.camera.look_at(Vector3(0,1.7,-26))
+		game.camera.fov = 76
 	if scenario == "coins":
 		var z: float = Data.Maps.Defense.CRYSTAL.y+6
 		game.camera.position = Vector3(4,4.1,z+1.2)
@@ -88,7 +92,12 @@ func stage() -> void:
 			center.x = -4.65
 			game.camera.position = center+Vector3(2,2,4)
 		elif parts[0] == "mine":
-			game.camera.position = center+Vector3(1.3,.7,1.9)
+			center.y = item.height+.25
+			game.sim.defense.prop_clock = .8 if scenario == "mine_blink_off" else 0.0
+			item.triggered = scenario.begins_with("mine_triggered")
+			item.fuse = 1.45
+			game.arena.scenery.sync(game.sim.defense)
+			game.camera.position = center+Vector3(1.5,1.6,2.0)
 		else:
 			game.camera.position = center+Vector3(2.8,2,-4)
 		game.camera.look_at(center)

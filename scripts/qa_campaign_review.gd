@@ -19,7 +19,7 @@ func stage() -> void:
 	if scenario.begins_with("normal_") or scenario.begins_with("toy_"):
 		await stage_normal_zombie(scenario)
 		return
-	if scenario in ["home","home_hover","settings"]:
+	if scenario in ["home","home_hover","settings","settings_graphics","saves"]:
 		game.ui.show_home()
 		if scenario == "home_hover":
 			var buttons = game.ui.menu.find_children("*","Button",true,false)
@@ -27,7 +27,10 @@ func stage() -> void:
 				if item.text == "开始防守":
 					item.mouse_entered.emit()
 					await get_tree().create_timer(.16).timeout
-		if scenario == "settings": game.ui.show_settings()
+		if scenario in ["settings","settings_graphics"]:
+			game.ui.settings_tab = 1 if scenario == "settings_graphics" else 0
+			game.ui.show_settings()
+		if scenario == "saves": game.ui.show_save_slots()
 	else:
 		game.start_solo("defense",42)
 		await get_tree().physics_frame
