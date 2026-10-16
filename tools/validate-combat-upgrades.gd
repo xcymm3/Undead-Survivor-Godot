@@ -17,6 +17,8 @@ func validate_blade_motion(game) -> void:
 	var tip: float = blade_type.TIP
 	var model = blade_type.new()
 	var blade_mesh: Mesh = model.get_node("Blade").mesh
+	var blade_finish: StandardMaterial3D = model.get_node("Blade").material_override
+	check(blade_finish.metallic == 0 and blade_finish.roughness == 1 and blade_finish.specular_mode == BaseMaterial3D.SPECULAR_DISABLED,"Katana blade has no metallic or specular highlights during swings")
 	var vertices: PackedVector3Array = blade_mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
 	check(blade_mesh.get_aabb().end.y > 1.5 and vertices.has(blade_type.TIP_POINT),"Long katana has a geometric pointed tip rather than a box end")
 	check(Array(vertices).all(func(v): return v.y < tip-.001 or v.is_equal_approx(blade_type.TIP_POINT)),"Single edge and spine converge to the same offset katana tip")

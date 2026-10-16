@@ -21,7 +21,8 @@ func _init() -> void:
 			surface.set_color(colors[side])
 			triangle(surface,a[side],b[next],a[next])
 			if not b[side].is_equal_approx(b[next]): triangle(surface,a[side],b[side],b[next])
-	var steel = material(Color.WHITE,.72,.29)
+	var steel = material(Color.WHITE,0,1)
+	steel.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	steel.vertex_color_use_as_albedo = true
 	attach(self,"Blade",surface,steel)
 	var guard = MeshInstance3D.new()
