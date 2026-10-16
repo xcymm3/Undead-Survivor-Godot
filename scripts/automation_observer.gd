@@ -75,6 +75,10 @@ func native_smoke() -> void:
 	# Packaged-EXE validation: same scene, real input path, no renderer or Steam login.
 	game.start_solo("defense")
 	await get_tree().create_timer(.2).timeout
+	# The packaged game must finish its real first-entry narrative before E works.
+	var intro = preload("res://scripts/first_attempt_intro.gd")
+	if intro.active(game.sim.defense):
+		await get_tree().create_timer(intro.DURATION-float(game.sim.defense.intro_elapsed)+.2).timeout
 	var repair = Vector3(Data.Maps.Defense.CRYSTAL.x,4.0,Data.Maps.Defense.CRYSTAL.y)
 	var local = game.local_pawn()
 	local.pos = Vector2(repair.x,repair.z-2.4)
@@ -100,6 +104,7 @@ func native_smoke() -> void:
 	Input.parse_input_event(event)
 	var p: Dictionary = game.local_pawn()
 	var passed = game.sim.mode == "defense" and game.sim.defense.started and not game.sim.defense.waiting
+	passed = passed and not intro.active(game.sim.defense) and Progress.store.data.get("intro_seen",false)
 	passed = passed and p.weapon1 == 0 and p.shots > 0 and p.ammo[0] < Data.weapons[0].capacity and p.reserve == Data.defense_full_reserve(0) and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
 	if not passed: print("PACKAGED DEFENSE STATE: "+JSON.stringify({"started":game.sim.defense.started,"waiting":game.sim.defense.waiting,"weapon":p.weapon1,"shots":p.shots,"ammo":p.ammo[0],"reserve":p.reserve,"mouse_mode":Input.mouse_mode}))
 	print("PACKAGED DEFENSE SMOKE: "+("PASS" if passed else "FAIL"))

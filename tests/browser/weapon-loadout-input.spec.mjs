@@ -26,9 +26,16 @@ test('real input fires cancels and completes second-weapon reload', async ({ pag
   expect(await page.evaluate(() => window.__survivorSnapshot.player.ammo[2])).toBe(14);
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 2 && window.__survivorSnapshot.player.switch <= 0);
+  const beforeReload = await page.evaluate(() => ({
+    ammo: window.__survivorSnapshot.player.ammo[2],
+    reserve: window.__survivorSnapshot.player.reserves[2],
+  }));
+  expect(beforeReload.ammo).toBe(14);
   await page.keyboard.press('r');
-  await page.waitForFunction(() => window.__survivorSnapshot.player.reloading);
+  // A slow software-rendered frame can skip the transient reloading snapshot.
+  // Validate the completed magazine and exact reserve consumption instead.
   await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.ammo[2] === 15);
+  expect(await page.evaluate(() => window.__survivorSnapshot.player.reserves[2])).toBe(beforeReload.reserve - 1);
   await page.mouse.down({ button: 'middle' }); await page.mouse.up({ button: 'middle' });
   await page.waitForFunction(() => window.__survivorSnapshot.player.aim);
   await page.mouse.down({ button: 'middle' }); await page.mouse.up({ button: 'middle' });
