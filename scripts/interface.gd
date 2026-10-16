@@ -129,30 +129,6 @@ func settings_theme() -> Theme:
 	theme.set_stylebox("grabber_pressed","VScrollBar",settings_box(Color(.75,.54,.29,.95),SETTINGS_BRASS,2))
 	return theme
 
-func settings_option(option: OptionButton) -> void:
-	option.custom_minimum_size.y = 42
-	option.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var popup = option.get_popup()
-	popup.add_theme_stylebox_override("panel",settings_box(Color(.14,.10,.07,.97),SETTINGS_BRASS,8))
-	popup.add_theme_stylebox_override("hover",settings_box(Color(.42,.28,.14,.96),Color.TRANSPARENT,6))
-	popup.add_theme_color_override("font_color",SETTINGS_INK)
-	popup.add_theme_color_override("font_hover_color",Color("fff0cf"))
-	popup.add_theme_font_override("font",font)
-
-func settings_toggle(parent: VBoxContainer, caption: String, initial: bool, callback: Callable) -> Button:
-	var toggle = Button.new()
-	toggle.toggle_mode = true
-	toggle.button_pressed = initial
-	toggle.text = "%s    %s" % [caption,"◆ 开启" if initial else "◇ 关闭"]
-	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	toggle.custom_minimum_size.y = 44
-	toggle.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	parent.add_child(toggle)
-	toggle.toggled.connect(func(value):
-		toggle.text = "%s    %s" % [caption,"◆ 开启" if value else "◇ 关闭"]
-		callback.call(value))
-	return toggle
-
 func label(text: String, size := 18, color := INK) -> Label:
 	var node = Label.new()
 	node.text = text
@@ -335,14 +311,86 @@ func show_home() -> void:
 		notice.position = Vector2(58,92)
 		stage.add_child(notice)
 
+# Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4
+func field_shell(title: String, subtitle: String) -> VBoxContainer:
+	clear_menu()
+	if native_hud: native_hud.visible = false
+	menu = Control.new()
+	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(menu)
+	menu.add_child(preload("res://scripts/menu_backdrop.gd").new())
+	var stage = Control.new()
+	stage.name = "FieldMenuStage"
+	stage.size = Vector2(1120,900)
+	menu.add_child(stage)
+	var fit = func():
+		var factor = minf(root.size.x/1120.0,root.size.y/900.0)
+		stage.scale = Vector2.ONE*factor
+		stage.position = (root.size-stage.size*factor)*.5
+	menu.resized.connect(fit)
+	fit.call()
+	var frame = PanelContainer.new()
+	frame.name = "FieldConsole"
+	frame.position = Vector2(40,30)
+	frame.size = Vector2(1040,840)
+	frame.theme = settings_theme()
+	var style = settings_box(PAPER,SETTINGS_BRASS,28)
+	style.border_width_top = 5
+	style.border_width_bottom = 5
+	style.corner_radius_top_left = 0
+	style.corner_radius_top_right = 0
+	style.corner_radius_bottom_left = 0
+	style.corner_radius_bottom_right = 0
+	frame.add_theme_stylebox_override("panel",style)
+	stage.add_child(frame)
+	frame.add_child(preload("res://scripts/menu_plate.gd").new())
+	var column = VBoxContainer.new()
+	column.add_theme_constant_override("separation",12)
+	frame.add_child(column)
+	column.add_child(label("断崖防线   /   生存行动",15,SETTINGS_BRASS))
+	column.add_child(label(title,38,SETTINGS_INK))
+	paragraph(column,subtitle,16,SETTINGS_MUTED)
+	column.add_child(HSeparator.new())
+	return column
+
 func show_save_slots() -> void:
-	var column = panel("选择存档","三个独立进度 · 选择后从第一波重新开始对局",720)
+	var column = field_shell("幸存者档案","三个独立存档 · 切换后从第一波开始 · 成长进度永久保留")
 	current = "saves"
+	var files = HBoxContainer.new()
+	files.name = "SaveDossiers"
+	files.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	files.add_theme_constant_override("separation",18)
+	column.add_child(files)
 	for index in 3:
 		var profile = Progress.slots[index]
-		button(column,"存档 %d%s · 金币 %d · 钻石 %d · 最佳波次 %d" % [index+1,"（当前）" if index == Progress.active_slot else "",profile.data.coins,profile.data.diamonds,profile.data.best_wave],game.select_save_slot.bind(index),index == Progress.active_slot)
-		button(column,"永久删除存档 %d" % (index+1),confirm_delete_slot.bind(index))
-	button(column,"返回",show_home)
+		var active: bool = index == Progress.active_slot
+		var card = PanelContainer.new()
+		card.name = "SaveSlot%d" % (index+1)
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var style = settings_box(PAPER.lightened(.07) if active else PAPER.darkened(.15),SETTINGS_BRASS if active else SETTINGS_MUTED.darkened(.55),20)
+		style.border_width_top = 4 if active else 1
+		card.add_theme_stylebox_override("panel",style)
+		files.add_child(card)
+		var dossier = VBoxContainer.new()
+		dossier.add_theme_constant_override("separation",15)
+		card.add_child(dossier)
+		dossier.add_child(label("档案  /  %02d" % (index+1),28,SETTINGS_BRASS))
+		dossier.add_child(label("当前使用" if active else "待命存档",17,SETTINGS_INK))
+		dossier.add_child(HSeparator.new())
+		for entry in [["金币",profile.data.coins],["钻石",profile.data.diamonds],["最佳波次",profile.data.best_wave]]:
+			var row = HBoxContainer.new()
+			dossier.add_child(row)
+			var caption = label(entry[0],17,SETTINGS_MUTED)
+			caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(caption)
+			row.add_child(label(str(entry[1]),25,SETTINGS_INK))
+		var space = Control.new()
+		space.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		dossier.add_child(space)
+		home_button(dossier,"使用存档 %d" % (index+1),game.select_save_slot.bind(index),active)
+		var remove = home_button(dossier,"永久删除存档 %d" % (index+1),confirm_delete_slot.bind(index))
+		remove.add_theme_font_size_override("font_size",15)
+	home_button(column,"返回主菜单",show_home)
 
 func show_pause() -> void:
 	var column = panel("休息片刻", "合作对局仍在进行" if Session.playing else "行动计时已暂停",560)
@@ -357,118 +405,112 @@ func back() -> void:
 	if game.running: show_pause()
 	else: show_home()
 
-func show_settings() -> void:
-	var shell = panel("战场设置", "声音、操控与画质会保存到本机",700,true)
-	current = "settings"
-	var tabs = TabContainer.new()
-	tabs.custom_minimum_size.y = 400
-	tabs.add_theme_stylebox_override("panel",settings_box(Color(.05,.08,.065,.4),SETTINGS_BRASS.darkened(.5),14))
-	tabs.add_theme_stylebox_override("tab_selected",settings_box(Color("314335"),SETTINGS_BRASS,10))
-	tabs.add_theme_stylebox_override("tab_unselected",settings_box(Color("121f1a"),SETTINGS_BRASS.darkened(.5),10))
-	shell.add_child(tabs)
-	var column = settings_page(tabs,"操控与声音")
-	settings_heading(column,"操控")
-	column.add_child(label("鼠标灵敏度",18,SETTINGS_INK))
+func field_choice(parent: VBoxContainer, caption: String, options: Array, selected: int, callback: Callable) -> Label:
 	var row = HBoxContainer.new()
-	column.add_child(row)
+	row.custom_minimum_size.y = 44
+	row.add_theme_constant_override("separation",12)
+	parent.add_child(row)
+	var heading = label(caption,18,SETTINGS_INK)
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(heading)
+	var value = label(str(options[selected]),18,SETTINGS_BRASS)
+	value.custom_minimum_size.x = 170
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var state = {"index":selected}
+	var change = func(delta):
+		state.index = posmod(state.index+delta,options.size())
+		value.text = str(options[state.index])
+		callback.call(state.index)
+	var previous = home_button(row,"‹",change.bind(-1))
+	previous.custom_minimum_size = Vector2(46,44)
+	previous.accessibility_name = caption+"：上一项"
+	row.add_child(value)
+	var next = home_button(row,"›",change.bind(1))
+	next.custom_minimum_size = Vector2(46,44)
+	next.accessibility_name = caption+"：下一项"
+	return value
+
+func field_slider(parent: VBoxContainer, caption: String, minimum: float, maximum: float, initial: float, callback: Callable) -> void:
+	var row = HBoxContainer.new()
+	row.custom_minimum_size.y = 50
+	row.add_theme_constant_override("separation",24)
+	parent.add_child(row)
+	var title = label(caption,18,SETTINGS_INK)
+	title.custom_minimum_size.x = 170
+	row.add_child(title)
 	var slider = HSlider.new()
-	slider.min_value = 10
-	slider.max_value = 200
+	slider.name = "Sensitivity" if minimum > 0 else "MasterVolume"
+	slider.min_value = minimum
+	slider.max_value = maximum
 	slider.step = 1
-	slider.value = Data.settings.sensitivity/.0022*100
+	slider.value = initial
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(slider)
-	var value = SpinBox.new()
-	value.min_value = 10
-	value.max_value = 200
-	value.step = 1
-	value.suffix = "%"
-	value.value = slider.value
-	value.add_theme_color_override("up_icon_modulate",SETTINGS_BRASS)
-	value.add_theme_color_override("down_icon_modulate",SETTINGS_BRASS)
-	value.get_line_edit().add_theme_color_override("font_color",SETTINGS_INK)
+	var value = label("%d %%" % initial,22,SETTINGS_BRASS)
+	value.custom_minimum_size.x = 95
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(value)
 	slider.value_changed.connect(func(v):
-		value.set_value_no_signal(v)
-		Data.settings.sensitivity = v/100*.0022
-		Data.save())
-	value.value_changed.connect(func(v): slider.value = v)
-	paragraph(column,"按中键切换开镜时，转向灵敏度会随真实视野同步降低。",15,SETTINGS_MUTED)
-	settings_heading(column,"声音")
-	column.add_child(label("主音量",18,SETTINGS_INK))
-	var volume = HSlider.new()
-	volume.min_value = 0
-	volume.max_value = 100
-	volume.step = 1
-	volume.value = Data.settings.volume*100
-	column.add_child(volume)
-	volume.value_changed.connect(func(v):
-		Data.settings.volume = v/100
-		Data.apply_settings()
-		Data.save())
-	settings_toggle(column,"静音（M）",Data.settings.muted,func(v):
-		Data.settings.muted = v
-		Data.apply_settings()
-		Data.save())
-	column = settings_page(tabs,"画面")
-	settings_heading(column,"画质")
-	var quality = OptionButton.new()
-	for text in ["极限流畅","流畅","均衡","精细","极致画质","自定义"]: quality.add_item(text)
-	quality.selected = int(Data.settings.quality)
-	settings_option(quality)
-	column.add_child(quality)
-	quality.item_selected.connect(func(v):
-		Data.set_preset(v)
-		show_settings())
-	var advanced = GridContainer.new()
-	advanced.columns = 2
-	advanced.add_theme_constant_override("h_separation",24)
-	advanced.add_theme_constant_override("v_separation",8)
-	column.add_child(advanced)
-	for spec in [
-		["渲染比例","resolution",[.5,.67,.75,1.0],["50%","67%","75%","100%"]],
-		["抗锯齿","aa",[0,1,2,3],["关闭","MSAA 2×","MSAA 4×","MSAA 8×"]],
-		["阴影","shadows",[0,1,2,3,4],["关闭","低","中","高","极高"]],
-		["特效","effects",[0,1,2],["低","中","高"]],
-		["视距","distance",[0,1,2],["近","中","远"]],
-		["帧率上限","frame_limit",[30,60,120,0],["30 FPS","60 FPS","120 FPS","不限"]]]:
-		advanced.add_child(label(spec[0],17,SETTINGS_INK))
-		var option = OptionButton.new()
-		for text in spec[3]: option.add_item(text)
-		option.selected = maxi(0,spec[2].find(Data.settings[spec[1]]))
-		settings_option(option)
-		advanced.add_child(option)
-		option.item_selected.connect(func(index):
-			Data.settings[spec[1]] = spec[2][index]
-			Data.settings.quality = 5
-			quality.select(5)
-			Data.apply_settings()
-			Data.save())
-	settings_toggle(column,"像素化显示",Data.settings.pixelated,func(value):
-		Data.settings.pixelated = value
-		Data.settings.quality = 5
-		quality.select(5)
-		Data.apply_settings()
-		Data.save())
-	settings_toggle(column,"全屏（F11）",Data.settings.fullscreen,func(v):
-		Data.settings.fullscreen = v
-		Data.apply_settings()
-		Data.save())
-	paragraph(column,"渲染器：Godot Compatibility\n渲染设备：%s\n版本：%s" % [RenderingServer.get_video_adapter_name(),Engine.get_version_info().string],15,SETTINGS_MUTED)
-	tabs.current_tab = settings_tab
-	tabs.tab_changed.connect(func(index): settings_tab = index)
-	button(shell,"返回",back)
+		value.text = "%d %%" % v
+		callback.call(v))
 
-func settings_page(tabs: TabContainer, title: String) -> VBoxContainer:
+func show_settings() -> void:
+	var shell = field_shell("战场设置","调整操控、声音与画面 · 更改自动保存")
+	current = "settings"
+	var navigation = HBoxContainer.new()
+	navigation.add_theme_constant_override("separation",16)
+	shell.add_child(navigation)
+	for index in 2:
+		var tab = home_button(navigation,["操控与声音","画面设置"][index],func():
+			settings_tab = index
+			show_settings(),settings_tab == index)
+		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var scroll = ScrollContainer.new()
-	scroll.name = title
+	scroll.name = "FieldSettings"
+	scroll.custom_minimum_size.y = 390
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	tabs.add_child(scroll)
+	shell.add_child(scroll)
 	var column = VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation",6)
+	column.add_theme_constant_override("separation",12)
 	scroll.add_child(column)
-	return column
+	if settings_tab == 0:
+		settings_heading(column,"操控")
+		field_slider(column,"鼠标灵敏度",10,200,Data.settings.sensitivity/.0022*100,func(v):
+			Data.settings.sensitivity = v/100*.0022
+			Data.save())
+		paragraph(column,"中键切换开镜；开镜转向随视野降低。",16,SETTINGS_MUTED)
+		settings_heading(column,"声音")
+		field_slider(column,"主音量",0,100,Data.settings.volume*100,func(v):
+			Data.settings.volume = v/100
+			Data.apply_settings()
+			Data.save())
+		field_choice(column,"静音（M）",["关闭","开启"],int(Data.settings.muted),func(v):
+			Data.settings.muted = v == 1
+			Data.apply_settings()
+			Data.save())
+	else:
+		var quality_label = field_choice(column,"画质预设",["极限流畅","流畅","均衡","精细","极致画质","自定义"],int(Data.settings.quality),func(v):
+			Data.set_preset(v)
+			show_settings())
+		for spec in [
+			["渲染比例","resolution",[.5,.67,.75,1.0],["50%","67%","75%","100%"]],
+			["抗锯齿","aa",[0,1,2,3],["关闭","MSAA 2×","MSAA 4×","MSAA 8×"]],
+			["阴影","shadows",[0,1,2,3,4],["关闭","低","中","高","极高"]],
+			["特效","effects",[0,1,2],["低","中","高"]],
+			["视距","distance",[0,1,2],["近","中","远"]],
+			["帧率上限","frame_limit",[30,60,120,0],["30 FPS","60 FPS","120 FPS","不限"]],
+			["像素化显示","pixelated",[false,true],["关闭","开启"]],
+			["全屏（F11）","fullscreen",[false,true],["关闭","开启"]]]:
+			field_choice(column,spec[0],spec[3],maxi(0,spec[2].find(Data.settings[spec[1]])),func(index):
+				Data.settings[spec[1]] = spec[2][index]
+				if spec[1] != "fullscreen":
+					Data.settings.quality = 5
+					quality_label.text = "自定义"
+				Data.apply_settings()
+				Data.save())
+	home_button(shell,"返回",back)
 
 func show_guide() -> void:
 	var column = panel("武器与操作", "水晶防线 · 十波连续进攻",1000)
@@ -715,10 +757,13 @@ func sync_victory_caption(age: float, enabled: bool) -> void:
 	victory_caption.visible = enabled and age < 5.8 and current != "result"
 
 func confirm_delete_slot(index: int) -> void:
+	var column = field_shell("永久删除存档 %d？" % (index+1),"金币、钻石、所有升级和备份将永久删除，无法恢复。")
 	current = "delete_save"
-	var column = panel("永久删除存档 %d？" % (index+1),"金币、钻石、所有升级和备份将永久删除，无法恢复。",660,true)
-	button(column,"取消，保留存档",show_save_slots,true)
-	button(column,"确认永久删除",delete_confirmed_slot.bind(index))
+	var space = Control.new()
+	space.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(space)
+	home_button(column,"取消，保留存档",show_save_slots,true)
+	home_button(column,"确认永久删除",delete_confirmed_slot.bind(index))
 
 func delete_confirmed_slot(index: int) -> void:
 	if Progress.delete_slot(index): show_save_slots()
