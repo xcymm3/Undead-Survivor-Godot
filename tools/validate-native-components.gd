@@ -18,6 +18,7 @@ func validate_combat_revision() -> void:
 	var director = sim.defense_director
 	check(not p.has("medkits") and not p.has("healing"),"Defense has no medical inventory or treatment state")
 	p.pos = Vector2(8,30)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.slot = 1
 	p.weapon1 = 4
 	p.weapon = 4
@@ -100,6 +101,7 @@ func validate_combat_revision() -> void:
 	check(is_equal_approx(runner.move_speed,sim.FOOTBALL_CHARGE_SPEED),"Football charge moves at 12 meters per second")
 	var saved_speed_position: Vector2 = p.pos
 	p.pos = Vector2(8,28)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	for kind in ["imp","berserker"]:
 		sim.zombies.clear()
 		sim.spawn(Vector2(8,25),kind)
@@ -166,6 +168,7 @@ func validate_flame() -> void:
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
 	p.pos = Vector2(8,36.0)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0
 	p.pitch = 0
 	p.weapon = 7
@@ -181,7 +184,8 @@ func validate_flame() -> void:
 	var initial_hp: Array = sim.zombies.map(func(enemy): return enemy.hp)
 	sim.fire(p,root.get_node("Data").weapons[7])
 	check(sim.zombies[0].hp < initial_hp[0] and sim.zombies[1].hp < initial_hp[1],"Flame covers off-axis enemies and penetrates the front row")
-	p.pos = root.get_node("Data").Maps.Defense.SPAWN
+	p.pos = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = PI
 	sim.zombies.clear()
 	sim.spawn(p.pos+Vector2(0,7),"normal")
@@ -200,6 +204,7 @@ func validate_sniper_penetration() -> void:
 	# Isolate penetration from the standing pose's head/body intersection.
 	w.headshotMultiplier = 1
 	p.pos = Vector2(8,36.0)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0
 	p.pitch = 0
 	p.weapon = 5
@@ -212,7 +217,8 @@ func validate_sniper_penetration() -> void:
 	for index in 4:
 		var expected: float = float(w.damage)*pow(.8,index) if index < 3 else 0.0
 		check(is_equal_approx(2000-sim.zombies[index].hp,expected),"Sniper front-to-back attenuation and three-target limit "+str(index))
-	p.pos = root.get_node("Data").Maps.Defense.SPAWN
+	p.pos = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = PI
 	sim.zombies.clear()
 	sim.spawn(p.pos+Vector2(0,7),"normal")
@@ -314,6 +320,7 @@ func validate_rifle_penetration() -> void:
 	w.adsSpread = 0
 	w.headshotMultiplier = 1
 	p.pos = Vector2(8,36)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0
 	p.pitch = 0
 	p.weapon = 0
@@ -344,7 +351,8 @@ func validate_rifle_penetration() -> void:
 	var behind_hp: float = sim.zombies[1].hp
 	sim.fire(p,w)
 	check(is_equal_approx(armored_hp-sim.zombies[0].hp,120) and is_equal_approx(behind_hp-sim.zombies[1].hp,80),"Armored enemy still absorbs damage normally while rifle continues to the second target")
-	p.pos = data.Maps.Defense.SPAWN
+	p.pos = data.Maps.Defense.SHOP_AREA.get_center()
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = PI
 	sim.zombies.clear()
 	sim.spawn(p.pos+Vector2(0,7),"normal")
@@ -361,6 +369,7 @@ func validate_pistol_and_equip() -> void:
 	var w: Dictionary = root.get_node("Data").weapons[2].duplicate(true)
 	w.headshotMultiplier = 1
 	p.pos = Vector2(8,36)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0
 	p.pitch = 0
 	p.weapon = 2
@@ -373,6 +382,7 @@ func validate_pistol_and_equip() -> void:
 	check(is_equal_approx(2000-sim.zombies[2].hp,100) and is_equal_approx(2000-sim.zombies[1].hp,50) and sim.zombies[0].hp == 2000,"Pistol hits the nearest two bodies for 100/50 and excludes the third")
 	var ring = preload("res://scripts/interaction_ring.gd")
 	check(ring.eased_progress(0) == 0 and ring.eased_progress(1) == 1 and ring.eased_progress(.25)-ring.eased_progress(0) > ring.eased_progress(1)-ring.eased_progress(.75),"Confirmation ring starts fast, ends slowly and completes at one second")
+	sim.defense.crystal_hp = sim.defense.crystal_max_hp
 	for kind in ["football","dancer"]:
 		sim.zombies.clear()
 		sim.spawn(root.get_node("Data").Maps.Defense.CRYSTAL+Vector2(0,-1.5),kind)
@@ -540,9 +550,10 @@ func validate_interaction_motion() -> void:
 	var p: Dictionary = game.local_pawn()
 	var fixture = preload("res://tools/preparation-fixture.gd")
 	check(not game.paused and game.ui.current.is_empty(),"Preparation begins directly in the world without a modal")
-	check(game.arena.scenery.preparation.stations.size() == 9,"Shared damage, capacity, ultimate, grenade, four talents and alarm exist")
+	check(game.arena.scenery.preparation.stations.size() == 8,"Eight shared preparation stands exist without an alarm")
 	var scenery = game.arena.scenery
 	var visual_state = sim.defense.duplicate(true)
+	visual_state.crystal_hp = visual_state.crystal_max_hp
 	visual_state.prop_clock = 0.0
 	scenery.sync(visual_state)
 	var crystal_body_pose: Transform3D = scenery.get_node("CrystalBody").transform
@@ -562,10 +573,10 @@ func validate_interaction_motion() -> void:
 		var station: Dictionary = game.arena.scenery.preparation.stations[id]
 		var bounds: AABB = preload("res://scripts/world_geometry.gd").posed_bounds(station.prop.get_child(0))
 		check(bounds.get_center().distance_to(station.prop.global_position) < .35 and bounds.size.length() > 1.0,"Display geometry is centered above its actual world-space desk: "+id)
-	check(game.arena.scenery.find_children("*","Label3D",true,false).size() == 2,"Only the context-sensitive borderless scene label remains")
+	check(scenery.preparation.focus_label.no_depth_test and scenery.preparation.stations.rifle.root.has_node("ToyStationTitle"),"Toy nameplates accompany the unobstructed contextual label")
 	fixture.face(sim,p,"crystal")
 	game.arena.scenery.sync_focus(sim,p)
-	check(preload("res://scripts/preparation_catalog.gd").focus(sim,p).get("id","") == "crystal" and game.arena.scenery.preparation.focus_label.text.contains("3000"),"The crystal does not occlude its own contextual health information")
+	check(preload("res://scripts/preparation_catalog.gd").focus(sim,p).get("id","") == "crystal" and game.arena.scenery.preparation.focus_label.text.contains("修复完成立即开始"),"The broken crystal exposes its immediate-start repair warning")
 	fixture.face(sim,p,"rifle")
 	game.arena.scenery.sync_focus(sim,p)
 	check(game.arena.scenery.preparation.focus_label.visible,"Nearby aimed station shows its details")
@@ -595,12 +606,12 @@ func validate_interaction_motion() -> void:
 	check(preload("res://scripts/preparation_catalog.gd").focus(sim,p).is_empty(),"A physical obstruction hides the aimed station")
 	blocker.queue_free()
 	await physics_frame
-	fixture.face(sim,p,"alarm")
+	fixture.face(sim,p,"crystal")
 	p.input = {"interact":false}
 	d.interactions(.01)
 	fixture.hold(sim,p,1.1)
-	check(sim.defense.started,"The world alarm starts the attack")
-	check(preload("res://scripts/preparation_catalog.gd").targets(sim).size() == 10,"Closed empty construction sites do not expose invisible interaction targets")
+	check(sim.defense.started,"Repairing the crystal immediately starts the attack")
+	check(preload("res://scripts/preparation_catalog.gd").targets(sim).size() == 9,"Closed empty construction sites do not expose invisible interaction targets")
 	check(game.arena.scenery.preparation.stations.rifle.cover.visible and not game.arena.scenery.preparation.stations.rifle.prop.visible,"Attack physically closes station covers and hides goods")
 	check(game.ui.native_hud.find_child("CoinIcon",true,false).texture != null and game.ui.native_hud.find_child("DiamondIcon",true,false).texture != null,"Wallet uses distinct coin and diamond icons")
 	check(not sim.purchase_upgrade("rifle",p),"Starting wave one closes transactions")
@@ -699,7 +710,7 @@ func run() -> void:
 	check(not game.input_state().jump,"Old jump key is no longer hard-coded")
 	InputMap.action_erase_events("jump")
 	for event in original: InputMap.action_add_event("jump",event)
-	check(InputMap.action_get_events("start_wave").any(func(event): return event is InputEventKey and event.physical_keycode == KEY_T),"T is bound to the wave start action")
+	check(not InputMap.has_action("start_wave"),"No keyboard shortcut bypasses crystal repair")
 	var fire = InputEventAction.new()
 	fire.action = "fire"
 	fire.pressed = true
@@ -764,6 +775,7 @@ func run() -> void:
 	check(game.display_buffer.history.size() == 2,"World receiver feeds the display buffer")
 	check(game.sim.zombies[0].pos == world.zombies[0].pos,"Rendering retains the latest authoritative enemy position")
 	session.playing = false
+	await load("res://tools/validate-map-redesign.gd").validate(game,check)
 	game.return_home()
 	check(not game.ui.native_hud.visible,"HUD hides on return to menu")
 	check(game.display_buffer.history.is_empty(),"Leaving clears interpolation history")
@@ -974,6 +986,7 @@ func validate_close_combat() -> void:
 	p.slot = 1
 	p.interaction = ""
 	p.pos = Vector2(0,30)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.height = 3.0
 	p.hp = 100
 	p.yaw = 0.0
@@ -1108,6 +1121,7 @@ func validate_close_combat() -> void:
 		break
 	check(wall_checked,"Close-combat obstruction fixture found a native wall")
 	p.pos = Vector2(0,30)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.height = 3.0
 	p.yaw = 0.0
 	sim.zombies.clear()
@@ -1120,15 +1134,18 @@ func validate_close_combat() -> void:
 	sim.spawn(Vector2(0,28.8),"normal")
 	var attacker: Dictionary = sim.zombies[0]
 	p.pos = Vector2(0,30)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.protection = 0.0
 	sim.events.clear()
 	sim.update_zombie(attacker,p,.1)
 	check(p.hp == 100 and attacker.attack_time > 0 and sim.events.any(func(e): return e.kind == "enemy_windup"),"Attack announces a windup before dealing damage")
 	p.pos = Vector2(4,30)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	sim.update_zombie(attacker,p,.45)
 	check(p.hp == 100 and sim.events.any(func(e): return e.kind == "enemy_miss"),"Lateral movement can evade the limited-turn attack advance")
 	attacker.attack_time = 0.0
 	p.pos = Vector2(0,30)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	attacker.pos = Vector2(0,28.8)
 	attacker.chase_speed = 4.8
 	sim.events.clear()
@@ -1224,6 +1241,7 @@ func validate_enemy_overlap() -> void:
 	var query = PhysicsRayQueryParameters3D.create(Vector3(8,4,23),Vector3(8,4,28),8)
 	check(game.arena.get_world_3d().direct_space_state.intersect_ray(query).is_empty(),"Enemies create no native collision actors or proxies")
 	p.pos = Vector2(8,29)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.height = 3.0
 	check(not sim.can_move(p,Vector2(8,25.2)) and sim.can_move(p,Vector2(8,30)),"Legacy player distance blocking prevents entry but permits escape")
 	var gate: Dictionary = sim.defense_director.structures.find("bridge_gate")
@@ -1272,6 +1290,7 @@ func validate_inventory() -> void:
 	game.cycle_equipment(1)
 	check(game.requested_slot == 1,"Wheel skips the empty grenade slot")
 	p.pos = Vector2(0,36.0)
+	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0.0
 	p.pitch = 0.0
 	# Full real swing: the expanded reach hits at 3 m but still misses at 4 m.
@@ -1307,6 +1326,7 @@ func validate_equipment() -> void:
 		var equipment = sim.equipment
 		var p: Dictionary = game.local_pawn()
 		p.pos = Vector2(8,30)
+		p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 		p.hp = 100
 		if party == 2: sim.pawns.equipment_peer.hp = 100
 		p.slot = 1
@@ -1314,7 +1334,7 @@ func validate_equipment() -> void:
 		p.input = {"yaw":0.0,"pitch":0.0}
 		var old_hp: int = p.hp
 		sim.zombies.clear()
-		var shop_spawn: Vector2 = root.get_node("Data").Maps.Defense.SPAWN
+		var shop_spawn: Vector2 = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()
 		sim.spawn(shop_spawn+Vector2(0,7),"normal")
 		equipment.explode({"owner":p.id,"pos":Vector3(shop_spawn.x,4,shop_spawn.y)})
 		check(sim.zombies[0].hp > 0,"Armory wall blocks grenade blast damage")

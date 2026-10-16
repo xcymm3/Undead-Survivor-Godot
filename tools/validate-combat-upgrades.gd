@@ -147,7 +147,7 @@ func run() -> void:
 		check(Catalog.focus(sim,p).get("id","") == id,"Shared stand resolves held weapon: "+id)
 		check(Catalog.description(sim,id).contains(Catalog.NAMES[id]),"Description identifies the upgraded weapon: "+id)
 		check(sim.purchase_upgrade(id,p),"Shared stand buys correct upgrade: "+id)
-	check(world.preparation.stations.size() == 9,"Shared stands remove redundant weapon desks")
+	check(world.preparation.stations.size() == 8,"Shared stands remove redundant weapon desks")
 	Fixture.face(sim,p,"ultimate")
 	check(sim.purchase_upgrade("ultimate",p) and sim.progression.level("ultimate") == 1,"Learning the ultimate uses its physical stand")
 	for price in [450,650,1000]:
@@ -246,6 +246,7 @@ func run() -> void:
 	check(game.input_state().ultimate and not game.input_state().ultimate,"Physical Q submits one input edge")
 	game.ui.native_hud.sync()
 	check(game.ui.native_hud.ultimate_ring.caption == "0%","Ultimate ring shows charge percentage after ending")
+	sim.defense.crystal_hp = sim.defense.crystal_max_hp
 	sim.damage_crystal({},1)
 	game.ui.native_hud.sync()
 	check(game.ui.native_hud.crystal_alert.visible,"Crystal damage shows top-of-screen alert")

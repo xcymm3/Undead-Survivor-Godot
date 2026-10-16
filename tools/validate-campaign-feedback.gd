@@ -20,7 +20,7 @@ func run() -> void:
 	var catalog = load("res://scripts/preparation_catalog.gd")
 	var fixture = load("res://tools/preparation-fixture.gd")
 	var layout = root.get_node("Data").Maps.Defense
-	check(sim.defense.crystal_hp == 3000 and sim.defense.crystal_max_hp == 3000,"Crystal starts with three thousand health")
+	check(sim.defense.crystal_hp == 0 and sim.defense.crystal_max_hp == 3000 and sim.defense.crystal_repair_required,"Crystal begins broken and repair restores a three-thousand-health objective")
 	sim.progression.data.coins = 10000
 	for id in ["bridge_gate","bridge_entry_gate"]:
 		check(fixture.buy(sim,p,id),"Build gate for whole-panel interaction: "+id)
@@ -37,6 +37,7 @@ func run() -> void:
 	for cue in ["crystal-hit","coin-pickup","purchase"]:
 		check(game.sound.streams[cue].data.size() > 0,"Dedicated feedback sound exists: "+cue)
 	sim.events.clear()
+	sim.defense.crystal_hp = 3000
 	sim.damage_crystal({},1)
 	var sound_count: int = game.sound.index
 	game.handle_effects(sim.events)
@@ -117,7 +118,7 @@ func run() -> void:
 	game.arena.scenery.sync(state)
 	check(not game.arena.scenery.crystal_damage.cracks.visible,"Crystal above half health has no cracks")
 	sim.damage_crystal({},3000)
-	state.prop_clock += .5
+	state.prop_clock += .15
 	game.arena.scenery.sync(state)
 	var damage = game.arena.scenery.crystal_damage
 	check(damage.debris.visible and not game.arena.scenery.crystal_core.visible and game.arena.scenery.get_node("CrystalBody").collision_layer == 0,"Broken crystal replaces core with nonblocking fragments")

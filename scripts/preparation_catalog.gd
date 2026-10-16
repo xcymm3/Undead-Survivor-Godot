@@ -2,7 +2,7 @@ extends RefCounted
 ## Shared world positions, gaze selection and compact descriptions.
 const Layout = preload("res://scripts/defense_layout.gd")
 const HOLD_SECONDS = 1.0
-const NAMES = {"rifle":"步枪","rifle_magazine":"步枪弹匣","pistol_magazine":"手枪弹匣","pistol":"手枪","axe":"消防斧","grenade":"手雷","ultimate":"大招","strong":"强壮","precise":"精准","swift":"迅捷","supply":"补给","turret_left":"炮塔","turret_right":"炮塔","bridge_gate":"栅栏门","bridge_entry_gate":"栅栏门","crystal_mine":"地雷","ramp_mine":"地雷","gate_mine":"地雷","alarm":"警报器","crystal":"水晶"}
+const NAMES = {"rifle":"步枪","rifle_magazine":"步枪弹匣","pistol_magazine":"手枪弹匣","pistol":"手枪","axe":"消防斧","grenade":"手雷","ultimate":"大招","strong":"强壮","precise":"精准","swift":"迅捷","supply":"补给","turret_left":"炮塔","turret_right":"炮塔","bridge_gate":"栅栏门","bridge_entry_gate":"栅栏门","crystal_mine":"地雷","ramp_mine":"地雷","gate_mine":"地雷","crystal":"水晶"}
 
 static func stations() -> Array:
 	var result: Array = []
@@ -10,7 +10,6 @@ static func stations() -> Array:
 	for i in ids.size():
 		result.append({"id":ids[i],"position":Vector3([-9.0,-3.0,3.0,9.0][i%4],4.15,Layout.SHOP_WALL_Z-2.3 if i < 4 else Layout.SHOP_WALL_Z-7.5),"radius":.85,"range":3.2})
 
-	result.append({"id":"alarm","position":Vector3(-4,4.15,Layout.SHOP_AREA.position.y-2),"radius":.7,"range":3.2})
 	return result
 
 static func targets(sim) -> Array:
@@ -23,7 +22,7 @@ static func targets(sim) -> Array:
 		# Gate labels use the centre as an anchor; gaze selection uses the entire
 		# face volume, including the unbuilt preview, rather than this point.
 		result.append({"id":item.id,"position":point,"radius":.8,"range":3.2,"gate_body":item.kind == "gate"})
-	result.append({"id":"crystal","position":Vector3(Layout.CRYSTAL.x,5.0,Layout.CRYSTAL.y),"radius":1.1,"range":5.0})
+	result.append({"id":"crystal","position":Vector3(Layout.CRYSTAL.x,4.0 if sim.defense.get("crystal_repair_required",false) else 5.0,Layout.CRYSTAL.y),"radius":1.1,"range":5.0})
 	return result
 
 static func focus(sim, p: Dictionary) -> Dictionary:
@@ -63,8 +62,8 @@ static func focus(sim, p: Dictionary) -> Dictionary:
 	return selected
 
 static func available(sim, id: String) -> bool:
-	if sim.defense.started or sim.failed or sim.won or id == "crystal": return false
-	if id == "alarm": return true
+	if sim.defense.started or sim.failed or sim.won: return false
+	if id == "crystal": return sim.defense.get("crystal_repair_required",false)
 	if id in sim.progression.BUILDINGS:
 		var item = sim.defense_director.structures.find(id)
 		if item.get("owned",false) and item.hp <= 0: return false
@@ -73,8 +72,9 @@ static func available(sim, id: String) -> bool:
 static func description(sim, id: String) -> String:
 	var profile = sim.progression
 	if id == "unsupported_weapon": return "此装备无需升级"
-	if id == "crystal": return "水晶\n%d / %d" % [sim.defense.crystal_hp,sim.defense.crystal_max_hp]
-	if id == "alarm": return "进攻中" if sim.defense.started else "开始进攻"
+	if id == "crystal":
+		if sim.defense.get("crystal_repair_required",false): return "水晶已破损\n长按 E 修复\n修复完成立即开始进攻"
+		return "水晶\n%d / %d" % [sim.defense.crystal_hp,sim.defense.crystal_max_hp]
 	var price: int = profile.cost(id)
 	var cost_text = "%d%s" % [price,"◆" if id in profile.TALENTS else "$"] if price >= 0 else ""
 	var level_text = "LV%d" % (profile.level(id)+1) if id not in profile.TALENTS else "LV%d / 5" % profile.level(id)

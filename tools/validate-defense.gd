@@ -47,11 +47,11 @@ func run() -> void:
 	var layout = data.Maps.Defense
 	check(is_equal_approx(layout.PLATEAU.size.y,82.0*2.0/3.0) and is_equal_approx(layout.BOUNDS.end.y,layout.PLATEAU.end.y),"Plateau and world boundary shorten to two thirds of the original length")
 	check(layout.CRYSTAL == layout.PLATEAU.get_center(),"Crystal occupies the exact centre of the flat plateau")
-	check(layout.SHOP_AREA.get_center().x == layout.CRYSTAL.x and layout.SPAWN == layout.SHOP_AREA.get_center() and layout.SPAWN.y > layout.CRYSTAL.y,"Shop is directly behind the crystal and spawn is its exact center")
+	check(layout.SHOP_AREA.get_center().x == layout.CRYSTAL.x and layout.SPAWN.y < layout.BRIDGE.position.y and layout.CRYSTAL.y < layout.SHOP_AREA.position.y,"Spawn, bridge, crystal and shop follow the approach order")
 	check(game.arena.obstacles.size() >= 5,"Chasm, ramp shelves and solid shop furniture participate in navigation")
 	check(not game.arena.clear(Vector2(12,-70),Vector2(12,0)),"Chasm prevents routes that bypass the bridge")
 	check(not game.arena.clear(Vector2(12,-20),Vector2(12,0)),"Ramp-side shelves cannot bypass the central climb")
-	check(game.arena.clear(Vector2(0,layout.SHOP_AREA.position.y-2),layout.SPAWN),"Zombies can enter the shop through its central aisle")
+	check(game.arena.clear(Vector2(0,layout.SHOP_AREA.position.y-2),layout.SHOP_AREA.get_center()),"Zombies can enter the shop through its central aisle")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Bridge and ramp form one open approach lane")
 	check(not game.arena.clear(Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997),data.Maps.Defense.CRYSTAL),"Crystal body blocks enemy navigation")
 	check(game.arena.scenery.find_children("CrystalPedestal","*",true,false).is_empty(),"Crystal pedestal has been removed")
@@ -121,15 +121,15 @@ func run() -> void:
 		sim.step(.05)
 	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Preparation keeps timer and spawns stopped")
 	check(pawn.weapon == pawn.weapon2 and pawn.slot == 2,"Defense uses weapon-slot-2 switching")
-	check(sim.shop_available(pawn),"Shop is available from the spawn before wave one")
+	check(not sim.shop_available(pawn),"Spawn at the bridge entrance is outside the shop")
 	check(not sim.equipment.pickup(pawn,"weapon:5") and not sim.equipment.pickup(pawn,"weapon:7"),"Removed weapon racks cannot exchange the fixed loadout")
 	check(pawn.weapon1 == 0 and pawn.weapon2 == 2,"Invalid pickups preserve fixed weapons")
 	var fixture = preload("res://tools/preparation-fixture.gd")
-	fixture.face(sim,pawn,"alarm")
+	fixture.face(sim,pawn,"crystal")
 	fixture.hold(sim,pawn,3.1)
 	pawn.pos = Vector2(0,10)
 	pawn.height = 3
-	check(sim.defense.started and not sim.defense.waiting and sim.rest == 0 and not sim.roster.is_empty(),"Holding the alarm starts wave one immediately without a countdown")
+	check(sim.defense.started and not sim.defense.waiting and sim.rest == 0 and not sim.roster.is_empty(),"Repairing the crystal starts wave one immediately without a countdown")
 	check(sim.wave == 1 and sim.events.filter(func(event): return event.kind == "wave_start").size() == 1,"Crystal defense sounds one low horn when wave one begins")
 	var grenades_before: int = pawn.grenades
 	sim.submit("solo",command(int(pawn.weapon),false,4,pawn.yaw,pawn.pitch,true))
@@ -157,7 +157,7 @@ func run() -> void:
 	# Isolate target choice from the wave spawner: the closest valid unit must take the hit.
 	sim.roster.clear()
 	sim.zombies.clear()
-	pawn.pos = data.Maps.Defense.SPAWN
+	pawn.pos = data.Maps.Defense.SHOP_AREA.get_center()
 	pawn.hp = 100
 	var crystal_before: int = sim.defense.crystal_hp
 	sim.spawn(Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997),"normal")
@@ -419,7 +419,7 @@ func run() -> void:
 	sim.add_pawn("two","二号",1)
 	sim.add_pawn("three","三号",2)
 	sim.defense_director.equipment.initialize()
-	game.start_attack()
+	sim.defense_director.begin_wave()
 	sim.roster.clear()
 	sim.step(.02)
 	sim.step(10)

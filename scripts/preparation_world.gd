@@ -1,10 +1,13 @@
 extends "res://scripts/world_geometry.gd"
 const Catalog = preload("res://scripts/preparation_catalog.gd")
 const Layout = preload("res://scripts/defense_layout.gd")
+const Toy = preload("res://scripts/toy_art.gd")
+
+func material(color: String) -> StandardMaterial3D:
+	return Toy.material(color)
 var stations: Dictionary = {}
 var blueprints: Dictionary = {}
 var focus_label: Label3D
-var alarm_light: OmniLight3D
 var interaction_ring: Node3D
 var money_flights
 
@@ -42,17 +45,23 @@ func build_station(entry: Dictionary) -> void:
 	var p: Vector3 = entry.position
 	var root = Node3D.new()
 	root.name = "Station_"+entry.id
+	root.set_meta("art_style","toy")
 	add_child(root)
 	root.position = Vector3(p.x,3,p.z)
 	var before = get_children()
-	block("StationFoot",Vector3(p.x,3.13,p.z),Vector3(2.2,.26,1.5),"303c3b",false)
-	block("StationDesk",Vector3(p.x,3.52,p.z),Vector3(1.9,.65,1.25),"66513b",true,false)
+	block("StationFoot",Vector3(p.x,3.13,p.z),Vector3(2.2,.26,1.5),Toy.BLUE,false)
+	block("StationDesk",Vector3(p.x,3.52,p.z),Vector3(1.9,.65,1.25),Toy.CORAL if entry.id in ["rifle","grenade","precise","supply"] else Toy.BLUE,true,false)
 	# Enemies can enter the shop; only actual solid furniture blocks their route.
 	get_parent().obstacles.append({"minX":p.x-.95,"maxX":p.x+.95,"minZ":p.z-.625,"maxZ":p.z+.625})
-	block("StationTop",Vector3(p.x,3.89,p.z),Vector3(2.12,.1,1.4),"b5a581",false)
-	block("StationTrim",Vector3(p.x,3.95,p.z+.67),Vector3(2.12,.06,.07),"d1b060",false)
+	block("StationTop",Vector3(p.x,3.89,p.z),Vector3(2.12,.1,1.4),Toy.CREAM,false)
+	block("StationTrim",Vector3(p.x,3.95,p.z+.67),Vector3(2.12,.06,.07),Toy.YELLOW,false)
 	for child in get_children():
 		if child not in before: child.reparent(root)
+	for x in [-.84,.84]:
+		for z in [-.48,.48]: Toy.cylinder(root,"ToyStud",Vector3(x,.97,z),.10,.10,Toy.YELLOW)
+	Toy.box(root,"ToyNamePlate",Vector3(0,.55,-.66),Vector3(1.30,.35,.065),Toy.CREAM)
+	var title: String = {"rifle":"武器强化","rifle_magazine":"弹匣工坊","ultimate":"长刀能量","grenade":"手雷补给","strong":"强壮","precise":"精准","swift":"迅捷","supply":"补给"}.get(entry.id,entry.id)
+	Toy.label(root,"ToyStationTitle",title,Vector3(0,.55,-.70),.005,true)
 	var prop = Node3D.new()
 	prop.name = "DisplayObject"
 	root.add_child(prop)
@@ -96,7 +105,7 @@ func build_station(entry: Dictionary) -> void:
 	var mesh = BoxMesh.new()
 	mesh.size = Vector3(2.15,1.25,1.43)
 	cover.mesh = mesh
-	cover.material_override = material("3b474a")
+	cover.material_override = material(Toy.BLUE)
 	cover.position.y = 1.6
 	root.add_child(cover)
 	for side in [-1.0,1.0]:
@@ -105,7 +114,7 @@ func build_station(entry: Dictionary) -> void:
 			var rib_mesh = BoxMesh.new()
 			rib_mesh.size = Vector3(2.12,.035,.04)
 			rib.mesh = rib_mesh
-			rib.material_override = material("596568")
+			rib.material_override = material(Toy.YELLOW)
 			rib.position = Vector3(0,-.5+level*.2,side*.73)
 			cover.add_child(rib)
 	cover.visible = false
@@ -116,9 +125,6 @@ func build_station(entry: Dictionary) -> void:
 	light.omni_range = 3.8
 	root.add_child(light)
 	stations[entry.id] = {"root":root,"prop":prop,"cover":cover,"light":light,"display_basis":prop.basis}
-	if entry.id == "alarm":
-		alarm_light = light
-		light.light_color = Color("72e6b0")
 
 func build_talent(parent: Node3D, id: String) -> void:
 	var before = get_children()
@@ -141,9 +147,6 @@ func build_talent(parent: Node3D, id: String) -> void:
 		"supply":
 			block("AmmoCase",p,Vector3(1,.4,.6),"52644a",false)
 			for x in [-.3,0,.3]: cylinder(p+Vector3(x,.28,0),.055,.24,"d1aa58")
-		"alarm":
-			block("AlarmControl",p,Vector3(.55,.48,.25),"a94535",false)
-			block("AlarmLever",p+Vector3(0,.3,.1),Vector3(.14,.35,.12),"efb46c",false)
 	for child in get_children():
 		if child not in before: child.reparent(parent)
 
@@ -151,14 +154,11 @@ func sync(state: Dictionary) -> void:
 	var closed: bool = state.get("started",false)
 	for id in stations:
 		var station: Dictionary = stations[id]
-		station.cover.visible = closed and id != "alarm"
-		station.prop.visible = not closed or id == "alarm"
+		station.cover.visible = closed
+		station.prop.visible = not closed
 		station.light.light_energy = 0.0 if closed else 1.1
 		if id in ["rifle","pistol","axe"]:
 			station.prop.basis = Basis(Vector3.UP,float(state.get("prop_clock",0.0))*TAU/40.0)*station.display_basis
-	if alarm_light:
-		alarm_light.light_color = Color("ff654b") if closed else Color("72e6b0")
-		alarm_light.light_energy = 1.5 if closed else 1.1
 	for item in state.get("structures",[]):
 		for marker in blueprints.get(item.id,[]): marker.visible = item.kind == "mine" and not item.get("owned",false) and not closed
 
@@ -183,7 +183,7 @@ func sync_focus(sim, p: Dictionary) -> void:
 	var drops: Array = []
 	if interaction_ring.visible:
 		interaction_ring.position = choice.position+Vector3(0,.38,0)
-		var price: int = sim.progression.cost(choice.id) if choice.id != "alarm" else 0
+		var price: int = sim.progression.cost(choice.id) if choice.id != "crystal" else 0
 		var enabled: bool = sim.progression.data[sim.progression.currency(choice.id)] >= price
 		var time: float = p.interact_time if p.get("interaction","") == choice.id else 0.0
 		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
@@ -205,7 +205,7 @@ func sync_focus(sim, p: Dictionary) -> void:
 	if choice.is_empty(): return
 	var text = Catalog.description(sim,choice.id)
 	if Catalog.available(sim,choice.id):
-		var price: int = sim.progression.cost(choice.id) if choice.id != "alarm" else 0
+		var price: int = sim.progression.cost(choice.id) if choice.id != "crystal" else 0
 		var wallet = sim.progression.currency(choice.id)
 		if sim.progression.data[wallet] < price: text += "\n钻石不足" if wallet == "diamonds" else "\n金币不足"
 	if p.get("work_feedback_id","") == choice.id and p.get("work_feedback_until",0.0) > sim.defense.prop_clock: text += "\n"+p.work_feedback

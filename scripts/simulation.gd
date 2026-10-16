@@ -249,7 +249,7 @@ func step(dt: float) -> void:
 			if not alive.has(id): target_cache.erase(id)
 		path_scheduler.prune(alive)
 	zombies = zombies.filter(func(z): return z.hp > 0 or z.down > 0)
-	if mode == "defense" and defense.get("crystal_hp",0) <= 0:
+	if mode == "defense" and defense.get("started",false) and defense.get("crystal_hp",0) <= 0:
 		failed = true
 		cause = "crystal"
 		defense.objective = "水晶已被摧毁"

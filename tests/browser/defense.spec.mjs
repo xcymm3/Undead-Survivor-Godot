@@ -9,7 +9,7 @@ async function clickButton(page, text) {
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
 }
 
-test('吊桥水晶防守使用真实输入换装并长按警报器开始进攻', async ({ page }, info) => {
+test('吊桥水晶防守使用真实输入换装并过桥后长按E修复水晶开始进攻', async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('/');
@@ -31,11 +31,10 @@ test('吊桥水晶防守使用真实输入换装并长按警报器开始进攻',
   expect(state.paused).toBe(false);
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 2 && window.__survivorSnapshot?.player?.weapon === 2);
-  await page.keyboard.down('a');
-  await page.waitForFunction(() => window.__survivorSnapshot?.player?.x < -3.8);
-  await page.keyboard.up('a');
+  expect(state.defense.crystal_hp).toBe(0);
+  expect(state.player.z).toBeLessThan(-62);
   await page.keyboard.down('w');
-  await page.waitForFunction(() => window.__survivorSnapshot?.player?.z < 34.5);
+  await page.waitForFunction(() => window.__survivorSnapshot?.player?.z > 14.1, null, { timeout: 90_000 });
   await page.keyboard.up('w');
   await page.keyboard.press('3');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 3 && window.__survivorSnapshot?.player?.weapon === 6);
@@ -46,15 +45,15 @@ test('吊桥水晶防守使用真实输入换装并长按警报器开始进攻',
   const beforeAim = await snapshot(page);
   await page.waitForFunction(frame => window.__survivorSnapshot.frames > frame, beforeAim.frames);
   const aimed = await snapshot(page);
-  const alarm = { x: -4, y: 4.15, z: 32.6666666667 };
-  const dx = alarm.x - aimed.player.x;
-  const dz = alarm.z - aimed.player.z;
+  const crystal = { x: 0, y: 4.0, z: 17.3333333333 };
+  const dx = crystal.x - aimed.player.x;
+  const dz = crystal.z - aimed.player.z;
   const targetYaw = Math.atan2(-dx, -dz);
-  const targetPitch = Math.atan2(alarm.y - aimed.player.height - aimed.player.eye_height, Math.hypot(dx, dz));
-  const deltaX = (aimed.yaw - targetYaw) / .0022;
+  const targetPitch = Math.atan2(crystal.y - aimed.player.height - aimed.player.eye_height, Math.hypot(dx, dz));
+  const deltaX = Math.atan2(Math.sin(aimed.yaw - targetYaw), Math.cos(aimed.yaw - targetYaw)) / .0022;
   const deltaY = (aimed.pitch - targetPitch) / .0022;
   await page.mouse.move(480 + deltaX, 300 + deltaY, { steps: Math.max(1, Math.ceil(Math.max(Math.abs(deltaX), Math.abs(deltaY)) / 100)) });
-  await page.waitForFunction(() => window.__survivorSnapshot.player.focus?.id === 'alarm');
+  await page.waitForFunction(() => window.__survivorSnapshot.player.focus?.id === 'crystal');
   await page.keyboard.down('e');
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });
   await page.keyboard.up('e');

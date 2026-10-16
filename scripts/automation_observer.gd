@@ -75,12 +75,12 @@ func native_smoke() -> void:
 	# Packaged-EXE validation: same scene, real input path, no renderer or Steam login.
 	game.start_solo("defense")
 	await get_tree().create_timer(.2).timeout
-	var alarm = preload("res://scripts/preparation_catalog.gd").stations()[-1].position
+	var repair = Vector3(Data.Maps.Defense.CRYSTAL.x,4.0,Data.Maps.Defense.CRYSTAL.y)
 	var local = game.local_pawn()
-	local.pos = Vector2(alarm.x,alarm.z-2)
+	local.pos = Vector2(repair.x,repair.z-2.4)
 	local.height = 3
 	local.yaw = PI
-	local.pitch = -.2
+	local.pitch = atan2(repair.y-4.65,2.4)
 	game.yaw = game.local_pawn().yaw
 	game.pitch = game.local_pawn().pitch
 	Input.action_press("interact")

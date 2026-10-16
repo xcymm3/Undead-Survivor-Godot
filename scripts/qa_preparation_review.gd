@@ -14,6 +14,8 @@ func stage() -> void:
 	Progress.store.data.diamonds = 37
 	var parts = scenario.split("_")
 	var building_id = {"turret":"turret_left","gate":"bridge_gate","mine":"crystal_mine"}.get(parts[0],"")
+	if scenario == "toy_turret": Progress.store.data.buildings.turret_left.owned = true
+	if scenario == "toy_mine": Progress.store.data.mines.crystal_mine = true
 	if not building_id.is_empty() and parts[1] != "unbuilt":
 		if building_id in Progress.store.MINES: Progress.store.data.mines[building_id] = true
 		else: Progress.store.data.buildings[building_id].owned = true
@@ -32,7 +34,7 @@ func stage() -> void:
 	game.camera.look_at(Vector3(0,4.1,wall-5))
 	game.camera.fov = 76
 	var p = game.local_pawn()
-	if scenario == "closed": game.start_attack(); game.running = false
+	if scenario == "closed": game.sim.defense_director.begin_wave(); game.running = false
 	if scenario == "rifle":
 		var point: Vector3 = preload("res://scripts/preparation_catalog.gd").stations()[0].position
 		p.pos = Vector2(point.x,point.z-2.4)
@@ -112,6 +114,8 @@ func stage() -> void:
 				p.yaw = game.camera.rotation.y
 				p.pitch = game.camera.rotation.x
 			game.arena.scenery.sync_focus(game.sim,p)
+	if scenario.begins_with("map_") or scenario.begins_with("toy_") or scenario in ["crystal_broken","crystal_repaired"]:
+		await stage_redesign(scenario,p)
 	game.running = true
 	game.ui.native_hud.sync()
 	game.running = false
@@ -123,3 +127,56 @@ func stage() -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37,"announcement":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a,"focus_text":game.arena.scenery.preparation.focus_label.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible}),true)
+
+func stage_redesign(scenario: String, p: Dictionary) -> void:
+	var layout = Data.Maps.Defense
+	var center = Vector3(layout.CRYSTAL.x,4.6,layout.CRYSTAL.y)
+	if scenario == "map_spawn":
+		game.camera.position = Vector3(p.pos.x,p.height+1.65,p.pos.y)
+		game.camera.rotation = Vector3(0,p.yaw,0)
+		game.camera.fov = 70
+	elif scenario == "map_overview":
+		game.camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		game.camera.size = 118
+		game.camera.position = Vector3(-70,100,-10)
+		game.camera.look_at(Vector3(0,1,-9))
+		for entry in [["出生点",Vector3(0,3,layout.SPAWN.y)],["吊桥",Vector3(0,6,-45)],["水晶",center+Vector3(0,3,0)],["商店",Vector3(0,9,layout.SHOP_AREA.get_center().y)]]:
+			var label = preload("res://scripts/toy_art.gd").label(game.arena.scenery,"OverviewLabel",entry[0],entry[1],.055)
+			label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			label.modulate = Color("fff0cd")
+			label.outline_size = 6
+	elif scenario in ["crystal_broken","crystal_repaired"]:
+		p.pos = layout.CRYSTAL+Vector2(0,-3.2)
+		p.height = 3.0
+		p.yaw = PI
+		p.pitch = atan2(4.0-4.65,3.2)
+		if scenario == "crystal_repaired":
+			p.input_age = 0
+			p.input = {"interact":true}
+			game.sim.defense_director.interactions(1.01)
+			game.camera.position = center+Vector3(4.5,1.4,6)
+			game.camera.look_at(center)
+		else:
+			game.camera.position = Vector3(p.pos.x,4.65,p.pos.y)
+			game.camera.rotation = Vector3(p.pitch,p.yaw,0)
+			game.arena.scenery.sync_focus(game.sim,p)
+		game.camera.fov = 61
+	elif scenario == "toy_stands":
+		game.camera.position = Vector3(0,7.3,layout.SHOP_WALL_Z-18)
+		game.camera.look_at(Vector3(0,4.1,layout.SHOP_WALL_Z-5))
+		game.camera.fov = 76
+	elif scenario in ["toy_turret","toy_mine"]:
+		var item = game.sim.defense_director.structures.find("turret_left" if scenario == "toy_turret" else "crystal_mine")
+		center = Vector3(item.pos.x,item.height+(.85 if scenario == "toy_turret" else .27),item.pos.y)
+		game.camera.position = center+(Vector3(2.7,1.8,-3.7) if scenario == "toy_turret" else Vector3(1.5,1.7,2.1))
+		game.camera.look_at(center)
+		game.camera.fov = 57
+	game.arena.scenery.sync(game.sim.defense)
+	# Close-up fill makes plastic construction readable; gameplay lighting is untouched.
+	if scenario != "map_overview" and scenario != "map_spawn":
+		var fill = OmniLight3D.new()
+		fill.position = game.camera.position+Vector3(0,2,0)
+		fill.omni_range = 22
+		fill.light_energy = 2.0
+		fill.light_color = Color("fff0da")
+		game.add_child(fill)

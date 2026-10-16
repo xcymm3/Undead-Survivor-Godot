@@ -48,9 +48,9 @@ func _ready() -> void:
 		var angle = i*2.39996
 		var origin = Vector3(cos(angle)*.35,.5+float(i%5)*.42,sin(angle)*.35)
 		fragment.position = origin
-		fragment.scale = Vector3(.16+.03*(i%3),.16,.15)
+		fragment.scale = Vector3(.22+.04*(i%3),.20,.20)
 		debris.add_child(fragment)
-		fragments.append({"node":fragment,"origin":origin,"velocity":Vector3(cos(angle)*(2+i%3),2.4+float(i%4)*.6,sin(angle)*(2+i%3)),"spin":Vector3(.7+i*.1,1.3,-.6)})
+		fragments.append({"node":fragment,"origin":origin,"velocity":Vector3(cos(angle)*(.65+float(i%3)*.2),1.1+float(i%4)*.25,sin(angle)*(.65+float(i%3)*.2)),"spin":Vector3(.7+i*.1,1.3,-.6)})
 	cracks.visible = false
 	debris.visible = false
 

@@ -14,9 +14,10 @@ const WAVE_GAP = 10.0
 func _init(world) -> void:
 	owner_ref = weakref(world)
 	state = {
-		"started":false,"waiting":true,"ready_players":[],"crystal_hp":Layout.CRYSTAL_MAX_HP,
+		"started":false,"waiting":true,"ready_players":[],"crystal_hp":0,
+		"crystal_repair_required":true,"crystal_broken_at":-3.0,
 		"crystal_max_hp":Layout.CRYSTAL_MAX_HP,"wave":1,
-		"objective":"战前准备","party":world.pawns.size(),"prop_clock":0.0,
+		"objective":"过桥整备 · 修复水晶后立即开始","party":world.pawns.size(),"prop_clock":0.0,
 		"difficulty":world.defense_difficulty,"difficulty_multiplier":preload("res://scripts/defense_population.gd").difficulty_multiplier(world.defense_difficulty)
 	}
 	structures = preload("res://scripts/defense_structures.gd").new(self)
@@ -29,6 +30,17 @@ func near(p: Dictionary, point: Vector2, distance := 2.0) -> bool:
 	return sim.arena.surface_hit(Vector3(p.pos.x,p.height+1.1,p.pos.y),Vector3(point.x,p.height+1.1,point.y)).is_empty()
 
 func begin_wave() -> void:
+	if sim.failed or sim.won: return
+	# The first launch completes the repair. Later waves preserve battle damage.
+	if not state.started:
+		for pawn in sim.pawns.values():
+			var offset: Vector2 = pawn.pos-Layout.CRYSTAL
+			if offset.length() >= Layout.CRYSTAL_RADIUS+.65: continue
+			pawn.pos = Layout.CRYSTAL+(offset.normalized() if offset.length() > .01 else Vector2(0,-1))*(Layout.CRYSTAL_RADIUS+.75)
+			pawn.height = Layout.height(pawn.pos)
+		state.crystal_hp = state.crystal_max_hp
+		state.crystal_repair_required = false
+		state.erase("crystal_broken_at")
 	state.wave = clampi(int(state.wave),1,10)
 	sim.wave = int(state.wave)
 	sim.spawned = 0
@@ -90,7 +102,7 @@ func interactions(dt: float) -> void:
 		p["focus"] = choice
 		p.hint = ""
 		if not choice.is_empty() and not preload("res://scripts/preparation_catalog.gd").available(sim,choice.id): choice = {}
-		if not choice.is_empty() and choice.id != "alarm":
+		if not choice.is_empty() and choice.id != "crystal":
 			if sim.progression.data[sim.progression.currency(choice.id)] < sim.progression.cost(choice.id): choice = {}
 		if p.pickup_latched or not input.get("interact",false): choice = {}
 		if choice.is_empty():
@@ -103,7 +115,7 @@ func interactions(dt: float) -> void:
 		p.interact_time += dt
 		if p.interact_time < preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS: continue
 		p.pickup_latched = true
-		if choice.id == "alarm":
+		if choice.id == "crystal":
 			begin_wave()
 		else:
 			var purchased: bool = sim.purchase_upgrade(choice.id,p)
@@ -114,7 +126,7 @@ func interactions(dt: float) -> void:
 		p.interaction = ""
 		p.interact_time = 0.0
 	for p in sim.pawns.values(): p.input.interact = false
-	if state.waiting: state.objective = "战前准备"
+	if state.waiting: state.objective = "过桥整备 · 修复水晶后立即开始"
 	sync_world()
 
 func sync_world() -> void:

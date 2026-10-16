@@ -1,12 +1,13 @@
 extends RefCounted
 ## Opaque flat facets keep the night crystal readable without transparency sorting.
 const PERIOD = 36.0
+const Toy = preload("res://scripts/toy_art.gd")
 
 static func mesh() -> ArrayMesh:
 	var surface = SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rings = [Vector2(0,.12),Vector2(.48,.65),Vector2(.9,1.7),Vector2(.62,2.62),Vector2(0,3.48)]
-	var colors = [Color("a5ebed"),Color("3696b0"),Color("65c4d3"),Color("246b94"),Color("57aabd"),Color("8cdde2")]
+	var colors = [Color("baf9ef"),Color("4bbce1"),Color("72e9d0"),Color("398be0"),Color("52c9e8"),Color("a9f1e1")]
 	for tier in range(rings.size()-1):
 		for i in 6:
 			var a = i*TAU/6
@@ -25,19 +26,34 @@ static func mesh() -> ArrayMesh:
 	return surface.commit()
 
 static func build(parent: Node3D) -> MeshInstance3D:
+	parent.set_meta("art_style","toy")
+	var dock = Node3D.new()
+	dock.name = "ToyCrystalDock"
+	parent.add_child(dock)
+	Toy.cylinder(dock,"BlueSocket",Vector3(0,.13,0),1.02,.26,Toy.BLUE)
+	Toy.cylinder(dock,"CreamRim",Vector3(0,.30,0),.94,.11,Toy.CREAM)
+	Toy.cylinder(dock,"PowerRing",Vector3(0,.39,0),.76,.10,Toy.YELLOW)
+	for i in 6:
+		var angle = TAU*i/6
+		Toy.cylinder(dock,"ToyStud",Vector3(cos(angle)*.82,.41,sin(angle)*.82),.105,.13,Toy.CORAL)
+	Toy.box(dock,"PowerLabel",Vector3(0,.23,-.96),Vector3(.66,.25,.08),Toy.CREAM)
+	Toy.label(dock,"PowerText","POWER",Vector3(0,.23,-1.005),.0019,true)
 	var core = MeshInstance3D.new()
 	core.name = "FacetedCrystal"
 	core.mesh = mesh()
 	var material = StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
-	material.roughness = .7
-	material.metallic = .1
+	material.roughness = .27
+	material.metallic = 0.0
 	material.emission_enabled = true
 	material.emission = Color("278dac")
 	material.emission_energy_multiplier = .35
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	core.material_override = material
 	parent.add_child(core)
+	for tier in [[.71,.54],[1.68,.91],[2.59,.65]]:
+		var seam = Toy.cylinder(parent,"AssemblySeam",Vector3(0,tier[0],0),tier[1],.045,Toy.CREAM)
+		seam.mesh.radial_segments = 6
 	var halo = MeshInstance3D.new()
 	halo.name = "EnergyHalo"
 	var ring = TorusMesh.new()

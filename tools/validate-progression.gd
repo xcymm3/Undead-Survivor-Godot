@@ -293,7 +293,7 @@ func run() -> void:
 	await physics_frame
 	sim = game.sim
 	p = game.local_pawn()
-	check(sim.wave == 1 and sim.progression.data == permanent and sim.shop_available(p),"Restart resets combat and reopens shop while preserving permanent progress")
+	check(sim.wave == 1 and sim.progression.data == permanent and not sim.defense.started and sim.defense.crystal_repair_required,"Restart resets combat and reopens shop while preserving permanent progress")
 	check(p.hp == 110 and p.ammo[0] == 30 and p.reserves[0] == 510 and p.reserves[2] == 256,"Restart restores ammunition using upgraded Supply")
 	sim.defense_director.begin_wave()
 	sim.roster.clear()

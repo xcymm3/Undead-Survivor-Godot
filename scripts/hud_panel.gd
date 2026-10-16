@@ -288,7 +288,7 @@ func sync() -> void:
 	crystal_bar.visible = sim.mode == "defense"
 	if sim.mode == "defense":
 		var defense_wave: int = int(defense.get("wave",sim.wave))
-		wave_label.text = "战前准备 · 共十波" if not defense.get("started",false) else "第 %02d / 10 波" % sim.wave
+		wave_label.text = "修复水晶后开波 · 共十波" if not defense.get("started",false) else "第 %02d / 10 波" % sim.wave
 		count_label.text = "击杀 %d · 场上 %d" % [sim.kills,sim.alive_count()]
 		crystal_label.text = "水晶  %d / %d" % [defense.get("crystal_hp",0),defense.get("crystal_max_hp",0)]
 		crystal_bar.max_value = defense.get("crystal_max_hp",1)
@@ -308,7 +308,7 @@ func sync() -> void:
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "defense":
-		controls_hint.text = "1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷 · Q 大招 · R 换弹 · ESC 暂停" if defense.get("started",false) else "靠近并瞄准目标 · 长按 E 整备 / 启动警报"
+		controls_hint.text = "1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷 · Q 大招 · R 换弹 · ESC 暂停" if defense.get("started",false) else "先过桥整备 · 长按 E 修复水晶后立即开波"
 		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id) if w.id == "ultimate" else sim.progression.level(w.id)+1]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
 		ammo_note.text = "无需弹药" if infinite else "容量 %d · R 换弹 · 清波 +2 备弹夹" % sim.weapon_capacity(p.weapon)

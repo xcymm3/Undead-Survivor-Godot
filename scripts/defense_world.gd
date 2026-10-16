@@ -106,6 +106,18 @@ func make_safe_zone() -> void:
 	preparation.name = "PreparationWorld"
 	add_child(preparation)
 
+func make_entry() -> void:
+	var toy = preload("res://scripts/toy_art.gd")
+	toy.box(self,"EntryPad",Vector3(0,.045,DefenseLayout.SPAWN.y),Vector3(5,.09,4),toy.BLUE)
+	for z in [-67.1,-66.4,-65.7]:
+		var arrow = toy.box(self,"EntryArrow",Vector3(0,.10,z),Vector3(.85,.025,.15),toy.YELLOW)
+		for side in [-1.0,1.0]:
+			var wing = toy.box(self,"ArrowWing",Vector3(side*.30,.10,z+.17),Vector3(.15,.025,.5),toy.YELLOW)
+			wing.rotation.y = side*.7
+	var sign = sign_at("过桥整备\n修复水晶后开波",Vector3(-3.0,1.65,-63.7),3.0)
+	sign.rotation.y = PI
+	sign.position.z -= .22
+
 func sync_focus(sim, pawn: Dictionary) -> void:
 	if preparation: preparation.sync_focus(sim,pawn)
 
@@ -131,6 +143,7 @@ func _ready() -> void:
 	structure_view.sync({})
 	# 有碰撞的自然掩体避开中央进攻通道；峡谷段保留无围墙的断崖轮廓。
 	DefenseEnvironment.decorate(self)
+	make_entry()
 	for p in [DefenseLayout.CRYSTAL+Vector2(-12,-3),DefenseLayout.CRYSTAL+Vector2(13,-4)]:
 		block("CrystalGuard",Vector3(p.x,4.0,p.y),Vector3(3.5,2,1.2),"46534a")
 	for p in [Vector3(-4.2,5.5,-62),Vector3(4.2,5.5,-62),Vector3(-4.2,5.5,-28),Vector3(4.2,5.5,-28),Vector3(-11,6,DefenseLayout.CRYSTAL.y+2),Vector3(11,6,DefenseLayout.CRYSTAL.y+2)]:

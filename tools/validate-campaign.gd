@@ -69,7 +69,7 @@ func run() -> void:
 	check(not game.paused and game.ui.current.is_empty(),"Preparation is directly controllable without a start popup")
 	sim.progression.data.coins = 1000
 	check(Fixture.buy(sim,p,"turret_left"),"Turret can be built at its construction point")
-	p.pos = data.Maps.Defense.SPAWN
+	p.pos = data.Maps.Defense.SHOP_AREA.get_center()
 	check(not sim.purchase_upgrade("turret_left",p),"Built turret cannot upgrade remotely")
 	var turret: Dictionary = sim.defense_director.structures.find("turret_left")
 	Fixture.face(sim,p,"turret_left")
@@ -79,13 +79,13 @@ func run() -> void:
 	game.handle_effects(sim.events)
 	check(game.ui.current.is_empty() and not game.paused,"Onsite upgrade keeps the player in the world")
 	check(sim.progression.cost("turret_left") == 100 and is_equal_approx(turret.damage_multiplier,1.2),"Onsite upgrade adds twenty percent and uses fixed prices")
-	p.pos = data.Maps.Defense.SPAWN
+	p.pos = data.Maps.Defense.SHOP_AREA.get_center()
 	check(Fixture.buy(sim,p,"bridge_gate"),"Shop can manufacture a gate")
 	var gate: Dictionary = sim.defense_director.structures.find("bridge_gate")
 	p.pos = gate.pos+Vector2(0,2)
 	check(Fixture.buy(sim,p,"bridge_gate") and gate.max_hp == 1200 and sim.progression.cost("bridge_gate") == 100,"Gate onsite upgrades increase durability and use the next gun-equivalent fixed price")
 	check(not sim.building_available("turret_right",p),"Unbuilt structures cannot expose upgrades")
-	p.pos = data.Maps.Defense.SPAWN
+	p.pos = data.Maps.Defense.SHOP_AREA.get_center()
 	p.height = 3
 	sim.spawn(Vector2(8,25),"normal")
 	var coin_enemy: Dictionary = sim.zombies[-1]
@@ -104,8 +104,8 @@ func run() -> void:
 	sim.step_coins(.7)
 	check(sim.coin_drops.is_empty() and sim.progression.data.coins == balance+1,"Arrival removes the coin without a second payment")
 	sim.zombies.clear()
-	game.start_attack()
-	check(sim.defense.started and not sim.defense.waiting and not game.paused,"First-wave button starts the authority and resumes gameplay")
+	sim.defense_director.begin_wave()
+	check(sim.defense.started and not sim.defense.waiting and not game.paused,"First-wave launch starts the authority without pausing gameplay")
 	turret.hp = 50
 	gate.hp = 0
 	var expected: int = sim.wave_total

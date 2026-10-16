@@ -6,7 +6,7 @@ on:
         type: choice
         description: 截图范围
         default: all
-        options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif]
+        options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, map_toys]
   workflow_call:
     inputs:
       scope:
@@ -58,8 +58,11 @@ jobs:
       - name: 本次地雷与菜单截图
         if: inputs.scope == 'noon'
         run: npx playwright test tests/browser/noon-visual.spec.mjs
+      - name: 地图动线与玩具防线截图
+        if: inputs.scope == 'map_toys'
+        run: npx playwright test tests/browser/map-toys-visual.spec.mjs
       - run: npx playwright test tests/browser/campaign-review.spec.mjs tests/browser/defense.spec.mjs
-        if: inputs.scope != 'noon' && inputs.scope != 'axe_gif'
+        if: inputs.scope != 'noon' && inputs.scope != 'axe_gif' && inputs.scope != 'map_toys'
         env:
           QA_BLADE_ATTACK_ONLY: ${{ inputs.scope == 'blade_attack' && '1' || '' }}
           QA_SHIELD_BLADE_ONLY: ${{ inputs.scope == 'shield_blade' && '1' || '' }}

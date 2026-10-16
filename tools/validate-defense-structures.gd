@@ -66,7 +66,7 @@ func run() -> void:
 	check(Structures.valid_state(sim.defense.structures),"Initial structure snapshot passes validation")
 	for item in sim.defense.structures:
 		var actor: Dictionary = game.arena.scenery.structure_view.actors[item.id]
-		check(actor.root.find_children("*","Label3D",true,false).is_empty(),"Buildings have no overhead names or health labels")
+		check(actor.root.find_children("*","Label3D",true,false).all(func(label): return label.billboard == BaseMaterial3D.BILLBOARD_DISABLED and not label.no_depth_test),"Building decals stay on the toy housing rather than floating overhead")
 		if item.kind == "turret":
 			check(item.pos.y > -10 and absf(item.pos.x) > 5 and item.height == 3,"Turret stands on the flat plateau beside the ramp exit")
 	var structure_view = game.arena.scenery.structure_view
@@ -168,6 +168,7 @@ func run() -> void:
 		# Keep the nearby player on the same clear side of the gate. Faster
 		# football melee can destroy the turret and reach its gate margin.
 		sim.pawns.solo.pos = z.pos+Vector2(0,.5)
+		sim.pawns.solo.height = layout.height(sim.pawns.solo.pos)
 		var chosen: Dictionary = sim.choose_zombie_target(z,sim.pawns.values())
 		check(chosen.id == (attacked.id if kind in ["imp","giant"] else "solo"),"%s preserves nearest-target priority and dedicated crystal-attacker rules (enemy=%s player=%s chosen=%s gate=%s)" % [kind,z.pos,sim.pawns.solo.pos,chosen.id,manager.find("bridge_gate").hp])
 	# Every type attacks the barrier, including dedicated crystal attackers.
