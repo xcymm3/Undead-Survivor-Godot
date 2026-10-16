@@ -114,7 +114,7 @@ func make_entry() -> void:
 		for side in [-1.0,1.0]:
 			var wing = toy.box(self,"ArrowWing",Vector3(side*.30,.10,z+.17),Vector3(.15,.025,.5),toy.YELLOW)
 			wing.rotation.y = side*.7
-	var sign = sign_at("过桥整备\n修复水晶后开波",Vector3(-3.0,1.65,-63.7),3.0)
+	var sign = sign_at("过桥整备\n修复水晶后开波",Vector3(2.6,1.9,-60.5),2.0)
 	sign.rotation.y = PI
 	sign.position.z -= .22
 

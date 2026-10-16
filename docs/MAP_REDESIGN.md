@@ -29,4 +29,4 @@
 
 `tools/validate-map-redesign.gd`覆盖实际出生朝向和行走、战前零血量安全、免费修复、短按／转头取消、立即开波、重复触发、后续波次不回血、失败后重进，以及四类玩具造型的实际场景接入。
 
-本地只运行真正headless的基础和相关专项检查。截图使用`map_toys`隔离Actions入口，通过Godot Web、无界面Chromium与SwiftShader生成。包含带名称标注的全景、出生视角、修复提示、修复后水晶及三类物件特写；特写有隔离审查补光，玩法光照不变。逐图观察记录保存在`artifacts/visual-review.md`，截图不等同于原生Windows GPU或真人体验验收。
+本地只运行真正headless的基础和相关专项检查。截图使用`map_toys`隔离Actions入口，通过Godot Web、无界面Chromium与SwiftShader生成。包含带名称标注的全景、出生视角、修复提示、修复后水晶及三类物件特写；全景和特写有隔离审查补光，玩法光照不变，物件特写隐藏HUD以免遮挡。逐图观察记录保存在`artifacts/visual-review.md`，截图不等同于原生Windows GPU或真人体验验收。
