@@ -4,6 +4,7 @@ extends RefCounted
 const CUT_START = .22
 const CUT_END = .66
 const CUT_CENTRE = .46
+const LATERAL_SCALE = 1.65
 const EDGE_POINT = Vector3(-.45,.565,0)
 const TIMES = [0.0,.12,.22,.34,.46,.56,.66,.78,1.0]
 const RIGHT_TIPS = [
@@ -41,12 +42,16 @@ static func key_pose(index: int, direction: int) -> Transform3D:
 	if index == 0: return ready_pose()
 	var tips = RIGHT_TIPS if direction == 1 else LEFT_TIPS
 	var shafts = RIGHT_SHAFTS if direction == 1 else LEFT_SHAFTS
-	var y: Vector3 = shafts[index].normalized()
+	var tip: Vector3 = tips[index]
+	tip.x *= LATERAL_SCALE
+	var shaft: Vector3 = shafts[index]
+	shaft.x *= 1.20
+	var y: Vector3 = shaft.normalized()
 	# Roll the reverse stroke so the sharpened edge leads, rather than the pick.
-	var edge = Vector3(-.82 if direction == 1 else .82,-.34,-.46)
+	var edge = Vector3((-.82 if direction == 1 else .82)*LATERAL_SCALE,-.34,-.46)
 	var x = -(edge-y*edge.dot(y)).normalized()
 	var basis = Basis(x,y,x.cross(y).normalized())
-	return Transform3D(basis,tips[index]-basis*EDGE_POINT)
+	return Transform3D(basis,tip-basis*EDGE_POINT)
 
 static func pose(progress: float, direction: int) -> Transform3D:
 	var t = clampf(progress,0,1)

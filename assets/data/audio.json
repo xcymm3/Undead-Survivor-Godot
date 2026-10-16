@@ -1584,7 +1584,7 @@
     "scripts/revolver_model.gd": "5c532e2a0cc4b7c974aba32a114eeb1b68d59f2812bdf2ca49a2bab39e283887",
     "scripts/blade_motion.gd": "1b008dd8e669ebd1fb4616013310243e46e8e169479ae1a693311fd43f9b074e",
     "scripts/ultimate.gd": "18b77d8e10b693712a277bdb481cfe7d09d9ff93c00174a35360705224306a7a",
-    "scripts/axe_motion.gd": "7510f48c50819613cb499ce9d175ce4e31d3f7323666c0a2c49b0654f6eefbbb",
+    "scripts/axe_motion.gd": "4fa8abc4fd93fa12b23ca10751a2fc20d147a2bb4064d18eb973b9bedf83d296",
     "assets/models/p90.glb": "6ce9113c9fd7b8c93b01ffff7d270930ab21a0c0d33c4d364c2ca855c2eee117",
     "assets/models/pistol.glb": "2e1482a59da73e81262eb68153a3e261ab716848bd4987a9a8e2ace0382bdfb7",
     "assets/models/shotgun.glb": "4c5a3b9d0a98e234c4fa347b7bef447ce4a510923c04b2d4b057a22bb61ec033",

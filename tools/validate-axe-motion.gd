@@ -15,7 +15,7 @@ static func validate(game, check: Callable) -> void:
 			var phase = float(frame)/240
 			var transform = Motion.pose(phase,direction)
 			var point = transform*Motion.EDGE_POINT
-			continuous = continuous and transform.origin.distance_to(before.origin) < .07 and transform.basis.determinant() > .999
+			continuous = continuous and transform.origin.distance_to(before.origin) < .07*Motion.LATERAL_SCALE and transform.basis.determinant() > .999
 			if phase > Motion.CUT_START and phase <= Motion.CUT_END:
 				monotone = monotone and (point.x-previous.x)*direction <= .00001
 				var next_point = Motion.pose(minf(1,phase+.001),direction)*Motion.EDGE_POINT
@@ -27,9 +27,12 @@ static func validate(game, check: Callable) -> void:
 		check.call(continuous,"Authored axe path is continuous and preserves rigid scale: "+str(direction))
 		var centre = Motion.pose(Motion.CUT_CENTRE,direction)*Motion.EDGE_POINT
 		var chamber = Motion.pose(Motion.CUT_START,direction)*Motion.EDGE_POINT
-		check.call(centre.z < chamber.z-.5 and absf(centre.x) < .03,"Axe extends forward across the centre during damage: "+str(direction))
+		check.call(centre.z < chamber.z-.5 and absf(centre.x) < .03*Motion.LATERAL_SCALE,"Axe extends forward across the centre during damage: "+str(direction))
 		var end = Motion.pose(1,direction)*Motion.EDGE_POINT
 		check.call(end.x*direction < -.8,"Follow-through stays on the opposite side without rewinding the cut: "+str(direction))
+		var cut_end = Motion.pose(Motion.CUT_END,direction)*Motion.EDGE_POINT
+		var original_span = 1.57 if direction == 1 else 1.52
+		check.call(is_equal_approx(absf(cut_end.x-chamber.x),original_span*1.65) and duration == .56 and data.weapons[6].interval == .6,"Axe travels 65 percent farther sideways in the same attack time: "+str(direction))
 	# Shared view motion must follow authority at differing render rates, keep a
 	# short combo gap and start the next wind-up from the displayed end pose.
 	for fps in [30,60,144]:

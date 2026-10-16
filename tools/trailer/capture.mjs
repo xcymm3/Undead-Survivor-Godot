@@ -10,7 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const stage = path.join(root, 'build/trailer-source');
 const output = path.join(root, 'artifacts/trailer');
 const source = path.join(root, 'tools/trailer');
-const width = 1600, height = 670, fps = 24;
+const width = Number(process.env.QA_TRAILER_WIDTH ?? 1600), height = Number(process.env.QA_TRAILER_HEIGHT ?? 670), fps = 24;
 const shots = { horde: 5, rifle: 9, axe: 7, boss: 8, armory: 3, finale: 8 };
 await mkdir(output, { recursive: true });
 

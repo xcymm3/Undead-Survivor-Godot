@@ -47,6 +47,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Web export failed' }
       - name: 隔离录制消防斧连续劈砍
         if: inputs.scope == 'axe_gif'
+        env:
+          QA_TRAILER_WIDTH: '960'
+          QA_TRAILER_HEIGHT: '402'
         run: |
           node tools/trailer/capture.mjs --prepare
           if ($LASTEXITCODE -ne 0) { throw 'Axe capture export failed' }
