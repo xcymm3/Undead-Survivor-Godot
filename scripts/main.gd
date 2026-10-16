@@ -241,6 +241,7 @@ func _physics_process(dt: float) -> void:
 
 func _process(dt: float) -> void:
 	sound.sync_work(local_pawn() if sim else {},running and not paused and focused and not finished)
+	sound.sync_weapon_actions(local_pawn() if sim else {},running and not paused and focused and not finished)
 	if not focused: return
 	if not running or (paused and not Session.playing) or (finished and death_timer > 1.2 and ui.current == "result"):
 		# Normal menus use the engine render loop, including animations and async UI.
@@ -251,7 +252,7 @@ func _process(dt: float) -> void:
 	if not sim: return
 	var displayed: Dictionary = display_buffer.sample(dt) if Session.playing and not Session.is_host() else {}
 	var visible_zombies: Array = displayed.get("zombies",sim.zombies)
-	sound.sync_enemy_steps(visible_zombies,camera.position,dt)
+	sound.sync_enemy_steps(visible_zombies,camera.position,dt,sim.map_id)
 	var visible_pawns: Dictionary = displayed.get("pawns",sim.pawns)
 	var visual_time: float = displayed.get("elapsed",sim.elapsed)
 	var p = view_pawn()
@@ -327,7 +328,7 @@ func handle_effects(events: Array) -> void:
 		if not event is Dictionary or not event.has("kind"): continue
 		match event.kind:
 			"ultimate_start", "ultimate_end":
-				if event.player == Session.local_id: sound.play("blade-draw",-11)
+				if event.player == Session.local_id: sound.sync_weapon_actions(local_pawn(),running and not paused and focused and not finished)
 			"coin_pickup":
 				if event.player == Session.local_id: sound.play("coin-pickup",-18)
 			"world_upgrade":
@@ -365,9 +366,11 @@ func handle_effects(events: Array) -> void:
 				var index = clampi(int(event.get("weapon",0)),0,9)
 				var w: Dictionary = Data.weapons[index]
 				var kind: String = w.get("kind","gun")
-				var cue: String = "blade-draw" if event.get("ultimate",false) else sound.weapon_cue(index)
+				var cue: String = "blade-swing" if event.get("ultimate",false) else sound.weapon_cue(index)
 				var gain: float = sound.weapon_gain(index)
-				if event.player == Session.local_id: sound.play(cue,gain)
+				if event.player == Session.local_id:
+					if event.get("ultimate",false): sound.sync_weapon_actions(local_pawn(),running and not paused and focused and not finished)
+					else: sound.play(cue,gain)
 				else: sound.play_at(cue,event.from,gain)
 				var visual_origin: Vector3 = event.from
 				var viewed: Dictionary = view_pawn()
@@ -385,7 +388,7 @@ func handle_effects(events: Array) -> void:
 			"blood", "death":
 				effects.burst(event.position)
 				if event.get("player") == Session.local_id: ui.hit_flash = .12
-				if event.kind == "death": sound.play_at("death-%d" % (randi()%3),event.position,-16)
+				if event.kind == "death": sound.play_at(sound.death_cue(),event.position,-16)
 			"armor":
 				effects.burst(event.position,true,event.broken)
 				if event.get("player") == Session.local_id: ui.hit_flash = .12
@@ -397,7 +400,7 @@ func handle_effects(events: Array) -> void:
 					ui.hurt_flash = .45
 					sound.play("rear-warning" if event.get("rear",false) else "hurt")
 			"reload":
-				if event.player == Session.local_id: sound.play("reload-"+str(Data.weapons[int(event.get("weapon",0))].id),-16)
+				if event.player == Session.local_id: sound.sync_weapon_actions(local_pawn(),running and not paused and focused and not finished)
 			"heal":
 				if event.player == Session.local_id: sound.play("heal",-27)
 

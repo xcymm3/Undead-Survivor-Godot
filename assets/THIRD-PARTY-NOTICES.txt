@@ -398,3 +398,57 @@ Licensed under the SIL Open Font License 1.1; full license: assets/fonts/LICENSE
 Bundled for consistent Chinese text rendering on Windows and Web.
 
 Long-blade Sword_Slash1 / Sword_Slash2 animation data adapted from BigAndCrispy/Unity-First-Person-Melee, commit 592b08e2e1fe81a51f712fa65d806fa3621e2032. Source: https://github.com/BigAndCrispy/Unity-First-Person-Melee . CC0-1.0; license: assets/animations/melee-reference-LICENSE.txt. Only baked right-wrist motion is included; no arm mesh, Unity code or Unity packages are shipped.
+
+
+# CC0 combat audio replacement (2026-10-16)
+
+All 54 replacement cues are edited from existing CC0-1.0 assets.
+License: https://creativecommons.org/publicdomain/zero/1.0/
+Edits: excerpting, mono conversion, resampling, filtering, fades and recorded layers.
+
+zombies: artisticdude
+https://opengameart.org/content/zombies-sound-pack
+License: CC0-1.0
+
+swishes: artisticdude
+https://opengameart.org/content/swishes-sound-pack
+License: CC0-1.0
+
+reload: SpringySpringo
+https://opengameart.org/content/gun-reload-sounds
+License: CC0-1.0
+
+pistol: zer0_sol
+https://opengameart.org/content/handgun-reload-sound-effect
+License: CC0-1.0
+
+firearms: Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney
+https://opengameart.org/content/the-free-firearm-sound-library
+License: CC0-1.0
+
+weapons: Jan Schupke / Vehicle
+https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library
+License: CC0-1.0
+
+impacts: Kenney
+https://kenney.nl/assets/impact-sounds
+License: CC0-1.0
+
+rpg: Kenney
+https://kenney.nl/assets/rpg-audio
+License: CC0-1.0
+
+music: nene
+https://opengameart.org/node/68238
+License: CC0-1.0
+
+plastic: redpanda69
+https://freesound.org/people/redpanda69/sounds/686167/
+License: CC0-1.0
+
+flame: themightyglider; derived from qubodup (CC0)
+https://opengameart.org/content/catching-fire
+License: CC0-1.0
+
+Gun-type substitutions: P90 uses a Carl Gustav M45 single report; heavy machine gun uses an edited AK-47 single report; automatic shotgun uses the isolated blast of a Benelli Nova. These are Foley substitutions, not recordings of the modeled gun.
+Detailed cue hashes and edit recipes: assets/data/audio.json. Source metadata and original hashes: tools/audio-sources/index.json in the source distribution.

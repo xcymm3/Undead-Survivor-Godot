@@ -14,3 +14,6 @@
 *.glb binary
 *.wav binary
 *.png binary
+
+# Keep the CC0 editor checksum identical on Windows and CI checkouts.
+tools/build-cc0-audio.py text eol=lf

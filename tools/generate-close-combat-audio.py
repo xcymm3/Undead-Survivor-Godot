@@ -1,4 +1,14 @@
 """Generate original procedural close-combat cues; no external recordings."""
+# CC0 assets are maintained by the recording editor, not this legacy synth.
+import sys as _cc0_sys
+from pathlib import Path as _CC0Path
+if (_CC0Path(__file__).resolve().parents[1] / 'assets/data/audio.json').exists():
+    if '--check' in _cc0_sys.argv:
+        import runpy as _cc0_runpy
+        _cc0_runpy.run_path(str(_CC0Path(__file__).with_name('build-cc0-audio.py')), run_name='__main__')
+        raise SystemExit(0)
+    raise SystemExit('CC0 recordings are protected. Use tools/build-cc0-audio.py to edit them.')
+
 import math, random, struct, wave
 from pathlib import Path
 out=Path(__file__).resolve().parents[1]/'assets/audio'

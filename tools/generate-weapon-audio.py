@@ -4,8 +4,19 @@ Usage: python tools/generate-weapon-audio.py [--check]
 The fixed seeds make PCM bytes reproducible. --check compares the committed WAVs
 with regeneration in memory and validates levels, duration, format and variety.
 """
-
 from __future__ import annotations
+
+# CC0 assets are maintained by the recording editor, not this legacy synth.
+import sys as _cc0_sys
+from pathlib import Path as _CC0Path
+if (_CC0Path(__file__).resolve().parents[1] / 'assets/data/audio.json').exists():
+    if '--check' in _cc0_sys.argv:
+        import runpy as _cc0_runpy
+        _cc0_runpy.run_path(str(_CC0Path(__file__).with_name('build-cc0-audio.py')), run_name='__main__')
+        raise SystemExit(0)
+    raise SystemExit('CC0 recordings are protected. Use tools/build-cc0-audio.py to edit them.')
+
+
 
 import argparse
 import hashlib

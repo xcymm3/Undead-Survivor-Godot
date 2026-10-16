@@ -106,6 +106,7 @@ try {
   if (full) await powershell('setup-web-templates', 'tools/setup-web-templates.ps1', [], 1200_000);
   await run('import', engine, [...godotArgs, '--editor', '--import', '--quit']);
   sourceDigest = await fingerprint();
+  await run('cc0-audio', 'python', ['tools/build-cc0-audio.py', '--check']);
   const native = await run('native-components', engine, [...godotArgs, '--script', 'res://tools/validate-native-components.gd', '--', '--silent', '--automation']);
   if (!/NATIVE COMPONENTS: \d+ checks; 0 failures/.test(native)) throw new Error('Missing native component check marker.');
   const progression = await run('incremental-progression', engine, [...godotArgs, '--script', 'res://tools/validate-progression.gd', '--', '--silent', '--automation']);

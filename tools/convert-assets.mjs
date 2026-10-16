@@ -96,7 +96,9 @@ fs.writeFileSync(path.join(root, 'assets/data/provenance.json'), JSON.stringify(
   revision: execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
   source_game_sha256: hashes, weapons: WEAPONS.length, enemy_parts: parts.length,
 }, null, 2));
+const cc0Audio = fs.existsSync(path.join(root, "assets/data/audio.json")) ? JSON.parse(fs.readFileSync(path.join(root, "assets/data/audio.json"), "utf8")).cues : {};
 function wav(name, samples, rate = 22050) {
+  if (Object.hasOwn(cc0Audio, name)) return;
   const b = Buffer.alloc(44 + samples.length * 2); b.write('RIFF'); b.writeUInt32LE(b.length - 8, 4); b.write('WAVEfmt ', 8);
   b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(rate, 24); b.writeUInt32LE(rate * 2, 28);
   b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(samples.length * 2, 40);

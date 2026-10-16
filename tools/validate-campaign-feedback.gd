@@ -104,10 +104,11 @@ func run() -> void:
 	check(p.hp == 51 and p.healing_flash > 0 and sim.events.any(func(e): return e.kind == "heal"),"Actual healing emits its bounded audiovisual feedback")
 	var sound_hashes = {}
 	for index in root.get_node("Data").weapons.size():
+		if root.get_node("Data").weapons[index].id == "axe": continue
 		var stream = game.sound.streams["reload-"+str(root.get_node("Data").weapons[index].id)]
 		check(stream.data.size() > 0,"Weapon reload cue exists: %d" % index)
 		sound_hashes[hash(stream.data)] = true
-	check(sound_hashes.size() == 10,"All weapons have distinct reload resources")
+	check(sound_hashes.size() == 9 and not game.sound.streams.has("reload-axe"),"Nine reloadable weapons have distinct recordings; the axe has no reload cue")
 	var state = sim.defense
 	state.crystal_hp = 1500
 	game.arena.scenery.sync(state)

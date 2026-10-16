@@ -1,0 +1,827 @@
+{
+  "license": "CC0-1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieved": "2026-10-16",
+  "packs": {
+    "zombies": {
+      "author": "artisticdude",
+      "page": "https://opengameart.org/content/zombies-sound-pack",
+      "download": "https://opengameart.org/sites/default/files/zombies.zip",
+      "download_sha256": "8096ceeb4dac35d9eef9bfe0cc6649778d1eebf141b208d394ac338b9e5be314",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "swishes": {
+      "author": "artisticdude",
+      "page": "https://opengameart.org/content/swishes-sound-pack",
+      "download": "https://opengameart.org/sites/default/files/swishes.zip",
+      "download_sha256": "7980215241b739a787dcf26f660ce510bb237900968789395a86911619795693",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "reload": {
+      "author": "SpringySpringo",
+      "page": "https://opengameart.org/content/gun-reload-sounds",
+      "download": "https://opengameart.org/sites/default/files/assaultriflereload1_0.wav",
+      "download_sha256": "efb2d724d634eabe6ba8d3065686abca848bb7497d4d43a5e4aed5e5ea23016f",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "pistol": {
+      "author": "zer0_sol",
+      "page": "https://opengameart.org/content/handgun-reload-sound-effect",
+      "download": "https://opengameart.org/sites/default/files/reload.wav",
+      "download_sha256": "091399145b174ac3b2e0df245b4712a13ce85df072e37256b0fc32658718be53",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "firearms": {
+      "author": "Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney",
+      "page": "https://opengameart.org/content/the-free-firearm-sound-library",
+      "download": "https://opengameart.org/sites/default/files/Prepared%20SFX%20Library.7z",
+      "download_sha256": "cc1ab5a99a0a365105c7c5dd783f4b0b1fe90938114d3ceec53856bfe005f7d6",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "weapons": {
+      "author": "Jan Schupke / Vehicle",
+      "page": "https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library",
+      "download": "https://opengameart.org/sites/default/files/weapons-apparel.zip",
+      "download_sha256": "81cc6317f21b68f8e7f2b23a5a0f5f33c301c39ee41347307eec02201be989e5",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "impacts": {
+      "author": "Kenney",
+      "page": "https://kenney.nl/assets/impact-sounds",
+      "download": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+      "download_sha256": "029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "rpg": {
+      "author": "Kenney",
+      "page": "https://kenney.nl/assets/rpg-audio",
+      "download": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+      "download_sha256": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "music": {
+      "author": "nene",
+      "page": "https://opengameart.org/node/68238",
+      "download": "https://opengameart.org/sites/default/files/Short%20Theme_0.wav",
+      "download_sha256": "83e95b6c6716e07a44df766d18d6c5ae7da5c5f807f65299fb5de639ff5d1e13",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "plastic": {
+      "author": "redpanda69",
+      "page": "https://freesound.org/people/redpanda69/sounds/686167/",
+      "download": "https://cdn.freesound.org/previews/686/686167_11130549-hq.mp3",
+      "download_sha256": "c0977c7ba991d73907bb3b18f32b31b35b52f803d0c44cc35b357fb892d2ca89",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "flame": {
+      "author": "themightyglider; derived from qubodup (CC0)",
+      "page": "https://opengameart.org/content/catching-fire",
+      "download": "https://opengameart.org/sites/default/files/flame.ogg",
+      "download_sha256": "c1eaafba3746374c68c30dc8b7ec895dac0e1e66064522f03340dc9b2da4a2cd",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "upstream": [
+        "https://freesound.org/people/qubodup/sounds/159725/",
+        "https://freesound.org/people/lollosound/sounds/124372/",
+        "https://freesound.org/people/Cambra/sounds/102709/"
+      ]
+    }
+  },
+  "sources": {
+    "zombie-0": {
+      "pack": "zombies",
+      "original_member": "zombies/zombie-16.wav",
+      "original_sha256": "637f8d26b186005246a279fb19def56c81eebcf144c2346460ac1e4fc0075fc7",
+      "excerpt_seconds": [
+        0,
+        1.437506
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/zombie-0.wav",
+      "sha256": "27439405b79c7f4c34a66efe9598a49c3443fd03b034f62e864719e6434908ce"
+    },
+    "zombie-1": {
+      "pack": "zombies",
+      "original_member": "zombies/zombie-17.wav",
+      "original_sha256": "c954b6173399ed574c1c1350b8da4a5b465e0454cc810d6e49779fe121fafa34",
+      "excerpt_seconds": [
+        0,
+        1.583333
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/zombie-1.wav",
+      "sha256": "951f30d7f53a47010511545e440e82344bf1ec1b26554a95bd5b4639c693f91a"
+    },
+    "zombie-2": {
+      "pack": "zombies",
+      "original_member": "zombies/zombie-18.wav",
+      "original_sha256": "91c33adaf9efa32d87c364eb2a679833a24ac5586c52f675f3e9cf8cedfde199",
+      "excerpt_seconds": [
+        0,
+        1.10415
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/zombie-2.wav",
+      "sha256": "2efc6889b39bb2b5731cb049edaeaee6b4f25b84b7f133e727ec2a26656ac092"
+    },
+    "zombie-3": {
+      "pack": "zombies",
+      "original_member": "zombies/zombie-19.wav",
+      "original_sha256": "79fa7bb077c0b5c46837a63299a1df3269a2310f25b6a3055dd27a4700c74789",
+      "excerpt_seconds": [
+        0,
+        0.979161
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/zombie-3.wav",
+      "sha256": "631bfcd50f0e65e06d3d6ae5c87e113239342737f5b0bb7058db68ede2f241a9"
+    },
+    "zombie-4": {
+      "pack": "zombies",
+      "original_member": "zombies/zombie-20.wav",
+      "original_sha256": "3a962ea1d8517ad4c2fea8221e6a0e622dcad3ba34bae5a436d4f0971774b56d",
+      "excerpt_seconds": [
+        0,
+        0.958322
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/zombie-4.wav",
+      "sha256": "63422420083a1f43f9fe06fb9c6c8484b2cda3d0e89ec3894b3278e9bfcc707c"
+    },
+    "zombie-5": {
+      "pack": "zombies",
+      "original_member": "zombies/zombie-21.wav",
+      "original_sha256": "d58c26ae8df808238becc3434cf46778fca4582e9fcda138bdc01f720ecbbefc",
+      "excerpt_seconds": [
+        0,
+        1.083333
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/zombie-5.wav",
+      "sha256": "a92a368ced21ed8d6975faf4da6b42edbcab7fee0a4690d6f4412b7af7b929fb"
+    },
+    "swish-1": {
+      "pack": "swishes",
+      "original_member": "swishes/swish-1.wav",
+      "original_sha256": "9a15c881345c1ce1c39cc31f52f081c8c4dc81fa41111e0079400f39d3ba0e45",
+      "excerpt_seconds": [
+        0,
+        0.126032
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/swish-1.wav",
+      "sha256": "7b480465c5d54f0b9db2bfc308c9de7fc1cee7bc86765f6cf325c2d0aff97946"
+    },
+    "swish-5": {
+      "pack": "swishes",
+      "original_member": "swishes/swish-5.wav",
+      "original_sha256": "4db41f2d2f97caf94627be05ff2870217fecc86534cf30f2aab413b847a0d50a",
+      "excerpt_seconds": [
+        0,
+        0.127075
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/swish-5.wav",
+      "sha256": "06c9a41aba29b7f5942fcd6b50637a0218b4aedb9a5c76919efc7f292543fcef"
+    },
+    "swish-6": {
+      "pack": "swishes",
+      "original_member": "swishes/swish-6.wav",
+      "original_sha256": "edcaacf008da7ae692566f4fe0d6023ea68d0a014149889e95209be7ee0b746d",
+      "excerpt_seconds": [
+        0,
+        0.138005
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/swish-6.wav",
+      "sha256": "05086db770f8360fb93bbc7c31d4c161ea6825e8bde6fdc90a000e3cd37facd7"
+    },
+    "swish-7": {
+      "pack": "swishes",
+      "original_member": "swishes/swish-7.wav",
+      "original_sha256": "e6de737a34de16afed094d6170d7679149022f149e0a8356d2f029b0e8f4a4d7",
+      "excerpt_seconds": [
+        0,
+        0.187483
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/swish-7.wav",
+      "sha256": "f58b39ecfd1164cacac09043402caa0dcbc955acaceea9ea300ce214ca68531e"
+    },
+    "swish-8": {
+      "pack": "swishes",
+      "original_member": "swishes/swish-8.wav",
+      "original_sha256": "113a3709ad889ad2fcf38eaceaf4eb9d67ffe1e96713fed93a6f0aed08769980",
+      "excerpt_seconds": [
+        0,
+        0.153651
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/swish-8.wav",
+      "sha256": "7101693fcc110c6c1965e048950a7377db1f77179c9386192c3536fa5e5e85bb"
+    },
+    "swish-10": {
+      "pack": "swishes",
+      "original_member": "swishes/swish-10.wav",
+      "original_sha256": "4f7381a76f280d3f36f962ac3f44f16f77eec44797f30715d063c81ea3859024",
+      "excerpt_seconds": [
+        0,
+        0.124989
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/swish-10.wav",
+      "sha256": "dd8556e66061da7861a8bfab5f174e254090032848f119d050c6c8735b029165"
+    },
+    "seax-unsheathe-01": {
+      "pack": "weapons",
+      "original_member": "sfx/seax-unsheathe-01.wav",
+      "original_sha256": "d03e39f47367530c6cb251f8be3b7a21f15c1fc68cb204c5077456e3b45309d4",
+      "excerpt_seconds": [
+        0,
+        0.498753
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/seax-unsheathe-01.wav",
+      "sha256": "e4083376c9a48d716b73abd5495f60d539179825f1318b1617e0b1e3368937c8"
+    },
+    "seax-sheathe-01": {
+      "pack": "weapons",
+      "original_member": "sfx/seax-sheathe-01.wav",
+      "original_sha256": "84946a4549b09d332e1460e6fc4a2e16f4d41c8d949d5490e776eee6498cde48",
+      "excerpt_seconds": [
+        0,
+        0.546893
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/seax-sheathe-01.wav",
+      "sha256": "63678a97f2bb7124d9174083a93b757914159b9324c93ee917ebbc68b1c23fa7"
+    },
+    "seax-sheathe-03": {
+      "pack": "weapons",
+      "original_member": "sfx/seax-sheathe-03.wav",
+      "original_sha256": "9bda95237c53557200548c977b2927fcb8aa17cfad51388be58d9795703af4d7",
+      "excerpt_seconds": [
+        0,
+        0.994195
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/seax-sheathe-03.wav",
+      "sha256": "2e7189c0cbc7bfcffe4cb2a8a95b074682968f8a6f4cbbe54c6582fae26eb465"
+    },
+    "quiver-leather-squeeze-01": {
+      "pack": "weapons",
+      "original_member": "sfx/quiver-leather-squeeze-01.wav",
+      "original_sha256": "c53929968eb63bf07080be8d4f0ed9a02ce40e688c094c50dff92243ca3e334f",
+      "excerpt_seconds": [
+        0,
+        0.720363
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/quiver-leather-squeeze-01.wav",
+      "sha256": "23b1ae7875ac1df3fca2acec161f8421de77ffccd65921f9eeb888288104fd9e"
+    },
+    "quiver-leather-squeeze-06": {
+      "pack": "weapons",
+      "original_member": "sfx/quiver-leather-squeeze-06.wav",
+      "original_sha256": "f33ecdc45a63fff9ae019319674a737d1bd40b2247ee73b384704d3acc451446",
+      "excerpt_seconds": [
+        0,
+        1.36576
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/quiver-leather-squeeze-06.wav",
+      "sha256": "08e00365deed211a9c3b166ac40e22162153a615e6b9339ce49f037ee8434c2a"
+    },
+    "belt-buckle-01": {
+      "pack": "weapons",
+      "original_member": "sfx/belt-buckle-01.wav",
+      "original_sha256": "e2696a53d0cccf3fa573737ad27847f42e3d06cf36e4fca1e03362c6961235ea",
+      "excerpt_seconds": [
+        0,
+        0.2
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/belt-buckle-01.wav",
+      "sha256": "866d7144c6182335aff5e658e4fae6770045d8bd56dfd21d5175a0dac2a34cd6"
+    },
+    "reload-rifle": {
+      "pack": "reload",
+      "original_member": "assaultriflereload1_0.wav",
+      "original_sha256": "efb2d724d634eabe6ba8d3065686abca848bb7497d4d43a5e4aed5e5ea23016f",
+      "excerpt_seconds": [
+        0,
+        1.555737
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/reload-rifle.wav",
+      "sha256": "eae7b2cf9fbba1dc7b9c03e4c3b2528f1e9ef40e7532f0c5c4b60eb84764bc83",
+      "original_url": "https://opengameart.org/sites/default/files/assaultriflereload1_0.wav"
+    },
+    "reload-pistol-airsoft": {
+      "pack": "reload",
+      "original_member": "gunreload1.wav",
+      "original_sha256": "685cac6a184e3cc3ec09a25b6ddb1d6feffd86d469778f339aa423d384035c50",
+      "excerpt_seconds": [
+        0,
+        1.578957
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/reload-pistol-airsoft.wav",
+      "sha256": "8cc2adbccce704f21c1b47b79ba2765e3595c85ce8ad213299f63afaea5b138f",
+      "original_url": "https://opengameart.org/sites/default/files/gunreload1.wav"
+    },
+    "pump": {
+      "pack": "reload",
+      "original_member": "shotguncock_0.wav",
+      "original_sha256": "33e007321ba83301c861aef573f2c40b70bc62f8f24c0164877e6dd123e24371",
+      "excerpt_seconds": [
+        0,
+        0.473832
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/pump.wav",
+      "sha256": "ea0e2f1370c2ca2b0a858b26b165deae929fb1143f34e9ca4edc5d4fe1d36d34",
+      "original_url": "https://opengameart.org/sites/default/files/shotguncock_0.wav"
+    },
+    "reload-pistol": {
+      "pack": "pistol",
+      "original_member": "reload.wav",
+      "original_sha256": "091399145b174ac3b2e0df245b4712a13ce85df072e37256b0fc32658718be53",
+      "excerpt_seconds": [
+        0,
+        1.590567
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/reload-pistol.wav",
+      "sha256": "b0d904b71dd79fc1d3f52ad971fa9aee7bf6707fa42f690a1e8adf827b0455fa",
+      "original_url": "https://opengameart.org/sites/default/files/reload.wav"
+    },
+    "step-concrete-0": {
+      "pack": "impacts",
+      "original_member": "Audio/footstep_concrete_000.ogg",
+      "original_sha256": "d7267e183067757c92c169de2a379abea592cfca6b39bb2e8feea15221ad79fe",
+      "excerpt_seconds": [
+        0,
+        0.105918
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/step-concrete-0.wav",
+      "sha256": "58b22148dbfbedf2a90baa6f8c50986e26c6f1484cf22cc7157b8d63209e2fa8"
+    },
+    "step-concrete-1": {
+      "pack": "impacts",
+      "original_member": "Audio/footstep_concrete_001.ogg",
+      "original_sha256": "507a75eb19b897087855a3be3cf11a12d7fa37d143ad535eeebe0b8031c7325d",
+      "excerpt_seconds": [
+        0,
+        0.107642
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/step-concrete-1.wav",
+      "sha256": "775d63b8baf9072e72b1dda576717e94f9b9cfe18c806969bbf9acb7174fa5e4"
+    },
+    "step-concrete-2": {
+      "pack": "impacts",
+      "original_member": "Audio/footstep_concrete_002.ogg",
+      "original_sha256": "b21fa546d74941196b25da8a20b7010abd8c05c4fcf93545d1f344e66a664e13",
+      "excerpt_seconds": [
+        0,
+        0.112789
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/step-concrete-2.wav",
+      "sha256": "ce91d9bbc2f2360ae1047ddef332963a86460c07b7884848d92941fa43caf961"
+    },
+    "step-wood-0": {
+      "pack": "impacts",
+      "original_member": "Audio/footstep_wood_000.ogg",
+      "original_sha256": "5f1c252942a220d658121bd9417448cd19649ded9fff2ff15f6e50899373ce8e",
+      "excerpt_seconds": [
+        0,
+        0.249592
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/step-wood-0.wav",
+      "sha256": "8435c2016c21e936832403b5b0b0f0deafbadf842d9cab408de3833c5c36b652"
+    },
+    "step-wood-1": {
+      "pack": "impacts",
+      "original_member": "Audio/footstep_wood_001.ogg",
+      "original_sha256": "e4f68e1c9fd55b4dc8ca89ed2bbab6f200171bc54bdc18aa96b80d8e7336f462",
+      "excerpt_seconds": [
+        0,
+        0.251565
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/step-wood-1.wav",
+      "sha256": "cbde628da89a706735a42c13a5dcda45de7544df31d8946bc915657bd447d60c"
+    },
+    "step-wood-2": {
+      "pack": "impacts",
+      "original_member": "Audio/footstep_wood_002.ogg",
+      "original_sha256": "9ff095b05cee5eec40b081defe3f0eef7232bb16d4865ce03b9f6dbab875cfdd",
+      "excerpt_seconds": [
+        0,
+        0.251383
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/step-wood-2.wav",
+      "sha256": "544b62c47b4dda4a6793ea632903ea0de86d7b0d41e92d12fadafd94f3846c04"
+    },
+    "step-grass-0": {
+      "pack": "impacts",
+      "original_member": "Audio/footstep_grass_000.ogg",
+      "original_sha256": "9d49497777405d78d7cf7f2888e28277f3a23192300cfd1d79d54876b20f479f",
+      "excerpt_seconds": [
+        0,
+        0.777574
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/step-grass-0.wav",
+      "sha256": "909820970a1f841ca3f1d4daef7ce638d708301c0b2145abce8e74556f72c888"
+    },
+    "step-grass-1": {
+      "pack": "impacts",
+      "original_member": "Audio/footstep_grass_001.ogg",
+      "original_sha256": "fb28781bd22b2eefdc14077f1adf5c94d7fe9c3a130194633b55f3e0d39d9f04",
+      "excerpt_seconds": [
+        0,
+        0.673605
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/step-grass-1.wav",
+      "sha256": "049dabd2855f104a7ea940cf548c3c984ef7f8840e9099d6de388abc09458d80"
+    },
+    "step-grass-2": {
+      "pack": "impacts",
+      "original_member": "Audio/footstep_grass_002.ogg",
+      "original_sha256": "73a520139f5be716a403bfe9c80e0e94d1e61d8e9de04a354b336392164b53dc",
+      "excerpt_seconds": [
+        0,
+        0.692449
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/step-grass-2.wav",
+      "sha256": "dfeefa243bbc3a4f23d11c426c626baa8a0bbde1cd5a6d7524e1eba38c4e0e12"
+    },
+    "impactGeneric_light_000": {
+      "pack": "impacts",
+      "original_member": "Audio/impactGeneric_light_000.ogg",
+      "original_sha256": "f0e982611e97512fee5f777986b67e8b435434b601f94992ec044f7e89fb5acb",
+      "excerpt_seconds": [
+        0,
+        0.138685
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactGeneric_light_000.wav",
+      "sha256": "576ea4f2ac183ac7a20e8e698b91b926e1408416484cb536516f340ec47b4e34"
+    },
+    "impactTin_medium_000": {
+      "pack": "impacts",
+      "original_member": "Audio/impactTin_medium_000.ogg",
+      "original_sha256": "f4bbee66ca191ec744b84fc07ac9ed2a6fda955d51cfed8360f12b62815d3cbd",
+      "excerpt_seconds": [
+        0,
+        0.158707
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactTin_medium_000.wav",
+      "sha256": "c88812a1086c9298d10004b38456ddbcc414a4fba57fc7ed372c8dfb747fb01c"
+    },
+    "impactTin_medium_002": {
+      "pack": "impacts",
+      "original_member": "Audio/impactTin_medium_002.ogg",
+      "original_sha256": "c1d2c4f9910d4529581ae56a9a9a01454c4619fbb7d6da7616221d8ec58cc0c4",
+      "excerpt_seconds": [
+        0,
+        0.133787
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactTin_medium_002.wav",
+      "sha256": "03dcc5aeb84085f5aec65c068748cd2e0916ee64293717e6b3a81267e7a51f5e"
+    },
+    "impactMetal_heavy_000": {
+      "pack": "impacts",
+      "original_member": "Audio/impactMetal_heavy_000.ogg",
+      "original_sha256": "e07045693e4a2b3d165c424e3dab4c781d9ff8880a386880ac89a51315d7f831",
+      "excerpt_seconds": [
+        0,
+        0.167664
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactMetal_heavy_000.wav",
+      "sha256": "f984c246fb88e5c089dfd4d5cb4c51c5b7fc719399466b6f16c88ddd031a8ed1"
+    },
+    "impactMetal_heavy_002": {
+      "pack": "impacts",
+      "original_member": "Audio/impactMetal_heavy_002.ogg",
+      "original_sha256": "b914c8f1eb7c0f34bb165d7c77f4be0351f6be0660c13c53e65424e262e2c093",
+      "excerpt_seconds": [
+        0,
+        0.117302
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactMetal_heavy_002.wav",
+      "sha256": "6296b133767ed1eb541d80a5c60d8c5e70894cb0f0dbed0409c69f3f4fe4cc1b"
+    },
+    "impactMetal_light_000": {
+      "pack": "impacts",
+      "original_member": "Audio/impactMetal_light_000.ogg",
+      "original_sha256": "33b5e6e37c6e9d54e07bf5a89b12c76e879f40c1ea83cdd82714df1d6f9fec6d",
+      "excerpt_seconds": [
+        0,
+        0.351474
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactMetal_light_000.wav",
+      "sha256": "0a6724aebb644f451b46709d2fef8de72895df279900518bb2df2cabcf020db5"
+    },
+    "impactPlate_light_000": {
+      "pack": "impacts",
+      "original_member": "Audio/impactPlate_light_000.ogg",
+      "original_sha256": "6e797cf8a5bfc52d7ed5eb47c227974c1cf2a674954fec5b539cea7d62c7282c",
+      "excerpt_seconds": [
+        0,
+        0.542426
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactPlate_light_000.wav",
+      "sha256": "ed9c3146bf9f9dba1190ecec800c2bea2202e74fe3e71d252f46e2e5a3639d8a"
+    },
+    "impactPlate_heavy_002": {
+      "pack": "impacts",
+      "original_member": "Audio/impactPlate_heavy_002.ogg",
+      "original_sha256": "b0cab75d1befa32b4cf215d8ee7e1c400a39182e8b105963b8e310f825b198a1",
+      "excerpt_seconds": [
+        0,
+        0.494195
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactPlate_heavy_002.wav",
+      "sha256": "166c382cdfba1ba7c83f8b5714d76f582e0dd69823ad604750b70797421db993"
+    },
+    "impactSoft_medium_000": {
+      "pack": "impacts",
+      "original_member": "Audio/impactSoft_medium_000.ogg",
+      "original_sha256": "7d3ba0bb5e60a11b5d3e558c141303dcf494256675fbf753c0d252d2cf0481e3",
+      "excerpt_seconds": [
+        0,
+        0.118005
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactSoft_medium_000.wav",
+      "sha256": "0fb4a723dd67265b015366bab781bd8f59a8a332d67f03ab1b3fc5ed19276c77"
+    },
+    "impactSoft_heavy_000": {
+      "pack": "impacts",
+      "original_member": "Audio/impactSoft_heavy_000.ogg",
+      "original_sha256": "49e7ca88743fca974bb8676ea138b751cfd8f9033b5e7af8736c2a215d6edbc1",
+      "excerpt_seconds": [
+        0,
+        0.505102
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactSoft_heavy_000.wav",
+      "sha256": "d36da085f8b2fb1cfb3afb4f4e46855ec410c1646b4c376b5efec909f9f05f34"
+    },
+    "impactPunch_heavy_000": {
+      "pack": "impacts",
+      "original_member": "Audio/impactPunch_heavy_000.ogg",
+      "original_sha256": "b33a8f14068aec24ec69ba85e5e87fdc41228975f6a1a3e44a6e7d6fc3d9f8d8",
+      "excerpt_seconds": [
+        0,
+        0.649025
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactPunch_heavy_000.wav",
+      "sha256": "e80d8abb9002db95aeefeb4f9034a5db3773a49b858aeeb041216d63297d1de9"
+    },
+    "impactPunch_medium_001": {
+      "pack": "impacts",
+      "original_member": "Audio/impactPunch_medium_001.ogg",
+      "original_sha256": "e71d23abcc3f10d9d6bc9615b2a431fff70b12333a5fcdd9964457564ace4349",
+      "excerpt_seconds": [
+        0,
+        0.404603
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/impactPunch_medium_001.wav",
+      "sha256": "d272d8655d5fc17058bf6911b54eb0b9c947514ed90a214d3f55e727e094a753"
+    },
+    "cloth1": {
+      "pack": "rpg",
+      "original_member": "Audio/cloth1.ogg",
+      "original_sha256": "ddb93a3671233f95da0e0b10367f082f7eb42fa6caaddcf776410aa8833c747d",
+      "excerpt_seconds": [
+        0,
+        0.661042
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/cloth1.wav",
+      "sha256": "947753b6f407f7ef97955fc416a6c1c8c3906ba3841ace9110244c1b3c2d7315"
+    },
+    "cloth2": {
+      "pack": "rpg",
+      "original_member": "Audio/cloth2.ogg",
+      "original_sha256": "8a7451193c38bc05483aec25dd193e163a15d44cf7fff04ac7912573231b0201",
+      "excerpt_seconds": [
+        0,
+        0.415063
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/cloth2.wav",
+      "sha256": "37c845154449fc52cc6702fd180d7fbd041856f42c052dcbb82ca0f75229d0cb"
+    },
+    "clothBelt": {
+      "pack": "rpg",
+      "original_member": "Audio/clothBelt.ogg",
+      "original_sha256": "f29560a2aea95bbfeb643e1e8f56ec2b6f7e32f32ce4e140645a36db81de3253",
+      "excerpt_seconds": [
+        0,
+        0.722521
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/clothBelt.wav",
+      "sha256": "da3288e114a3895ee2211c858dcd45d7f02eb9ad33789f30a0d124a32f68f514"
+    },
+    "metalClick": {
+      "pack": "rpg",
+      "original_member": "Audio/metalClick.ogg",
+      "original_sha256": "9851a69d0c613e13bceef08060ecc4148f098ef487927cbebe270d642398a3b3",
+      "excerpt_seconds": [
+        0,
+        0.445833
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/metalClick.wav",
+      "sha256": "ae17cec20cbf0ce2fda30620a9ef27068bf81eefce07f82c42a91a0ca6ea605d"
+    },
+    "metalLatch": {
+      "pack": "rpg",
+      "original_member": "Audio/metalLatch.ogg",
+      "original_sha256": "ba9ba60b172b3ebc131a940f25793cd2e207aca7af73dc80d637277f060f1708",
+      "excerpt_seconds": [
+        0,
+        0.261333
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/metalLatch.wav",
+      "sha256": "7c119b5927d1de026f6318a7314bb59e30d1ece3903e713913fb99f26b71283c"
+    },
+    "dropLeather": {
+      "pack": "rpg",
+      "original_member": "Audio/dropLeather.ogg",
+      "original_sha256": "097e1d3b74949b0145fda0519d40b7e0773ab82ec4858727f95be830927e1a45",
+      "excerpt_seconds": [
+        0,
+        0.415083
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/dropLeather.wav",
+      "sha256": "1595b2e06a0d587b51be6a7bae743139d358d569333bc0a8bdac720f07e3d7fb"
+    },
+    "gun-rifle": {
+      "pack": "firearms",
+      "original_member": "Prepared SFX Library/AK-47/C_28P.wav",
+      "original_sha256": "e0934c1d79192d2216db62fdf6ab57bf9d5d585267af367a1cfb21f0972a537d",
+      "excerpt_seconds": [
+        0.602,
+        1.602
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/gun-rifle.wav",
+      "sha256": "e1bef6763b281d0afb59e94debaeb42d935fe1d436de54831c70aca78cd296e8"
+    },
+    "gun-p90": {
+      "pack": "firearms",
+      "original_member": "Prepared SFX Library/Carl Gustav M45/G_31P.wav",
+      "original_sha256": "5982c6c2fa44545b750ba6217ed57797a6a15c02f5c9943ac0e99e5f3ab2b158",
+      "excerpt_seconds": [
+        0.302,
+        1.302
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/gun-p90.wav",
+      "sha256": "53236d11ae9483bb6863b7c808f9083375737211c636efcc18169ee25dc6fdf1"
+    },
+    "gun-pistol": {
+      "pack": "firearms",
+      "original_member": "Prepared SFX Library/Walther PPQ/X_39P.wav",
+      "original_sha256": "d679a3cd87eae2898d984159f83544392932e6b77526045b672e3aaa9c2dda9f",
+      "excerpt_seconds": [
+        1.397,
+        2.397
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/gun-pistol.wav",
+      "sha256": "44a46d368db028ea9f07319084f5319bf63e78425114f6a9b5ba0dbeaddbb8e4"
+    },
+    "gun-revolver": {
+      "pack": "firearms",
+      "original_member": "Prepared SFX Library/Smith & Wesson 642/V_27P.wav",
+      "original_sha256": "dc9a11f7e6544139f38cadccf3373fed733f2e000caca1b2328575293838fc58",
+      "excerpt_seconds": [
+        0.797,
+        1.797
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/gun-revolver.wav",
+      "sha256": "3c65c307007e944b339928d2766851a4a0fb9a2091d3243ad381767c42131160"
+    },
+    "gun-shotgun": {
+      "pack": "firearms",
+      "original_member": "Prepared SFX Library/Mossberg/N_30P.wav",
+      "original_sha256": "b5a28243e16f8cb10adfc5225d96e90f108d24393fcfffcaa6dcf203af03634a",
+      "excerpt_seconds": [
+        1.687,
+        2.687
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/gun-shotgun.wav",
+      "sha256": "261e3cf8b912e7ba507ebbf4812de48c919ca341b1cff7976a441e7ea1c81181"
+    },
+    "gun-sniper": {
+      "pack": "firearms",
+      "original_member": "Prepared SFX Library/Tikka/W_29P.wav",
+      "original_sha256": "b1ffe3c104391bf8ceb8337aa4d5a2ca47938fb88ccbd051cdd2b2e205d9e72b",
+      "excerpt_seconds": [
+        0.567,
+        1.567
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/gun-sniper.wav",
+      "sha256": "58d8772defd87868fab4c2a002e94f97e08450c1ba6de1f9239569d3b68cd762"
+    },
+    "gun-auto-shotgun": {
+      "pack": "firearms",
+      "original_member": "Prepared SFX Library/Nova/O_21P.wav",
+      "original_sha256": "5661d0625e4634f19e6e316c13693b80c8e28cd9f716cf9c75c465153ae40815",
+      "excerpt_seconds": [
+        0.422,
+        1.422
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/gun-auto-shotgun.wav",
+      "sha256": "d1b011ab77b2a3e749ae7c23bf2eadbc7db5e937338eb19c5edc1d1d97eab027"
+    },
+    "gun-heavy-machine-gun": {
+      "pack": "firearms",
+      "original_member": "Prepared SFX Library/AK-47/C_31P.wav",
+      "original_sha256": "5c3261c3bdd7657fd07c141f1f683bef06c2e03da475f43f3943f755360a4994",
+      "excerpt_seconds": [
+        0.347,
+        1.347
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/gun-heavy-machine-gun.wav",
+      "sha256": "f3223f571fc766d496bfbecfb5c991e9baa273994dd4e917f8cc8cf27bb94da9"
+    },
+    "plastic-snap": {
+      "pack": "plastic",
+      "original_member": "686167_11130549-hq.mp3 (public CC0 preview)",
+      "original_sha256": "c0977c7ba991d73907bb3b18f32b31b35b52f803d0c44cc35b357fb892d2ca89",
+      "excerpt_seconds": [
+        0,
+        1.268005
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/plastic-snap.wav",
+      "sha256": "a249c50faaab350b1307f6618930ba09e7573af0c9306b0004605ea2fde15b43"
+    },
+    "flame": {
+      "pack": "flame",
+      "original_member": "flame.ogg",
+      "original_sha256": "c1eaafba3746374c68c30dc8b7ec895dac0e1e66064522f03340dc9b2da4a2cd",
+      "excerpt_seconds": [
+        0,
+        0.450417
+      ],
+      "conversion": "44100 Hz PCM16; stereo averaged to mono",
+      "path": "tools/audio-sources/flame.wav",
+      "sha256": "7f32166f44d85a09c9614d33b08e353f374b9a7a733e35f2420985671c84b7c6"
+    },
+    "ultimate-music": {
+      "pack": "music",
+      "original_member": "Short Theme_0.wav",
+      "original_sha256": "83e95b6c6716e07a44df766d18d6c5ae7da5c5f807f65299fb5de639ff5d1e13",
+      "excerpt_seconds": [
+        38,
+        48
+      ],
+      "conversion": "44100 Hz PCM16; stereo",
+      "path": "tools/audio-sources/ultimate-music.wav",
+      "sha256": "43109ff96120bebe1488a6111c35adb4eb03c97f969769d3777065ef062fa43b",
+      "original_url": "https://opengameart.org/sites/default/files/Short%20Theme_0.wav"
+    }
+  }
+}

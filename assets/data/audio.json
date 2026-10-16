@@ -1,0 +1,1578 @@
+{
+  "version": 1,
+  "license": "CC0-1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "builder_sha256": "311aa8543d6f86b3bd90821d042a2994b74367f6b534c99ee35f0b5efc14c0df",
+  "sources_index_sha256": "067269b3cfee3b468a1678fbafea0e4b0aefe3b0fb4b67d73b2964d2d36ddafe",
+  "death_variants": 6,
+  "step_variants": 3,
+  "cues": {
+    "death-0": {
+      "seconds": 1.4624943310657597,
+      "channels": 1,
+      "sha256": "1d2e104895a2b00a20e1481a44c24efab6fe60592ec3f0e686170b537ed680a2",
+      "sources": [
+        "zombie-0"
+      ],
+      "edits": [
+        {
+          "source": "zombie-0",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        }
+      ],
+      "reason": "同一CC0僵尸声包的六个独立短声，减少密集击杀时重复"
+    },
+    "death-1": {
+      "seconds": 1.6083446712018141,
+      "channels": 1,
+      "sha256": "b1c13ff77f1812a4a298ecc8647b33e94cf1445fd6e67caa6445769197407b9b",
+      "sources": [
+        "zombie-1"
+      ],
+      "edits": [
+        {
+          "source": "zombie-1",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        }
+      ],
+      "reason": "同一CC0僵尸声包的六个独立短声，减少密集击杀时重复"
+    },
+    "death-2": {
+      "seconds": 1.129138321995465,
+      "channels": 1,
+      "sha256": "7c3921f1100e4ff14cb761711143ac76d3e5cc989a06af639bf8272a5ec2ccba",
+      "sources": [
+        "zombie-2"
+      ],
+      "edits": [
+        {
+          "source": "zombie-2",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        }
+      ],
+      "reason": "同一CC0僵尸声包的六个独立短声，减少密集击杀时重复"
+    },
+    "death-3": {
+      "seconds": 1.0041496598639457,
+      "channels": 1,
+      "sha256": "97d1a32a1ce07526f7ec6114cfb5101036f5c46adae61314b8242e12c8ae9eb5",
+      "sources": [
+        "zombie-3"
+      ],
+      "edits": [
+        {
+          "source": "zombie-3",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        }
+      ],
+      "reason": "同一CC0僵尸声包的六个独立短声，减少密集击杀时重复"
+    },
+    "death-4": {
+      "seconds": 0.9833106575963719,
+      "channels": 1,
+      "sha256": "26faff63684235e13a156a04567a55c48d1770a03651e70c64545ed9d6c73ec5",
+      "sources": [
+        "zombie-4"
+      ],
+      "edits": [
+        {
+          "source": "zombie-4",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        }
+      ],
+      "reason": "同一CC0僵尸声包的六个独立短声，减少密集击杀时重复"
+    },
+    "death-5": {
+      "seconds": 1.1083219954648527,
+      "channels": 1,
+      "sha256": "cdd9b3371c576a44a3fd12809ae4612a633f14836638c72e37a8f1199374269a",
+      "sources": [
+        "zombie-5"
+      ],
+      "edits": [
+        {
+          "source": "zombie-5",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        }
+      ],
+      "reason": "同一CC0僵尸声包的六个独立短声，减少密集击杀时重复"
+    },
+    "weapon-rifle": {
+      "seconds": 0.4,
+      "channels": 1,
+      "sha256": "1d8ff7b1108dedf5cced1683d30e8b49411b2879e9fc710d027d7d8d3e820369",
+      "sources": [
+        "gun-rifle"
+      ],
+      "edits": [
+        {
+          "source": "gun-rifle",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "speed": 1.0,
+            "lowpass": null,
+            "end": 0.4
+          }
+        }
+      ],
+      "reason": "实录枪声的首个独立枪响，去前导静音、缩短尾声并保留峰值余量；非对应型号者为明确记录的替代拟音"
+    },
+    "weapon-p90": {
+      "seconds": 0.23,
+      "channels": 1,
+      "sha256": "e6c50eca504f16b38ccf02c10cdcf38321462a335d97110c918bf7f5c0c3c1b7",
+      "sources": [
+        "gun-p90"
+      ],
+      "edits": [
+        {
+          "source": "gun-p90",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "speed": 1.05,
+            "lowpass": null,
+            "end": 0.24150000000000002
+          }
+        }
+      ],
+      "reason": "实录枪声的首个独立枪响，去前导静音、缩短尾声并保留峰值余量；非对应型号者为明确记录的替代拟音"
+    },
+    "weapon-pistol": {
+      "seconds": 0.36,
+      "channels": 1,
+      "sha256": "04c41498c540adad10c06ca812fba8456980b96d62c2243c65045f034e1127c3",
+      "sources": [
+        "gun-pistol"
+      ],
+      "edits": [
+        {
+          "source": "gun-pistol",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "speed": 1.0,
+            "lowpass": null,
+            "end": 0.36
+          }
+        }
+      ],
+      "reason": "实录枪声的首个独立枪响，去前导静音、缩短尾声并保留峰值余量；非对应型号者为明确记录的替代拟音"
+    },
+    "weapon-revolver": {
+      "seconds": 0.54,
+      "channels": 1,
+      "sha256": "02f397a0669cf0a3f58b6e9485d11dc8fd2b0b1c24e6baad7487d39d54597cd1",
+      "sources": [
+        "gun-revolver"
+      ],
+      "edits": [
+        {
+          "source": "gun-revolver",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "speed": 1.0,
+            "lowpass": null,
+            "end": 0.54
+          }
+        }
+      ],
+      "reason": "实录枪声的首个独立枪响，去前导静音、缩短尾声并保留峰值余量；非对应型号者为明确记录的替代拟音"
+    },
+    "weapon-shotgun": {
+      "seconds": 0.67,
+      "channels": 1,
+      "sha256": "952e40135844bac7a92b87d657e1cbf6cfbd0b04460c3c89173d97dc14f9041f",
+      "sources": [
+        "gun-shotgun"
+      ],
+      "edits": [
+        {
+          "source": "gun-shotgun",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "speed": 1.0,
+            "lowpass": null,
+            "end": 0.67
+          }
+        }
+      ],
+      "reason": "实录枪声的首个独立枪响，去前导静音、缩短尾声并保留峰值余量；非对应型号者为明确记录的替代拟音"
+    },
+    "weapon-sniper": {
+      "seconds": 0.7,
+      "channels": 1,
+      "sha256": "19c0c617e87f86f6d56dd20e0041bee6f92e7b3d1daa1378dc0172a2b1e1a9d0",
+      "sources": [
+        "gun-sniper"
+      ],
+      "edits": [
+        {
+          "source": "gun-sniper",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "speed": 1.0,
+            "lowpass": null,
+            "end": 0.7
+          }
+        }
+      ],
+      "reason": "实录枪声的首个独立枪响，去前导静音、缩短尾声并保留峰值余量；非对应型号者为明确记录的替代拟音"
+    },
+    "weapon-auto-shotgun": {
+      "seconds": 0.43,
+      "channels": 1,
+      "sha256": "43aea1ddd4a3e318227972a35f1fe2b1661973e25983ddbafcdd5f445e934ee8",
+      "sources": [
+        "gun-auto-shotgun"
+      ],
+      "edits": [
+        {
+          "source": "gun-auto-shotgun",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "speed": 1.0,
+            "lowpass": null,
+            "end": 0.43
+          }
+        }
+      ],
+      "reason": "实录枪声的首个独立枪响，去前导静音、缩短尾声并保留峰值余量；非对应型号者为明确记录的替代拟音"
+    },
+    "weapon-heavy-machine-gun": {
+      "seconds": 0.48,
+      "channels": 1,
+      "sha256": "fa39533ec341dc3dc8b86f61b25b21de05c200b861d26a6e64c266a153d7ecfe",
+      "sources": [
+        "gun-heavy-machine-gun"
+      ],
+      "edits": [
+        {
+          "source": "gun-heavy-machine-gun",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "speed": 0.84,
+            "lowpass": 5500,
+            "end": 0.40319999999999995
+          }
+        }
+      ],
+      "reason": "实录枪声的首个独立枪响，去前导静音、缩短尾声并保留峰值余量；非对应型号者为明确记录的替代拟音"
+    },
+    "weapon-axe": {
+      "seconds": 0.56,
+      "channels": 1,
+      "sha256": "559c4bba23451c8de7d660435f5a1b64efe4d9d035003210a3e2fdd11eec55d7",
+      "sources": [
+        "cloth1",
+        "swish-7"
+      ],
+      "edits": [
+        {
+          "source": "cloth1",
+          "at": 0.015,
+          "gain": 0.2,
+          "edit": {
+            "end": 0.18
+          }
+        },
+        {
+          "source": "swish-7",
+          "at": 0.14,
+          "gain": 1,
+          "edit": {
+            "speed": 0.85
+          }
+        }
+      ],
+      "reason": "厚重破风配合斧头挥动，不把命中撞击混入空挥"
+    },
+    "weapon-flamethrower": {
+      "seconds": 0.18,
+      "channels": 1,
+      "sha256": "71f5aac7f3f0570af3e65feea1e5cbf00e147e5a033fdc86e493dd2f3ec41569",
+      "sources": [
+        "flame"
+      ],
+      "edits": [
+        {
+          "source": "flame",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "start": 0.08,
+            "end": 0.26
+          }
+        }
+      ],
+      "reason": "已有CC0燃烧素材截取为短连续喷射片段，渐入渐出控制叠加"
+    },
+    "blade-draw": {
+      "seconds": 1.1,
+      "channels": 1,
+      "sha256": "2c0fee5d64a83522896b22cae836cac442bd3a374bf3c176836a4b4854df91c4",
+      "sources": [
+        "cloth1",
+        "seax-unsheathe-01"
+      ],
+      "edits": [
+        {
+          "source": "cloth1",
+          "at": 0.025,
+          "gain": 0.15,
+          "edit": {
+            "end": 0.13
+          }
+        },
+        {
+          "source": "seax-unsheathe-01",
+          "at": 0.176,
+          "gain": 1,
+          "edit": {
+            "duration": 0.638
+          }
+        }
+      ],
+      "reason": "出鞘录音放在拔刀阶段16%至74%的实际抽刀区间"
+    },
+    "blade-sheathe": {
+      "seconds": 0.95,
+      "channels": 1,
+      "sha256": "acaab4ef196315cbadd5ccc2688bdc64240f33c34dbf449436c85fabc87d5fd8",
+      "sources": [
+        "seax-sheathe-01",
+        "metalLatch"
+      ],
+      "edits": [
+        {
+          "source": "seax-sheathe-01",
+          "at": 0.361,
+          "gain": 1,
+          "edit": {
+            "duration": 0.427
+          }
+        },
+        {
+          "source": "metalLatch",
+          "at": 0.789,
+          "gain": 0.22,
+          "edit": {
+            "end": 0.1
+          }
+        }
+      ],
+      "reason": "入鞘录音放在收刀阶段38%至83%，末端短卡扣对应到位"
+    },
+    "blade-swing": {
+      "seconds": 0.28,
+      "channels": 1,
+      "sha256": "18ec4028dd6ede5a617851dd873014484697bc5cff3d89c51d443ce1e86850ef",
+      "sources": [
+        "swish-5"
+      ],
+      "edits": [
+        {
+          "source": "swish-5",
+          "at": 0.08,
+          "gain": 1,
+          "edit": {
+            "duration": 0.16
+          }
+        }
+      ],
+      "reason": "独立挥刀破风，主瞬态位于挥砍有效段；三变体不混入拔刀声"
+    },
+    "blade-swing-1": {
+      "seconds": 0.28,
+      "channels": 1,
+      "sha256": "1b8c830934bee5123f50164c1fb5bebe8f96c9226904da7a5a251db49092715d",
+      "sources": [
+        "swish-6"
+      ],
+      "edits": [
+        {
+          "source": "swish-6",
+          "at": 0.08,
+          "gain": 1,
+          "edit": {
+            "duration": 0.16
+          }
+        }
+      ],
+      "reason": "独立挥刀破风，主瞬态位于挥砍有效段；三变体不混入拔刀声"
+    },
+    "blade-swing-2": {
+      "seconds": 0.28,
+      "channels": 1,
+      "sha256": "832edcc6db45680d75ba584bfc6e08798d6132d9147eb30565e471e2ccfde727",
+      "sources": [
+        "swish-8"
+      ],
+      "edits": [
+        {
+          "source": "swish-8",
+          "at": 0.08,
+          "gain": 1,
+          "edit": {
+            "duration": 0.16
+          }
+        }
+      ],
+      "reason": "独立挥刀破风，主瞬态位于挥砍有效段；三变体不混入拔刀声"
+    },
+    "enemy-step-0": {
+      "seconds": 0.2,
+      "channels": 1,
+      "sha256": "3e6c90295ddb6d3f37ecf76f2f01cd67d9686ba45d88c058bcec6f9bab4f583f",
+      "sources": [
+        "step-concrete-0"
+      ],
+      "edits": [
+        {
+          "source": "step-concrete-0",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.19
+          }
+        }
+      ],
+      "reason": "按桥面木板、坡道石面和场地草地选择对应材质的脚步录音"
+    },
+    "enemy-step-1": {
+      "seconds": 0.2,
+      "channels": 1,
+      "sha256": "8799131bc785f00918fea61bad728dce3cf99b50a7b7390a07dabad70248442e",
+      "sources": [
+        "step-concrete-1"
+      ],
+      "edits": [
+        {
+          "source": "step-concrete-1",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.19
+          }
+        }
+      ],
+      "reason": "按桥面木板、坡道石面和场地草地选择对应材质的脚步录音"
+    },
+    "enemy-step-2": {
+      "seconds": 0.2,
+      "channels": 1,
+      "sha256": "cb590965bd9989e40058149a96461e0a82dd04a9f632057d7c45ad0a7484359d",
+      "sources": [
+        "step-concrete-2"
+      ],
+      "edits": [
+        {
+          "source": "step-concrete-2",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.19
+          }
+        }
+      ],
+      "reason": "按桥面木板、坡道石面和场地草地选择对应材质的脚步录音"
+    },
+    "enemy-step-wood-0": {
+      "seconds": 0.3,
+      "channels": 1,
+      "sha256": "0eb7896c4d6036585d6627ef361c36d82452f16a4d04d896520fee14238900cb",
+      "sources": [
+        "step-wood-0"
+      ],
+      "edits": [
+        {
+          "source": "step-wood-0",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.29
+          }
+        }
+      ],
+      "reason": "按桥面木板、坡道石面和场地草地选择对应材质的脚步录音"
+    },
+    "enemy-step-wood-1": {
+      "seconds": 0.3,
+      "channels": 1,
+      "sha256": "4253c28a664280f012294f3ebf793d7f69ea420e1451fc05474d315afcdd8d7b",
+      "sources": [
+        "step-wood-1"
+      ],
+      "edits": [
+        {
+          "source": "step-wood-1",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.29
+          }
+        }
+      ],
+      "reason": "按桥面木板、坡道石面和场地草地选择对应材质的脚步录音"
+    },
+    "enemy-step-wood-2": {
+      "seconds": 0.3,
+      "channels": 1,
+      "sha256": "6369bf2a5d8bcf308863b7621c9b7a4596402e022b3a5bdc47635ac33b7ca792",
+      "sources": [
+        "step-wood-2"
+      ],
+      "edits": [
+        {
+          "source": "step-wood-2",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.29
+          }
+        }
+      ],
+      "reason": "按桥面木板、坡道石面和场地草地选择对应材质的脚步录音"
+    },
+    "enemy-step-grass-0": {
+      "seconds": 0.38,
+      "channels": 1,
+      "sha256": "b9db264fa4ba1683cf721ffb4cb9000f4f9369674c1d231ca0acf6dba4d2a364",
+      "sources": [
+        "step-grass-0"
+      ],
+      "edits": [
+        {
+          "source": "step-grass-0",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.37
+          }
+        }
+      ],
+      "reason": "按桥面木板、坡道石面和场地草地选择对应材质的脚步录音"
+    },
+    "enemy-step-grass-1": {
+      "seconds": 0.38,
+      "channels": 1,
+      "sha256": "8b21281d0384b66c21df1e97e143aea603029997512d1dda8a123e185a2b51b1",
+      "sources": [
+        "step-grass-1"
+      ],
+      "edits": [
+        {
+          "source": "step-grass-1",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.37
+          }
+        }
+      ],
+      "reason": "按桥面木板、坡道石面和场地草地选择对应材质的脚步录音"
+    },
+    "enemy-step-grass-2": {
+      "seconds": 0.38,
+      "channels": 1,
+      "sha256": "20a1bbd1628fcb4bf82d8926c7935fa4e8bc035be6385c7d6ccc702326e04f62",
+      "sources": [
+        "step-grass-2"
+      ],
+      "edits": [
+        {
+          "source": "step-grass-2",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.37
+          }
+        }
+      ],
+      "reason": "按桥面木板、坡道石面和场地草地选择对应材质的脚步录音"
+    },
+    "shove": {
+      "seconds": 0.24,
+      "channels": 1,
+      "sha256": "aa036ed32adf8a4bfdc48873c7a9b96a53c2272b6fbefa02d9054bc6ff297704",
+      "sources": [
+        "swish-1"
+      ],
+      "edits": [
+        {
+          "source": "swish-1",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "duration": 0.18
+          }
+        }
+      ],
+      "reason": "短轻破风，与实际推搡命中声分离"
+    },
+    "shove-hit": {
+      "seconds": 0.34,
+      "channels": 1,
+      "sha256": "f5e9868b0f2089b0fa6bf46c57d0e9c900f637f7c3b6639ccca7e6916fa08e66",
+      "sources": [
+        "impactPunch_heavy_000",
+        "cloth2"
+      ],
+      "edits": [
+        {
+          "source": "impactPunch_heavy_000",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.28
+          }
+        },
+        {
+          "source": "cloth2",
+          "at": 0.025,
+          "gain": 0.17,
+          "edit": {
+            "end": 0.25
+          }
+        }
+      ],
+      "reason": "拳击低频撞击与衣物摩擦，用于身体推搡接触"
+    },
+    "enemy-windup": {
+      "seconds": 0.36,
+      "channels": 1,
+      "sha256": "fbcdf75123b2bc5af783e98419c2c3552ca42cfcf8dc3a731bf6c96c86a0b401",
+      "sources": [
+        "zombie-3"
+      ],
+      "edits": [
+        {
+          "source": "zombie-3",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.34
+          }
+        }
+      ],
+      "reason": "僵尸短声作为攻击前摇"
+    },
+    "enemy-miss": {
+      "seconds": 0.25,
+      "channels": 1,
+      "sha256": "52ce82a0ea6cd6b54b07c6afd418cd9a899dff2377fc51f4f1774c4d36c5468c",
+      "sources": [
+        "swish-10"
+      ],
+      "edits": [
+        {
+          "source": "swish-10",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "duration": 0.2
+          }
+        }
+      ],
+      "reason": "攻击挥空仅播放短破风"
+    },
+    "enemy-impact": {
+      "seconds": 0.3,
+      "channels": 1,
+      "sha256": "a23893ea545555b4bbd0d3559462ad532ae36bb14341fe66bb7ef6fdc34d8af6",
+      "sources": [
+        "impactPunch_medium_001"
+      ],
+      "edits": [
+        {
+          "source": "impactPunch_medium_001",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.29
+          }
+        }
+      ],
+      "reason": "真实接触撞击，用于近战与建筑受击"
+    },
+    "hurt": {
+      "seconds": 0.36,
+      "channels": 1,
+      "sha256": "eaacc1b95031eb7a8045fad21bb655f690c9b150808deea87d7a49dced4a283a",
+      "sources": [
+        "impactSoft_heavy_000"
+      ],
+      "edits": [
+        {
+          "source": "impactSoft_heavy_000",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.35
+          }
+        }
+      ],
+      "reason": "低沉软质受击，避免与铁皮、盾牌撞击混淆"
+    },
+    "cone-false": {
+      "seconds": 0.22,
+      "channels": 1,
+      "sha256": "6c6f3f662c998e9f25c14c57b5ae212a5e4ac7b6ff639623a935e92cda1e6889",
+      "sources": [
+        "plastic-snap"
+      ],
+      "edits": [
+        {
+          "source": "plastic-snap",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "start": 0.5,
+            "end": 0.63
+          }
+        }
+      ],
+      "reason": "路障采用塑料卡扣的短促卡裂，区别于金属共鸣"
+    },
+    "cone-true": {
+      "seconds": 0.46,
+      "channels": 1,
+      "sha256": "64f8aa3cc0cade5fdc68d7725659c420159bc1c8461d10b8f8f95d1d6bbc6343",
+      "sources": [
+        "plastic-snap",
+        "impactGeneric_light_000"
+      ],
+      "edits": [
+        {
+          "source": "plastic-snap",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "start": 0.64,
+            "end": 0.89
+          }
+        },
+        {
+          "source": "plastic-snap",
+          "at": 0.16,
+          "gain": 0.55,
+          "edit": {
+            "start": 0.5,
+            "end": 0.63
+          }
+        },
+        {
+          "source": "impactGeneric_light_000",
+          "at": 0.27,
+          "gain": 0.35,
+          "edit": {}
+        }
+      ],
+      "reason": "路障破坏叠加第二次塑料裂响和轻质散落"
+    },
+    "bucket-false": {
+      "seconds": 0.25,
+      "channels": 1,
+      "sha256": "1edb940ad3f02262b832cd4a10c5d14cb4d5659fc2506aef4a3db47de4b06be6",
+      "sources": [
+        "impactTin_medium_000"
+      ],
+      "edits": [
+        {
+          "source": "impactTin_medium_000",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        }
+      ],
+      "reason": "铁桶采用薄铁皮空腔撞击，保留轻薄共鸣"
+    },
+    "bucket-true": {
+      "seconds": 0.55,
+      "channels": 1,
+      "sha256": "e20923c11aebb640f001578ef8e568733ef91624050d51969fc16f26994c3c90",
+      "sources": [
+        "impactTin_medium_002",
+        "impactTin_medium_000",
+        "impactMetal_light_000"
+      ],
+      "edits": [
+        {
+          "source": "impactTin_medium_002",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        },
+        {
+          "source": "impactTin_medium_000",
+          "at": 0.1,
+          "gain": 0.6,
+          "edit": {
+            "speed": 0.87
+          }
+        },
+        {
+          "source": "impactMetal_light_000",
+          "at": 0.2,
+          "gain": 0.35,
+          "edit": {
+            "end": 0.32
+          }
+        }
+      ],
+      "reason": "铁桶破坏含薄铁皮变形和金属落地尾声"
+    },
+    "shield-false": {
+      "seconds": 0.28,
+      "channels": 1,
+      "sha256": "00a7716805331790624ac851830653a62ed94adc9b77457c75494098ee3fdf01",
+      "sources": [
+        "impactMetal_heavy_000"
+      ],
+      "edits": [
+        {
+          "source": "impactMetal_heavy_000",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        }
+      ],
+      "reason": "盾牌使用厚金属低沉重击，与铁桶空腔声分开"
+    },
+    "shield-true": {
+      "seconds": 0.64,
+      "channels": 1,
+      "sha256": "205def07240c94e00bd18d4f12bdaf3723e21399b2803c2950471c365962f03a",
+      "sources": [
+        "impactMetal_heavy_002",
+        "impactPlate_heavy_002",
+        "impactPlate_light_000"
+      ],
+      "edits": [
+        {
+          "source": "impactMetal_heavy_002",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        },
+        {
+          "source": "impactPlate_heavy_002",
+          "at": 0.07,
+          "gain": 0.7,
+          "edit": {}
+        },
+        {
+          "source": "impactPlate_light_000",
+          "at": 0.23,
+          "gain": 0.3,
+          "edit": {
+            "end": 0.38
+          }
+        }
+      ],
+      "reason": "盾牌破坏使用厚板冲击和较重散落"
+    },
+    "football-false": {
+      "seconds": 0.24,
+      "channels": 1,
+      "sha256": "f75037c23d2ad82901455bd6fae9e9e990fd134a887397bd81aac7207b17c752",
+      "sources": [
+        "impactSoft_medium_000",
+        "quiver-leather-squeeze-01"
+      ],
+      "edits": [
+        {
+          "source": "impactSoft_medium_000",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        },
+        {
+          "source": "quiver-leather-squeeze-01",
+          "at": 0.025,
+          "gain": 0.18,
+          "edit": {
+            "end": 0.18
+          }
+        }
+      ],
+      "reason": "橄榄球护具与巨人皮盔使用软垫撞击和皮革挤压，避免金属铃响"
+    },
+    "football-true": {
+      "seconds": 0.6,
+      "channels": 1,
+      "sha256": "84bce0faae0a07e21e4e9320923a8e8b011f9e4e22f31f4b9391f03ede1d0a20",
+      "sources": [
+        "impactSoft_heavy_000",
+        "quiver-leather-squeeze-06",
+        "belt-buckle-01"
+      ],
+      "edits": [
+        {
+          "source": "impactSoft_heavy_000",
+          "at": 0,
+          "gain": 1,
+          "edit": {
+            "end": 0.42
+          }
+        },
+        {
+          "source": "quiver-leather-squeeze-06",
+          "at": 0.06,
+          "gain": 0.35,
+          "edit": {
+            "end": 0.42
+          }
+        },
+        {
+          "source": "belt-buckle-01",
+          "at": 0.34,
+          "gain": 0.25,
+          "edit": {}
+        }
+      ],
+      "reason": "软质护具破坏表现束带松脱与落地，区别于塑料和金属破裂"
+    },
+    "reload-rifle": {
+      "seconds": 1.6,
+      "channels": 1,
+      "sha256": "e6e7c7324404255d4dabd80be14e24363b301f6020622f602b458a45e5cb372e",
+      "sources": [
+        "reload-rifle"
+      ],
+      "edits": [
+        {
+          "source": "reload-rifle",
+          "at": 0.192,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.36,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "reload-rifle",
+          "at": 1.4080000000000001,
+          "gain": 1,
+          "edit": {
+            "start": 0.5,
+            "end": 0.98,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        }
+      ],
+      "reason": "按实际换弹动作阶段定位；逐发装填每循环一次；暂停或取消时停止",
+      "events": [
+        {
+          "phase": 0.12,
+          "seconds": 0.192,
+          "action": "magazine_out",
+          "source": "reload-rifle",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.88,
+          "seconds": 1.4080000000000001,
+          "action": "magazine_in",
+          "source": "reload-rifle",
+          "anchor": "peak"
+        }
+      ]
+    },
+    "reload-p90": {
+      "seconds": 1.5,
+      "channels": 1,
+      "sha256": "918925d60eb4657ce574a546a7799a20b9462450d14aa34e54301765898db9b5",
+      "sources": [
+        "reload-pistol-airsoft"
+      ],
+      "edits": [
+        {
+          "source": "reload-pistol-airsoft",
+          "at": 0.22499999999999998,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.3,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "reload-pistol-airsoft",
+          "at": 1.0050000000000001,
+          "gain": 1,
+          "edit": {
+            "start": 0.55,
+            "end": 0.96,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        }
+      ],
+      "reason": "按实际换弹动作阶段定位；逐发装填每循环一次；暂停或取消时停止",
+      "events": [
+        {
+          "phase": 0.15,
+          "seconds": 0.22499999999999998,
+          "action": "magazine_release",
+          "source": "reload-pistol-airsoft",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.67,
+          "seconds": 1.0050000000000001,
+          "action": "magazine_seat",
+          "source": "reload-pistol-airsoft",
+          "anchor": "peak"
+        }
+      ]
+    },
+    "reload-pistol": {
+      "seconds": 1.2,
+      "channels": 1,
+      "sha256": "7e65754dd2f14a944e826e65709ac6178e6d3df84cfc3d4a6b2c6da53e62ac6c",
+      "sources": [
+        "reload-pistol"
+      ],
+      "edits": [
+        {
+          "source": "reload-pistol",
+          "at": 0.20400000000000001,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.42,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "reload-pistol",
+          "at": 0.9359999999999999,
+          "gain": 1,
+          "edit": {
+            "start": 0.55,
+            "end": 0.96,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        }
+      ],
+      "reason": "按实际换弹动作阶段定位；逐发装填每循环一次；暂停或取消时停止",
+      "events": [
+        {
+          "phase": 0.17,
+          "seconds": 0.20400000000000001,
+          "action": "magazine_out",
+          "source": "reload-pistol",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.78,
+          "seconds": 0.9359999999999999,
+          "action": "magazine_in",
+          "source": "reload-pistol",
+          "anchor": "peak"
+        }
+      ]
+    },
+    "reload-revolver": {
+      "seconds": 1.6,
+      "channels": 1,
+      "sha256": "66bdd6abf8e5ee40c809f0dd60807b5026cb4bfb96867418b5f21705c8469584",
+      "sources": [
+        "metalLatch",
+        "metalClick",
+        "reload-pistol"
+      ],
+      "edits": [
+        {
+          "source": "metalLatch",
+          "at": 0.20800000000000002,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.16,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "metalClick",
+          "at": 0.496,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.16,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "reload-pistol",
+          "at": 1.072,
+          "gain": 1,
+          "edit": {
+            "start": 0.55,
+            "end": 0.86,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "metalLatch",
+          "at": 1.328,
+          "gain": 1,
+          "edit": {
+            "start": 0.03,
+            "end": 0.23,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        }
+      ],
+      "reason": "按实际换弹动作阶段定位；逐发装填每循环一次；暂停或取消时停止",
+      "events": [
+        {
+          "phase": 0.13,
+          "seconds": 0.20800000000000002,
+          "action": "cylinder_open",
+          "source": "metalLatch",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.31,
+          "seconds": 0.496,
+          "action": "case_eject",
+          "source": "metalClick",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.67,
+          "seconds": 1.072,
+          "action": "speedloader_seat",
+          "source": "reload-pistol",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.83,
+          "seconds": 1.328,
+          "action": "cylinder_close",
+          "source": "metalLatch",
+          "anchor": "peak"
+        }
+      ]
+    },
+    "reload-shotgun": {
+      "seconds": 0.4,
+      "channels": 1,
+      "sha256": "5d8d000a24fe0db2c7bd94cd4997cb039c9b90552ddaad9b52500c094a169bb1",
+      "sources": [
+        "cloth1",
+        "metalClick"
+      ],
+      "edits": [
+        {
+          "source": "cloth1",
+          "at": 0.08800000000000001,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.1,
+            "anchor_peak": false,
+            "trim_leading": true
+          }
+        },
+        {
+          "source": "metalClick",
+          "at": 0.256,
+          "gain": 1,
+          "edit": {
+            "start": 0.05,
+            "end": 0.18,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        }
+      ],
+      "reason": "按实际换弹动作阶段定位；逐发装填每循环一次；暂停或取消时停止",
+      "events": [
+        {
+          "phase": 0.22,
+          "seconds": 0.08800000000000001,
+          "action": "shell_handling",
+          "source": "cloth1",
+          "anchor": "onset"
+        },
+        {
+          "phase": 0.64,
+          "seconds": 0.256,
+          "action": "shell_seat",
+          "source": "metalClick",
+          "anchor": "peak"
+        }
+      ]
+    },
+    "reload-sniper": {
+      "seconds": 1.8,
+      "channels": 1,
+      "sha256": "887a976aaddcb1a304dad7af6cfd29bd3394e0368a657d4045c0a26844e8034e",
+      "sources": [
+        "pump",
+        "reload-rifle"
+      ],
+      "edits": [
+        {
+          "source": "pump",
+          "at": 0.216,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.18,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "reload-rifle",
+          "at": 0.5040000000000001,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.32,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "reload-rifle",
+          "at": 1.26,
+          "gain": 1,
+          "edit": {
+            "start": 0.55,
+            "end": 0.91,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "pump",
+          "at": 1.566,
+          "gain": 1,
+          "edit": {
+            "start": 0.24,
+            "end": 0.46,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        }
+      ],
+      "reason": "按实际换弹动作阶段定位；逐发装填每循环一次；暂停或取消时停止",
+      "events": [
+        {
+          "phase": 0.12,
+          "seconds": 0.216,
+          "action": "bolt_open",
+          "source": "pump",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.28,
+          "seconds": 0.5040000000000001,
+          "action": "magazine_out",
+          "source": "reload-rifle",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.7,
+          "seconds": 1.26,
+          "action": "magazine_in",
+          "source": "reload-rifle",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.87,
+          "seconds": 1.566,
+          "action": "bolt_close",
+          "source": "pump",
+          "anchor": "peak"
+        }
+      ]
+    },
+    "reload-flamethrower": {
+      "seconds": 2.4,
+      "channels": 1,
+      "sha256": "6c0ce1f73199667e5b9036b33019b740c4456f53cba435e271e1d4fd00fb8bbf",
+      "sources": [
+        "metalLatch",
+        "clothBelt"
+      ],
+      "edits": [
+        {
+          "source": "metalLatch",
+          "at": 0.144,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.18,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "clothBelt",
+          "at": 1.2,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.26,
+            "anchor_peak": false,
+            "trim_leading": true
+          }
+        },
+        {
+          "source": "metalLatch",
+          "at": 2.256,
+          "gain": 1,
+          "edit": {
+            "start": 0.04,
+            "end": 0.23,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        }
+      ],
+      "reason": "按实际换弹动作阶段定位；逐发装填每循环一次；暂停或取消时停止",
+      "events": [
+        {
+          "phase": 0.06,
+          "seconds": 0.144,
+          "action": "tank_release",
+          "source": "metalLatch",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.5,
+          "seconds": 1.2,
+          "action": "tank_handling",
+          "source": "clothBelt",
+          "anchor": "onset"
+        },
+        {
+          "phase": 0.94,
+          "seconds": 2.256,
+          "action": "tank_clamp",
+          "source": "metalLatch",
+          "anchor": "peak"
+        }
+      ]
+    },
+    "reload-auto-shotgun": {
+      "seconds": 2.2,
+      "channels": 1,
+      "sha256": "e098aadae3767e9c9ad0336aace1ff7dc8548149c4c8ab7e49cbbbf17bddbd83",
+      "sources": [
+        "reload-rifle"
+      ],
+      "edits": [
+        {
+          "source": "reload-rifle",
+          "at": 0.17600000000000002,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.36,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "reload-rifle",
+          "at": 2.068,
+          "gain": 1,
+          "edit": {
+            "start": 0.55,
+            "end": 0.93,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        }
+      ],
+      "reason": "按实际换弹动作阶段定位；逐发装填每循环一次；暂停或取消时停止",
+      "events": [
+        {
+          "phase": 0.08,
+          "seconds": 0.17600000000000002,
+          "action": "drum_out",
+          "source": "reload-rifle",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.94,
+          "seconds": 2.068,
+          "action": "drum_seat",
+          "source": "reload-rifle",
+          "anchor": "peak"
+        }
+      ]
+    },
+    "reload-heavy-machine-gun": {
+      "seconds": 3.6,
+      "channels": 1,
+      "sha256": "e92f4f15b3d0bd0c22c0576e324f52a71017fed99987460f1a8650121c46bbae",
+      "sources": [
+        "metalLatch",
+        "clothBelt",
+        "pump",
+        "reload-rifle"
+      ],
+      "edits": [
+        {
+          "source": "metalLatch",
+          "at": 0.216,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.18,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "clothBelt",
+          "at": 1.62,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.3,
+            "anchor_peak": false,
+            "trim_leading": true
+          }
+        },
+        {
+          "source": "pump",
+          "at": 2.664,
+          "gain": 1,
+          "edit": {
+            "start": 0,
+            "end": 0.19,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "reload-rifle",
+          "at": 3.384,
+          "gain": 1,
+          "edit": {
+            "start": 0.55,
+            "end": 0.93,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        },
+        {
+          "source": "pump",
+          "at": 3.528,
+          "gain": 1,
+          "edit": {
+            "start": 0.24,
+            "end": 0.46,
+            "anchor_peak": true,
+            "trim_leading": false
+          }
+        }
+      ],
+      "reason": "按实际换弹动作阶段定位；逐发装填每循环一次；暂停或取消时停止",
+      "events": [
+        {
+          "phase": 0.06,
+          "seconds": 0.216,
+          "action": "box_release",
+          "source": "metalLatch",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.45,
+          "seconds": 1.62,
+          "action": "box_handling",
+          "source": "clothBelt",
+          "anchor": "onset"
+        },
+        {
+          "phase": 0.74,
+          "seconds": 2.664,
+          "action": "charging_handle_pull",
+          "source": "pump",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.94,
+          "seconds": 3.384,
+          "action": "box_seat",
+          "source": "reload-rifle",
+          "anchor": "peak"
+        },
+        {
+          "phase": 0.98,
+          "seconds": 3.528,
+          "action": "charging_handle_return",
+          "source": "pump",
+          "anchor": "peak"
+        }
+      ]
+    },
+    "ultimate-music": {
+      "seconds": 10.0,
+      "channels": 2,
+      "sha256": "07c30ab8f52aef64fb4e665317097dcf0cf8183f8d1f03f5e72ba509224ca1ad",
+      "sources": [
+        "ultimate-music"
+      ],
+      "edits": [
+        {
+          "source": "ultimate-music",
+          "at": 0,
+          "gain": 1,
+          "edit": {}
+        }
+      ],
+      "reason": "nene原创Rock/Metal短曲中选取38–48秒的高能量段，技能结束前淡出"
+    }
+  },
+  "motion_sources": {
+    "scripts/ak_rifle.gd": "7507395b68f64eda48075683a2e0344382338f7eadfdfe4f4352bb676e19ca67",
+    "scripts/revolver_model.gd": "5c532e2a0cc4b7c974aba32a114eeb1b68d59f2812bdf2ca49a2bab39e283887",
+    "scripts/blade_motion.gd": "1b008dd8e669ebd1fb4616013310243e46e8e169479ae1a693311fd43f9b074e",
+    "scripts/ultimate.gd": "18b77d8e10b693712a277bdb481cfe7d09d9ff93c00174a35360705224306a7a",
+    "assets/models/p90.glb": "6ce9113c9fd7b8c93b01ffff7d270930ab21a0c0d33c4d364c2ca855c2eee117",
+    "assets/models/pistol.glb": "2e1482a59da73e81262eb68153a3e261ab716848bd4987a9a8e2ace0382bdfb7",
+    "assets/models/shotgun.glb": "4c5a3b9d0a98e234c4fa347b7bef447ce4a510923c04b2d4b057a22bb61ec033",
+    "assets/models/sniper.glb": "f3b3698beb107c9a4c84508332197a85ef8af57804f374d61960a604a3aeadfe",
+    "assets/models/flamethrower.glb": "2b20524357ebcf249b28363e8b2c45316cc17c2cf73fbea01fdc8d8172923e06",
+    "assets/models/auto-shotgun.glb": "6509a8bdb1e3cb909285fff1f922a8d651a6d605cc274de12c5f1cf76f9794f3",
+    "assets/models/heavy-machine-gun.glb": "370edae3caa3dedcf116c22abdd99101c0fbd6f4b3962e7f40db6624430a3203"
+  }
+}
