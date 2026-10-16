@@ -1,89 +1,138 @@
 extends Node3D
 const TIP = 1.55
 const SHEATH_LENGTH = 1.61
+const CURVE = .065
+const TIP_POINT = Vector3(CURVE+.027,TIP,0)
+const SHEATH_INNER_WIDTH = .098
+const SHEATH_INNER_DEPTH = .034
 
 func _init() -> void:
 	name = "UltimateLongBlade"
-	# Diamond cross-sections form real bevels; the final ring converges to one tip.
 	var surface = SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	surface.set_smooth_group(-1)
-	var rings = [Vector2(.025,.052),Vector2(1.22,.043),Vector2(1.39,.027),Vector2(TIP,0)]
+	var rings = [Vector2(.025,.039),Vector2(.35,.038),Vector2(.70,.037),Vector2(1.05,.035),Vector2(1.36,.032),Vector2(1.40,.027),Vector2(TIP,0)]
+	var colors = [Color("eef2ed"),Color("a3b3bf"),Color("657783"),Color("a3b3bf"),Color("eef2ed")]
 	for i in rings.size()-1:
 		var a = section(rings[i])
 		var b = section(rings[i+1])
-		for side in 4:
-			var next = (side+1)%4
-			var vertices = [a[side],b[next],a[next]]
-			if not b[side].is_equal_approx(b[next]): vertices.append_array([a[side],b[side],b[next]])
-			for vertex in vertices:
-				surface.add_vertex(vertex)
-	surface.generate_normals()
-	var blade = MeshInstance3D.new()
-	blade.name = "Blade"
-	blade.mesh = surface.commit()
-	var steel = StandardMaterial3D.new()
-	steel.albedo_color = Color("cad8de")
-	steel.metallic = .78
-	steel.roughness = .28
-	blade.material_override = steel
-	blade.layers = 2
-	blade.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(blade)
-	piece("Guard",Vector3.ZERO,Vector3(.25,.045,.10),Color("b39753"))
-	piece("Grip",Vector3(0,-.18,0),Vector3(.065,.32,.07),Color("342d2b"))
-	for i in 7: piece("Wrap",Vector3(0,-.04-i*.043,0),Vector3(.073,.012,.078),Color("706049"))
-	piece("Pommel",Vector3(0,-.35,0),Vector3(.086,.05,.09),Color("b39753"))
+		for side in a.size():
+			var next = (side+1)%a.size()
+			surface.set_color(colors[side])
+			triangle(surface,a[side],b[next],a[next])
+			if not b[side].is_equal_approx(b[next]): triangle(surface,a[side],b[side],b[next])
+	var steel = material(Color.WHITE,.72,.29)
+	steel.vertex_color_use_as_albedo = true
+	attach(self,"Blade",surface,steel)
+	var guard = MeshInstance3D.new()
+	guard.name = "Guard"
+	var disc = CylinderMesh.new()
+	disc.top_radius = .103
+	disc.bottom_radius = .103
+	disc.height = .025
+	disc.radial_segments = 20
+	guard.mesh = disc
+	guard.material_override = material(Color("343039"),.65,.38)
+	configure(guard)
+	add_child(guard)
+	piece("Habaki",Vector3(0,.035,0),Vector3(.088,.055,.046),Color("b69a5b"))
+	piece("Grip",Vector3(0,-.18,0),Vector3(.068,.31,.070),Color("c9c5ac"))
+	# Diagonal black bands leave light diamond-shaped openings on both grip faces.
+	for i in 7:
+		for face in [-1.0,1.0]:
+			for diagonal in [-1.0,1.0]:
+				var wrap = piece("Wrap",Vector3(0,-.047-i*.043,face*.037),Vector3(.088,.015,.008),Color("242730"))
+				wrap.rotation.z = diagonal*.64
+	piece("Fuchi",Vector3(0,-.028,0),Vector3(.078,.025,.080),Color("a78b51"))
+	piece("Pommel",Vector3(0,-.35,0),Vector3(.078,.032,.080),Color("a78b51"))
+
+static func bend(y: float) -> float:
+	return CURVE*pow(clampf(y/TIP,0,1),2)
 
 static func section(ring: Vector2) -> Array[Vector3]:
-	var thickness = .018*minf(1,ring.y/.027)
-	return [Vector3(-ring.y,ring.x,0),Vector3(0,ring.x,thickness),Vector3(ring.y,ring.x,0),Vector3(0,ring.x,-thickness)]
+	if is_zero_approx(ring.y): return [TIP_POINT,TIP_POINT,TIP_POINT,TIP_POINT,TIP_POINT]
+	var x = bend(ring.x)
+	# Only the left edge is sharpened; the opposite side retains a flat spine.
+	return [Vector3(x-ring.y,ring.x,0),Vector3(x-ring.y+.013,ring.x,.014),Vector3(x+ring.y,ring.x,.014),Vector3(x+ring.y,ring.x,-.014),Vector3(x-ring.y+.013,ring.x,-.014)]
 
-func piece(title: String, at: Vector3, size: Vector3, color: Color) -> void:
+static func triangle(surface: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
+	for vertex in [a,b,c]: surface.add_vertex(vertex)
+
+static func material(color: Color, metallic: float, roughness: float) -> StandardMaterial3D:
+	var result = StandardMaterial3D.new()
+	result.albedo_color = color
+	result.metallic = metallic
+	result.roughness = roughness
+	return result
+
+static func configure(part: MeshInstance3D) -> void:
+	part.layers = 2
+	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+static func attach(parent: Node3D, title: String, surface: SurfaceTool, finish: StandardMaterial3D) -> void:
+	surface.generate_normals()
+	var part = MeshInstance3D.new()
+	part.name = title
+	part.mesh = surface.commit()
+	part.material_override = finish
+	configure(part)
+	parent.add_child(part)
+
+func piece(title: String, at: Vector3, size: Vector3, color: Color) -> MeshInstance3D:
 	var part = MeshInstance3D.new()
 	part.name = title
 	part.mesh = BoxMesh.new()
 	part.mesh.size = size
-	var material = StandardMaterial3D.new()
-	material.albedo_color = color
-	material.metallic = .5
-	material.roughness = .55
-	part.material_override = material
+	part.material_override = material(color,.45,.45)
 	part.position = at
-	part.layers = 2
-	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	configure(part)
 	add_child(part)
+	return part
+
+static func sheath_ring(depth: float, width: float, thickness: float) -> Array[Vector3]:
+	var result: Array[Vector3] = []
+	for i in 16:
+		var angle = TAU*i/16
+		result.append(Vector3(-bend(depth)-cos(angle)*width,-depth,sin(angle)*thickness))
+	return result
 
 static func make_scabbard() -> Node3D:
 	var result = Node3D.new()
 	result.name = "LongBladeScabbard"
-	for side in [-1.0,1.0]:
-		for plane in 2:
-			var part = MeshInstance3D.new()
-			part.mesh = BoxMesh.new()
-			part.mesh.size = Vector3(.012,SHEATH_LENGTH,.075) if plane == 0 else Vector3(.12,SHEATH_LENGTH,.012)
-			part.position = Vector3(side*.06,-SHEATH_LENGTH*.5,0) if plane == 0 else Vector3(0,-SHEATH_LENGTH*.5,side*.0375)
-			var material = StandardMaterial3D.new()
-			material.albedo_color = Color("493c32")
-			material.roughness = .8
-			part.material_override = material
-			part.layers = 2
-			part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			result.add_child(part)
-	for y in [-.035,-SHEATH_LENGTH+.10]:
-		var metal = StandardMaterial3D.new()
-		metal.albedo_color = Color("a89460")
-		metal.metallic = .65
-		metal.roughness = .4
-		# Four open sides: the mouth must not be a solid cap hiding the blade.
-		for side in [-1.0,1.0]:
-			for plane in 2:
-				var edge = MeshInstance3D.new()
-				edge.mesh = BoxMesh.new()
-				edge.mesh.size = Vector3(.018,.055,.10) if plane == 0 else Vector3(.145,.055,.018)
-				edge.position = Vector3(side*.064,y,0) if plane == 0 else Vector3(0,y,side*.046)
-				edge.material_override = metal
-				edge.layers = 2
-				edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-				result.add_child(edge)
+	var shell = SurfaceTool.new()
+	shell.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for step in 12:
+		var a = sheath_ring(SHEATH_LENGTH*step/12,.110,.046)
+		var b = sheath_ring(SHEATH_LENGTH*(step+1)/12,.110,.046)
+		for i in 16:
+			var n = (i+1)%16
+			triangle(shell,a[i],a[n],b[n])
+			triangle(shell,a[i],b[n],b[i])
+	# Close the bottom while leaving the mouth open for the actual blade.
+	var bottom = sheath_ring(SHEATH_LENGTH,.110,.046)
+	for i in 16: triangle(shell,Vector3(-bend(SHEATH_LENGTH),-SHEATH_LENGTH,0),bottom[i],bottom[(i+1)%16])
+	attach(result,"LacqueredSaya",shell,material(Color("191e29"),.25,.24))
+	var inner = SurfaceTool.new()
+	inner.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for step in 12:
+		var a = sheath_ring(SHEATH_LENGTH*step/12,SHEATH_INNER_WIDTH,SHEATH_INNER_DEPTH)
+		var b = sheath_ring(SHEATH_LENGTH*(step+1)/12,SHEATH_INNER_WIDTH,SHEATH_INNER_DEPTH)
+		for i in 16:
+			var n = (i+1)%16
+			triangle(inner,a[i],b[n],a[n])
+			triangle(inner,a[i],b[i],b[n])
+	attach(result,"SayaInterior",inner,material(Color("24212a"),0,.85))
+	for depth in [0.0,SHEATH_LENGTH-.055]:
+		var rim = SurfaceTool.new()
+		rim.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var outer = sheath_ring(depth,.113,.049)
+		var inside = sheath_ring(depth,SHEATH_INNER_WIDTH,SHEATH_INNER_DEPTH)
+		var lower = sheath_ring(depth+.035,.113,.049)
+		for i in 16:
+			var n = (i+1)%16
+			triangle(rim,outer[i],inside[i],inside[n])
+			triangle(rim,outer[i],inside[n],outer[n])
+			triangle(rim,outer[i],outer[n],lower[n])
+			triangle(rim,outer[i],lower[n],lower[i])
+		attach(result,"SayaRim",rim,material(Color("a58a52"),.65,.36))
 	return result

@@ -18,28 +18,37 @@ func validate_blade_motion(game) -> void:
 	var model = blade_type.new()
 	var blade_mesh: Mesh = model.get_node("Blade").mesh
 	var vertices: PackedVector3Array = blade_mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	check(blade_mesh.get_aabb().end.y > 1.5 and vertices.has(Vector3(0,tip,0)),"Longer blade has a geometric pointed tip rather than a box end")
-	check(Array(vertices).all(func(v): return v.y < tip-.001 or (absf(v.x) < .001 and absf(v.z) < .001)),"Both blade edges converge to the same sharp tip")
+	check(blade_mesh.get_aabb().end.y > 1.5 and vertices.has(blade_type.TIP_POINT),"Long katana has a geometric pointed tip rather than a box end")
+	check(Array(vertices).all(func(v): return v.y < tip-.001 or v.is_equal_approx(blade_type.TIP_POINT)),"Single edge and spine converge to the same offset katana tip")
 	var normals: PackedVector3Array = blade_mesh.surface_get_arrays(0)[Mesh.ARRAY_NORMAL]
 	check(normals[0].dot(Vector3(vertices[0].x,0,vertices[0].z)) > 0,"Blade bevel faces point outward for correct lighting and backface culling")
 	check(blade_type.SHEATH_LENGTH > tip,"Scabbard encloses the full new blade length")
 	model.free()
 	var sheath: Transform3D = motion_type.sheath_pose()
 	var inserted: Transform3D = motion_type.inserted_pose()
-	check((inserted*Vector3(0,tip,0)).distance_to(sheath*Vector3(0,-tip,0)) < .00001,"Inserted blade points into the sheath, with guard at its mouth")
+	check((inserted*blade_type.TIP_POINT).distance_to(sheath*Vector3(-blade_type.TIP_POINT.x,-tip,0)) < .00001,"Inserted curved blade points into the matching curved sheath")
 	var pulled: Transform3D = motion_type.extracted_pose()
-	check((pulled*Vector3(0,tip,0)-motion_type.MOUTH).dot(motion_type.PULL) > 0,"Draw pulls the entire blade clear of the scabbard mouth toward the left")
+	check((pulled*blade_type.TIP_POINT-motion_type.MOUTH).dot(motion_type.PULL) > 0,"Draw pulls the entire blade clear of the scabbard mouth toward the left")
 	for step in 9:
 		var extracting: Transform3D = motion_type.draw_pose(lerpf(.16,.74,float(step)/8))
 		var travel: Vector3 = extracting.origin-motion_type.MOUTH
 		check(travel.cross(motion_type.PULL).length() < .00001 and extracting.basis.is_equal_approx(inserted.basis),"Blade stays aligned with the scabbard during extraction, before rotating: "+str(step))
 	check(motion_type.draw_pose(1).is_equal_approx(motion_type.ready_pose()),"Draw ends at the exact idle pose without a transition snap")
 	for step in 31:
+		var extraction: Transform3D = sheath.affine_inverse()*motion_type.draw_pose(lerpf(.16,.74,float(step)/30))
+		var contained = true
+		for vertex in vertices:
+			var local: Vector3 = extraction*vertex
+			if local.y > 0: continue
+			var radial = Vector2((local.x+blade_type.bend(-local.y))/blade_type.SHEATH_INNER_WIDTH,local.z/blade_type.SHEATH_INNER_DEPTH)
+			contained = contained and local.y >= -blade_type.SHEATH_LENGTH and radial.length_squared() <= 1.001
+		check(contained,"Curved blade clears the actual oval sheath cavity without wall penetration: "+str(step))
+	for step in 31:
 		var t = float(step)/30
 		for direction in [-1,1]:
 			var pose: Transform3D = motion_type.swing_pose(t,direction)
 			var bounds_valid = true
-			for vertex in [Vector3(-.05,0,-.02),Vector3(.06,tip,.02),Vector3(0,-.38,0)]:
+			for vertex in [Vector3(-.105,0,-.105),Vector3(.105,tip,.105),blade_type.TIP_POINT,Vector3(0,-.38,0)]:
 				var point: Vector3 = pose*vertex
 				for aspect in [4.0/3.0,1.6,16.0/9.0]:
 					var half_height = -point.z*tan(deg_to_rad(61.0)*.5)
