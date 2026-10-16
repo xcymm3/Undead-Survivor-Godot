@@ -49,6 +49,7 @@ static func tick(sim, p: Dictionary, input: Dictionary, dt: float) -> bool:
 				p.reloading = false
 				p.reload_queued = false
 				p.fire_anim = 0.0
+				p.melee_queued = false
 				sim.melee_swings.erase(p.id)
 				sim.events.append({"kind":"ultimate_start","player":p.id})
 	p.input["ultimate"] = false
@@ -58,6 +59,7 @@ static func tick(sim, p: Dictionary, input: Dictionary, dt: float) -> bool:
 		p.ultimate_cd = COOLDOWN
 		p.ultimate_sheathe = SHEATHE_TIME
 		p.fire_anim = 0.0
+		p.melee_queued = false
 		sim.melee_swings.erase(p.id)
 		sim.events.append({"kind":"ultimate_end","player":p.id})
 	if locked(p):
@@ -70,7 +72,10 @@ static func tick(sim, p: Dictionary, input: Dictionary, dt: float) -> bool:
 		input["aim"] = false
 		input["crouch"] = false
 		input["shove"] = false
-		if not active(p) or p.get("ultimate_age",0.0) < DRAW_TIME: input["fire"] = false
+		if not active(p) or p.get("ultimate_age",0.0) < DRAW_TIME:
+			input["fire"] = false
+			input["fire_pressed"] = false
+			p.melee_queued = false
 		return true
 	if p.has("ultimate_saved_slot"):
 		p.slot = int(p.ultimate_saved_slot)

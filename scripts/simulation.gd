@@ -188,7 +188,7 @@ func submit(id: String, input: Dictionary) -> void:
 	clean.yaw = wrapf(clean.yaw,-PI,PI)
 	clean.pitch = clampf(clean.pitch,-deg_to_rad(85),deg_to_rad(85))
 	clean.weapon = clampi(int(clean.weapon),0,9)
-	for key in ["jump","fire","reload","aim","crouch","sprint","interact","wave_ready","use_self","shove","ultimate"]: clean[key] = input.get(key,false) == true
+	for key in ["jump","fire","reload","aim","crouch","sprint","interact","wave_ready","use_self","shove","ultimate","fire_pressed"]: clean[key] = input.get(key,false) == true
 	if equipment:
 		var slot = input.get("slot",pawns[id].slot)
 		if not slot is int or slot < 1 or slot > 4: return
@@ -196,7 +196,7 @@ func submit(id: String, input: Dictionary) -> void:
 	# Network polling can deliver several commands before the next physics tick.
 	# Keep a jump edge until update_pawn consumes it, even if a newer packet releases it.
 	clean.jump = clean.jump or pawns[id].input.get("jump",false)
-	for action in ["use_self","shove","wave_ready","ultimate"]: clean[action] = clean[action] or pawns[id].input.get(action,false)
+	for action in ["use_self","shove","wave_ready","ultimate","fire_pressed"]: clean[action] = clean[action] or pawns[id].input.get(action,false)
 	pawns[id].input = clean
 	pawns[id].input_age = 0.0
 
@@ -642,6 +642,14 @@ func update_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	if equipment: equipment.save_weapon_slot(p)
 
 func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
+	var melee: bool = combat_weapon(p).get("kind","gun") == "melee"
+	var pressed: bool = input.get("fire_pressed",false) or (input.get("fire",false) and not p.trigger)
+	p.input["fire_pressed"] = false
+	if not melee or p.get("melee_queue_weapon",p.weapon) != p.weapon or p.input_age >= .5 or p.switch > 0 or p.get("shove_anim",0.0) > 0 or p.reloading or (equipment and (p.slot != 3 or p.get("interaction","") != "")):
+		p.melee_queued = false
+	if melee and pressed and p.switch <= 0 and p.get("shove_anim",0.0) <= 0 and not p.reloading and (not equipment or p.slot == 3 and p.get("interaction","") == ""):
+		p.melee_queued = true
+		p.melee_queue_weapon = p.weapon
 	if equipment and (p.slot == 4):
 		if p.weapon == 3 and p.reloading:
 			p.reloading = false
@@ -713,11 +721,15 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 		p.aim = false
 		events.append({"kind":"reload","player":p.id,"weapon":p.weapon})
 		return
-	if not input.get("fire",false): p.axe_next_direction = 1
 	var trigger: bool = input.get("fire",false) and (not equipment or p.interaction == "")
+	if melee:
+		trigger = trigger or p.get("melee_queued",false)
+		p.melee_idle = float(p.get("melee_idle",0.0))+dt if not trigger and p.fire_anim <= 0 else 0.0
+		if p.melee_idle >= .25: p.axe_next_direction = 1
 	if trigger and (w.automatic or not p.trigger) and p.cooldown <= 0 and p.fire_anim <= .00001:
 		if p.ammo[p.weapon] > 0 or w.get("infiniteAmmo",false):
 			if not w.get("infiniteAmmo",false): p.ammo[p.weapon] -= 1
+			p.melee_queued = false
 			p.cooldown = w.interval
 			p.fire_anim = w.fireDuration
 			p.shots += 1

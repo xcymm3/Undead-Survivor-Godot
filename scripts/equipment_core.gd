@@ -49,6 +49,7 @@ func before_movement(_dt: float) -> void:
 			p.reload_queued = false
 			p.reload = 0.0
 			p.fire_anim = 0.0
+			p.melee_queued = false
 			sim.melee_swings.erase(p.id)
 		if p.slot in [1,2] and (p.weapon_slot != p.slot or p.weapon != (p.weapon1 if p.slot == 1 else p.weapon2)): select_weapon_slot(p,p.slot)
 		var use: bool = input.get("fire",false)
