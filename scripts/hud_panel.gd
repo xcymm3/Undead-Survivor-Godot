@@ -178,8 +178,8 @@ func setup(owner_ui) -> void:
 	wave_announcement = text(content,48)
 	wave_announcement.name = "WaveAnnouncement"
 	wave_announcement.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	wave_announcement.offset_left = 180
-	wave_announcement.offset_right = -180
+	wave_announcement.offset_left = 300
+	wave_announcement.offset_right = -300
 	wave_announcement.offset_top = 200
 	wave_announcement.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	wave_announcement.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
