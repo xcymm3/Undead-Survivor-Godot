@@ -6,6 +6,7 @@ var enemies: Dictionary = rules.enemies
 var parts: Array = rules.parts
 const Maps = preload("res://scripts/map_catalog.gd")
 signal settings_changed
+var window_mode = preload("res://scripts/window_mode.gd").new()
 var settings = {"sensitivity": 0.0022, "volume": 1.0, "muted": false, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 3, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_defense", "defense_difficulty":"normal"}
 const GRAPHICS_PRESETS = [
     {"resolution":.5,"aa":0,"shadows":0,"effects":0,"distance":0,"frame_limit":60,"pixelated":true},
@@ -58,16 +59,34 @@ func _ready() -> void:
 		settings.frame_limit = 20
 		settings.quality = 5
 	Engine.max_fps = 120
+	apply_window_mode()
 	apply_settings()
+
+func can_change_window_mode() -> bool:
+	return not automation and DisplayServer.get_name() != "headless" and "--silent" not in OS.get_cmdline_user_args()
+
+func sync_window_mode() -> void:
+	if can_change_window_mode():
+		settings.fullscreen = window_mode.is_fullscreen(DisplayServer.window_get_mode())
+
+func apply_window_mode() -> void:
+	if can_change_window_mode():
+		window_mode.apply(settings.fullscreen, DisplayServer.window_get_mode, DisplayServer.window_set_mode)
+
+func set_fullscreen(enabled: bool) -> void:
+	settings.fullscreen = enabled
+	apply_window_mode()
+	apply_settings()
+
+func toggle_fullscreen() -> void:
+	sync_window_mode()
+	set_fullscreen(not settings.fullscreen)
 
 func apply_settings() -> void:
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(.0001, settings.volume)))
 	AudioServer.set_bus_mute(0, automation or settings.muted or DisplayServer.get_name() == "headless" or "--silent" in OS.get_cmdline_user_args())
 	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED,Viewport.MSAA_2X,Viewport.MSAA_4X,Viewport.MSAA_8X][int(settings.aa)]
 	get_viewport().scaling_3d_scale = settings.resolution
-	if not automation and DisplayServer.get_name() != "headless" and "--silent" not in OS.get_cmdline_user_args():
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if settings.fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
-
 	settings_changed.emit()
 
 func set_preset(index: int) -> void:

@@ -6,7 +6,31 @@ func check(ok: bool, message: String) -> void:
 	if ok: print("PASS: "+message)
 	else: failures += 1; push_error(message)
 func _initialize() -> void: call_deferred("run")
+func check_window_modes() -> void:
+	var controller = preload("res://scripts/window_mode.gd").new()
+	# Fake display backend: never changes a desktop window, including in automation.
+	var display = {"mode": DisplayServer.WINDOW_MODE_MAXIMIZED, "writes": 0}
+	var read_mode = func(): return display.mode
+	var write_mode = func(mode):
+		display.mode = mode
+		display.writes += 1
+	controller.apply(false, read_mode, write_mode)
+	check(display.mode == DisplayServer.WINDOW_MODE_MAXIMIZED and display.writes == 0,"Windowed preference preserves an already maximized window")
+	controller.apply(true, read_mode, write_mode)
+	controller.apply(true, read_mode, write_mode)
+	check(display.mode == DisplayServer.WINDOW_MODE_FULLSCREEN and display.writes == 1,"Fullscreen is entered once without reapplying unchanged mode")
+	controller.apply(false, read_mode, write_mode)
+	check(display.mode == DisplayServer.WINDOW_MODE_MAXIMIZED and display.writes == 2,"Leaving fullscreen restores the previous maximized state")
+	display.mode = DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+	controller.apply(true, read_mode, write_mode)
+	check(display.writes == 2,"Exclusive fullscreen is already treated as fullscreen")
+	display.mode = DisplayServer.WINDOW_MODE_WINDOWED
+	controller.apply(true, read_mode, write_mode)
+	controller.apply(false, read_mode, write_mode)
+	check(display.mode == DisplayServer.WINDOW_MODE_WINDOWED and display.writes == 4,"A normal window returns to normal after a fullscreen round trip")
+
 func run() -> void:
+	check_window_modes()
 	var game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
 	await process_frame
@@ -178,6 +202,33 @@ func run() -> void:
 	await process_frame
 	var returns = game.ui.menu.find_children("*","Button",true,false).filter(func(n): return n.text == "返回")
 	check(not returns.is_empty() and returns[0].get_global_rect().end.y <= returns[0].get_parent().get_parent().get_global_rect().end.y+1,"Settings return button fits the visible panel without outer scrolling")
+	var data = root.get_node("Data")
+	var saved_settings: Dictionary = data.settings.duplicate(true)
+	for fullscreen in [false,true]:
+		data.settings.fullscreen = fullscreen
+		game.ui.settings_tab = 0
+		game.ui.show_settings()
+		game.ui.menu.find_child("MasterVolume",true,false).value = 37
+		for control in game.ui.menu.find_children("*","Button",true,false):
+			if control.accessibility_name == "静音（M）：下一项": control.pressed.emit()
+		check(data.settings.fullscreen == fullscreen,"Volume and mute callbacks preserve fullscreen preference: "+str(fullscreen))
+		game.ui.settings_tab = 1
+		game.ui.show_settings()
+		for control in game.ui.menu.find_children("*","Button",true,false):
+			if control.accessibility_name.ends_with("：下一项") and not control.accessibility_name.begins_with("全屏") and not control.accessibility_name.begins_with("画质预设"):
+				control.pressed.emit()
+		for preset in 5: data.set_preset(preset)
+		check(data.settings.fullscreen == fullscreen,"All graphics controls and presets preserve fullscreen preference: "+str(fullscreen))
+		for control in game.ui.menu.find_children("*","Button",true,false):
+			if control.accessibility_name == "全屏（F11）：下一项": control.pressed.emit()
+		check(data.settings.fullscreen != fullscreen,"Explicit fullscreen control still changes the preference: "+str(fullscreen))
+		var shortcut = InputEventAction.new()
+		shortcut.action = "fullscreen"
+		shortcut.pressed = true
+		game._unhandled_input(shortcut)
+		check(data.settings.fullscreen == fullscreen,"F11 action toggles fullscreen back: "+str(fullscreen))
+	data.settings = saved_settings
+	data.apply_settings()
 	game.start_solo("defense",42)
 	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	sim = game.sim

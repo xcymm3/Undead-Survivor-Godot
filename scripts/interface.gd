@@ -463,6 +463,7 @@ func field_slider(parent: VBoxContainer, caption: String, minimum: float, maximu
 		callback.call(v))
 
 func show_settings() -> void:
+	Data.sync_window_mode()
 	var shell = field_shell("战场设置","调整操控、声音与画面 · 更改自动保存")
 	current = "settings"
 	var navigation = HBoxContainer.new()
@@ -513,10 +514,12 @@ func show_settings() -> void:
 			["全屏（F11）","fullscreen",[false,true],["关闭","开启"]]]:
 			field_choice(column,spec[0],spec[3],maxi(0,spec[2].find(Data.settings[spec[1]])),func(index):
 				Data.settings[spec[1]] = spec[2][index]
-				if spec[1] != "fullscreen":
+				if spec[1] == "fullscreen":
+					Data.set_fullscreen(spec[2][index])
+				else:
 					Data.settings.quality = 5
 					quality_label.text = "自定义"
-				Data.apply_settings()
+					Data.apply_settings()
 				Data.save())
 	home_button(shell,"返回",back)
 

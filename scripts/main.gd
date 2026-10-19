@@ -603,8 +603,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			Data.apply_settings()
 			Data.save()
 		if event.is_action_pressed("fullscreen"):
-			Data.settings.fullscreen = not Data.settings.fullscreen
-			Data.apply_settings()
+			Data.toggle_fullscreen()
 			Data.save()
 	if not running or paused or finished: return
 	if event is InputEventMouseMotion and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Data.automation):
