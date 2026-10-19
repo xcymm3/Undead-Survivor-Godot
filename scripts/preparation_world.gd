@@ -3,6 +3,7 @@ const Catalog = preload("res://scripts/preparation_catalog.gd")
 const Layout = preload("res://scripts/defense_layout.gd")
 var stations: Dictionary = {}
 var blueprints: Dictionary = {}
+var price_icon: Sprite3D
 var focus_label: Label3D
 var interaction_ring: Node3D
 var money_flights
@@ -32,6 +33,14 @@ func _ready() -> void:
 	focus_label.no_depth_test = true
 	focus_label.visible = false
 	add_child(focus_label)
+	price_icon = Sprite3D.new()
+	price_icon.name = "UpgradeCurrencyIcon"
+	price_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	price_icon.no_depth_test = true
+	price_icon.pixel_size = .00055
+	price_icon.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	price_icon.hide()
+	add_child(price_icon)
 	interaction_ring = preload("res://scripts/interaction_ring.gd").new()
 	add_child(interaction_ring)
 	interaction_ring.hide()
@@ -198,9 +207,18 @@ func sync_focus(sim, p: Dictionary) -> void:
 				point.y += sin(minf(1,age/.24)*PI)*.5 if age < .24 else sin(t*PI)*.4
 				drops.append({"pos":point,"age":age,"value":1,"scale":.25,"arrival":maxf(0,(t-.8)*5)})
 	money_flights.sync(drops)
+	price_icon.hide()
 	focus_label.visible = not choice.is_empty()
 	if choice.is_empty(): return
 	var text = Catalog.prompt_description(sim,choice.id)
 	focus_label.text = text
 	var right: Vector3 = get_viewport().get_camera_3d().global_basis.x
 	focus_label.position = interaction_ring.position+right*.24+Vector3(0,.04,0)
+
+	if choice.id != "crystal" and sim.progression.cost(choice.id) >= 0:
+		price_icon.texture = preload("res://scripts/currency_art.gd").diamond() if sim.progression.currency(choice.id) == "diamonds" else preload("res://scripts/currency_art.gd").coin()
+		var camera = get_viewport().get_camera_3d()
+		var width: float = focus_label.font.get_string_size(str(sim.progression.cost(choice.id)),HORIZONTAL_ALIGNMENT_LEFT,-1,focus_label.font_size).x*focus_label.pixel_size
+		var line_height: float = focus_label.font.get_height(focus_label.font_size)*focus_label.pixel_size
+		price_icon.position = focus_label.position+right*(width+.085)-camera.global_basis.y*line_height*.5
+		price_icon.show()

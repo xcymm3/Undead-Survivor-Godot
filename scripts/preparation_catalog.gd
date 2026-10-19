@@ -116,7 +116,7 @@ static func prompt_description(sim, id: String) -> String:
 	var title: String = NAMES.get(id,id)
 	if id == "ultimate" and profile.level(id) == 0: title = "解锁终极技能"
 	var price: int = profile.cost(id)
-	var payment = "%d %s" % [price,"钻石" if id in profile.TALENTS else "金币"] if price >= 0 else "已满级"
+	var payment = str(price) if price >= 0 else "已满级"
 	return title+"\n"+payment
 
 static func upgrade_details(sim, id: String) -> Dictionary:
@@ -126,7 +126,7 @@ static func upgrade_details(sim, id: String) -> Dictionary:
 	var maximum = 5 if id in profile.TALENTS else 4 if id in ["ultimate","grenade"] else 10
 	var next_rank: int = mini(rank+1,maximum) if profile.cost(id) >= 0 else rank
 	var rows: Array = []
-	var note = "永久强化 · 长按 E 确认"
+	var note = ""
 	if id in profile.WEAPONS:
 		var base: float = sim.arena.get_node("/root/Data").weapons[{"rifle":0,"pistol":2,"axe":6}[id]].damage*profile.damage_multiplier()
 		rows.append(["伤害",number(base*pow(1.2,rank)),number(base*pow(1.2,next_rank))])

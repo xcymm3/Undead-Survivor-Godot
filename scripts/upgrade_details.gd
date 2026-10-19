@@ -13,7 +13,7 @@ func sync(value: Dictionary) -> void:
 	visible = not value.is_empty()
 	if details == value: return
 	details = value
-	size.y = 210+value.get("rows",[]).size()*48
+	size.y = 160+value.get("rows",[]).size()*48+(32 if not value.get("note","").is_empty() else 0)
 	queue_redraw()
 
 func lettering(at: Vector2, value: String, font_size: int, color: Color) -> void:
@@ -30,13 +30,12 @@ func _draw() -> void:
 	draw_rect(Rect2(5,8,5,h-16),Art.GOLD)
 	draw_rect(Rect2(14,8,w-38,4),Art.PAPER)
 	for x in [w-40,w-22]: draw_rect(Rect2(x,h-12,10,4),Art.RUST)
-	lettering(Vector2(24,39),"升级情报",15,Art.GOLD)
-	lettering(Vector2(24,79),details.title,27,Art.PAPER)
-	lettering(Vector2(24,110),details.level,15,Art.MUTED)
-	draw_rect(Rect2(24,126,w-48,2),Art.STEEL)
-	lettering(Vector2(146,151),"当前",12,Art.MUTED)
-	lettering(Vector2(245,151),"升级后",12,Art.GOLD)
-	var y = 187.0
+	lettering(Vector2(24,51),details.title,27,Art.PAPER)
+	lettering(Vector2(24,82),details.level,15,Art.MUTED)
+	draw_rect(Rect2(24,98,w-48,2),Art.STEEL)
+	lettering(Vector2(146,123),"当前",12,Art.MUTED)
+	lettering(Vector2(245,123),"升级后",12,Art.GOLD)
+	var y = 159.0
 	for row in details.rows:
 		lettering(Vector2(24,y),row[0],17,Art.PAPER)
 		lettering(Vector2(145,y),row[1],19,Art.MUTED)
@@ -44,4 +43,4 @@ func _draw() -> void:
 		lettering(Vector2(247,y),row[2],19,Art.SUCCESS)
 		draw_rect(Rect2(24,y+13,w-48,1),Art.STEEL*Color(1,1,1,.35))
 		y += 48
-	lettering(Vector2(24,y+5),details.note,14,Art.GOLD)
+	if not details.note.is_empty(): lettering(Vector2(24,y+5),details.note,14,Art.GOLD)

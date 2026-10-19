@@ -46,12 +46,22 @@ func make_label(text: String, font_size: int, pixel_size: float, color: Color) -
 	add_child(label)
 	return label
 
-static func eased_progress(value: float) -> float:
-	return 1.0-pow(1.0-clampf(value,0,1),3)
+static func sector_angle(value: float) -> float:
+	return clampf(value,0,1)*TAU
 
-static func fill_rect(value: float) -> Rect2:
-	var height = INNER*2*eased_progress(value)
-	return Rect2(-INNER,-INNER,INNER*2,height)
+static func sector_edge(value: float) -> Vector2:
+	# A clockwise radial wipe, clipped to the square's inside edge.
+	var angle = PI/2-sector_angle(value)
+	var ray = Vector2(cos(angle),sin(angle))
+	return ray*INNER/maxf(absf(ray.x),absf(ray.y))
+
+func sector(mesh: ImmediateMesh, value: float, color: Color) -> void:
+	var end = clampf(value,0,1)
+	mesh.surface_set_color(color)
+	for i in ceili(end*64):
+		var a = sector_edge(float(i)/64)
+		var b = sector_edge(minf(float(i+1)/64,end))
+		for point in [Vector2.ZERO,a,b]: mesh.surface_add_vertex(Vector3(point.x,point.y,.006))
 
 func rectangle(mesh: ImmediateMesh, rect: Rect2, color: Color, depth: float) -> void:
 	mesh.surface_set_color(color)
@@ -86,7 +96,7 @@ func sync(value: float, eye: Vector3, enabled: bool, status := "ready") -> void:
 	rectangle(mesh,Rect2(-INNER-.006,-INNER-.006,2*INNER+.012,2*INNER+.012),INK,.004)
 	rectangle(mesh,Rect2(-INNER,-INNER,2*INNER,2*INNER),PAPER if enabled else MUTED,.005)
 	if progress > 0:
-		rectangle(mesh,fill_rect(progress),SUCCESS if status == "complete" else FILL,.006)
+		sector(mesh,progress,SUCCESS if status == "complete" else FILL)
 	pixel_letter(mesh)
 	mesh.surface_end()
 	arc.mesh = mesh
