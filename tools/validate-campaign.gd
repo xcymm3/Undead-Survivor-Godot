@@ -85,7 +85,7 @@ func run() -> void:
 	check(Fixture.buy(sim,p,"bridge_gate"),"Shop can manufacture a gate")
 	var gate: Dictionary = sim.defense_director.structures.find("bridge_gate")
 	p.pos = gate.pos+Vector2(0,2)
-	check(Fixture.buy(sim,p,"bridge_gate") and gate.max_hp == 1200 and sim.progression.cost("bridge_gate") == 100,"Gate onsite upgrades increase durability and use the next gun-equivalent fixed price")
+	check(Fixture.buy(sim,p,"bridge_gate") and gate.max_hp == 600 and sim.progression.cost("bridge_gate") == 100,"Gate onsite upgrades increase durability and use the next gun-equivalent fixed price")
 	check(not sim.building_available("turret_right",p),"Unbuilt structures cannot expose upgrades")
 	p.pos = data.Maps.Defense.SHOP_AREA.get_center()
 	p.height = 3

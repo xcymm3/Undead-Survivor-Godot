@@ -9,11 +9,11 @@ test('隔离审查结束、设置与存档弹窗', async ({ page }, info) => {
   });
   for (const width of [1440, 960]) {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 600 });
-    for (const scenario of ['result_player', 'result_crystal', 'settings', 'saves']) {
+    for (const scenario of (process.env.QA_SETTINGS_SAVES_ONLY ? ['settings', 'settings_graphics', 'saves'] : ['result_player', 'result_crystal', 'settings', 'saves'])) {
       await page.goto(`/?campaignReview=${scenario}`);
       await page.waitForFunction(() => Boolean(window.__campaignReviewReady), null, { timeout: 90_000 });
       const state = await page.evaluate(() => window.__campaignReviewReady);
-      expect(state.menu).toBe(scenario.startsWith('result_') ? 'result' : scenario);
+      expect(state.menu).toBe(scenario.startsWith('result_') ? 'result' : scenario.startsWith('settings') ? 'settings' : scenario);
       if (scenario === 'result_player') expect(state.fragments).toBe(false);
       if (scenario === 'result_crystal') expect(state.fragments).toBe(true);
       const file = info.outputPath(`${scenario}-${width}.png`);

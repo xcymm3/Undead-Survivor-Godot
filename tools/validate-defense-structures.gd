@@ -49,7 +49,7 @@ func run() -> void:
 	var manager = sim.defense_director.structures
 	check(sim.defense.structures.size() == 7,"Layout contains two turrets, two gates and three mines")
 	check(manager.find("turret_left").hp == 200 and manager.find("turret_right").hp == 200,"Both turrets have 200 health")
-	check(manager.find("bridge_gate").hp == 1000,"Bridge gate starts with 1000 health")
+	check(manager.find("bridge_gate").hp == 500,"Bridge gate starts with 500 health")
 	var layout = data.Maps.Defense
 	check(manager.find("bridge_entry_gate").pos == Vector2(0,layout.BRIDGE.end.y) and manager.find("bridge_entry_gate").height == 0,"New gate stands at the bridge end beside the ramp")
 	check(manager.find("ramp_mine").pos.y == -19 and manager.find("ramp_mine").height == 1.5 and manager.find("gate_mine").pos.y == -6,"New mines stand between the gates and behind the upper gate")
@@ -73,7 +73,7 @@ func run() -> void:
 	var structure_view = game.arena.scenery.structure_view
 	var steel = structure_view.actors.bridge_gate.intact.get_node("SteelBar")
 	check(steel.material_override.metallic > .7,"Gate bars use a metallic material")
-	manager.damage("bridge_gate",499)
+	manager.damage("bridge_gate",249)
 	manager.damage("turret_left",99)
 	sim.defense_director.sync_world()
 	check(structure_view.actors.bridge_gate.intact.visible and not structure_view.actors.turret_left.smoke.visible,"Above half health buildings retain their healthy appearance")
@@ -186,7 +186,8 @@ func run() -> void:
 			var target: Dictionary = sim.choose_zombie_target(z,sim.pawns.values())
 			sim.update_zombie(z,target,.05)
 			blocked = blocked and z.pos.y < gate.pos.y
-		check(gate.hp < 1000 and blocked,"%s attacks the gate and cannot cross it" % kind)
+			if gate.hp < gate.max_hp: break
+		check(gate.hp < 500 and blocked,"%s attacks the gate and cannot cross it" % kind)
 		manager.damage(gate.id,1000)
 		await physics_frame
 		for i in 70:
@@ -206,7 +207,8 @@ func run() -> void:
 			sim.elapsed += .05
 			sim.update_zombie(z,sim.choose_zombie_target(z,sim.pawns.values()),.05)
 			blocked = blocked and z.pos.y < lower_gate.pos.y
-		check(lower_gate.hp < 1000 and blocked,"%s attacks the bridge-end gate without crossing it" % kind)
+			if lower_gate.hp < lower_gate.max_hp: break
+		check(lower_gate.hp < 500 and blocked,"%s attacks the bridge-end gate without crossing it" % kind)
 		manager.damage(lower_gate.id,1000)
 		await physics_frame
 		for i in 80:

@@ -6,6 +6,7 @@ const TURRET_RANGE = 10.0
 const TURRET_DAMAGE_MULTIPLIER = .5
 const MINE_DELAY = preload("res://scripts/equipment_core.gd").GRENADE_FUSE
 const MINE_TRIGGER_RADIUS = .8
+const GATE_BASE_HEALTH = preload("res://scripts/progression_store.gd").GATE_BASE_HEALTH
 const GATE_HEIGHT = 1.05
 const GATE_WIDTH = 10.4
 const GATE_DEPTH = .35
@@ -20,8 +21,8 @@ static func initial_state() -> Array:
 	for index in 2:
 		var point = Vector2(-6.3 if index == 0 else 6.3,-6.0)
 		result.append({"id":"turret_left" if index == 0 else "turret_right","kind":"turret","pos":point,"height":Layout.height(point),"hp":200,"max_hp":200,"cooldown":0.0,"yaw":0.0,"pitch":0.0,"shots":0,"destroyed_at":-1.0})
-	result.append({"id":"bridge_gate","kind":"gate","pos":Vector2(0,Layout.RAMP.end.y),"height":3.0,"hp":1000,"max_hp":1000,"destroyed_at":-1.0})
-	result.append({"id":"bridge_entry_gate","kind":"gate","pos":Vector2(0,Layout.BRIDGE.end.y),"height":0.0,"hp":1000,"max_hp":1000,"destroyed_at":-1.0})
+	result.append({"id":"bridge_gate","kind":"gate","pos":Vector2(0,Layout.RAMP.end.y),"height":3.0,"hp":GATE_BASE_HEALTH,"max_hp":GATE_BASE_HEALTH,"destroyed_at":-1.0})
+	result.append({"id":"bridge_entry_gate","kind":"gate","pos":Vector2(0,Layout.BRIDGE.end.y),"height":0.0,"hp":GATE_BASE_HEALTH,"max_hp":GATE_BASE_HEALTH,"destroyed_at":-1.0})
 	result.append({"id":"crystal_mine","kind":"mine","pos":Layout.CRYSTAL+Vector2(0,-8),"height":3.0,"hp":1,"max_hp":1,"triggered":false,"fuse":MINE_DELAY,"spent":false})
 	for entry in [["ramp_mine",Vector2(0,(Layout.RAMP.position.y+Layout.RAMP.end.y)/2)],["gate_mine",Vector2(0,Layout.RAMP.end.y+4)]]:
 		result.append({"id":entry[0],"kind":"mine","pos":entry[1],"height":Layout.height(entry[1]),"hp":1,"max_hp":1,"triggered":false,"fuse":MINE_DELAY,"spent":false})
@@ -64,7 +65,7 @@ func refresh_purchase(id: String) -> void:
 	if item.kind == "turret": item.damage_multiplier = sim.progression.building_multiplier(id)
 	if item.kind == "gate":
 		var previous: int = item.max_hp
-		item.max_hp = roundi(1000*sim.progression.building_multiplier(id))
+		item.max_hp = roundi(GATE_BASE_HEALTH*sim.progression.building_multiplier(id))
 		if item.hp > 0: item.hp += item.max_hp-previous
 	if not was_owned and item.owned: item.hp = item.max_hp
 	sim.paths.clear()

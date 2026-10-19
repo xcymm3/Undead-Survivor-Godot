@@ -4,6 +4,8 @@ const MAX_CURRENCY = 9000000000000000
 const MAX_UPGRADE_LEVEL = 10
 const UPGRADE_PRICES = [50,100,150,200,300,450,650,1000,1500,2000]
 const TALENT_PRICES = [1,2,3,4,5]
+const GATE_BASE_HEALTH = 500
+const ULTIMATE_PRICES = [250,500,1000,2000]
 const GRENADE_PRICES = [300,450,650,1000]
 const MINE_PRICES = {"crystal_mine":50,"gate_mine":200,"ramp_mine":650}
 const MAGAZINES = ["rifle_magazine","pistol_magazine"]
@@ -173,7 +175,8 @@ func cost(id: String) -> int:
 	if id in MINES: return -1 if owned(id) else int(MINE_PRICES[id])
 	if id in TALENTS: return int(TALENT_PRICES[level(id)]) if level(id) < TALENT_PRICES.size() else -1
 	if id in ["grenade","ultimate"]:
-		return int(GRENADE_PRICES[level(id)]) if level(id) < GRENADE_PRICES.size() else -1
+		var prices = ULTIMATE_PRICES if id == "ultimate" else GRENADE_PRICES
+		return int(prices[level(id)]) if level(id) < prices.size() else -1
 	elif id in BUILDINGS:
 		if not owned(id): return 100
 	elif id not in WEAPONS and id not in MAGAZINES: return -1

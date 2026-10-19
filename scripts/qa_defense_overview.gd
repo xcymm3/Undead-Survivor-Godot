@@ -40,7 +40,7 @@ func stage() -> void:
 			game.camera.look_at(Vector3(6.3,4.45,-6),Vector3.UP)
 		damage_preview = "--qa-defense-structures-damaged" in OS.get_cmdline_user_args()
 		if damage_preview:
-			game.sim.defense_director.structures.damage("bridge_gate",500)
+			game.sim.defense_director.structures.damage("bridge_gate",250)
 			game.sim.defense_director.structures.damage("turret_left",100)
 			game.sim.defense_director.structures.damage("turret_right",100)
 		game.sim.defense_director.sync_world()

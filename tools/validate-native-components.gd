@@ -1277,7 +1277,7 @@ func validate_enemy_overlap() -> void:
 	check(not sim.can_move(p,Vector2(8,25.2)) and sim.can_move(p,Vector2(8,30)),"Legacy player distance blocking prevents entry but permits escape")
 	var gate: Dictionary = sim.defense_director.structures.find("bridge_gate")
 	var saved_hp: int = gate.hp
-	gate.hp = 1000
+	gate.hp = 500
 	sim.zombies.clear()
 	sim.spawn(Vector2(0,-13),"normal")
 	var pushed: Dictionary = sim.zombies[0]

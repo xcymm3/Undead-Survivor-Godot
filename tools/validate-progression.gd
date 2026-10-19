@@ -200,8 +200,8 @@ func run() -> void:
 		p.pos = shop_position
 		p.height = shop_height
 	var manager = sim.defense_director.structures
-	check(manager.find("bridge_gate").max_hp == 1200 and is_equal_approx(manager.find("turret_left").damage_multiplier,1.2) and manager.find("turret_right").hp == 0,"Purchased building upgrades affect only their owned targets")
-	check(manager.find("bridge_entry_gate").max_hp == 1200 and sim.progression.cost("bridge_entry_gate") == 100,"Bridge-end gate uses the weapon upgrade price and uses the next fixed price")
+	check(manager.find("bridge_gate").max_hp == 600 and is_equal_approx(manager.find("turret_left").damage_multiplier,1.2) and manager.find("turret_right").hp == 0,"Purchased building upgrades affect only their owned targets")
+	check(manager.find("bridge_entry_gate").max_hp == 600 and sim.progression.cost("bridge_entry_gate") == 100,"Bridge-end gate uses the weapon upgrade price and uses the next fixed price")
 	check(view.actors.turret_left.root.visible and view.actors.turret_left.body.collision_layer == 1 and view.actors.bridge_gate.root.visible,"Manufacturing creates visible native building collision")
 	var turret: Dictionary = manager.find("turret_left")
 	sim.spawn(turret.pos+Vector2(0,4),"normal")

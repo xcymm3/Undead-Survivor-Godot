@@ -24,7 +24,7 @@ test('终极技能展台与方形 E 键填充截图', async ({ page }, info) => 
     expect(state.upgrade_details.note).not.toMatch(/永久强化|按.*确认/);
     if (!['upgrade_weapon', 'upgrade_talent'].includes(scenario)) expect(state.focus_text).toContain('终极技能');
     expect(state.focus_text).not.toContain('长刀');
-    if (scenario === 'upgrade_ready') expect(state.focus_text).toContain('解锁终极技能');
+    if (scenario === 'upgrade_ready') expect(state.focus_text).toContain('终极技能');
     if (scenario === 'upgrade_quarter') expect(state.key_progress).toBeCloseTo(.25);
     if (scenario === 'upgrade_hold') expect(state.key_progress).toBeCloseTo(.65);
     if (scenario === 'upgrade_complete') expect(state.key_progress).toBe(1);

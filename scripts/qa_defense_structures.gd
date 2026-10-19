@@ -71,7 +71,7 @@ func next_support() -> void:
 	var manager = sim.defense_director.structures
 	sim.zombies.clear()
 	sim.defense.waiting = false
-	manager.find("bridge_gate").hp = 1000
+	manager.find("bridge_gate").hp = 500
 	for item in sim.defense.structures:
 		if item.kind == "turret": item.cooldown = 0.0
 	support_sample = support_queue.pop_front().duplicate()

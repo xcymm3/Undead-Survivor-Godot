@@ -2,8 +2,12 @@ extends RefCounted
 ## Authority owns duration, cooldown and inventory locking.
 const DURATION = 10.0
 const COOLDOWN = 100.0
+const DAMAGE = [200,400,600,900,1350]
 const DRAW_TIME = 1.1
 const SHEATHE_TIME = .95
+
+static func damage_for_level(rank: int) -> float:
+	return float(DAMAGE[clampi(rank,0,DAMAGE.size()-1)])
 
 static func cooldown(progression) -> float:
 	return COOLDOWN*progression.ultimate_cooldown_multiplier()
@@ -19,7 +23,7 @@ static func weapon(p: Dictionary, progression, base: Dictionary) -> Dictionary:
 	var result = base.duplicate(true)
 	result.id = "ultimate"
 	result.label = "长刀"
-	result.damage = 300.0*pow(1.2,maxi(0,progression.level("ultimate")-1))
+	result.damage = damage_for_level(progression.level("ultimate"))
 	result.interval = base.interval*.5
 	result.fireDuration = base.fireDuration*.5
 	result.automatic = true
@@ -33,10 +37,7 @@ static func tick(sim, p: Dictionary, input: Dictionary, dt: float) -> bool:
 	if input.get("ultimate",false):
 		if was_active: p.ultimate_remaining = 0.0
 		elif p.ultimate_sheathe <= 0 and p.hp > 0:
-			if sim.progression.level("ultimate") <= 0:
-				p.ultimate_notice = "尚未学习终极技能"
-				p.ultimate_notice_until = sim.elapsed+1.5
-			elif p.ultimate_cd > 0:
+			if p.ultimate_cd > 0:
 				p.ultimate_notice = "终极技能冷却中"
 				p.ultimate_notice_until = sim.elapsed+1.5
 			elif sim.defense.get("started",false):

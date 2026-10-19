@@ -308,8 +308,8 @@ func sync() -> void:
 		crystal_bar.modulate = Color("7fe7ef") if crystal_bar.value > crystal_bar.max_value*.3 else Color("ee6658")
 	crystal_alert.visible = float(defense.get("crystal_alert_until",-1)) > sim.elapsed
 	ultimate_ring.visible = sim.mode == "defense"
-	var charge = 1.0-float(p.get("ultimate_cd",0.0))/preload("res://scripts/ultimate.gd").cooldown(sim.progression) if sim.progression.level("ultimate") > 0 else 0.0
-	ultimate_ring.sync(charge,"%d%%" % floori(charge*100) if not preload("res://scripts/ultimate.gd").active(p) else "Q","未学习" if sim.progression.level("ultimate") == 0 else "终极技能 %ds" % ceili(p.ultimate_remaining) if preload("res://scripts/ultimate.gd").active(p) else "终极技能 · Q")
+	var charge = 1.0-float(p.get("ultimate_cd",0.0))/preload("res://scripts/ultimate.gd").cooldown(sim.progression)
+	ultimate_ring.sync(charge,"%d%%" % floori(charge*100) if not preload("res://scripts/ultimate.gd").active(p) else "Q","终极技能 %ds" % ceili(p.ultimate_remaining) if preload("res://scripts/ultimate.gd").active(p) else "终极技能 · Q")
 	ultimate_notice.text = p.get("ultimate_notice","") if p.get("ultimate_notice_until",0.0) > sim.elapsed else ""
 	var w: Dictionary = sim.combat_weapon(p)
 	weapon_label.text = str(w.label)

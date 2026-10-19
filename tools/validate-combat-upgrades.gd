@@ -150,17 +150,27 @@ func run() -> void:
 		check(sim.purchase_upgrade(id,p),"Shared stand buys correct upgrade: "+id)
 	check(world.preparation.stations.size() == 9,"Shared stands remove redundant weapon desks")
 	var catalog = preload("res://scripts/preparation_catalog.gd")
-	check(catalog.NAMES.ultimate == "终极技能" and catalog.description(sim,"ultimate").contains("解锁终极技能") and not catalog.description(sim,"ultimate").contains("长刀"),"First ultimate stand explicitly describes unlocking the ultimate skill")
+	check(catalog.NAMES.ultimate == "终极技能" and not catalog.description(sim,"ultimate").contains("解锁") and not catalog.description(sim,"ultimate").contains("长刀"),"Initial ultimate stand upgrades an already owned skill")
 
-	check(not catalog.prompt_description(sim,"ultimate").contains("伤害") and catalog.prompt_description(sim,"ultimate").ends_with("\n300"),"Stand prompt contains only the upgrade name and numeric price for its currency icon")
+	check(not catalog.prompt_description(sim,"ultimate").contains("伤害") and catalog.prompt_description(sim,"ultimate").ends_with("\n250"),"Stand prompt contains only the upgrade name and numeric price for its currency icon")
 	var skill_details: Dictionary = catalog.upgrade_details(sim,"ultimate")
-	check(skill_details.rows[0] == ["伤害","未解锁","300"] and skill_details.rows[1] == ["持续时间","10秒","10秒"],"Left skill dossier exposes actual unlock damage and duration")
+	check(skill_details.rows[0] == ["伤害","200","400"] and skill_details.rows[1] == ["持续时间","10秒","10秒"],"Left skill dossier exposes current and next damage and duration")
 	var rifle_details: Dictionary = catalog.upgrade_details(sim,"rifle")
 	check(rifle_details.rows[0][1] == catalog.number(sim.weapon_damage(data.weapons[0],false)),"Left weapon dossier matches authority damage including permanent upgrades")
 	check(catalog.upgrade_details(sim,"strong").rows == [["最大生命","100","110"],["每秒回复","0","0.5"]],"Left talent dossier shows current and next values")
+	var initial_pawn: Dictionary = p.duplicate(true)
+	sim.defense.started = true
+	initial_pawn.input = {"ultimate":true}
+	check(Ultimate.tick(sim,initial_pawn,initial_pawn.input,.01) and Ultimate.active(initial_pawn),"Rank-zero ultimate activates without purchasing an unlock")
+	for rank in 5:
+		sim.progression.data.ultimate_level = rank
+		check(is_equal_approx(sim.combat_weapon(initial_pawn).damage,float([200,400,600,900,1350][rank])),"Ultimate authority damage at rank "+str(rank))
+	sim.progression.data.ultimate_level = 0
+	sim.defense.started = false
+	check(sim.progression.cost("ultimate") == 250,"First ultimate upgrade costs 250 coins")
 	Fixture.face(sim,p,"ultimate")
-	check(sim.purchase_upgrade("ultimate",p) and sim.progression.level("ultimate") == 1,"Learning the ultimate uses its physical stand")
-	for price in [450,650,1000]:
+	check(sim.purchase_upgrade("ultimate",p) and sim.progression.level("ultimate") == 1,"Upgrading the ultimate uses its physical stand")
+	for price in [500,1000,2000]:
 		check(sim.progression.cost("ultimate") == price and sim.progression.purchase("ultimate"),"Ultimate next price: "+str(price))
 	check(sim.progression.cost("ultimate") == -1 and Store.valid(sim.progression.data),"Ultimate caps at four and its save is valid")
 	p.slot = 1
@@ -215,7 +225,7 @@ func run() -> void:
 	p.input = {"ultimate":true}
 	check(Ultimate.tick(sim,p,p.input,.01) and Ultimate.active(p),"Q activates learned ultimate")
 	var sword: Dictionary = sim.combat_weapon(p)
-	check(is_equal_approx(sword.damage,300*pow(1.2,3)) and is_equal_approx(sword.fireDuration,data.weapons[6].fireDuration*.5),"Long blade damage scales and attack animation runs twice as fast")
+	check(is_equal_approx(sword.damage,1350.0) and is_equal_approx(sword.fireDuration,data.weapons[6].fireDuration*.5),"Long blade damage scales and attack animation runs twice as fast")
 	check(p.ultimate_cd == 0 and p.weapon == 6 and not p.reloading,"Active ultimate locks blade and has no cooldown yet")
 	p.input = {"slot":2,"weapon":2}
 	Ultimate.tick(sim,p,p.input,1)

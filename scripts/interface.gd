@@ -598,7 +598,7 @@ func shop_description(profile, id: String) -> String:
 		return "弹匣 %d → %d · 每级 +20%% · 上限10级，采用固定价格表" % [roundi(base*profile.magazine_multiplier(id.trim_suffix("_magazine"))),roundi(base*profile.magazine_multiplier(id.trim_suffix("_magazine"))*1.2)]
 	if id == "grenade": return "持有上限 %d / 5 · 每次 +1 · 每15秒补充1颗" % profile.grenade_capacity()
 	if id in profile.MINES: return "永久购买 · 无升级 · 每波恢复 · 僵尸触发后 1.5 秒爆炸"
-	if id in profile.GATES: return "耐久 %d · 就地升级 +20%% · 价格与枪械相同，最高10级 · 战斗中不复活" % roundi(1000*profile.building_multiplier(id))
+	if id in profile.GATES: return "耐久 %d · 就地升级 +20%% · 价格与枪械相同，最高10级 · 战斗中不复活" % roundi(profile.GATE_BASE_HEALTH*profile.building_multiplier(id))
 	if id in profile.BUILDINGS: return "每发伤害 %.1f · 就地升级伤害 +20%% · 价格与枪械相同，最高10级 · 战斗中不复活" % (60*profile.building_multiplier(id))
 	match id:
 		"strong": return "最大生命 %d · 脱战 5 秒后每秒回复 %.1f 生命 · 每级 +10 生命、+0.5 回复" % [profile.max_health(),profile.regen_rate()]
