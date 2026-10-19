@@ -19,7 +19,9 @@ func stage() -> void:
 	if scenario.begins_with("normal_") or scenario.begins_with("toy_"):
 		await stage_normal_zombie(scenario)
 		return
-	if scenario in ["home","home_hover","settings","settings_graphics","saves"]:
+	if scenario.begins_with("multiplayer_"):
+		await stage_multiplayer(scenario)
+	elif scenario in ["home","home_hover","settings","settings_graphics","saves"]:
 		game.ui.show_home()
 		if scenario == "home_hover":
 			var buttons = game.ui.menu.find_children("*","Button",true,false)
@@ -139,6 +141,38 @@ func stage() -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"ring":game.arena.scenery.preparation.interaction_ring.visible,"payments":game.arena.scenery.preparation.money_flights.multimesh.visible_instance_count,"scenario":scenario,"menu":game.ui.current,"boss":game.ui.native_hud.boss_title.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible,"cracks":game.arena.scenery.crystal_damage.cracks.visible,"fragments":game.arena.scenery.crystal_damage.debris.visible}),true)
+
+func stage_multiplayer(scenario: String) -> void:
+	# Production native lobby widgets, isolated fixture state; no sockets or Steam calls.
+	Session.set_process(false)
+	var state = scenario.trim_prefix("multiplayer_").trim_suffix("_bottom")
+	Session.active = state not in ["entry","error"]
+	Session.local_id = "1"
+	Session.host_id = "1"
+	Session.transport = "lan"
+	Session.room_code = "192.168.1.108:27777"
+	Session.members = {"1":"房主 · 幸存者"}
+	Session.status = "可使用局域网，或通过 Steam 创建房间"
+	if state == "host_single": Session.status = "局域网房间已创建，等待队友加入"
+	if state in ["host_ready","loading","guest","steam"]:
+		Session.members = {"1":"房主 · 幸存者","2":"桥头守卫","3":"最后一颗子弹","4":"今晚不加班"}
+		Session.status = "局域网房间已创建，队员已就绪"
+	if state == "loading":
+		Session.loading = true
+		Session.status = "正在加载战场，等待所有队员准备完成…"
+	if state == "guest":
+		Session.local_id = "2"
+		Session.status = "房间已连接，等待房主开始"
+	if state == "steam":
+		Session.transport = "steam"
+		Session.room_code = "109775244906512345"
+		Session.status = "Steam 房间已连接"
+	if state == "error": Session.status = "无法创建房间，端口 27777 被占用（Already in use）"
+	game.ui.show_multiplayer(true)
+	for i in 4: await get_tree().process_frame
+	if scenario.ends_with("_bottom"):
+		for scroll in game.ui.menu.find_children("*","ScrollContainer",true,false): scroll.scroll_vertical = 100000
+		for i in 3: await get_tree().process_frame
 
 func stage_ultimate(scenario: String) -> void:
 	game.start_solo("defense",42)

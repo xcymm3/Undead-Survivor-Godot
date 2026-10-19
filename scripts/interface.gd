@@ -532,10 +532,10 @@ func show_guide() -> void:
 	paragraph(column,"生命、炮塔、栅栏和地雷状态跨波保留；手雷每15秒补充一颗至持有上限。没有强壮天赋时不会缓慢回血；学习后连续 5 秒未受伤开始恢复，期间可以攻击。商店也可被僵尸进入。首页可切换三个独立存档，并勾选测试金币。",17)
 	button(column,"返回",back,true)
 
-func show_multiplayer() -> void:
+func show_multiplayer(qa_preview := false) -> void:
 	var column = panel("合作守卫", "最多4人 · 使用房主当前存档 · 难度与单人相同",850)
 	current = "multiplayer"
-	if OS.has_feature("web"):
+	if OS.has_feature("web") and not (Data.automation and qa_preview):
 		paragraph(column,"浏览器验收版仅支持单人模式。Steam 与局域网多人模式请使用 Windows 版。")
 		button(column,"返回",show_home)
 		return
