@@ -374,6 +374,14 @@ func validate_pistol_and_equip() -> void:
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
 	var w: Dictionary = root.get_node("Data").weapons[2].duplicate(true)
+	var balance = root.get_node("Data").weapons
+	check(is_equal_approx(balance[0].spread,.03) and is_equal_approx(balance[2].spread,.045),"Rifle hip spread increases and pistol hip spread is fifty percent wider")
+	for definition in balance:
+		if definition.get("kind","gun") != "gun" or not root.get_node("Data").ads_enabled(definition): continue
+		for shot in 32:
+			check(definition.get("adsSpread",-1) == 0 and root.get_node("Data").pellet(definition,0,shot,true) == Vector2.ZERO,"Every ADS firearm fires without spread: "+definition.id)
+	# Penetration is tested while aimed so hip spread cannot obscure hit ordering.
+	p.aim = true
 	w.headshotMultiplier = 1
 	p.pos = Vector2(8,36)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)

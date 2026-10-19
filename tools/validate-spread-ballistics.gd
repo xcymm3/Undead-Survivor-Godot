@@ -17,7 +17,8 @@ func run() -> void:
 	pawn.yaw = 0
 	pawn.pitch = 0
 	game.sim.zombies.clear()
-	for index in [0,1,5,9,3]:
+	if not (data.weapons[2].spread > data.weapons[0].spread and data.weapons[0].spread > .016): failed.append("Pistol hip penalty must exceed the increased rifle cone")
+	for index in [0,1,2,5,9,3]:
 		var w: Dictionary = data.weapons[index]
 		pawn.weapon = index
 		var straight: Dictionary = w.duplicate(true)
@@ -45,6 +46,7 @@ func run() -> void:
 		for shot in 2048:
 			var hip: Vector2 = data.pellet(w,0,shot,false)
 			var ads: Vector2 = data.pellet(w,0,shot,true)
+			if not ads.is_zero_approx() or w.adsSpread != 0: failed.append(w.id+" ADS must have zero spread")
 			if hip.length() > w.spread+.000001 or ads.length() > w.adsSpread+.000001: failed.append(w.id+" exceeds cone")
 			if not ads.is_equal_approx(hip*(w.adsSpread/w.spread)): failed.append(w.id+" ADS scale mismatch")
 			hip_max = maxf(hip_max,hip.length())

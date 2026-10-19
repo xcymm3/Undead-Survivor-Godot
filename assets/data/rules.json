@@ -11,7 +11,7 @@
       "automatic": true,
       "damage": 120,
       "pellets": 1,
-      "spread": 0.016,
+      "spread": 0.03,
       "length": 0.9,
       "rotationY": 0,
       "fireDuration": 0.12,
@@ -22,7 +22,7 @@
         -0.46
       ],
       "tier": "A",
-      "adsSpread": 0.006,
+      "adsSpread": 0,
       "piercing": true,
       "penetrationTargets": 3,
       "penetrationDamage": 0.6666666666666666
@@ -49,7 +49,7 @@
         -0.44
       ],
       "tier": "B",
-      "adsSpread": 0.01
+      "adsSpread": 0
     },
     {
       "id": "pistol",
@@ -62,7 +62,7 @@
       "automatic": false,
       "damage": 100,
       "pellets": 1,
-      "spread": 0,
+      "spread": 0.045,
       "length": 0.48,
       "rotationY": 1.5707963267948966,
       "fireDuration": 0.2,
@@ -75,7 +75,8 @@
       "tier": "C",
       "piercing": true,
       "penetrationTargets": 2,
-      "penetrationDamage": 0.5
+      "penetrationDamage": 0.5,
+      "adsSpread": 0
     },
     {
       "id": "revolver",
@@ -100,7 +101,7 @@
       ],
       "tier": "B",
       "infiniteReserve": false,
-      "adsSpread": 0.004
+      "adsSpread": 0
     },
     {
       "id": "shotgun",
@@ -159,7 +160,7 @@
       "piercing": true,
       "penetrationTargets": 3,
       "penetrationDamage": 0.8,
-      "adsSpread": 0.0015
+      "adsSpread": 0
     },
     {
       "id": "axe",
@@ -273,7 +274,7 @@
         -0.54
       ],
       "tier": "A",
-      "adsSpread": 0.018
+      "adsSpread": 0
     }
   ],
   "enemies": {
