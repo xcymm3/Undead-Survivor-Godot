@@ -389,6 +389,17 @@ func validate_pistol_and_equip() -> void:
 	check(is_equal_approx(2000-sim.zombies[2].hp,100) and is_equal_approx(2000-sim.zombies[1].hp,50) and sim.zombies[0].hp == 2000,"Pistol hits the nearest two bodies for 100/50 and excludes the third")
 	var ring = preload("res://scripts/interaction_ring.gd")
 	check(ring.eased_progress(0) == 0 and ring.eased_progress(1) == 1 and ring.eased_progress(.25)-ring.eased_progress(0) > ring.eased_progress(1)-ring.eased_progress(.75),"Confirmation ring starts fast, ends slowly and completes at one second")
+	check(ring.fill_rect(0).size.y == 0 and is_equal_approx(ring.fill_rect(1).size.y,.16) and ring.fill_rect(.5).position == ring.fill_rect(0).position,"Square key fills upwards from a fixed bottom edge and completes without overflow")
+	var key_view = ring.new()
+	game.add_child(key_view)
+	key_view.sync(.5,Vector3(0,4,-2),true)
+	check(key_view.letter.text == "E" and key_view.hint.text == "长按" and key_view.progress == .5,"Square key keeps the E glyph readable during a hold")
+	key_view.sync(.7,Vector3(0,4,-2),false,"error")
+	check(key_view.progress == 0 and key_view.hint.text == "不足","Unaffordable square key cannot display accumulated progress")
+	key_view.sync(0,Vector3(0,4,-2),true,"complete")
+	check(key_view.progress == 1 and key_view.hint.text == "完成","Completed upgrade fills the whole key and shows Chinese confirmation")
+	key_view.queue_free()
+
 	sim.defense.crystal_hp = sim.defense.crystal_max_hp
 	for kind in ["football","dancer"]:
 		sim.zombies.clear()

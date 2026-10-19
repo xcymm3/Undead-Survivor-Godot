@@ -21,6 +21,9 @@ func stage() -> void:
 		else: Progress.store.data.buildings[building_id].owned = true
 	Progress.store.data["intro_seen"] = not scenario.begins_with("intro_")
 	if scenario.begins_with("ultimate_"): Progress.store.data.ultimate_level = 1
+	if scenario.begins_with("upgrade_"):
+		Progress.store.data.ultimate_level = 4 if scenario == "upgrade_max" else 1 if scenario == "upgrade_learned" else 0
+		if scenario == "upgrade_unavailable": Progress.store.data.coins = 0
 	game.start_solo("defense",42)
 	await get_tree().physics_frame
 	game.running = false
@@ -47,6 +50,25 @@ func stage() -> void:
 		game.camera.look_at(point+Vector3(0,.3,0))
 		game.camera.fov = 65
 		game.arena.scenery.sync_focus(game.sim,p)
+	if scenario.begins_with("upgrade_"):
+		var entry: Dictionary = preload("res://scripts/preparation_catalog.gd").stations()[2]
+		p.pos = Vector2(entry.position.x,entry.position.z-2.4)
+		p.height = 3
+		game.camera.position = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
+		game.camera.look_at(entry.position+Vector3(0,.25,0))
+		game.camera.fov = 65
+		p.yaw = game.camera.rotation.y
+		p.pitch = game.camera.rotation.x
+		p.interaction = "ultimate"
+		p.interact_time = .25 if scenario == "upgrade_quarter" else .65 if scenario == "upgrade_hold" else 0.0
+		if scenario == "upgrade_complete":
+			game.sim.progression.data.ultimate_level = 1
+			p.work_feedback_id = "ultimate"
+			p.work_feedback = "完成"
+			p.work_feedback_until = game.sim.defense.prop_clock+1.5
+		game.arena.scenery.sync_focus(game.sim,p)
+		game.weapon.visible = true
+		game.weapon.sync(p,0,game.sim.elapsed,Vector3(0,0,-50))
 	if scenario == "bridge_guard":
 		game.camera.position = Vector3(0,1.7,-48)
 		game.camera.look_at(Vector3(0,1.7,-26))
@@ -132,7 +154,7 @@ func stage() -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	var ring_rect = game.ui.native_hud.ultimate_ring.get_global_rect()
-	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"ring_rect":{"x":ring_rect.position.x,"y":ring_rect.position.y,"width":ring_rect.size.x,"height":ring_rect.size.y},"ring_count":game.ui.native_hud.ultimate_ring.get_parent().get_child_count(),"charge":game.ui.native_hud.ultimate_ring.progress,"objective_text":game.ui.native_hud.wave_label.text,"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37,"announcement":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a,"focus_text":game.arena.scenery.preparation.focus_label.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible}),true)
+	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"ring_rect":{"x":ring_rect.position.x,"y":ring_rect.position.y,"width":ring_rect.size.x,"height":ring_rect.size.y},"ring_count":game.ui.native_hud.ultimate_ring.get_parent().get_child_count(),"charge":game.ui.native_hud.ultimate_ring.progress,"objective_text":game.ui.native_hud.wave_label.text,"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37,"announcement":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a,"key_progress":game.arena.scenery.preparation.interaction_ring.progress,"key_state":game.arena.scenery.preparation.interaction_ring.state,"focus_text":game.arena.scenery.preparation.focus_label.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible}),true)
 
 func stage_redesign(scenario: String, p: Dictionary) -> void:
 	var layout = Data.Maps.Defense

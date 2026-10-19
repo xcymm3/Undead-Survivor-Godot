@@ -149,6 +149,9 @@ func run() -> void:
 		check(Catalog.description(sim,id).contains(Catalog.NAMES[id]),"Description identifies the upgraded weapon: "+id)
 		check(sim.purchase_upgrade(id,p),"Shared stand buys correct upgrade: "+id)
 	check(world.preparation.stations.size() == 9,"Shared stands remove redundant weapon desks")
+	var catalog = preload("res://scripts/preparation_catalog.gd")
+	check(catalog.NAMES.ultimate == "终极技能" and catalog.description(sim,"ultimate").contains("解锁终极技能") and not catalog.description(sim,"ultimate").contains("长刀"),"First ultimate stand explicitly describes unlocking the ultimate skill")
+
 	Fixture.face(sim,p,"ultimate")
 	check(sim.purchase_upgrade("ultimate",p) and sim.progression.level("ultimate") == 1,"Learning the ultimate uses its physical stand")
 	for price in [450,650,1000]:
@@ -226,7 +229,7 @@ func run() -> void:
 	validate_blade_motion(game)
 	p.input = {"ultimate":true}
 	Ultimate.tick(sim,p,p.input,.01)
-	check(not Ultimate.active(p) and p.ultimate_notice == "大招冷却中","Q during cooldown reports unavailability")
+	check(not Ultimate.active(p) and p.ultimate_notice == "终极技能冷却中","Q during cooldown reports unavailability")
 	p.ultimate_cd = 0
 	p.input = {"ultimate":true}
 	Ultimate.tick(sim,p,p.input,.01)

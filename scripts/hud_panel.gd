@@ -300,7 +300,7 @@ func sync() -> void:
 	crystal_alert.visible = float(defense.get("crystal_alert_until",-1)) > sim.elapsed
 	ultimate_ring.visible = sim.mode == "defense"
 	var charge = 1.0-float(p.get("ultimate_cd",0.0))/preload("res://scripts/ultimate.gd").cooldown(sim.progression) if sim.progression.level("ultimate") > 0 else 0.0
-	ultimate_ring.sync(charge,"%d%%" % floori(charge*100) if not preload("res://scripts/ultimate.gd").active(p) else "Q","未学习" if sim.progression.level("ultimate") == 0 else "长刀 %ds" % ceili(p.ultimate_remaining) if preload("res://scripts/ultimate.gd").active(p) else "大招 · Q")
+	ultimate_ring.sync(charge,"%d%%" % floori(charge*100) if not preload("res://scripts/ultimate.gd").active(p) else "Q","未学习" if sim.progression.level("ultimate") == 0 else "终极技能 %ds" % ceili(p.ultimate_remaining) if preload("res://scripts/ultimate.gd").active(p) else "终极技能 · Q")
 	ultimate_notice.text = p.get("ultimate_notice","") if p.get("ultimate_notice_until",0.0) > sim.elapsed else ""
 	var w: Dictionary = sim.combat_weapon(p)
 	weapon_label.text = str(w.label)
@@ -309,7 +309,7 @@ func sync() -> void:
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "defense":
-		controls_hint.text = "1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷 · Q 大招 · R 换弹 · ESC 暂停" if defense.get("started",false) else "修复水晶"
+		controls_hint.text = "1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷 · Q 终极技能 · R 换弹 · ESC 暂停" if defense.get("started",false) else "修复水晶"
 		if intro_active: controls_hint.text = "ESC 暂停"
 		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id) if w.id == "ultimate" else sim.progression.level(w.id)+1]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]

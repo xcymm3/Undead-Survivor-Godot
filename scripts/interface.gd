@@ -603,7 +603,7 @@ func shop_description(profile, id: String) -> String:
 	match id:
 		"strong": return "最大生命 %d · 脱战 5 秒后每秒回复 %.1f 生命 · 每级 +10 生命、+0.5 回复" % [profile.max_health(),profile.regen_rate()]
 		"precise": return "本能 · 伤害 +%d%% · 每级 +5%%" % (profile.level(id)*5)
-		"swift": return "极速 · 大招冷却 %.0f 秒 · 每级减少10%%" % preload("res://scripts/ultimate.gd").cooldown(profile)
+		"swift": return "极速 · 终极技能冷却 %.0f 秒 · 每级减少10%%" % preload("res://scripts/ultimate.gd").cooldown(profile)
 		"supply": return "开局备弹 +%d%% · 每级 +10%% · 清波固定补 2 备弹夹" % (profile.level(id)*10)
 		"greed": return "贪婪 · 金币获取 +%d%% · 每级 +10%%" % (profile.level(id)*10)
 	return ""

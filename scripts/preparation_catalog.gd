@@ -2,7 +2,7 @@ extends RefCounted
 ## Shared world positions, gaze selection and compact descriptions.
 const Layout = preload("res://scripts/defense_layout.gd")
 const HOLD_SECONDS = 1.0
-const NAMES = {"rifle":"步枪","rifle_magazine":"步枪弹匣","pistol_magazine":"手枪弹匣","pistol":"手枪","axe":"消防斧","grenade":"手雷","ultimate":"大招","strong":"强壮","precise":"本能","swift":"极速","supply":"补给","greed":"贪婪","turret_left":"炮塔","turret_right":"炮塔","bridge_gate":"栅栏门","bridge_entry_gate":"栅栏门","crystal_mine":"地雷","ramp_mine":"地雷","gate_mine":"地雷","crystal":"水晶"}
+const NAMES = {"rifle":"步枪","rifle_magazine":"步枪弹匣","pistol_magazine":"手枪弹匣","pistol":"手枪","axe":"消防斧","grenade":"手雷","ultimate":"终极技能","strong":"强壮","precise":"本能","swift":"极速","supply":"补给","greed":"贪婪","turret_left":"炮塔","turret_right":"炮塔","bridge_gate":"栅栏门","bridge_entry_gate":"栅栏门","crystal_mine":"地雷","ramp_mine":"地雷","gate_mine":"地雷","crystal":"水晶"}
 
 static func stations() -> Array:
 	var result: Array = []
@@ -79,7 +79,7 @@ static func description(sim, id: String) -> String:
 		if sim.defense.get("crystal_repair_required",false): return "水晶已破损\n长按 E 修复\n修复完成立即开始进攻"
 		return "水晶\n%d / %d" % [sim.defense.crystal_hp,sim.defense.crystal_max_hp]
 	var price: int = profile.cost(id)
-	var cost_text = "%d%s" % [price,"◆" if id in profile.TALENTS else "$"] if price >= 0 else ""
+	var cost_text = "%d%s" % [price," 钻石" if id in profile.TALENTS else " 金币"] if price >= 0 else ""
 	var level_text = "LV%d" % (profile.level(id)+1) if id not in profile.TALENTS else "LV%d / 5" % profile.level(id)
 	if price < 0: level_text = "LV MAX"
 	var detail = ""
@@ -90,7 +90,9 @@ static func description(sim, id: String) -> String:
 		detail = "%s容量 %d" % [NAMES[id],sim.weapon_capacity(0 if id == "rifle_magazine" else 2)]
 	elif id == "ultimate":
 		level_text = "LV%d / 4" % profile.level(id) if price >= 0 else "LV MAX"
-		detail = "长刀 %s · Q" % number(300*pow(1.2,maxi(0,profile.level(id)-1))*profile.damage_multiplier())
+		detail = "伤害 %s · 持续10秒" % number(300*pow(1.2,maxi(0,profile.level(id)-1))*profile.damage_multiplier())
+		var title = "解锁终极技能" if profile.level(id) == 0 else "终极技能  "+level_text.replace("LV MAX","已满级").replace("LV","等级 ")
+		return (title+"\n"+detail+"\n"+cost_text).strip_edges()
 	elif id == "grenade": detail = "容量 %d / 5" % profile.grenade_capacity()
 	elif id in profile.MINES:
 		var item = sim.defense_director.structures.find(id)
@@ -103,10 +105,20 @@ static func description(sim, id: String) -> String:
 		match id:
 			"strong": detail = "强壮 · 生命 %d · 回复 %s/s" % [profile.max_health(),number(profile.regen_rate())]
 			"precise": detail = "本能 · 伤害 +%d%%" % (profile.level(id)*5)
-			"swift": detail = "极速 · 大招冷却 -%d%%" % (profile.level(id)*10)
+			"swift": detail = "极速 · 终极技能冷却 -%d%%" % (profile.level(id)*10)
 			"supply": detail = "补给 · 备弹 +%d%%" % (profile.level(id)*10)
 			"greed": detail = "贪婪 · 金币 +%d%%" % (profile.level(id)*10)
 	return (level_text+"\n"+detail+"\n"+("整备已结束" if sim.defense.started else cost_text)).strip_edges()
+
+static func prompt_description(sim, id: String) -> String:
+	var text = description(sim,id)
+	if id in sim.progression.WEAPONS or id in sim.progression.MAGAZINES or id in sim.progression.TALENTS:
+		var lines = text.split("\n")
+		var title: String = NAMES.get(id,id)
+		lines[0] = title+"  "+lines[0].replace("LV MAX","已满级").replace("LV","等级 ")
+		lines[1] = lines[1].trim_prefix(title+" · ").trim_prefix(title)
+		return "\n".join(lines)
+	return text
 
 static func number(value: float) -> String:
 	return ("%.1f" % value).trim_suffix(".0")

@@ -34,10 +34,10 @@ static func tick(sim, p: Dictionary, input: Dictionary, dt: float) -> bool:
 		if was_active: p.ultimate_remaining = 0.0
 		elif p.ultimate_sheathe <= 0 and p.hp > 0:
 			if sim.progression.level("ultimate") <= 0:
-				p.ultimate_notice = "尚未学习大招"
+				p.ultimate_notice = "尚未学习终极技能"
 				p.ultimate_notice_until = sim.elapsed+1.5
 			elif p.ultimate_cd > 0:
-				p.ultimate_notice = "大招冷却中"
+				p.ultimate_notice = "终极技能冷却中"
 				p.ultimate_notice_until = sim.elapsed+1.5
 			elif sim.defense.get("started",false):
 				sim.equipment.save_weapon_slot(p)

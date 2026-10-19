@@ -23,7 +23,8 @@ func _ready() -> void:
 	focus_label.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
 	focus_label.font_size = 36
 	focus_label.pixel_size = .0026
-	focus_label.outline_size = 5
+	focus_label.outline_size = 8
+	focus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	focus_label.modulate = Color("fff0ca")
 	focus_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	# Visibility is gated by the authority's scenery ray; the owner's mesh must
@@ -173,15 +174,17 @@ func sync_focus(sim, p: Dictionary) -> void:
 			model.scale *= factor
 			model.position -= center*factor
 	var choice: Dictionary = Catalog.focus(sim,p)
-	interaction_ring.visible = not choice.is_empty() and Catalog.available(sim,choice.get("id",""))
+	interaction_ring.visible = not choice.is_empty()
 	var drops: Array = []
 	if interaction_ring.visible:
-		interaction_ring.position = choice.position+Vector3(0,.38,0)
+		interaction_ring.position = choice.position+Vector3(0,.45,0)
 		var price: int = sim.progression.cost(choice.id) if choice.id != "crystal" else 0
-		var enabled: bool = sim.progression.data[sim.progression.currency(choice.id)] >= price
+		var enabled: bool = Catalog.available(sim,choice.id) and sim.progression.data[sim.progression.currency(choice.id)] >= price
 		var time: float = p.interact_time if p.get("interaction","") == choice.id else 0.0
 		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
-		interaction_ring.sync(time/Catalog.HOLD_SECONDS,eye,enabled)
+		var status = "ready" if enabled else "maxed" if price < 0 else "error"
+		if p.get("work_feedback_id","") == choice.id and p.get("work_feedback_until",0.0) > sim.defense.prop_clock and p.get("work_feedback","") == "完成": status = "complete"
+		interaction_ring.sync(time/Catalog.HOLD_SECONDS,eye,enabled,status)
 		if enabled and price > 0:
 			var from = Vector3(p.pos.x,p.height+.8,p.pos.y)
 			var interval = Catalog.payment_interval(price)
@@ -193,15 +196,16 @@ func sync_focus(sim, p: Dictionary) -> void:
 				var t = clampf((age-.24)/.56,0,1)
 				var point = from.lerp(scatter,minf(1,age/.24)) if age < .24 else scatter.lerp(choice.position,t*t)
 				point.y += sin(minf(1,age/.24)*PI)*.5 if age < .24 else sin(t*PI)*.4
-				drops.append({"pos":point,"age":age,"value":1,"scale":1.15,"arrival":maxf(0,(t-.8)*5)})
+				drops.append({"pos":point,"age":age,"value":1,"scale":.25,"arrival":maxf(0,(t-.8)*5)})
 	money_flights.sync(drops)
 	focus_label.visible = not choice.is_empty()
 	if choice.is_empty(): return
-	var text = Catalog.description(sim,choice.id)
+	var text = Catalog.prompt_description(sim,choice.id)
 	if Catalog.available(sim,choice.id):
 		var price: int = sim.progression.cost(choice.id) if choice.id != "crystal" else 0
 		var wallet = sim.progression.currency(choice.id)
 		if sim.progression.data[wallet] < price: text += "\n钻石不足" if wallet == "diamonds" else "\n金币不足"
 	if p.get("work_feedback_id","") == choice.id and p.get("work_feedback_until",0.0) > sim.defense.prop_clock: text += "\n"+p.work_feedback
 	focus_label.text = text
-	focus_label.position = choice.position+Vector3(0,.95,0)
+	var right: Vector3 = get_viewport().get_camera_3d().global_basis.x
+	focus_label.position = interaction_ring.position+right*.24+Vector3(0,.04,0)
