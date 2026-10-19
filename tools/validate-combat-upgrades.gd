@@ -152,6 +152,12 @@ func run() -> void:
 	var catalog = preload("res://scripts/preparation_catalog.gd")
 	check(catalog.NAMES.ultimate == "终极技能" and catalog.description(sim,"ultimate").contains("解锁终极技能") and not catalog.description(sim,"ultimate").contains("长刀"),"First ultimate stand explicitly describes unlocking the ultimate skill")
 
+	check(not catalog.prompt_description(sim,"ultimate").contains("伤害") and catalog.prompt_description(sim,"ultimate").contains("300 金币"),"Stand prompt contains only the upgrade name and price")
+	var skill_details: Dictionary = catalog.upgrade_details(sim,"ultimate")
+	check(skill_details.rows[0] == ["伤害","未解锁","300"] and skill_details.rows[1] == ["持续时间","10秒","10秒"],"Left skill dossier exposes actual unlock damage and duration")
+	var rifle_details: Dictionary = catalog.upgrade_details(sim,"rifle")
+	check(rifle_details.rows[0][1] == catalog.number(sim.weapon_damage(data.weapons[0],false)),"Left weapon dossier matches authority damage including permanent upgrades")
+	check(catalog.upgrade_details(sim,"strong").rows == [["最大生命","100","110"],["每秒回复","0","0.5"]],"Left talent dossier shows current and next values")
 	Fixture.face(sim,p,"ultimate")
 	check(sim.purchase_upgrade("ultimate",p) and sim.progression.level("ultimate") == 1,"Learning the ultimate uses its physical stand")
 	for price in [450,650,1000]:

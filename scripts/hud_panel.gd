@@ -1,5 +1,6 @@
 extends Control
 ## Retained native widgets; Canvas drawing is reserved for the aiming overlay.
+var upgrade_details: Control
 var crystal_alert: Label
 var ultimate_ring: Control
 var ultimate_notice: Label
@@ -56,6 +57,9 @@ func setup(owner_ui) -> void:
 	crystal_bar.show_percentage = false
 	crystal_bar.custom_minimum_size.y = 9
 	column.add_child(crystal_bar)
+	upgrade_details = preload("res://scripts/upgrade_details.gd").new()
+	upgrade_details.position = Vector2(28,235)
+	content.add_child(upgrade_details)
 	var weapon_card = card(content,Vector2(226,0))
 	weapon_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	weapon_card.offset_left = -254
@@ -265,7 +269,12 @@ func sync() -> void:
 	currency_label.text = str(floori(sim.progression.data.coins))
 	diamond_label.text = str(sim.progression.data.diamonds)
 	var p: Dictionary = ui.game.view_pawn()
-	if p.is_empty(): return
+	if p.is_empty():
+		upgrade_details.sync({})
+		return
+	var catalog = preload("res://scripts/preparation_catalog.gd")
+	var focus = catalog.focus(sim,p)
+	upgrade_details.sync(catalog.upgrade_details(sim,focus.id) if not focus.is_empty() else {})
 	wave_label.text = "第 %02d 波" % sim.wave
 	var living_count: int = sim.alive_count()
 	count_label.text = "击杀 %d  ·  场上 %d" % [sim.kills,living_count]

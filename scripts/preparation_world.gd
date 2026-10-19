@@ -20,10 +20,10 @@ func _ready() -> void:
 		blueprints[item.id] = [base,chest,stripe]
 	focus_label = Label3D.new()
 	focus_label.name = "FocusedInformation"
-	focus_label.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
-	focus_label.font_size = 36
+	focus_label.font = preload("res://scripts/upgrade_art.gd").font()
+	focus_label.font_size = 38
 	focus_label.pixel_size = .0026
-	focus_label.outline_size = 8
+	focus_label.outline_size = 12
 	focus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	focus_label.modulate = Color("fff0ca")
 	focus_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -201,11 +201,6 @@ func sync_focus(sim, p: Dictionary) -> void:
 	focus_label.visible = not choice.is_empty()
 	if choice.is_empty(): return
 	var text = Catalog.prompt_description(sim,choice.id)
-	if Catalog.available(sim,choice.id):
-		var price: int = sim.progression.cost(choice.id) if choice.id != "crystal" else 0
-		var wallet = sim.progression.currency(choice.id)
-		if sim.progression.data[wallet] < price: text += "\n钻石不足" if wallet == "diamonds" else "\n金币不足"
-	if p.get("work_feedback_id","") == choice.id and p.get("work_feedback_until",0.0) > sim.defense.prop_clock: text += "\n"+p.work_feedback
 	focus_label.text = text
 	var right: Vector3 = get_viewport().get_camera_3d().global_basis.x
 	focus_label.position = interaction_ring.position+right*.24+Vector3(0,.04,0)

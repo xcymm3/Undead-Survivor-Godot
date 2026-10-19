@@ -11,12 +11,15 @@ test('终极技能展台与方形 E 键填充截图', async ({ page }, info) => 
   });
   await page.setViewportSize({ width: 1440, height: 900 });
   await mkdir('artifacts/upgrade-ui', { recursive: true });
-  for (const scenario of ['upgrade_ready', 'upgrade_quarter', 'upgrade_hold', 'upgrade_complete', 'upgrade_learned', 'upgrade_unavailable', 'upgrade_max']) {
+  for (const scenario of ['upgrade_ready', 'upgrade_quarter', 'upgrade_hold', 'upgrade_complete', 'upgrade_learned', 'upgrade_unavailable', 'upgrade_max', 'upgrade_weapon', 'upgrade_talent']) {
     await page.goto(`/?preparationReview=${scenario}`);
     await page.waitForFunction(() => Boolean(window.__preparationReviewReady), null, { timeout: 90_000 });
     const state = await page.evaluate(() => window.__preparationReviewReady);
     expect(state.focus_visible).toBe(true);
-    expect(state.focus_text).toContain('终极技能');
+    expect(state.details_visible).toBe(true);
+    expect(state.upgrade_details.rows.length).toBeGreaterThan(0);
+    expect(state.focus_text).not.toMatch(/伤害|持续|冷却/);
+    if (!['upgrade_weapon', 'upgrade_talent'].includes(scenario)) expect(state.focus_text).toContain('终极技能');
     expect(state.focus_text).not.toContain('长刀');
     if (scenario === 'upgrade_ready') expect(state.focus_text).toContain('解锁终极技能');
     if (scenario === 'upgrade_quarter') expect(state.key_progress).toBeCloseTo(.25);

@@ -111,14 +111,52 @@ static func description(sim, id: String) -> String:
 	return (level_text+"\n"+detail+"\n"+("整备已结束" if sim.defense.started else cost_text)).strip_edges()
 
 static func prompt_description(sim, id: String) -> String:
-	var text = description(sim,id)
-	if id in sim.progression.WEAPONS or id in sim.progression.MAGAZINES or id in sim.progression.TALENTS:
-		var lines = text.split("\n")
-		var title: String = NAMES.get(id,id)
-		lines[0] = title+"  "+lines[0].replace("LV MAX","已满级").replace("LV","等级 ")
-		lines[1] = lines[1].trim_prefix(title+" · ").trim_prefix(title)
-		return "\n".join(lines)
-	return text
+	if id in ["crystal","unsupported_weapon"]: return description(sim,id)
+	var profile = sim.progression
+	var title: String = NAMES.get(id,id)
+	if id == "ultimate" and profile.level(id) == 0: title = "解锁终极技能"
+	var price: int = profile.cost(id)
+	var payment = "%d %s" % [price,"钻石" if id in profile.TALENTS else "金币"] if price >= 0 else "已满级"
+	return title+"\n"+payment
+
+static func upgrade_details(sim, id: String) -> Dictionary:
+	if id in ["crystal","unsupported_weapon"] or not NAMES.has(id): return {}
+	var profile = sim.progression
+	var rank: int = profile.level(id)
+	var maximum = 5 if id in profile.TALENTS else 4 if id in ["ultimate","grenade"] else 10
+	var next_rank: int = mini(rank+1,maximum) if profile.cost(id) >= 0 else rank
+	var rows: Array = []
+	var note = "永久强化 · 长按 E 确认"
+	if id in profile.WEAPONS:
+		var base: float = sim.arena.get_node("/root/Data").weapons[{"rifle":0,"pistol":2,"axe":6}[id]].damage*profile.damage_multiplier()
+		rows.append(["伤害",number(base*pow(1.2,rank)),number(base*pow(1.2,next_rank))])
+	elif id in profile.MAGAZINES:
+		var base: float = sim.arena.get_node("/root/Data").weapons[0 if id == "rifle_magazine" else 2].capacity
+		rows.append(["弹匣容量",str(roundi(base*pow(1.2,rank))),str(roundi(base*pow(1.2,next_rank)))])
+	elif id == "ultimate":
+		rows.append(["伤害",number(300*pow(1.2,maxi(rank-1,0))*profile.damage_multiplier()) if rank > 0 else "未解锁",number(300*pow(1.2,maxi(next_rank-1,0))*profile.damage_multiplier())])
+		rows.append(["持续时间","10秒","10秒"])
+		var cooldown = number(preload("res://scripts/ultimate.gd").cooldown(profile))+"秒"
+		rows.append(["冷却时间",cooldown,cooldown])
+	elif id == "grenade": rows.append(["持有上限",str(1+rank),str(1+next_rank)])
+	elif id == "strong":
+		rows.append(["最大生命",str(100+10*rank),str(100+10*next_rank)])
+		rows.append(["每秒回复",number(.5*rank),number(.5*next_rank)])
+		note = "连续5秒未受伤后回复"
+	elif id == "swift": rows.append(["技能冷却",str(100-10*rank)+"秒",str(100-10*next_rank)+"秒"])
+	elif id in ["precise","supply","greed"]:
+		var rate = 5 if id == "precise" else 10
+		rows.append([{"precise":"伤害加成","supply":"备弹加成","greed":"金币加成"}[id],"+%d%%" % (rank*rate),"+%d%%" % (next_rank*rate)])
+	elif id in profile.BUILDINGS:
+		var owned: bool = profile.owned(id)
+		var base = 1000.0 if id in profile.GATES else 60.0
+		rows.append(["耐久" if id in profile.GATES else "伤害",number(base*pow(1.2,rank)) if owned else "未建造",number(base*pow(1.2,next_rank if owned else rank))])
+	elif id in profile.MINES:
+		rows.append(["最大伤害","1400","1400"])
+		note = "距离衰减 · 本局引爆一次"
+	if profile.cost(id) < 0: note = "已满级 · 无需继续升级"
+	elif profile.data[profile.currency(id)] < profile.cost(id): note = "钻石不足" if id in profile.TALENTS else "金币不足"
+	return {"title":NAMES[id],"level":"等级 %d / %d" % [rank,maximum],"rows":rows,"note":note}
 
 static func number(value: float) -> String:
 	return ("%.1f" % value).trim_suffix(".0")

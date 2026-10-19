@@ -51,7 +51,7 @@ func stage() -> void:
 		game.camera.fov = 65
 		game.arena.scenery.sync_focus(game.sim,p)
 	if scenario.begins_with("upgrade_"):
-		var entry: Dictionary = preload("res://scripts/preparation_catalog.gd").stations()[2]
+		var entry: Dictionary = preload("res://scripts/preparation_catalog.gd").stations()[0 if scenario == "upgrade_weapon" else 4 if scenario == "upgrade_talent" else 2]
 		p.pos = Vector2(entry.position.x,entry.position.z-2.4)
 		p.height = 3
 		game.camera.position = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
@@ -154,7 +154,7 @@ func stage() -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	var ring_rect = game.ui.native_hud.ultimate_ring.get_global_rect()
-	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"ring_rect":{"x":ring_rect.position.x,"y":ring_rect.position.y,"width":ring_rect.size.x,"height":ring_rect.size.y},"ring_count":game.ui.native_hud.ultimate_ring.get_parent().get_child_count(),"charge":game.ui.native_hud.ultimate_ring.progress,"objective_text":game.ui.native_hud.wave_label.text,"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37,"announcement":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a,"key_progress":game.arena.scenery.preparation.interaction_ring.progress,"key_state":game.arena.scenery.preparation.interaction_ring.state,"focus_text":game.arena.scenery.preparation.focus_label.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible}),true)
+	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"ring_rect":{"x":ring_rect.position.x,"y":ring_rect.position.y,"width":ring_rect.size.x,"height":ring_rect.size.y},"ring_count":game.ui.native_hud.ultimate_ring.get_parent().get_child_count(),"charge":game.ui.native_hud.ultimate_ring.progress,"objective_text":game.ui.native_hud.wave_label.text,"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37,"announcement":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a,"upgrade_details":game.ui.native_hud.upgrade_details.details,"details_visible":game.ui.native_hud.upgrade_details.visible,"key_progress":game.arena.scenery.preparation.interaction_ring.progress,"key_state":game.arena.scenery.preparation.interaction_ring.state,"focus_text":game.arena.scenery.preparation.focus_label.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible}),true)
 
 func stage_redesign(scenario: String, p: Dictionary) -> void:
 	var layout = Data.Maps.Defense
