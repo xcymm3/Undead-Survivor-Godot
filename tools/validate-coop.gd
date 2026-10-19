@@ -50,6 +50,7 @@ func run() -> void:
 		if arg.begins_with("--coop-role="): role = arg.get_slice("=",1)
 		if arg.begins_with("--coop-address="): address = arg.get_slice("=",1)
 	net = root.get_node("Session")
+	net.lan_directory.port = int(address.get_slice(":",1))+1
 	game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
 	await process_frame
@@ -278,6 +279,25 @@ func client_test() -> void:
 	personal.dirty = true
 	personal.save()
 	var bytes_before = FileAccess.get_file_as_bytes(secret_path)
+	net.search_lan()
+	if not await until(func(): return not net.searching and not net.rooms.is_empty(),"LAN discovery response"): return
+	check(net.rooms.size() == 1 and str(net.rooms[0].id).ends_with(":"+address.get_slice(":",1)) and net.rooms[0].count == 1,"Real UDP discovery finds the ENet host with correct address and player count")
+	game.ui.room_mode = "lan"
+	game.ui.show_multiplayer()
+	check(game.ui.menu.has_node("RoomBrowserStage/RoomActions") and not game.ui.menu.has_node("FieldMenuStage"),"Multiplayer browser is an independent page with pinned footer actions")
+	var view = game.ui.multiplayer_view
+	var search_id: int = view.search.get_instance_id()
+	view.search.text = "没有这个房间"
+	view.search.text_changed.emit(view.search.text)
+	net.changed.emit()
+	check(view.search.get_instance_id() == search_id and view.search.text == "没有这个房间" and view.tally.text.contains("0 个"),"Search filters rooms and survives live network updates without losing the input")
+	view.open_direct()
+	check(is_instance_valid(view.dialog) and game.ui.current == "multiplayer","Direct connection opens an overlay over the room page")
+	game.ui.back()
+	check(not is_instance_valid(view.dialog) and game.ui.current == "multiplayer","Escape closes only the direct connection overlay")
+	var menu_type = load("res://scripts/multiplayer_menu.gd")
+	check(menu_type.valid_target("192.168.1.20:27777","lan") and not menu_type.valid_target("192.168.1.20:70000","lan") and not menu_type.valid_target("broken","lan") and menu_type.valid_target("109775244906512345","steam") and not menu_type.valid_target("0","steam"),"Direct connection validates IP, port and Steam room id")
+	game.ui.room_query = ""
 	net.join_lan(address,"客机")
 	if not await until(func(): return phase("preparation"),"preparation snapshot"): return
 	var early = load("res://scripts/session.gd").new()

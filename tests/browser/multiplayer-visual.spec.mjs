@@ -8,7 +8,7 @@ test('多人建房界面不同状态的隔离截图', async ({ page }, info) => 
     if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text());
   });
   await page.setViewportSize({ width: 1440, height: 900 });
-  const scenarios = ['entry', 'entry_bottom', 'host_single', 'host_single_bottom', 'host_ready', 'host_ready_bottom', 'loading_bottom', 'guest_bottom', 'steam_bottom', 'error'];
+  const scenarios = ['browser_steam', 'browser_lan', 'host_ready', 'direct_lan', 'direct_steam', 'filtered', 'empty', 'error'];
   for (const scenario of scenarios) {
     await page.goto(`/?campaignReview=multiplayer_${scenario}`);
     await page.waitForFunction(() => Boolean(window.__campaignReviewReady), null, { timeout: 90_000 });
@@ -18,6 +18,13 @@ test('多人建房界面不同状态的隔离截图', async ({ page }, info) => 
     await page.screenshot({ path: file, timeout: 60_000 });
     await info.attach(scenario, { path: file, contentType: 'image/png' });
     expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });
+  }
+  await page.setViewportSize({ width: 960, height: 600 });
+  for (const scenario of ['browser_lan', 'direct_lan']) {
+    await page.goto(`/?campaignReview=multiplayer_${scenario}`);
+    await page.waitForFunction(() => Boolean(window.__campaignReviewReady), null, { timeout: 90_000 });
+    const file = info.outputPath(`${scenario}-960.png`);
+    await page.screenshot({ path: file });
   }
   expect(errors).toEqual([]);
 });

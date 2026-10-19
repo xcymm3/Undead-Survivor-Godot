@@ -8,6 +8,9 @@ var font: Font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
 var player_name = "幸存者"
 var address = "127.0.0.1:27777"
 var steam_code = ""
+var room_mode = "steam"
+var room_query = ""
+var multiplayer_view
 var hit_flash = 0.0
 var hurt_flash = 0.0
 var message = ""
@@ -62,7 +65,7 @@ func _ready() -> void:
 	root.add_child(victory_caption)
 	victory_caption.hide()
 	Session.changed.connect(func():
-		if current == "multiplayer": show_multiplayer())
+		if current == "multiplayer" and multiplayer_view: multiplayer_view.sync())
 
 func box(color: Color, padding := 16) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
@@ -403,6 +406,9 @@ func show_pause() -> void:
 	button(column,"结束房间并返回" if Session.is_host() else "离开房间" if Session.playing else "返回主菜单",func(): game.return_home())
 
 func back() -> void:
+	if current == "multiplayer" and multiplayer_view and is_instance_valid(multiplayer_view.dialog):
+		multiplayer_view.close_dialog()
+		return
 	if current == "multiplayer": Session.leave()
 	if game.running: show_pause()
 	else: show_home()
@@ -533,62 +539,8 @@ func show_guide() -> void:
 	button(column,"返回",back,true)
 
 func show_multiplayer(qa_preview := false) -> void:
-	var column = panel("合作守卫", "最多4人 · 使用房主当前存档 · 难度与单人相同",850)
-	current = "multiplayer"
-	if OS.has_feature("web") and not (Data.automation and qa_preview):
-		paragraph(column,"浏览器验收版仅支持单人模式。Steam 与局域网多人模式请使用 Windows 版。")
-		button(column,"返回",show_home)
-		return
-	paragraph(column,"所有升级跟随房主，收益仅保存至房主；客机个人存档不变。客机阵亡后本局只能观战，房主阵亡或水晶被毁则全队失败。",17)
-	paragraph(column,"战前可加入；第一波开始后仅允许原成员重连，恢复原有状态。",16)
-	paragraph(column,Session.status,17,RUST)
-	if Session.active:
-		column.add_child(label("战场："+Data.Maps.definition(Session.map_id).title,22))
-		if Session.map_id == "graypine_defense":
-			var difficulty = preload("res://scripts/defense_population.gd")
-			column.add_child(label("难度：%s（积分预算 × %.1f）" % [difficulty.difficulty_label(Session.defense_difficulty),difficulty.difficulty_multiplier(Session.defense_difficulty)],19,RUST))
-		column.add_child(label("房间  "+Session.room_code,22))
-		button(column,"复制房间地址 / 房间号",func(): DisplayServer.clipboard_set(Session.room_code))
-		if Session.transport == "steam": button(column,"邀请 Steam 好友",func(): Session.invite_friends())
-		for id in Session.members:
-			column.add_child(label("●  "+str(Session.members[id])+("   / 房主" if id == Session.host_id else ""),22))
-		if Session.is_host():
-			var start = button(column,"开始合作",func(): Session.begin_match(),true)
-			start.disabled = Session.members.size() < 2 or Session.loading
-		else: paragraph(column,"等待房主开始对局…",18)
-		button(column,"离开房间",func(): Session.leave(); show_multiplayer())
-	else:
-		var row = HBoxContainer.new()
-		row.add_theme_constant_override("separation",14)
-		column.add_child(row)
-		button(row,"创建 Steam 房间",func(): Session.host_steam(),true)
-		button(row,"搜索 Steam 房间",func(): Session.search_steam())
-		var code = LineEdit.new()
-		code.placeholder_text = "输入 Steam 房间号"
-		code.text = steam_code
-		code.text_changed.connect(func(value): steam_code = value)
-		column.add_child(code)
-		button(column,"按房间号加入",func(): Session.join_steam(steam_code))
-		for room in Session.rooms:
-			button(column,"%s  ·  %d / 4 人" % [room.name,room.count],func(): Session.join_steam(room.id))
-		column.add_child(HSeparator.new())
-		column.add_child(label("局域网直连",22))
-		var name_input = LineEdit.new()
-		name_input.placeholder_text = "玩家昵称"
-		name_input.text = player_name
-		name_input.text_changed.connect(func(value): player_name = value)
-		column.add_child(name_input)
-		var ip = LineEdit.new()
-		ip.placeholder_text = "房主 IP:27777"
-		ip.text = address
-		ip.text_changed.connect(func(value): address = value)
-		column.add_child(ip)
-		var lan = HBoxContainer.new()
-		lan.add_theme_constant_override("separation",14)
-		column.add_child(lan)
-		button(lan,"创建局域网房间",func(): Session.host_lan(player_name))
-		button(lan,"加入局域网",func(): Session.join_lan(address,player_name))
-	button(column,"返回",func(): Session.leave(); show_home())
+	multiplayer_view = preload("res://scripts/multiplayer_menu.gd").new(self)
+	multiplayer_view.show_page(qa_preview)
 
 func shop_description(profile, id: String) -> String:
 	if id in profile.WEAPONS:

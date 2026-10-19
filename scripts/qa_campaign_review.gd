@@ -146,7 +146,7 @@ func stage_multiplayer(scenario: String) -> void:
 	# Production native lobby widgets, isolated fixture state; no sockets or Steam calls.
 	Session.set_process(false)
 	var state = scenario.trim_prefix("multiplayer_").trim_suffix("_bottom")
-	Session.active = state not in ["entry","error"]
+	Session.active = state in ["host_single","host_ready","loading","guest","steam"]
 	Session.local_id = "1"
 	Session.host_id = "1"
 	Session.transport = "lan"
@@ -168,7 +168,16 @@ func stage_multiplayer(scenario: String) -> void:
 		Session.room_code = "109775244906512345"
 		Session.status = "Steam 房间已连接"
 	if state == "error": Session.status = "无法创建房间，端口 27777 被占用（Already in use）"
+	game.ui.room_mode = "lan" if state in ["browser_lan","direct_lan"] else "steam"
+	if state in ["entry","browser_steam","browser_lan","direct_lan","direct_steam","filtered"]:
+		var mode = game.ui.room_mode
+		for i in 3:
+			Session.rooms.append({"id":str(109775244906512345+i) if mode == "steam" else "192.168.1.%d:27777" % (108+i),"name":["桥头等你 · 一起守水晶","夜班最后一局","水晶守卫小队"][i],"count":[1,3,4][i],"map_id":"graypine_defense","transport":mode})
+		Session.status = "找到 3 个可见房间"
+	if state == "filtered": game.ui.room_query = "夜班"
+	if state == "empty": Session.status = "没有发现房间，可以创建一个新的防线"
 	game.ui.show_multiplayer(true)
+	if state in ["direct_lan","direct_steam"]: game.ui.multiplayer_view.open_direct()
 	for i in 4: await get_tree().process_frame
 	if scenario.ends_with("_bottom"):
 		for scroll in game.ui.menu.find_children("*","ScrollContainer",true,false): scroll.scroll_vertical = 100000

@@ -20,6 +20,10 @@ var local_id = "solo"
 var host_id = ""
 var members: Dictionary = {}
 var rooms: Array = []
+var lan_directory = preload("res://scripts/lan_room_directory.gd").new()
+var searching = false
+var search_transport = ""
+var admission_metadata = ""
 var active = false
 var playing = false
 var loading = false
@@ -166,6 +170,7 @@ func host_lan(player_name: String, port: int = PORT) -> void:
 		changed.emit()
 		return
 	transport = "lan"
+	var advertised = lan_directory.start_host()
 	local_id = "1"
 	host_id = "1"
 	active = true
@@ -176,7 +181,7 @@ func host_lan(player_name: String, port: int = PORT) -> void:
 			room_code = address+":"+str(port)
 			break
 	peer.peer_disconnected.connect(_lan_peer_left)
-	status = "局域网房间已创建，等待队友加入"
+	status = "局域网房间已创建，等待队友加入" if advertised else "房间已创建，扫描不可用；请分享地址直接连接"
 	changed.emit()
 
 func join_lan(address: String, player_name: String) -> void:
@@ -220,7 +225,10 @@ func host_steam() -> void:
 func search_steam() -> void:
 	if not enable_steam(): return
 	steam.addRequestLobbyListStringFilter("game",PROTOCOL,0)
-	steam.addRequestLobbyListStringFilter("playing","0",0)
+	steam.addRequestLobbyListStringFilter("admission","1",0)
+	search_transport = "steam"
+	searching = true
+	rooms.clear()
 	steam.requestLobbyList()
 	status = "正在搜索 Steam 房间…"
 	changed.emit()
@@ -246,6 +254,7 @@ func _steam_created(result: int, id: int) -> void:
 	steam.setLobbyData(id,"game",PROTOCOL)
 	steam.setLobbyData(id,"name",str(steam.getPersonaName())+" 的哨站")
 	steam.setLobbyData(id,"playing","0")
+	steam.setLobbyData(id,"admission","1")
 	steam.setLobbyData(id,"map_id",map_id)
 	steam.setLobbyData(id,"defense_difficulty",defense_difficulty)
 	steam.setLobbyJoinable(id,true)
@@ -320,10 +329,12 @@ func _steam_request(id: int) -> void:
 			return
 
 func _steam_rooms(ids: Array) -> void:
+	if search_transport != "steam": return
+	searching = false
 	rooms.clear()
 	for id in ids:
 		if not Data.Maps.valid(str(steam.getLobbyData(id,"map_id"))): continue
-		rooms.append({"id":str(id),"name":str(steam.getLobbyData(id,"name")),"count":steam.getNumLobbyMembers(id)})
+		rooms.append({"id":str(id),"name":str(steam.getLobbyData(id,"name")),"count":steam.getNumLobbyMembers(id),"map_id":str(steam.getLobbyData(id,"map_id")),"transport":"steam"})
 	status = "找到 %d 个 Steam 房间" % rooms.size()
 	changed.emit()
 
@@ -415,11 +426,36 @@ func recover_input_edges(id: String, command: Dictionary) -> Dictionary:
 
 func send_world(state: Dictionary, effects: Array, reliable := false) -> void:
 	if not is_host(): return
+	if transport == "steam":
+		var admission = "1" if accepts_new_members() else "0"
+		if admission != admission_metadata:
+			admission_metadata = admission
+			steam.setLobbyData(lobby,"admission",admission)
 	send_sequence += 1
 	broadcast({"type":"world","state":state,"seq":send_sequence},reliable or state.failed or state.get("won",false))
 	if not effects.is_empty(): broadcast({"type":"effects","effects":effects},true)
 
+func search_lan() -> void:
+	search_transport = "lan"
+	rooms.clear()
+	searching = lan_directory.search(PROTOCOL)
+	status = "正在搜索局域网房间…" if searching else "无法扫描局域网，请尝试直接连接"
+	changed.emit()
+
+func stop_room_search() -> void:
+	lan_directory.stop_search()
+	searching = false
+	search_transport = ""
+
 func _process(dt: float) -> void:
+	var advertisement: Dictionary = {}
+	if is_host() and transport == "lan" and accepts_new_members():
+		advertisement = {"name":str(members.get(host_id,"房主"))+"的防线","port":int(room_code.get_slice(":",1)),"count":members.size(),"map_id":map_id}
+	if lan_directory.step(dt,PROTOCOL,advertisement) and search_transport == "lan":
+		rooms = lan_directory.rooms.values().filter(func(room): return Data.Maps.valid(room.map_id))
+		searching = lan_directory.scanning
+		status = "正在搜索局域网房间…" if searching else "找到 %d 个局域网房间" % rooms.size()
+		changed.emit()
 	rate_timer += dt
 	if rate_timer >= 1:
 		rate_timer = 0
@@ -676,6 +712,9 @@ func _connection_lost(message: String) -> void:
 	changed.emit()
 
 func leave() -> void:
+	lan_directory.stop_host()
+	stop_room_search()
+	admission_metadata = ""
 	map_id = Data.settings.map_id
 	defense_difficulty = DefensePopulation.normalize_difficulty(Data.settings.defense_difficulty)
 	loading = false
