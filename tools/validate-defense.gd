@@ -51,7 +51,10 @@ func run() -> void:
 	check(game.arena.obstacles.size() >= 5,"Chasm, ramp shelves and solid shop furniture participate in navigation")
 	check(not game.arena.clear(Vector2(12,-70),Vector2(12,0)),"Chasm prevents routes that bypass the bridge")
 	check(not game.arena.clear(Vector2(12,-20),Vector2(12,0)),"Ramp-side shelves cannot bypass the central climb")
-	check(game.arena.clear(Vector2(0,layout.SHOP_AREA.position.y-2),layout.SHOP_AREA.get_center()),"Zombies can enter the shop through its central aisle")
+	# Five talent stands now include a centre stand; the walkways lie between stands.
+	for aisle_x in [-2.5,2.5]:
+		check(game.arena.clear(Vector2(aisle_x,layout.SHOP_AREA.position.y-2),Vector2(aisle_x,layout.SHOP_AREA.get_center().y)),"Zombies can enter the shop between the talent stands: "+str(aisle_x))
+	check(not game.arena.clear(Vector2(0,layout.SHOP_AREA.position.y-2),layout.SHOP_AREA.get_center()),"The centre talent stand remains solid for enemy navigation")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Bridge and ramp form one open approach lane")
 	check(not game.arena.clear(Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997),data.Maps.Defense.CRYSTAL),"Crystal body blocks enemy navigation")
 	check(game.arena.scenery.find_children("CrystalPedestal","*",true,false).is_empty(),"Crystal pedestal has been removed")
@@ -281,12 +284,14 @@ func run() -> void:
 	sim.update_defense_regen(pawn,5.0)
 	check(pawn.hp == 80,"Strong waits five full seconds before healing")
 	sim.update_defense_regen(pawn,1.0)
-	check(pawn.hp == 81,"Rank-one Strong heals one health per second out of combat")
+	check(pawn.hp == 80 and is_equal_approx(pawn.regen_credit,.5),"Rank-one Strong accumulates half a health per second out of combat")
+	sim.update_defense_regen(pawn,1.0)
+	check(pawn.hp == 81 and is_zero_approx(pawn.regen_credit),"Two seconds of rank-one Strong restore one whole health")
 	var shots_before: int = pawn.shots
 	for i in 80:
 		sim.submit(pawn.id,command(int(pawn.weapon),false,int(pawn.slot),0.0,0.0,true))
 		sim.update_pawn(pawn,.05)
-	check(pawn.shots > shots_before and pawn.hp == 85,"Continuous live firing permits Strong healing without incoming damage")
+	check(pawn.shots > shots_before and pawn.hp == 83,"Continuous live firing permits half-rate Strong healing without incoming damage")
 	pawn.regen_credit = .75
 	pawn.protection = 0.0
 	var hurt_hp: int = pawn.hp
