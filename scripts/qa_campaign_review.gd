@@ -237,7 +237,7 @@ func stage_normal_zombie(scenario: String) -> void:
 	var all_toys: bool = scenario == "toy_lineup"
 	var toy_review: bool = scenario.begins_with("toy_")
 	var lineup: bool = scenario == "normal_lineup" or all_toys
-	var selected_kind: String = scenario.trim_prefix("toy_").trim_suffix("_rage") if toy_review and not all_toys else "normal"
+	var selected_kind: String = scenario.trim_prefix("toy_").trim_suffix("_rage").trim_suffix("_front").trim_suffix("_dance") if toy_review and not all_toys else "normal"
 	var display_kinds: Array = preload("res://scripts/zombie_toy_styles.gd").KINDS if all_toys else [selected_kind]
 	var walking: bool = scenario == "normal_walk"
 	action_name = scenario.trim_prefix("normal_")
@@ -285,6 +285,8 @@ func stage_normal_zombie(scenario: String) -> void:
 		if kind in ["normal","cone","bucket"]: z.outfit = index if lineup and not all_toys else 1
 		z.heading = -.12 if lineup else -.18
 		z.rage = scenario == "toy_berserker_rage"
+		if scenario == "toy_dancer_dance": z.dance_remaining = 2.0
+		if scenario == "toy_dancer_front": z.heading = 0.0
 		z.move_speed = 4.9 if walking else 0.0
 		z.gait = .6
 	game.enemies.sync(game.sim.zombies,.3,not walking)
@@ -299,6 +301,7 @@ func stage_normal_zombie(scenario: String) -> void:
 			var height: float = Data.enemy_scale(selected_kind)*{"cone":2.82,"bucket":2.56,"dancer":2.36,"football":2.35}.get(selected_kind,2.12)
 			center = Vector3(0,3+height*.52,10)
 			game.camera.position = center+Vector3(height*.65,height*.16,height*1.95)
+	if scenario == "toy_dancer_front": game.camera.position = center+Vector3(0,.35,6.2)
 	game.camera.look_at(center)
 	game.get_viewport().scaling_3d_scale = 1.0
 	RenderingServer.render_loop_enabled = false

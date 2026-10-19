@@ -7,7 +7,7 @@ const PALETTES = {
 	"berserker":["b75848","ce7357","5c4853","493b39","9bb471"],
 	"giant":["b99b66","c4ab7d","6c5845","493f33","a5b27a"],
 	"football":["8f2830","8f2830","3d4945","29352e","98b67a"],
-	"dancer":["7450a0","825dae","40375f","ceac68","9db68b"]}
+	"dancer":["16191d","25282b","d7a83e","14171a","9db68b"]}
 
 static func size_for(part: Dictionary, kind: String) -> Vector3:
 	var original = Vector3(part.size[0],part.size[1],part.size[2])
@@ -48,8 +48,8 @@ static func color_for(part: Dictionary, index: int, kind: String, rage: bool) ->
 		25:"667f8b",26:"abb9bd",27:"d7dfdd",28:"647d89",29:"e1e6dc",
 		31:"ce9d5f",32:"385b78",33:"eee2bd",34:"eee2bd",
 		35:"713f3e",36:"ead09b",37:"ead09b",38:"8e704b",39:"718071",
-		40:"9c3034",41:"9c3034",42:"e4e4cc",43:"343343",44:"252a38",
-		45:"d56c72",46:"e3c16b",47:"e3c16b",48:"d9b45c"}
+		40:"9c3034",41:"9c3034",42:"e4e4cc",43:"17191b",44:"0b0e11",
+		45:"e5bd59",46:"e8c76b",47:"e8c76b",48:"171a1c"}
 	if equipment.has(index): return Color(equipment[index])
 	return Color("b4b36f" if kind == "berserker" and rage else palette[4])
 
@@ -77,8 +77,8 @@ static func details(kind: String) -> Array:
 			add(result,Vector3(0,1.07,.219),Vector3(.27,.18,.012),"917348")
 			for x in [-.09,0,.09]: add(result,Vector3(x,1.09,.228),Vector3(.018,.10,.007),"e1d1a2")
 		"dancer":
-			add(result,Vector3(0,1.53,.274),Vector3(.052,.065,.010),"f3a394")
-			for x in [-.15,.15]: add(result,Vector3(x,1.875,.311),Vector3(.082,.014,.006),"7288a0",6)
+			add(result,Vector3(0,1.53,.274),Vector3(.052,.065,.010),"e8c76b")
+			for x in [-.15,.15]: add(result,Vector3(x,1.875,.311),Vector3(.082,.014,.006),"d8c889",6)
 			add(result,Vector3(0,1.854,.312),Vector3(.055,.035,.008),"d9b45c",6)
 			for y in [1.04,1.20]: add(result,Vector3(0,y,.201),Vector3(.035,.035,.012),"e7c778")
 	return result
