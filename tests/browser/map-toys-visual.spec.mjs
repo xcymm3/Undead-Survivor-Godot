@@ -12,7 +12,7 @@ test('隔离审查首次轮回字幕、还原模型与无接缝水晶', async ({
     await page.goto(`/?preparationReview=${scenario}`);
     await page.waitForFunction(() => Boolean(window.__preparationReviewReady), null, { timeout: 90_000 });
     const state = await page.evaluate(() => window.__preparationReviewReady);
-    expect(state.stations).toBe(8);
+    expect(state.stations).toBe(9);
     if (scenario.startsWith('intro_')) {
       expect(state.alpha).toBe(1);
       expect(state.announcement.length).toBeGreaterThan(5);

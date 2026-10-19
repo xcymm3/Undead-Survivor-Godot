@@ -377,7 +377,7 @@ func show_save_slots() -> void:
 		dossier.add_child(label("档案  /  %02d" % (index+1),28,SETTINGS_BRASS))
 		dossier.add_child(label("当前使用" if active else "待命存档",17,SETTINGS_INK))
 		dossier.add_child(HSeparator.new())
-		for entry in [["金币",profile.data.coins],["钻石",profile.data.diamonds],["最佳波次",profile.data.best_wave]]:
+		for entry in [["金币",floori(profile.data.coins)],["钻石",profile.data.diamonds],["最佳波次",profile.data.best_wave]]:
 			var row = HBoxContainer.new()
 			dossier.add_child(row)
 			var caption = label(entry[0],17,SETTINGS_MUTED)
@@ -592,7 +592,7 @@ func show_legacy_multiplayer() -> void:
 func shop_description(profile, id: String) -> String:
 	if id in profile.WEAPONS:
 		var index: int = {"rifle":0,"pistol":2,"axe":6}[id]
-		return "伤害 %.1f → %.1f · 每次 +20%%，最高10级，采用固定价格表" % [Data.weapons[index].damage*profile.weapon_multiplier(id),Data.weapons[index].damage*profile.weapon_multiplier(id)*1.2]
+		return "伤害 %.1f → %.1f · 每次 +20%%，最高10级，采用固定价格表" % [Data.weapons[index].damage*profile.weapon_multiplier(id)*profile.damage_multiplier(),Data.weapons[index].damage*profile.weapon_multiplier(id)*profile.damage_multiplier()*1.2]
 	if id in profile.MAGAZINES:
 		var base: int = int(Data.weapons[0 if id == "rifle_magazine" else 2].capacity)
 		return "弹匣 %d → %d · 每级 +20%% · 上限10级，采用固定价格表" % [roundi(base*profile.magazine_multiplier(id.trim_suffix("_magazine"))),roundi(base*profile.magazine_multiplier(id.trim_suffix("_magazine"))*1.2)]
@@ -601,10 +601,11 @@ func shop_description(profile, id: String) -> String:
 	if id in profile.GATES: return "耐久 %d · 就地升级 +20%% · 价格与枪械相同，最高10级 · 战斗中不复活" % roundi(1000*profile.building_multiplier(id))
 	if id in profile.BUILDINGS: return "每发伤害 %.1f · 就地升级伤害 +20%% · 价格与枪械相同，最高10级 · 战斗中不复活" % (60*profile.building_multiplier(id))
 	match id:
-		"strong": return "最大生命 %d · 脱战 5 秒后每秒回复 %d 生命 · 每级 +10 生命、+1 回复" % [profile.max_health(),profile.level(id)]
-		"precise": return "爆头倍率 +%d%% · 每级 +20%%" % (profile.level(id)*20)
-		"swift": return "移速 +%d%% · 每级 +5%%" % (profile.level(id)*5)
-		"supply": return "开局备弹 +%d%% · 每级 +20%% · 清波固定补 2 备弹夹" % (profile.level(id)*20)
+		"strong": return "最大生命 %d · 脱战 5 秒后每秒回复 %.1f 生命 · 每级 +10 生命、+0.5 回复" % [profile.max_health(),profile.regen_rate()]
+		"precise": return "本能 · 伤害 +%d%% · 每级 +5%%" % (profile.level(id)*5)
+		"swift": return "极速 · 大招冷却 %.0f 秒 · 每级减少10%%" % preload("res://scripts/ultimate.gd").cooldown(profile)
+		"supply": return "开局备弹 +%d%% · 每级 +10%% · 清波固定补 2 备弹夹" % (profile.level(id)*10)
+		"greed": return "贪婪 · 金币获取 +%d%% · 每级 +10%%" % (profile.level(id)*10)
 	return ""
 
 # Hallmark · component: result modal · atmospheric · existing field palette

@@ -55,15 +55,15 @@ func run() -> void:
 	var player: Dictionary = sim.pawns.solo
 	player.pos = Vector2(0,-30)
 	player.height = 0
-	sim.spawn(Vector2(0,-45),"normal")
+	sim.spawn(Vector2(0,-50),"normal")
 	z = sim.zombies[-1]
-	check(sim.choose_zombie_target(z,[player]).id == player.id,"Reachable player exactly 15m away is targeted ahead of distant crystal")
-	z.pos.y = -45.01
-	check(sim.choose_zombie_target(z,[player]).id == "crystal","Player beyond 15m is ignored")
+	check(sim.choose_zombie_target(z,[player]).id == player.id,"Reachable player exactly 20m away is targeted ahead of distant crystal")
+	z.pos.y = -50.01
+	check(sim.choose_zombie_target(z,[player]).id == "crystal","Player beyond 20m is ignored")
 	z.pos = Vector2(0,14)
 	player.pos = Vector2(0,6)
 	player.height = 3
-	check(sim.choose_zombie_target(z,[player]).id == "crystal","Closer crystal takes priority over a player within 15m")
+	check(sim.choose_zombie_target(z,[player]).id == "crystal","Closer crystal takes priority over a player within 20m")
 	z.pos = Vector2(0,-20)
 	player.pos = Vector2(12,-20)
 	player.height = 0
@@ -71,7 +71,7 @@ func run() -> void:
 	player.pos = Vector2(0,-25)
 	player.height = 0
 	check(sim.choose_zombie_target(z,[player]).id == player.id,"Moving back to reachable ramp invalidates the player endpoint cache immediately")
-	for kind in ["imp","giant"]:
+	for kind in ["imp","giant","dancer"]:
 		z.kind = kind
 		check(sim.choose_zombie_target(z,[player]).id == "crystal",kind+" retains building targeting even with closer player")
 	# Sample actual seeded spawn candidates and execute their paths, not just A* queries.

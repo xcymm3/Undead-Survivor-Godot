@@ -131,12 +131,16 @@ func build_talent(parent: Node3D, id: String) -> void:
 					var disk = cylinder(p+Vector3(0,.22,side*(.04+(.48-r)*.2)),r,.04,"e2d9bd" if r == .48 else "a94c3c" if r == .32 else "e2d9bd")
 					disk.rotation = Vector3(PI/2,0,0)
 		"swift":
-			for x in [-.35,.35]:
-				block("TrainingWeight",p+Vector3(x,0,0),Vector3(.2,.5,.5),"454b48",false)
-			block("TrainingGrip",p,Vector3(.7,.1,.1),"b4b9b0",false)
+			var clock = cylinder(p+Vector3(0,.2,0),.42,.12,"d1b060")
+			clock.rotation.x = PI/2
+			block("ClockHand",p+Vector3(0,.32,-.08),Vector3(.05,.26,.04),"454b48",false)
 		"supply":
 			block("AmmoCase",p,Vector3(1,.4,.6),"52644a",false)
 			for x in [-.3,0,.3]: cylinder(p+Vector3(x,.28,0),.055,.24,"d1aa58")
+		"greed":
+			block("CoinChest",p,Vector3(.9,.4,.6),"765338",false)
+			for x in [-.25,0,.25]:
+				for level in 3: cylinder(p+Vector3(x,.24+level*.055,0),.12,.05,"e8bc50")
 	for child in get_children():
 		if child not in before: child.reparent(parent)
 

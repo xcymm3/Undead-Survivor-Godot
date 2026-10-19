@@ -3,13 +3,14 @@ extends RefCounted
 const MAX_CURRENCY = 9000000000000000
 const MAX_UPGRADE_LEVEL = 10
 const UPGRADE_PRICES = [50,100,150,200,300,450,650,1000,1500,2000]
-const TALENT_PRICES = [1,1,2,2,3]
+const TALENT_PRICES = [1,2,3,4,5]
 const GRENADE_PRICES = [300,450,650,1000]
 const MINE_PRICES = {"crystal_mine":50,"gate_mine":200,"ramp_mine":650}
 const MAGAZINES = ["rifle_magazine","pistol_magazine"]
 const WEAPONS = ["rifle","pistol","axe"]
 const OLD_WEAPONS = ["rifle","revolver","axe"]
-const TALENTS = ["strong","precise","swift","supply"]
+const LEGACY_TALENTS = ["strong","precise","swift","supply"]
+const TALENTS = ["strong","precise","swift","supply","greed"]
 const LEGACY_BUILDINGS = ["turret_left","turret_right","bridge_gate"]
 const GATES = ["bridge_gate","bridge_entry_gate"]
 const BUILDINGS = ["turret_left","turret_right","bridge_gate","bridge_entry_gate"]
@@ -21,7 +22,7 @@ var notice = ""
 var data: Dictionary = defaults()
 
 static func defaults() -> Dictionary:
-	return {"version":6,"intro_seen":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
+	return {"version":7,"intro_seen":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0,"greed":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
 
 func _init(save_path := "") -> void:
 	path = save_path
@@ -31,15 +32,17 @@ static func bounded_integer(value, maximum: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and value >= 0 and value <= maximum and float(value) == floor(float(value))
 
 static func valid(value) -> bool:
-	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,6) or value.version < 1: return false
+	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,7) or value.version < 1: return false
 	if value.has("intro_seen") and not value.intro_seen is bool: return false
-	for key in ["coins","diamonds","best_wave","cleared_total"]:
+	if not (value.coins is int or value.coins is float) or not is_finite(float(value.coins)) or value.coins < 0 or value.coins > MAX_CURRENCY: return false
+	if value.version < 7 and not bounded_integer(value.coins,MAX_CURRENCY): return false
+	for key in ["diamonds","best_wave","cleared_total"]:
 		if not bounded_integer(value[key],MAX_CURRENCY): return false
 	if not bounded_integer(value.grenade_level,4): return false
 	if not value.weapons is Dictionary or not value.talents is Dictionary or not value.buildings is Dictionary: return false
 	for key in OLD_WEAPONS if value.version < 3 else WEAPONS:
 		if not value.weapons.has(key) or not bounded_integer(value.weapons[key],48 if value.version < 4 else MAX_UPGRADE_LEVEL): return false
-	for key in TALENTS:
+	for key in LEGACY_TALENTS if value.version < 7 else TALENTS:
 		if not value.talents.has(key) or not bounded_integer(value.talents[key],10 if value.version < 5 else TALENT_PRICES.size()): return false
 	for key in LEGACY_BUILDINGS if value.version == 1 else BUILDINGS:
 		var entry = value.buildings.get(key)
@@ -63,10 +66,10 @@ func read_save(file_path: String) -> Dictionary:
 	if not valid(parsed): return {}
 	# JSON numbers deserialize as floats. Restore validated integer fields before
 	# migration so a second reload has exactly the same permanent state.
-	for key in ["version","coins","diamonds","best_wave","cleared_total","grenade_level"]: parsed[key] = int(parsed[key])
+	for key in ["version","diamonds","best_wave","cleared_total","grenade_level"]: parsed[key] = int(parsed[key])
 	if parsed.version >= 6: parsed.ultimate_level = int(parsed.ultimate_level)
 	for key in OLD_WEAPONS if parsed.version < 3 else WEAPONS: parsed.weapons[key] = int(parsed.weapons[key])
-	for key in TALENTS: parsed.talents[key] = int(parsed.talents[key])
+	for key in LEGACY_TALENTS if parsed.version < 7 else TALENTS: parsed.talents[key] = int(parsed.talents[key])
 	for key in LEGACY_BUILDINGS if parsed.version == 1 else BUILDINGS: parsed.buildings[key].level = int(parsed.buildings[key].level)
 	if parsed.version >= 4:
 		for key in MAGAZINES: parsed.magazines[key] = int(parsed.magazines[key])
@@ -105,12 +108,18 @@ func load_save() -> void:
 			dirty = true
 
 		if data.version == 4:
-			for key in TALENTS: data.talents[key] = mini(TALENT_PRICES.size(),int(data.talents[key]))
+			for key in LEGACY_TALENTS: data.talents[key] = mini(TALENT_PRICES.size(),int(data.talents[key]))
 			data.version = 5
 			dirty = true
 		if data.version == 5:
 			data.ultimate_level = 0
 			data.version = 6
+			dirty = true
+
+		if data.version == 6:
+			# Existing precise/swift levels now grant instinct/cooldown effects.
+			data.talents["greed"] = 0
+			data.version = 7
 			dirty = true
 
 func save() -> bool:
@@ -131,9 +140,9 @@ func save() -> bool:
 	dirty = false
 	return true
 
-func award_kill(kind: String) -> int:
-	var reward: int = COIN_REWARDS.get(kind,1)
-	data.coins = mini(MAX_CURRENCY,int(data.coins)+reward)
+func award_kill(kind: String) -> float:
+	var reward: float = snappedf(float(COIN_REWARDS.get(kind,1))*coin_multiplier(),.1)
+	data.coins = minf(MAX_CURRENCY,snappedf(float(data.coins)+reward,.1))
 	dirty = true
 	return reward
 
@@ -175,7 +184,7 @@ func purchase(id: String) -> bool:
 	var wallet = currency(id)
 	if price < 0 or data[wallet] < price: return false
 	var previous = data.duplicate(true)
-	data[wallet] = int(data[wallet])-price
+	data[wallet] = data[wallet]-price
 	if id in WEAPONS: data.weapons[id] = level(id)+1
 	elif id in MAGAZINES: data.magazines[id] = level(id)+1
 	elif id in TALENTS: data.talents[id] = level(id)+1
@@ -199,10 +208,11 @@ func building_multiplier(id: String) -> float:
 	return pow(1.2,level(id))
 
 func max_health() -> int: return 100+10*level("strong")
-func regen_rate() -> float: return float(level("strong"))
-func head_multiplier() -> float: return 1.0+.2*level("precise")
-func move_multiplier() -> float: return 1.0+.05*level("swift")
-func reserve_multiplier() -> float: return 1.0+.2*level("supply")
+func regen_rate() -> float: return .5*level("strong")
+func damage_multiplier() -> float: return 1.0+.05*level("precise")
+func ultimate_cooldown_multiplier() -> float: return 1.0-.1*level("swift")
+func reserve_multiplier() -> float: return 1.0+.1*level("supply")
+func coin_multiplier() -> float: return 1.0+.1*level("greed")
 func grenade_capacity() -> int: return 1+level("grenade")
 
 func magazine_multiplier(weapon: String) -> float:

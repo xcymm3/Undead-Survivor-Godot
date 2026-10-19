@@ -15,6 +15,7 @@ func _initialize() -> void:
 	call_deferred("run")
 
 func run() -> void:
+	validate_talent_economy()
 	var data = root.get_node("Data")
 	var profile = Store.new()
 	check(Store.valid(profile.data) and profile.data.coins == 0 and profile.data.diamonds == 0,"Fresh progress starts without currencies")
@@ -49,11 +50,11 @@ func run() -> void:
 		check(not profile.owned(id) and profile.cost(id) == Store.MINE_PRICES[id] and profile.purchase(id) and profile.data.coins == coins-Store.MINE_PRICES[id],"Mine uses its distance-tier purchase price: "+id)
 		check(profile.owned(id) and profile.level(id) == 0 and profile.cost(id) == -1 and not profile.purchase(id),"Owned mines cannot be bought again or upgraded: "+id)
 	for id in Store.TALENTS:
-		profile.data.diamonds = 9
+		profile.data.diamonds = 15
 		for rank in range(1,6):
-			check(profile.cost(id) == [1,1,2,2,3][rank-1] and profile.purchase(id),"Talent rank costs its rank: "+id+str(rank))
-		check(profile.data.diamonds == 0 and profile.level(id) == 5 and not profile.purchase(id),"Five ranks consume exactly nine diamonds: "+id)
-	check(profile.max_health() == 150 and profile.regen_rate() == 5 and is_equal_approx(profile.head_multiplier(),2) and is_equal_approx(profile.move_multiplier(),1.25) and is_equal_approx(profile.reserve_multiplier(),2),"Max talents apply the confirmed values")
+			check(profile.cost(id) == [1,2,3,4,5][rank-1] and profile.purchase(id),"Talent rank costs its rank: "+id+str(rank))
+		check(profile.data.diamonds == 0 and profile.level(id) == 5 and not profile.purchase(id),"Five ranks consume exactly fifteen diamonds: "+id)
+	check(profile.max_health() == 150 and profile.regen_rate() == 2.5 and is_equal_approx(profile.damage_multiplier(),1.25) and is_equal_approx(profile.ultimate_cooldown_multiplier(),.5) and is_equal_approx(profile.reserve_multiplier(),1.5) and is_equal_approx(profile.coin_multiplier(),1.5),"Max talents apply the confirmed values")
 	var capped = Store.new()
 	capped.data.coins = Store.MAX_CURRENCY
 	for id in Store.WEAPONS+Store.MAGAZINES+Store.BUILDINGS:
@@ -93,14 +94,14 @@ func run() -> void:
 	legacy_file.store_string(JSON.stringify(legacy))
 	legacy_file.close()
 	var migrated = Store.new(path)
-	check(migrated.data.version == 6 and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("pistol") == 4 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
+	check(migrated.data.version == 7 and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("pistol") == 4 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
 	check(migrated.owned("crystal_mine") and not migrated.owned("ramp_mine") and not migrated.owned("gate_mine") and not migrated.owned("bridge_entry_gate"),"Old free mine is retained while new defenses require purchase")
 	check(migrated.dirty and migrated.save() and Store.new(path).data == migrated.data,"Migrated progress persists and reloads without repeating migration")
 	var corrupt_primary = FileAccess.open(path,FileAccess.WRITE)
 	corrupt_primary.store_string("{broken")
 	corrupt_primary.close()
 	var legacy_backup = Store.new(path)
-	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == 6 and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
+	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == 7 and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
 	var version_two = Store.defaults()
 	version_two.version = 2
 	version_two.coins = 1234
@@ -111,7 +112,7 @@ func run() -> void:
 	v2_file.store_string(JSON.stringify(version_two))
 	v2_file.close()
 	var upgraded_v2 = Store.new(path)
-	check(upgraded_v2.data.version == 6 and upgraded_v2.level("pistol") == 7 and upgraded_v2.data.coins == 1234 and upgraded_v2.data.diamonds == 9 and not upgraded_v2.data.weapons.has("revolver"),"Version-two saves migrate revolver upgrades without losing currencies")
+	check(upgraded_v2.data.version == 7 and upgraded_v2.level("pistol") == 7 and upgraded_v2.data.coins == 1234 and upgraded_v2.data.diamonds == 9 and not upgraded_v2.data.weapons.has("revolver"),"Version-two saves migrate revolver upgrades without losing currencies")
 	check(upgraded_v2.save() and Store.new(path).data == upgraded_v2.data,"Migrated pistol state survives a second disk reload")
 	var old_v3 = Store.defaults()
 	old_v3.version = 3
@@ -123,7 +124,7 @@ func run() -> void:
 	old_file.store_string(JSON.stringify(old_v3))
 	old_file.close()
 	var migrated_v3 = Store.new(path)
-	check(migrated_v3.data.version == 6 and migrated_v3.data.coins == 555 and migrated_v3.level("rifle") == 10 and migrated_v3.level("bridge_gate") == 10 and migrated_v3.data.magazines == {"rifle_magazine":0,"pistol_magazine":0},"Old saves gain zero magazine levels and clamp previous upgrades to the new ten-level limit")
+	check(migrated_v3.data.version == 7 and migrated_v3.data.coins == 555 and migrated_v3.level("rifle") == 10 and migrated_v3.level("bridge_gate") == 10 and migrated_v3.data.magazines == {"rifle_magazine":0,"pistol_magazine":0},"Old saves gain zero magazine levels and clamp previous upgrades to the new ten-level limit")
 	migrated_v3.data.coins = 1000
 	check(migrated_v3.purchase("pistol_magazine") and Store.new(path).level("pistol_magazine") == 1,"Magazine purchases persist across disk reloads")
 	for suffix in ["",".tmp",".bak"]:
@@ -172,13 +173,13 @@ func run() -> void:
 	sim.progression.data.diamonds = 100
 	check(not game.paused and game.ui.current.is_empty(),"Preparation remains in the world")
 	check(Fixture.buy(sim,p,"rifle") and sim.progression.cost("rifle") == 100,"Rifle station updates permanent level and next price")
-	check(game.arena.scenery.preparation.stations.has("strong"),"Four talents have physical stations")
+	check(game.arena.scenery.preparation.stations.has("strong"),"Strong has a physical station")
 	check(Fixture.buy(sim,p,"strong") and sim.progression.level("strong") == 1 and p.max_hp == 110 and p.hp == 60,"Medical station raises maximum and current health")
 	check(Fixture.buy(sim,p,"precise") and Fixture.buy(sim,p,"swift") and Fixture.buy(sim,p,"supply"),"Each talent upgrades at its own station")
-	check(p.reserves[0] == 306 and p.reserves[2] == 154,"Supply increases both finite reserves")
+	check(p.reserves[0] == 281 and p.reserves[2] == 141,"Supply increases both finite reserves")
 	for rank in range(2,6): check(Fixture.buy(sim,p,"supply"),"Additional Supply purchase "+str(rank))
-	check(p.reserves[0] == 510 and p.reserves[2] == 256,"Repeated Supply purchases retain exact reserve rounding")
-	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),144) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),345.6),"Player damage combines weapon and headshot talent upgrades")
+	check(p.reserves[0] == 383 and p.reserves[2] == 192,"Repeated Supply purchases retain exact reserve rounding")
+	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),151.2) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),302.4),"Instinct increases both body and head damage without changing base headshot ratio")
 	check(Fixture.buy(sim,p,"grenade") and p.grenades == 2 and p.grenade_capacity == 2,"Capacity purchase immediately grants its extra grenade")
 	check(Fixture.buy(sim,p,"bridge_entry_gate"),"New bridge-end gate can be bought")
 	var shop_position: Vector2 = p.pos
@@ -215,16 +216,16 @@ func run() -> void:
 	check(p.hp == 60,"Strong waits all five combat seconds")
 	sim.update_defense_regen(p,.4)
 	sim.update_defense_regen(p,.6)
-	check(p.hp == 61,"Strong heals one health per second at rank one")
+	check(p.hp == 60 and is_equal_approx(p.regen_credit,.5),"Strong accumulates half a health per second at rank one")
 	p.protection = 0
 	sim.damage_pawn(p,{"pos":p.pos+Vector2(0,1),"id":99},10)
 	sim.update_defense_regen(p,4.9)
-	check(p.hp == 51,"Taking damage restarts the five-second delay")
+	check(p.hp == 50,"Taking damage restarts the five-second delay")
 	sim.fire(p,data.weapons[0])
 	sim.update_defense_regen(p,4.9)
-	check(p.hp == 55,"Attacking permits healing after five seconds without incoming damage")
+	check(p.hp == 52,"Attacking permits healing after five seconds without incoming damage")
 	sim.update_defense_regen(p,2)
-	check(p.hp == 57,"Healing continues while attacking")
+	check(p.hp == 53,"Healing continues while attacking")
 	p.combat_remaining = 2.0
 	p.switch = 0.0
 	p.shove_cd = 0.0
@@ -246,6 +247,19 @@ func run() -> void:
 	game.resume_game()
 	sim.spawn(Vector2(12,25),"bucket")
 	var z: Dictionary = sim.zombies[-1]
+	var greedy_coins: float = sim.progression.data.coins
+	check(Fixture.buy(sim,p,"greed") and sim.progression.level("greed") == 1,"Greed can be purchased at its new station")
+	check(game.arena.scenery.preparation.stations.has("greed"),"Greed has its own physical station")
+	sim.spawn(Vector2(12,25),"normal")
+	var greedy_enemy: Dictionary = sim.zombies[-1]
+	sim.hit_enemy(greedy_enemy,10000,false,p,Vector3(12,4,25))
+	check(is_equal_approx(sim.progression.data.coins,greedy_coins+1.1) and is_equal_approx(sim.earned_coins,1.1),"Authority retains fractional Greed wallet and session rewards")
+	game.ui.native_hud.sync()
+	check(game.ui.native_hud.currency_label.text == str(floori(greedy_coins+1.1)),"Top-right coin HUD displays only the integer part")
+	sim.progression.data.talents.greed = 0
+	sim.progression.data.coins = greedy_coins
+	sim.earned_coins = 0.0
+	sim.coin_drops.clear()
 	var coins_before: int = sim.progression.data.coins
 	sim.hit_enemy(z,float(z.armor),true,p,Vector3(12,4,25))
 	check(z.kind == "normal" and z.original == "bucket","Broken armor retains the original reward tier")
@@ -296,20 +310,20 @@ func run() -> void:
 	sim = game.sim
 	p = game.local_pawn()
 	check(sim.wave == 1 and sim.progression.data == permanent and not sim.defense.started and sim.defense.crystal_repair_required,"Restart resets combat and reopens shop while preserving permanent progress")
-	check(p.hp == 110 and p.ammo[0] == 30 and p.reserves[0] == 510 and p.reserves[2] == 256,"Restart restores ammunition using upgraded Supply")
+	check(p.hp == 110 and p.ammo[0] == 30 and p.reserves[0] == 383 and p.reserves[2] == 192,"Restart restores ammunition using upgraded Supply")
 	sim.defense_director.begin_wave()
 	sim.roster.clear()
 	sim.step(.02)
 	check(sim.progression.data.diamonds == diamonds+2,"Replaying wave one earns another diamond")
-	check(p.reserves[0] == 570 and p.reserves[2] == 286,"A new match can earn the same first-wave ammo reward again")
+	check(p.reserves[0] == 443 and p.reserves[2] == 222,"A new match can earn the same first-wave ammo reward again")
 	sim.defense_director.begin_wave()
 	sim.roster.clear()
 	sim.defense.crystal_hp = 0
 	sim.step(.02)
 	check(sim.failed and sim.progression.data.diamonds == diamonds+2,"A failed wave awards no diamond")
-	check(p.reserves[0] == 570 and p.reserves[2] == 286,"A failed wave awards no ammunition")
+	check(p.reserves[0] == 443 and p.reserves[2] == 222,"A failed wave awards no ammunition")
 	game.ui.native_hud.sync()
-	check(game.ui.native_hud.currency_label.text.contains(str(sim.progression.data.coins)),"Top-right HUD shows permanent currency")
+	check(game.ui.native_hud.currency_label.text == str(floori(sim.progression.data.coins)),"Top-right HUD shows permanent currency")
 	root.get_node("Progress").store = Store.new()
 	game.start_solo("defense",913)
 	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
@@ -350,8 +364,67 @@ func run() -> void:
 	check(sim.progression.data == capacity_state and p.ammo[0] == 36 and p.ammo[2] == 18 and p.slot_ammo == [36,18],"Restart restores upgraded capacities for both equipped guns")
 	sim.progression.data.magazines.rifle_magazine = 10
 	check(preload("res://scripts/preparation_catalog.gd").description(sim,"rifle_magazine").begins_with("LV MAX") and not preload("res://scripts/preparation_catalog.gd").available(sim,"rifle_magazine"),"Maximum magazine level displays LV MAX and disables the interaction")
+	validate_instinct(sim,p)
 	game.return_home()
 	check(game.ui.menu.find_children("*","Button",true,false).all(func(button): return not button.text.contains("多人")),"Homepage has no multiplayer entry")
 	game.queue_free()
 	print("INCREMENTAL PROGRESSION: %d checks; %d failures" % [checks,failures])
 	quit(1 if failures else 0)
+
+func validate_talent_economy() -> void:
+	var profile = Store.new()
+	var path = OS.get_cache_dir().path_join("undead-talents-qa-"+str(Time.get_ticks_usec())+".json")
+	var legacy = Store.defaults()
+	legacy.version = 6
+	legacy.coins = 123
+	legacy.talents.erase("greed")
+	legacy.talents.precise = 3
+	legacy.talents.swift = 4
+	var file = FileAccess.open(path,FileAccess.WRITE)
+	file.store_string(JSON.stringify(legacy))
+	file.close()
+	var migrated = Store.new(path)
+	check(migrated.data.version == 7 and migrated.level("precise") == 3 and migrated.level("swift") == 4 and migrated.level("greed") == 0 and migrated.data.coins == 123,"Version six retains old talent levels and adds zero Greed")
+	check(is_equal_approx(migrated.damage_multiplier(),1.15) and is_equal_approx(preload("res://scripts/ultimate.gd").cooldown(migrated),60),"Inherited levels use Instinct and ultimate cooldown effects")
+	for rank in range(6):
+		for id in Store.TALENTS: profile.data.talents[id] = rank
+		check(is_equal_approx(profile.regen_rate(),.5*rank) and is_equal_approx(profile.damage_multiplier(),1+.05*rank) and is_equal_approx(profile.reserve_multiplier(),1+.1*rank) and is_equal_approx(preload("res://scripts/ultimate.gd").cooldown(profile),100-10*rank) and is_equal_approx(profile.coin_multiplier(),1+.1*rank),"All talent curves at rank "+str(rank))
+	profile.data.talents.greed = 1
+	profile.data.coins = 0
+	for i in 10: profile.award_kill("normal")
+	check(is_equal_approx(profile.data.coins,11),"Ten 1.1 rewards accumulate to exactly eleven displayable coins")
+	profile.path = path
+	profile.data.coins = 50.5
+	check(profile.save() and Store.new(path).data.coins == 50.5,"Fractional coins survive JSON save and reload")
+	check(profile.purchase("rifle") and is_equal_approx(profile.data.coins,.5) and is_equal_approx(Store.new(path).data.coins,.5),"Coin purchases preserve fractional change through reload")
+	profile.data.coins = 49.9
+	check(not profile.purchase("pistol") and is_equal_approx(profile.data.coins,49.9),"Fractional wallet cannot buy an unaffordable upgrade")
+	for invalid in [-.1,INF,NAN,"1.5"]:
+		var bad = Store.defaults()
+		bad.coins = invalid
+		check(not Store.valid(bad),"Invalid fractional currency is rejected")
+	for suffix in ["",".bak",".tmp"]:
+		if FileAccess.file_exists(path+suffix): DirAccess.remove_absolute(path+suffix)
+
+func validate_instinct(sim, p: Dictionary) -> void:
+	var original_rank: int = sim.progression.level("precise")
+	var data = root.get_node("Data")
+	sim.progression.data.talents.precise = 5
+	for index in [0,2,6]:
+		var w: Dictionary = data.weapons[index]
+		var base: float = float(w.damage)*sim.progression.weapon_multiplier(w.id)
+		check(is_equal_approx(sim.weapon_damage(w,false),base*1.25),"Maximum Instinct increases weapon body damage: "+w.id)
+	var blade: Dictionary = data.weapons[6].duplicate(true)
+	blade.id = "ultimate"
+	blade.damage = 300
+	check(is_equal_approx(sim.weapon_damage(blade,false),375),"Instinct increases long blade damage")
+	sim.zombies.clear()
+	sim.spawn(Vector2(24,0),"giant")
+	var z: Dictionary = sim.zombies[-1]
+	var hp: float = z.hp
+	sim.equipment.explode({"owner":p.id,"pos":Vector3(24,4,0)})
+	check(is_equal_approx(hp-z.hp,1750),"Instinct increases player grenade damage by twenty-five percent")
+	hp = z.hp
+	sim.equipment.explode({"owner":"crystal_mine","pos":Vector3(24,4,0)})
+	check(is_equal_approx(hp-z.hp,1400),"Mine damage remains independent of Instinct")
+	sim.progression.data.talents.precise = original_rank

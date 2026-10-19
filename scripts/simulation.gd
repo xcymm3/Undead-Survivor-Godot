@@ -41,7 +41,7 @@ var failed = false
 var cause = "zombie"
 var culprit = -1
 var random = RandomNumberGenerator.new()
-var earned_coins = 0
+var earned_coins = 0.0
 var earned_diamonds = 0
 var boss_victory = false
 var paths: Dictionary = {}
@@ -125,7 +125,7 @@ func start(_game_mode: String = "defense") -> void:
 	mode = "defense"
 	defense_difficulty = DefensePopulation.normalize_difficulty(defense_difficulty)
 	zombies.clear()
-	earned_coins = 0
+	earned_coins = 0.0
 	earned_diamonds = 0
 	boss_victory = false
 	coin_drops.clear()
@@ -502,7 +502,7 @@ func update_pawn(p: Dictionary, dt: float) -> void:
 	if p.get("slot",1) == 4 and p.get("use_latch",false): action_busy = true
 	p.sprinting = input.get("sprint",false) and movement.length_squared() > .0001 and p.crouch < .01 and not p.crouching and not action_busy
 	if preload("res://scripts/ultimate.gd").active(p): p.sprinting = true
-	var move_multiplier = progression.move_multiplier()*(PLAYER_SPRINT_MULTIPLIER if p.sprinting else 1.0)
+	var move_multiplier = (PLAYER_SPRINT_MULTIPLIER if p.sprinting else 1.0)
 	var ground_velocity = wish*PLAYER_MOVE_SPEED*move_multiplier*lerpf(1.0,.55,p.crouch)
 	# Store world-space m/s, so looking around cannot rotate existing momentum.
 	if body.grounded: p.air = ground_velocity
@@ -583,8 +583,8 @@ func enter_combat(p: Dictionary) -> void:
 	p.regen_credit = 0.0
 
 func weapon_damage(w: Dictionary, head: bool) -> float:
-	var amount: float = float(w.damage)*progression.weapon_multiplier(str(w.id))
-	return amount*float(w.get("headshotMultiplier",1 if w.get("kind","gun") == "melee" else 2))*progression.head_multiplier() if head else amount
+	var amount: float = float(w.damage)*progression.weapon_multiplier(str(w.id))*progression.damage_multiplier()
+	return amount*float(w.get("headshotMultiplier",1 if w.get("kind","gun") == "melee" else 2)) if head else amount
 
 func step_coins(dt: float) -> void:
 	for drop in coin_drops:
@@ -1130,7 +1130,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		p.kills += 1
 		paths.erase(z.id)
 		var reward = 0 if z.get("summoned",false) else progression.award_kill(str(z.get("original",z.kind)))
-		earned_coins += reward
+		earned_coins = snappedf(earned_coins+reward,.1)
 		if reward > 0:
 			var receiver = str(p.id) if pawns.has(p.id) else str(pawns.keys()[0]) if not pawns.is_empty() else ""
 			var origin = Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+.7,z.pos.y)
@@ -1140,7 +1140,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 			for piece in pieces:
 				var angle = TAU*piece/pieces+coin_random.randf_range(-.12,.12)
 				var radius = coin_random.randf_range(1.4,3.2) if pieces > 1 else .65
-				coin_drops.append({"owner":receiver,"pos":origin,"origin":origin,"scatter":Vector3(cos(angle)*radius,0,sin(angle)*radius),"arrival":0.0,"age":-.025*piece,"value":int(reward/pieces),"burst":pieces > 1})
+				coin_drops.append({"owner":receiver,"pos":origin,"origin":origin,"scatter":Vector3(cos(angle)*radius,0,sin(angle)*radius),"arrival":0.0,"age":-.025*piece,"value":float(reward)/pieces,"burst":pieces > 1})
 			while coin_drops.size() > 512: coin_drops.pop_front()
 		events.append({"kind":"death","player":p.id,"position":position})
 		if z.get("original",z.kind) == "dancer": complete_boss_victory(p)

@@ -148,7 +148,7 @@ func run() -> void:
 		check(Catalog.focus(sim,p).get("id","") == id,"Shared stand resolves held weapon: "+id)
 		check(Catalog.description(sim,id).contains(Catalog.NAMES[id]),"Description identifies the upgraded weapon: "+id)
 		check(sim.purchase_upgrade(id,p),"Shared stand buys correct upgrade: "+id)
-	check(world.preparation.stations.size() == 8,"Shared stands remove redundant weapon desks")
+	check(world.preparation.stations.size() == 9,"Shared stands remove redundant weapon desks")
 	Fixture.face(sim,p,"ultimate")
 	check(sim.purchase_upgrade("ultimate",p) and sim.progression.level("ultimate") == 1,"Learning the ultimate uses its physical stand")
 	for price in [450,650,1000]:
@@ -219,7 +219,7 @@ func run() -> void:
 	check(game.weapon.blade.visible and not game.weapon.models[6].visible,"Ultimate replaces axe with long blade")
 	p.input = {"ultimate":true}
 	Ultimate.tick(sim,p,p.input,.01)
-	check(not Ultimate.active(p) and p.ultimate_cd == 60 and p.ultimate_sheathe > 0,"Q early finish starts sixty-second cooldown and sheath animation")
+	check(not Ultimate.active(p) and p.ultimate_cd == 100 and p.ultimate_sheathe > 0,"Q early finish starts hundred-second cooldown and sheath animation")
 	p.input = {}
 	Ultimate.tick(sim,p,p.input,1)
 	check(not Ultimate.locked(p) and p.slot == 1,"Sheathing restores previous equipment slot")
@@ -231,8 +231,14 @@ func run() -> void:
 	p.input = {"ultimate":true}
 	Ultimate.tick(sim,p,p.input,.01)
 	p.input = {}
+	sim.progression.data.talents.swift = 5
 	Ultimate.tick(sim,p,p.input,10.01)
-	check(not Ultimate.active(p) and p.ultimate_cd == 60,"Natural ten-second expiration starts full cooldown")
+	check(not Ultimate.active(p) and p.ultimate_cd == 50,"Natural expiration uses the fifty-second maximum talent cooldown")
+	p.ultimate_cd = 25
+	game.ui.native_hud.sync()
+	check(is_equal_approx(game.ui.native_hud.ultimate_ring.progress,.5),"Ultimate HUD uses the talent-adjusted cooldown denominator")
+	sim.progression.data.talents.swift = 0
+	p.ultimate_cd = 100
 	var disk_path = OS.get_cache_dir().path_join("undead-ultimate-qa-"+str(Time.get_ticks_usec())+".json")
 	var persisted = Store.new(disk_path)
 	persisted.data = sim.progression.data.duplicate(true)
@@ -257,14 +263,14 @@ func run() -> void:
 	sim.spawn(Vector2(8,27),"giant")
 	var victim: Dictionary = sim.zombies[0]
 	var hp: float = victim.hp
-	sim.equipment.explode({"id":-1,"owner":p.id,"pos":blast,"damage_scale":.5})
+	sim.equipment.explode({"id":-1,"owner":"crystal_mine","pos":blast,"damage_scale":1.0})
 	var mine_damage: float = hp-victim.hp
 	victim.body = 8000.0
 	victim.armor = 4000.0
 	victim.hp = 12000.0
 	victim.pos = Vector2(8,27)
 	sim.equipment.explode({"id":-1,"owner":p.id,"pos":blast})
-	check(is_equal_approx(hp-victim.hp,mine_damage*2),"Hand grenade deals twice mine damage at the same distance")
+	check(is_equal_approx(hp-victim.hp,mine_damage),"Without Instinct, hand grenade and mine deal equal damage at the same distance")
 	# Real disk deletion under a unique temporary directory, never the user's saves.
 	var folder = OS.get_cache_dir().path_join("undead-delete-qa-"+str(Time.get_ticks_usec()))
 	DirAccess.make_dir_recursive_absolute(folder)

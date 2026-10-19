@@ -48,7 +48,7 @@ static func validate(game, check: Callable) -> void:
 	sim.progression.data.talents.swift = 2
 	reset_pawn(sim,p)
 	sim.update_pawn(p,.1)
-	check.call(is_equal_approx(5-p.pos.y,4.2*1.1*1.6*.1),"Swift multiplies sprint speed")
+	check.call(is_equal_approx(5-p.pos.y,4.2*1.6*.1),"Ultimate cooldown talent does not change sprint speed")
 	sim.progression.data.talents.swift = 0
 	for action in ["fire","aim","reload","crouch","shove"]:
 		reset_pawn(sim,p)

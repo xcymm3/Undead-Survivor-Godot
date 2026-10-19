@@ -1,9 +1,12 @@
 extends RefCounted
 ## Authority owns duration, cooldown and inventory locking.
 const DURATION = 10.0
-const COOLDOWN = 60.0
+const COOLDOWN = 100.0
 const DRAW_TIME = 1.1
 const SHEATHE_TIME = .95
+
+static func cooldown(progression) -> float:
+	return COOLDOWN*progression.ultimate_cooldown_multiplier()
 
 static func active(p: Dictionary) -> bool:
 	return p.get("ultimate_remaining",0.0) > 0
@@ -56,7 +59,7 @@ static func tick(sim, p: Dictionary, input: Dictionary, dt: float) -> bool:
 	if active(p): p.ultimate_age = float(p.get("ultimate_age",0.0))+dt
 	if was_active and (not active(p) or p.hp <= 0):
 		p.ultimate_remaining = 0.0
-		p.ultimate_cd = COOLDOWN
+		p.ultimate_cd = cooldown(sim.progression)
 		p.ultimate_sheathe = SHEATHE_TIME
 		p.fire_anim = 0.0
 		p.melee_queued = false

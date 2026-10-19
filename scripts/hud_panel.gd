@@ -262,7 +262,7 @@ func sync() -> void:
 		boss_bar.max_value = boss.get("max_hp",Data.enemies.dancer.health)
 		boss_bar.value = boss.hp
 		boss_title.text = "舞王  /  DISCO KING    %d / %d" % [boss.hp,boss_bar.max_value]
-	currency_label.text = str(sim.progression.data.coins)
+	currency_label.text = str(floori(sim.progression.data.coins))
 	diamond_label.text = str(sim.progression.data.diamonds)
 	var p: Dictionary = ui.game.view_pawn()
 	if p.is_empty(): return
@@ -299,7 +299,7 @@ func sync() -> void:
 		crystal_bar.modulate = Color("7fe7ef") if crystal_bar.value > crystal_bar.max_value*.3 else Color("ee6658")
 	crystal_alert.visible = float(defense.get("crystal_alert_until",-1)) > sim.elapsed
 	ultimate_ring.visible = sim.mode == "defense"
-	var charge = 1.0-float(p.get("ultimate_cd",0.0))/60.0 if sim.progression.level("ultimate") > 0 else 0.0
+	var charge = 1.0-float(p.get("ultimate_cd",0.0))/preload("res://scripts/ultimate.gd").cooldown(sim.progression) if sim.progression.level("ultimate") > 0 else 0.0
 	ultimate_ring.sync(charge,"%d%%" % floori(charge*100) if not preload("res://scripts/ultimate.gd").active(p) else "Q","未学习" if sim.progression.level("ultimate") == 0 else "长刀 %ds" % ceili(p.ultimate_remaining) if preload("res://scripts/ultimate.gd").active(p) else "大招 · Q")
 	ultimate_notice.text = p.get("ultimate_notice","") if p.get("ultimate_notice_until",0.0) > sim.elapsed else ""
 	var w: Dictionary = sim.combat_weapon(p)

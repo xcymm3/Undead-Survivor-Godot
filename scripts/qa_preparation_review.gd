@@ -119,7 +119,7 @@ func stage() -> void:
 	if scenario.begins_with("intro_") or scenario.begins_with("map_") or scenario.begins_with("toy_") or scenario in ["crystal_broken","crystal_repaired"]:
 		await stage_redesign(scenario,p)
 	if scenario.begins_with("ultimate_"):
-		p.ultimate_cd = 60.0*(1.0-float(scenario.get_slice("_",1))/100.0)
+		p.ultimate_cd = preload("res://scripts/ultimate.gd").cooldown(game.sim.progression)*(1.0-float(scenario.get_slice("_",1))/100.0)
 	game.running = true
 	game.ui.native_hud.sync()
 	game.running = false

@@ -102,7 +102,7 @@ func run() -> void:
 	p.hp = 50
 	p.max_hp = 110
 	p.combat_remaining = 0
-	sim.update_defense_regen(p,1)
+	sim.update_defense_regen(p,2)
 	check(p.hp == 51 and p.healing_flash > 0 and sim.events.any(func(e): return e.kind == "heal"),"Actual healing emits its bounded audiovisual feedback")
 	var sound_hashes = {}
 	for index in root.get_node("Data").weapons.size():
