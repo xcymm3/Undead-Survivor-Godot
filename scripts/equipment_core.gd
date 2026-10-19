@@ -38,6 +38,7 @@ static func slot_available(p: Dictionary, slot: int) -> bool:
 
 func before_movement(_dt: float) -> void:
 	for p in sim.pawns.values():
+		if p.hp <= 0 or not p.get("connected",true): continue
 		var input: Dictionary = p.input if p.input_age < .5 else {}
 		if preload("res://scripts/ultimate.gd").tick(sim,p,input,_dt): continue
 		var requested: int = int(input.get("slot",p.slot))

@@ -77,7 +77,8 @@ func reward_finished_waves() -> void:
 		rewarded_waves[generation] = true
 		sim.progression.award_wave(generation)
 		sim.earned_diamonds += 1
-		for p in sim.pawns.values(): equipment.award_wave_ammo(p)
+		for p in sim.pawns.values():
+			if p.hp > 0 and p.get("connected",true): equipment.award_wave_ammo(p)
 		sim.cleared = rewarded_waves.size()
 
 func choose_weapon(p: Dictionary, _requested: int) -> int:
@@ -110,6 +111,11 @@ func interactions(dt: float) -> void:
 			p.pickup_latched = bool(input.get("interact",false))
 			p["focus"] = {}
 			p.hint = ""
+			p.interaction = ""
+			p.interact_time = 0.0
+			continue
+		if p.hp <= 0 or not p.get("connected",true) or not sim.can_manage(p):
+			p["focus"] = {}
 			p.interaction = ""
 			p.interact_time = 0.0
 			continue

@@ -26,6 +26,8 @@ var defense_replica: Dictionary = {}
 var defense_difficulty = "normal"
 var equipment
 var progression = preload("res://scripts/progression_store.gd").new()
+var coop_host = ""
+
 var coin_drops: Array = []
 var won = false
 var elapsed = 0.0
@@ -83,6 +85,24 @@ const FOOTBALL_CHARGE_SPEED = 12.0
 const COMBAT_REGEN_DELAY = 5.0
 const DEFENSE_FALL_HEIGHT = -3.5
 const DEFENSE_FALL_DAMAGE = 10
+
+
+func can_manage(p: Dictionary) -> bool:
+	return coop_host.is_empty() or str(p.get("id","")) == coop_host
+
+func set_connected(id: String, connected: bool) -> void:
+	if not pawns.has(id): return
+	var p: Dictionary = pawns[id]
+	p["connected"] = connected
+	p.input = {}
+	p.input_age = 1.0
+	p.trigger = false
+	p.aim = false
+	p.melee_queued = false
+	melee_swings.erase(id)
+	if not connected and player_bodies.has(id):
+		player_bodies[id].free()
+		player_bodies.erase(id)
 
 func _init(world = null) -> void:
 	arena = world
@@ -145,9 +165,10 @@ func start(_game_mode: String = "defense") -> void:
 	equipment = defense_director.equipment
 
 func prepare_wave() -> void:
-	roster = DefensePopulation.roster(wave,pawns.size(),random,defense_difficulty)
+	var party_size = 1 if not coop_host.is_empty() else pawns.size()
+	roster = DefensePopulation.roster(wave,party_size,random,defense_difficulty)
 	wave_total = roster.size()
-	defense["wave_budget"] = DefensePopulation.budget(wave,pawns.size(),defense_difficulty)
+	defense["wave_budget"] = DefensePopulation.budget(wave,party_size,defense_difficulty)
 	defense_spawner.reset(wave_total)
 	defense["spawn_plan"] = defense_spawner.describe()
 
@@ -178,7 +199,7 @@ func spawn(pos: Vector2, kind: String) -> void:
 	next_id += 1
 
 func submit(id: String, input: Dictionary) -> void:
-	if not pawns.has(id): return
+	if not pawns.has(id) or not pawns[id].get("connected",true) or pawns[id].hp <= 0: return
 	# No client position, HP, ammo, damage or kill fields are accepted.
 	var clean = {}
 	for key in ["x","y","yaw","pitch","weapon"]:
@@ -218,10 +239,11 @@ func step(dt: float) -> void:
 	if defense.get("started",false): elapsed += dt
 	if CpuPolicy.PATH_BUDGET: path_scheduler.begin(elapsed,arena)
 	if equipment: equipment.before_movement(dt)
-	for p in pawns.values(): update_pawn(p,dt)
+	for p in pawns.values():
+		if p.get("connected",true): update_pawn(p,dt)
 	if equipment: equipment.step_projectiles(dt)
-	var living: Array = pawns.values().filter(func(p): return p.hp > 0)
-	if living.is_empty():
+	var living: Array = pawns.values().filter(func(p): return p.hp > 0 and p.get("connected",true))
+	if living.is_empty() or (not coop_host.is_empty() and pawns[coop_host].hp <= 0):
 		fail_from_player_death()
 		return
 	if mode == "defense":
@@ -257,7 +279,7 @@ func step(dt: float) -> void:
 		defense.objective = "水晶已被摧毁"
 		arena.sync_defense(defense)
 		return
-	if pawns.values().all(func(p): return p.hp <= 0):
+	if pawns.values().all(func(p): return p.hp <= 0) or (not coop_host.is_empty() and pawns[coop_host].hp <= 0):
 		fail_from_player_death()
 		return
 	if mode == "defense" and defense.get("waiting",false): return
@@ -282,7 +304,7 @@ func fail_from_player_death() -> void:
 	# initializes its own broken crystal; killer attribution remains intact.
 	failed = true
 	if mode == "defense":
-		defense.objective = "守卫阵亡"
+		defense.objective = "房主阵亡" if not coop_host.is_empty() else "守卫阵亡"
 		arena.sync_defense(defense)
 
 func safe_spawn() -> Vector2:
@@ -297,6 +319,7 @@ func crystal_target() -> Dictionary:
 	return {"id":"crystal","pos":Data.Maps.Defense.CRYSTAL,"height":Data.Maps.Defense.height(Data.Maps.Defense.CRYSTAL),"hp":defense.get("crystal_hp",0),"is_crystal":true}
 
 func choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
+	living = living.filter(func(p): return p.hp > 0 and p.get("connected",true))
 	if not CpuPolicy.TARGET_CACHE: return original_choose_zombie_target(z,living)
 	prepare_target_context()
 	var cached: Dictionary = target_cache.get(z.id,{})
@@ -375,6 +398,7 @@ func path_priority(z: Dictionary) -> float:
 	return (20.0 if nearest<=PLAYER_TARGET_RADIUS_SQUARED else 0.0)+(10.0 if z.get("move_speed",0.0)<.05 else 0.0)
 
 func original_choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
+	living = living.filter(func(p): return p.hp > 0 and p.get("connected",true))
 	var buildings: Array = []
 	if mode == "defense" and defense.get("crystal_hp",0) > 0: buildings.append(crystal_target())
 	if defense_director:
@@ -590,7 +614,7 @@ func step_coins(dt: float) -> void:
 	for drop in coin_drops:
 		drop.age += dt
 		var owner: Dictionary = pawns.get(drop.owner,{})
-		if owner.is_empty() or owner.get("hp",0) <= 0:
+		if coop_host.is_empty() and (owner.is_empty() or owner.get("hp",0) <= 0):
 			var living: Array = pawns.values().filter(func(p): return p.hp > 0)
 			if not living.is_empty():
 				owner = living[0]
@@ -621,21 +645,22 @@ func weapon_capacity(index: int) -> int:
 	return roundi(float(definition.capacity)*progression.magazine_multiplier(str(definition.id))) if mode == "defense" else int(definition.capacity)
 
 func purchase_upgrade(id: String, p: Dictionary) -> bool:
+	if not can_manage(p): return false
 	var focus: Dictionary = preload("res://scripts/preparation_catalog.gd").focus(self,p)
 	if focus.is_empty() or focus.id != id or not preload("res://scripts/preparation_catalog.gd").available(self,id): return false
 	var old_health = progression.max_health()
 	var old_reserve = progression.reserve_multiplier()
 	var old_grenades = progression.grenade_capacity()
 	if not progression.purchase(id): return false
-	p.max_hp = progression.max_health()
-	p.hp = mini(p.max_hp,p.hp+p.max_hp-old_health)
-	p.grenade_capacity = progression.grenade_capacity()
-	p.grenades += p.grenade_capacity-old_grenades
-	for index in [0,2]:
-		p.reserves[index] += roundi(Data.defense_full_reserve(index)*progression.reserve_multiplier())-roundi(Data.defense_full_reserve(index)*old_reserve)
-	equipment.save_weapon_slot(p)
-	# The other firearm slot also tracks its increased reserve.
-	p.slot_reserves = [p.reserves[0],p.reserves[2]]
+	for pawn in pawns.values():
+		pawn.max_hp = progression.max_health()
+		if pawn.hp > 0: pawn.hp = mini(pawn.max_hp,pawn.hp+pawn.max_hp-old_health)
+		pawn.grenade_capacity = progression.grenade_capacity()
+		pawn.grenades += pawn.grenade_capacity-old_grenades
+		for index in [0,2]:
+			pawn.reserves[index] += roundi(Data.defense_full_reserve(index)*progression.reserve_multiplier())-roundi(Data.defense_full_reserve(index)*old_reserve)
+		equipment.save_weapon_slot(pawn)
+		pawn.slot_reserves = [pawn.reserves[0],pawn.reserves[2]]
 	defense_director.structures.refresh_purchase(id)
 	defense_director.sync_world()
 	return true
@@ -748,7 +773,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	p.trigger = trigger
 
 func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
-	if won or p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
+	if won or not p.get("connected",true) or p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
 	p.hp = maxi(0,p.hp-amount)
 	enter_combat(p)
 	# Give the rear-hit cue time to be actionable under overlapping melee attacks.
@@ -1132,7 +1157,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 		var reward = 0 if z.get("summoned",false) else progression.award_kill(str(z.get("original",z.kind)))
 		earned_coins = snappedf(earned_coins+reward,.1)
 		if reward > 0:
-			var receiver = str(p.id) if pawns.has(p.id) else str(pawns.keys()[0]) if not pawns.is_empty() else ""
+			var receiver = coop_host if not coop_host.is_empty() else str(p.id) if pawns.has(p.id) else str(pawns.keys()[0]) if not pawns.is_empty() else ""
 			var origin = Vector3(z.pos.x,Data.enemy_ground_height(z.pos,map_id)+.7,z.pos.y)
 			var coin_random = RandomNumberGenerator.new()
 			coin_random.seed = z.id*104729+7841
@@ -1329,12 +1354,25 @@ func snapshot() -> Dictionary:
 	for id in pawns:
 		players[id] = pawns[id].duplicate(true)
 		players[id].erase("input")
-	return {"defense":defense_state(),"won":won,"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":wave_total,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
+	var shared = progression.data.duplicate(true)
+	shared.coins = 0.0
+	shared.diamonds = 0
+	return {"shared_progression":shared,"coop_host":coop_host,"coin_drops":coin_drops.duplicate(true),"earned_coins":earned_coins,"earned_diamonds":earned_diamonds,"boss_victory":boss_victory,"defense":defense_state(),"won":won,"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":wave_total,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
 
 func apply_snapshot(state: Dictionary) -> void:
-	pawns = state.pawns
+	pawns = state.pawns.duplicate(true)
+	# A replica never borrows or writes the local persistent Store.
+	progression = preload("res://scripts/progression_store.gd").new()
+	progression.data = state.shared_progression.duplicate(true)
+	coop_host = state.get("coop_host","")
+	coin_drops = state.get("coin_drops",[]).duplicate(true)
+	earned_coins = state.get("earned_coins",0.0)
+	earned_diamonds = state.get("earned_diamonds",0)
+	boss_victory = state.get("boss_victory",false)
 	won = state.get("won",false)
-	defense_replica = state.get("defense",{})
+	defense_replica = state.get("defense",{}).duplicate(true)
+	defense = defense_replica
+	if defense_director: defense_director.state = defense
 	arena.sync_defense(defense_replica)
 	zombies = state.zombies
 	mode = state.mode

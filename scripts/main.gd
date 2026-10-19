@@ -41,6 +41,7 @@ var draw_timer = 0.0
 var display_buffer = preload("res://scripts/snapshot_buffer.gd").new()
 var pixelation: ColorRect
 var coins
+var awaiting_coop_snapshot = false
 
 func _ready() -> void:
 	RenderingServer.render_loop_enabled = focused and not software_qa()
@@ -81,17 +82,37 @@ func _ready() -> void:
 	ui = preload("res://scripts/interface.gd").new()
 	ui.game = self
 	add_child(ui)
+	Session.admission_open = func(): return running and sim != null and not sim.defense.get("started",false) and not sim.failed and not sim.won
 	Session.match_started.connect(start_coop)
+	Session.invite_received.connect(func():
+		if running: return_home()
+		ui.show_multiplayer())
 	Session.map_preparing.connect(prepare_coop)
 	Session.input_received.connect(func(id,command):
 		if running and sim and Session.is_host(): sim.submit(id,command))
 	Session.world_received.connect(func(state):
 		if running and sim:
 			sim.apply_snapshot(state)
+			if awaiting_coop_snapshot and not local_pawn().is_empty():
+				var restored = local_pawn()
+				yaw = restored.yaw
+				pitch = restored.pitch
+				requested_slot = int(restored.get("slot",1))
+				requested_weapon = int(restored.weapon)
+				awaiting_coop_snapshot = false
+			if sim.failed or sim.won: finish_run()
 			display_buffer.push(state))
 	Session.effects_received.connect(handle_effects)
 	Session.member_left.connect(func(id):
-		if running and sim and Session.is_host(): sim.pawns.erase(id))
+		if running and sim and Session.is_host(): sim.set_connected(id,false))
+	Session.member_rejoined.connect(func(id):
+		if running and sim and Session.is_host():
+			if not sim.pawns.has(id):
+				sim.add_pawn(id,Session.members[id],sim.pawns.size())
+				sim.equipment.initialize_pawn(sim.pawns[id])
+			sim.set_connected(id,true)
+			# Also deliver terminal state when physics has stopped after defeat.
+			Session.send_world(sim.snapshot(),[],true))
 	Session.disconnected.connect(func(message):
 		return_home()
 		ui.message = message
@@ -100,6 +121,7 @@ func _ready() -> void:
 	get_window().focus_entered.connect(_focus_gained)
 	get_window().close_requested.connect(quit_game)
 	return_home()
+	Session.initialize_invites()
 	# Explicit command-line launch modes also support silent local integration validation.
 	var args = OS.get_cmdline_user_args()
 	if "--defense" in args:
@@ -134,17 +156,24 @@ func start_solo(mode: String = "defense", random_seed := -1) -> void:
 	resume_game()
 
 func start_coop() -> void:
-	if not Data.automation: return
 	reset_game()
 	load_map(Session.map_id)
 	yaw = arena.definition.yaw
 	sim = Simulation.new(arena)
-	sim.defense_difficulty = Session.defense_difficulty
+	sim.coop_host = Session.host_id
+	sim.progression = Progress.store if Session.is_host() else preload("res://scripts/progression_store.gd").new()
+	sim.defense_difficulty = "normal"
 	var i = 0
 	for id in Session.members:
 		sim.add_pawn(id,Session.members[id],i)
 		i += 1
-	if Session.is_host(): sim.start(str(arena.definition.get("mode","defense")))
+	sim.start("defense")
+	if Session.is_host():
+		sim.progression.save()
+	else:
+		# Wait for the first authority snapshot before accepting movement or rendering.
+		sim.pawns.clear()
+		awaiting_coop_snapshot = true
 	resume_game()
 
 func prepare_coop() -> void:
@@ -155,6 +184,7 @@ func prepare_coop() -> void:
 	if Session.active and Session.loading: Session.confirm_map_ready()
 
 func reset_game() -> void:
+	awaiting_coop_snapshot = false
 	display_buffer.clear()
 	if sound: sound.clear_effects()
 	if sim: sim.dispose()
@@ -188,15 +218,15 @@ func local_pawn() -> Dictionary:
 func view_pawn() -> Dictionary:
 	var local = local_pawn()
 	if local.is_empty() or local.hp > 0 or not Session.playing: return local
-	if sim.pawns.has(spectating) and sim.pawns[spectating].hp > 0: return sim.pawns[spectating]
+	if sim.pawns.has(spectating) and sim.pawns[spectating].hp > 0 and sim.pawns[spectating].get("connected",true): return sim.pawns[spectating]
 	for p in sim.pawns.values():
-		if p.hp > 0:
+		if p.hp > 0 and p.get("connected",true):
 			spectating = p.id
 			return p
 	return local
 
 func cycle_spectator() -> void:
-	var living: Array = sim.pawns.values().filter(func(p): return p.hp > 0)
+	var living: Array = sim.pawns.values().filter(func(p): return p.hp > 0 and p.get("connected",true))
 	if living.is_empty(): return
 	var index = 0
 	for i in living.size():
@@ -204,7 +234,7 @@ func cycle_spectator() -> void:
 	spectating = living[index].id
 
 func input_state() -> Dictionary:
-	var enabled = running and not paused and focused and not finished
+	var enabled = running and not paused and focused and not finished and (local_pawn().is_empty() or local_pawn().hp > 0)
 	var local: Dictionary = local_pawn() if sim else {}
 	if not local.is_empty() and not Data.ads_enabled(Data.weapons[int(local.weapon)]): aim_held = false
 	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"crouch":enabled and Input.is_action_pressed("crouch"),"sprint":enabled and Input.is_action_pressed("sprint"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"fire_pressed":enabled and fire_pending,"aim":enabled and aim_held,"shove":enabled and shove_pending,"ultimate":enabled and ultimate_pending}
@@ -226,7 +256,7 @@ func _physics_process(dt: float) -> void:
 	if paused and not Session.playing: return
 	var command = input_state()
 	if Session.playing and not Session.is_host():
-		Session.send_input(command)
+		if not awaiting_coop_snapshot: Session.send_input(command)
 	else:
 		sim.submit(Session.local_id,command)
 		sim.step(dt)
@@ -313,6 +343,7 @@ func _process(dt: float) -> void:
 			partner.setup(sim.pawns[id])
 			partners[id] = partner
 		partners[id].sync(visible_pawns.get(id,sim.pawns[id]),dt,not displayed.is_empty())
+		partners[id].visible = sim.pawns[id].get("connected",true)
 		partners[id].label.visible = id != Session.local_id
 		if spectate and id == p.id: partners[id].visible = false
 	for id in partners.keys():

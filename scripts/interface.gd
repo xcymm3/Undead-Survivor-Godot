@@ -25,6 +25,7 @@ const SETTINGS_BRASS = Color("c59b62")
 const SETTINGS_PAPER = Color(.055,.09,.075,.96)
 
 func _ready() -> void:
+	if not Session.resume_room.is_empty(): address = Session.resume_room
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -294,9 +295,9 @@ func show_home() -> void:
 	actions.resized.connect(func(): actions.position.x = (stage.size.x-actions.size.x)*.5)
 	actions.add_theme_constant_override("separation",14)
 	stage.add_child(actions)
-	for item in [["开始防守",func(): game.start_solo("defense")],["设置",show_settings],["武器与操作",show_guide],["退出游戏",func(): game.quit_game()]]:
+	for item in [["开始防守",func(): game.start_solo("defense")],["多人合作",show_multiplayer],["设置",show_settings],["武器与操作",show_guide],["退出游戏",func(): game.quit_game()]]:
 		var option = home_button(actions,item[0],item[1],item[0] == "开始防守")
-		option.custom_minimum_size = Vector2(214,76)
+		option.custom_minimum_size = Vector2(188,76)
 		option.add_theme_font_size_override("font_size",25)
 	var save = home_button(actions,"存档 %d" % (Progress.active_slot+1),show_save_slots)
 	actions.move_child(save,0)
@@ -399,9 +400,10 @@ func show_pause() -> void:
 	if not Session.playing: button(column,"重新开始",func(): game.start_solo(game.sim.mode))
 	button(column,"设置",show_settings)
 	button(column,"武器与操作",show_guide)
-	button(column,"返回主菜单",func(): game.return_home())
+	button(column,"结束房间并返回" if Session.is_host() else "离开房间" if Session.playing else "返回主菜单",func(): game.return_home())
 
 func back() -> void:
+	if current == "multiplayer": Session.leave()
 	if game.running: show_pause()
 	else: show_home()
 
@@ -531,16 +533,14 @@ func show_guide() -> void:
 	button(column,"返回",back,true)
 
 func show_multiplayer() -> void:
-	show_home()
-	return
-
-func show_legacy_multiplayer() -> void:
-	var column = panel("合作守卫", "水晶防线 · 房主模拟战斗 · 全员按 T 开始每波",850)
+	var column = panel("合作守卫", "最多4人 · 使用房主当前存档 · 难度与单人相同",850)
 	current = "multiplayer"
 	if OS.has_feature("web"):
 		paragraph(column,"浏览器验收版仅支持单人模式。Steam 与局域网多人模式请使用 Windows 版。")
 		button(column,"返回",show_home)
 		return
+	paragraph(column,"所有升级跟随房主，收益仅保存至房主；客机个人存档不变。客机阵亡后本局只能观战，房主阵亡或水晶被毁则全队失败。",17)
+	paragraph(column,"战前可加入；第一波开始后仅允许原成员重连，恢复原有状态。",16)
 	paragraph(column,Session.status,17,RUST)
 	if Session.active:
 		column.add_child(label("战场："+Data.Maps.definition(Session.map_id).title,22))
@@ -549,6 +549,7 @@ func show_legacy_multiplayer() -> void:
 			column.add_child(label("难度：%s（积分预算 × %.1f）" % [difficulty.difficulty_label(Session.defense_difficulty),difficulty.difficulty_multiplier(Session.defense_difficulty)],19,RUST))
 		column.add_child(label("房间  "+Session.room_code,22))
 		button(column,"复制房间地址 / 房间号",func(): DisplayServer.clipboard_set(Session.room_code))
+		if Session.transport == "steam": button(column,"邀请 Steam 好友",func(): Session.invite_friends())
 		for id in Session.members:
 			column.add_child(label("●  "+str(Session.members[id])+("   / 房主" if id == Session.host_id else ""),22))
 		if Session.is_host():
@@ -614,7 +615,8 @@ func show_result() -> void:
 	var sim = game.sim
 	if sim.mode != "defense": return
 	var state: Dictionary = sim.defense_state()
-	var result = field_shell("游戏通关" if sim.won else "防线失守","十波尸潮已清除 · 舞王已击败" if sim.won else "本次防守结束 · 成长进度已保留",Vector2(1040,780))
+	var guest = Session.playing and not Session.is_host()
+	var result = field_shell("游戏通关" if sim.won else "防线失守","十波尸潮已清除 · 舞王已击败" if sim.won else "本次防守结束 · 你的个人存档未改变" if guest else "本次防守结束 · 成长进度已保留",Vector2(1040,780))
 	current = "result"
 	var banner = HBoxContainer.new()
 	banner.add_theme_constant_override("separation",28)
@@ -627,8 +629,8 @@ func show_result() -> void:
 	summary.alignment = BoxContainer.ALIGNMENT_CENTER
 	summary.add_theme_constant_override("separation",12)
 	banner.add_child(summary)
-	summary.add_child(label("守住了最后的防线" if sim.won else "水晶被摧毁" if sim.cause == "crystal" else "守卫阵亡",36,SETTINGS_BRASS if sim.won else RUST.lightened(.25)))
-	paragraph(summary,"水晶仍然闪耀，这一轮防守已完成。" if sim.won else "水晶已失去光芒，再次点亮它，重新守住防线。" if sim.cause == "crystal" else "你倒下了。下次进入时，水晶将恢复为破损状态，需要重新修复。",19,SETTINGS_INK)
+	summary.add_child(label("守住了最后的防线" if sim.won else "水晶被摧毁" if sim.cause == "crystal" else "房主阵亡" if Session.playing else "守卫阵亡",36,SETTINGS_BRASS if sim.won else RUST.lightened(.25)))
+	paragraph(summary,"水晶仍然闪耀，这一轮防守已完成。" if sim.won else "水晶已失去光芒，再次点亮它，重新守住防线。" if sim.cause == "crystal" else "房主已阵亡，本次合作防守结束。" if Session.playing else "你倒下了。下次进入时，水晶将恢复为破损状态，需要重新修复。",19,SETTINGS_INK)
 	paragraph(summary,"本局水晶  %d / %d" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)],15,SETTINGS_MUTED)
 	result.add_child(HSeparator.new())
 	var stats = HBoxContainer.new()
@@ -645,7 +647,7 @@ func show_result() -> void:
 	rewards.add_theme_constant_override("separation",20)
 	rewards.custom_minimum_size.y = 62
 	result.add_child(rewards)
-	var heading = label("本局战利品",18,SETTINGS_MUTED)
+	var heading = label("本局个人收益" if guest else "本局战利品",18,SETTINGS_MUTED)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	rewards.add_child(heading)
@@ -660,14 +662,14 @@ func show_result() -> void:
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		row.add_child(icon)
-		var amount = label("+%d" % (sim.earned_coins if currency == "coins" else sim.earned_diamonds),28,SETTINGS_BRASS)
+		var amount = label("+%d" % (0 if guest else sim.earned_coins if currency == "coins" else sim.earned_diamonds),28,SETTINGS_BRASS)
 		amount.name = "EarnedCoins" if currency == "coins" else "EarnedDiamonds"
 		amount.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		row.add_child(amount)
 	var space = Control.new()
 	space.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	result.add_child(space)
-	paragraph(result,"金币、钻石、武器升级、建筑所有权及天赋已永久保留。",16,SETTINGS_MUTED)
+	paragraph(result,"本局收益保存至房主，你的个人存档未改变。" if guest else "金币、钻石、武器升级、建筑所有权及天赋已永久保留。",16,SETTINGS_MUTED)
 	var actions = HBoxContainer.new()
 	actions.add_theme_constant_override("separation",24)
 	result.add_child(actions)

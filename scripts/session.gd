@@ -7,8 +7,10 @@ signal input_received(id: String, command: Dictionary)
 signal world_received(state: Dictionary)
 signal effects_received(effects: Array)
 signal member_left(id: String)
+signal member_rejoined(id: String)
+signal invite_received
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-22"
+const PROTOCOL = "undead-survivor-godot-23"
 const PORT = 27777
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"
@@ -33,7 +35,7 @@ var steam_ready = false
 var last_host = 0.0
 var heartbeat = 0.0
 var input_sequences: Dictionary = {}
-var sent_edges = {"jump":0,"reload":0,"use_self":0,"shove":0,"wave_ready":0,"fire_pressed":0}
+var sent_edges = {"jump":0,"reload":0,"use_self":0,"shove":0,"wave_ready":0,"fire_pressed":0,"ultimate":0}
 var received_edges: Dictionary = {}
 var send_sequence = 0
 var receive_sequence = -1
@@ -44,13 +46,73 @@ var probes: Dictionary = {}
 var last_probe = 0
 var last_probe_reply = 0
 var snapshot_samples: Array = []
+var routes: Dictionary = {} # Stable member id -> current ENet peer id.
+var resume_tokens: Dictionary = {} # Host-only secrets, never broadcast.
+var pending_resumes: Dictionary = {}
+var resume_room = ""
+var resume_id = ""
+var resume_secret = ""
+var reconnecting = false
+var admission_open: Callable
+
+func _ready() -> void:
+	if Data.automation: return
+	var path = "user://coop-reconnect-v1.json"
+	if not FileAccess.file_exists(path): return
+	var saved = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if not saved is Dictionary or not saved.get("room") is String or not saved.get("identity") is String or not saved.get("secret") is String or saved.secret.length() != 64: return
+	resume_room = saved.room
+	resume_id = saved.identity
+	resume_secret = saved.secret
+
+func save_resume_identity() -> void:
+	if Data.automation: return
+	# Connection credentials are separate from all three progression save slots.
+	var file = FileAccess.open("user://coop-reconnect-v1.json",FileAccess.WRITE)
+	if file: file.store_string(JSON.stringify({"room":resume_room,"identity":resume_id,"secret":resume_secret}))
+
+func preparation_packet() -> Dictionary:
+	return {"type":"prepare","members":members,"nonce":nonce,"map_id":map_id,"defense_difficulty":defense_difficulty,"resume":true}
+
+func accepts_new_members() -> bool:
+	return not loading and (not playing or (admission_open.is_valid() and admission_open.call()))
+
+func admit_lan(sender: String, packet: Dictionary) -> void:
+	if not packet.get("name") is String: return
+	if loading:
+		send_to(sender,{"type":"rejected","reason":"房主正在加载战场，请稍后重新加入"},true)
+		return
+	var identity = str(packet.get("resume_id",""))
+	var resuming = playing and members.has(identity)
+	if resuming:
+		if identity == host_id or not resume_tokens.has(identity) or packet.get("resume_secret") != resume_tokens[identity]:
+			send_to(sender,{"type":"rejected","reason":"重连身份验证失败"},true)
+			return
+		if routes.has(identity):
+			send_to(sender,{"type":"rejected","reason":"该队员仍在房间中"},true)
+			return
+	else:
+		if not accepts_new_members() or members.size() >= 4:
+			send_to(sender,{"type":"rejected","reason":"战斗已开始或房间已满，仅允许原成员重连"},true)
+			return
+		identity = sender
+		members[identity] = packet.name.strip_edges().left(32)
+		resume_tokens[identity] = Crypto.new().generate_random_bytes(32).hex_encode()
+	routes[identity] = int(sender)
+	send_to(identity,{"type":"welcome","identity":identity,"secret":resume_tokens[identity]},true)
+	if playing:
+		pending_resumes[identity] = Time.get_ticks_msec()
+		broadcast({"type":"members","members":members,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
+		send_to(identity,preparation_packet(),true)
+	else:
+		broadcast({"type":"members","members":members,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
+	changed.emit()
 
 
 func is_host() -> bool:
 	return active and local_id == host_id
 
 func enable_steam() -> bool:
-	if not Data.automation: return false # Multiplayer is unavailable in the incremental release.
 	if steam_ready: return true
 	if not Engine.has_singleton("Steam"):
 		status = "Steam 需要 GodotSteam 4.5 引擎；双击 start-steam.cmd 可启动"
@@ -70,16 +132,36 @@ func enable_steam() -> bool:
 	steam.lobby_match_list.connect(_steam_rooms)
 	steam.lobby_chat_update.connect(_steam_members_changed)
 	steam.p2p_session_request.connect(_steam_request)
+	if steam.has_signal("join_requested"): steam.connect("join_requested",_steam_join_requested)
 	steam.allowP2PPacketRelay(true)
 	return true
 
-func host_lan(player_name: String) -> void:
-	if not Data.automation: return
+func invite_friends() -> void:
+	if steam_ready and lobby != 0 and not playing: steam.activateGameOverlayInviteDialog(lobby)
+
+func _steam_join_requested(id: int, _friend: int) -> void:
+	if active:
+		status = "请先离开当前房间，再接受好友邀请"
+		changed.emit()
+		return
+	invite_received.emit()
+	join_steam(str(id))
+
+func initialize_invites() -> void:
+	if Data.automation or DisplayServer.get_name() == "headless" or not Engine.has_singleton("Steam"): return
+	if not enable_steam(): return
+	var args = OS.get_cmdline_args()+OS.get_cmdline_user_args()
+	for i in range(args.size()-1):
+		if args[i] == "+connect_lobby" and args[i+1].is_valid_int():
+			_steam_join_requested(int(args[i+1]),0)
+			return
+
+func host_lan(player_name: String, port: int = PORT) -> void:
 	leave()
 	peer = ENetMultiplayerPeer.new()
-	var err = peer.create_server(PORT,3,2)
+	var err = peer.create_server(port,3,2)
 	if err != OK:
-		status = "无法创建房间，端口 %d 被占用（%s）" % [PORT,error_string(err)]
+		status = "无法创建房间，端口 %d 被占用（%s）" % [port,error_string(err)]
 		peer = null
 		changed.emit()
 		return
@@ -88,17 +170,16 @@ func host_lan(player_name: String) -> void:
 	host_id = "1"
 	active = true
 	members = {"1":player_name.strip_edges().left(32) if not player_name.strip_edges().is_empty() else "房主"}
-	room_code = "127.0.0.1:%d" % PORT
+	room_code = "127.0.0.1:%d" % port
 	for address in IP.get_local_addresses():
 		if address.begins_with("192.168.") or address.begins_with("10."):
-			room_code = address+":"+str(PORT)
+			room_code = address+":"+str(port)
 			break
-	peer.peer_disconnected.connect(_peer_left)
+	peer.peer_disconnected.connect(_lan_peer_left)
 	status = "局域网房间已创建，等待队友加入"
 	changed.emit()
 
 func join_lan(address: String, player_name: String) -> void:
-	if not Data.automation: return
 	leave()
 	var parts = address.strip_edges().split(":")
 	var port = int(parts[1]) if parts.size() > 1 else PORT
@@ -121,8 +202,10 @@ func join_lan(address: String, player_name: String) -> void:
 	room_code = address
 	last_host = Time.get_ticks_msec()/1000.0
 	peer.peer_connected.connect(func(id):
-		if id == 1: send_to(host_id,{"type":"hello","name":members[local_id]},true))
-	peer.peer_disconnected.connect(_peer_left)
+		if id == 1:
+			var same_room = resume_room == room_code
+			send_to(host_id,{"type":"hello","name":player_name,"resume_id":resume_id if same_room else "","resume_secret":resume_secret if same_room else ""},true))
+	peer.peer_disconnected.connect(_lan_peer_left)
 	status = "正在连接房主…"
 	changed.emit()
 
@@ -172,7 +255,7 @@ func _steam_joined(id: int, _permissions: int, _locked: bool, response: int) -> 
 		status = "Steam 加入房间失败："+str(response)
 		changed.emit()
 		return
-	if steam.getLobbyData(id,"game") not in ["",PROTOCOL] or steam.getLobbyData(id,"playing") == "1" or not Data.Maps.valid(str(steam.getLobbyData(id,"map_id"))):
+	if steam.getLobbyData(id,"game") != PROTOCOL or not Data.Maps.valid(str(steam.getLobbyData(id,"map_id"))):
 		steam.leaveLobby(id)
 		status = "该房间版本不兼容或已开始"
 		changed.emit()
@@ -187,12 +270,29 @@ func _steam_joined(id: int, _permissions: int, _locked: bool, response: int) -> 
 	var selected_difficulty = str(steam.getLobbyData(id,"defense_difficulty"))
 	if selected_difficulty in DefensePopulation.DIFFICULTIES: defense_difficulty = selected_difficulty
 	last_host = Time.get_ticks_msec()/1000.0
-	refresh_steam_members()
+	if steam.getLobbyData(id,"playing") == "1":
+		# Steam authenticates the account id; the authority checks the sealed roster.
+		members = {host_id:steam.getFriendPersonaName(int(host_id)),local_id:steam.getPersonaName()}
+		send_to(host_id,{"type":"resume_request"},true)
+	else: refresh_steam_members()
 	status = "Steam 房间已连接"
 	changed.emit()
 
 func refresh_steam_members() -> void:
 	if lobby == 0: return
+	if playing or loading:
+		var present: Array = []
+		for i in int(steam.getNumLobbyMembers(lobby)): present.append(str(steam.getLobbyMemberByIndex(lobby,i)))
+		if not present.has(host_id):
+			_connection_lost("房主已离开，合作对局结束")
+			return
+		for id in members:
+			if id != local_id and not present.has(id):
+				if loading:
+					_connection_lost("队员在加载期间离开，请重新创建房间")
+					return
+				member_left.emit(id)
+		return
 	var previous = members.duplicate()
 	members.clear()
 	for i in mini(4,int(steam.getNumLobbyMembers(lobby))):
@@ -213,7 +313,11 @@ func _steam_members_changed(id: int, _changed: int, _making: int, _state: int) -
 	if id == lobby: refresh_steam_members()
 
 func _steam_request(id: int) -> void:
-	if active and members.has(str(id)): steam.acceptP2PSessionWithUser(id)
+	if not active: return
+	for i in int(steam.getNumLobbyMembers(lobby)):
+		if steam.getLobbyMemberByIndex(lobby,i) == id:
+			steam.acceptP2PSessionWithUser(id)
+			return
 
 func _steam_rooms(ids: Array) -> void:
 	rooms.clear()
@@ -226,6 +330,7 @@ func _steam_rooms(ids: Array) -> void:
 func begin_match() -> void:
 	if not is_host() or members.size() < 2 or members.size() > 4 or playing or loading: return
 	loading = true
+	if transport == "steam": steam.setLobbyData(lobby,"playing","1")
 	loading_started = Time.get_ticks_msec()
 	ready_members.clear()
 	nonce = str(Time.get_unix_time_from_system())+"-"+str(randi())
@@ -249,7 +354,8 @@ func finish_preparing() -> void:
 	playing = true
 	if transport == "steam":
 		steam.setLobbyData(lobby,"playing","1")
-		steam.setLobbyJoinable(lobby,false)
+		# Keep the lobby accessible for original members to reconnect; admission is authoritative.
+		steam.setLobbyJoinable(lobby,true)
 	broadcast({"type":"start","members":members,"nonce":nonce,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
 	match_started.emit()
 	changed.emit()
@@ -268,9 +374,11 @@ func send_bytes(id: String, bytes: PackedByteArray, reliable: bool) -> void:
 	# Defense state plus a horde can exceed one datagram on either transport.
 	reliable = reliable or bytes.size() > 1100
 	if transport == "lan" and peer and peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
-		var remote = peer.get_peer(int(id))
+		if is_host() and members.has(id) and not routes.has(id): return
+		var destination = int(routes.get(id,int(id)))
+		var remote = peer.get_peer(destination)
 		if not remote or remote.get_state() != ENetPacketPeer.STATE_CONNECTED: return
-		peer.set_target_peer(int(id))
+		peer.set_target_peer(destination)
 		peer.transfer_channel = 0 if reliable else 1
 		peer.transfer_mode = MultiplayerPeer.TRANSFER_MODE_RELIABLE if reliable else MultiplayerPeer.TRANSFER_MODE_UNRELIABLE_ORDERED
 		peer.put_packet(bytes)
@@ -296,7 +404,7 @@ func send_input(command: Dictionary) -> void:
 
 func recover_input_edges(id: String, command: Dictionary) -> Dictionary:
 	var clean = command.duplicate()
-	var previous: Dictionary = received_edges.get(id,{"jump":0,"reload":0,"use_self":0,"shove":0,"wave_ready":0,"fire_pressed":0})
+	var previous: Dictionary = received_edges.get(id,{"jump":0,"reload":0,"use_self":0,"shove":0,"wave_ready":0,"fire_pressed":0,"ultimate":0})
 	for action in previous:
 		var sequence = command.get(action+"_seq",0)
 		if not sequence is int or sequence < 0: return {}
@@ -305,10 +413,10 @@ func recover_input_edges(id: String, command: Dictionary) -> Dictionary:
 	received_edges[id] = previous
 	return clean
 
-func send_world(state: Dictionary, effects: Array) -> void:
+func send_world(state: Dictionary, effects: Array, reliable := false) -> void:
 	if not is_host(): return
 	send_sequence += 1
-	broadcast({"type":"world","state":state,"seq":send_sequence},state.failed or state.get("won",false))
+	broadcast({"type":"world","state":state,"seq":send_sequence},reliable or state.failed or state.get("won",false))
 	if not effects.is_empty(): broadcast({"type":"effects","effects":effects},true)
 
 func _process(dt: float) -> void:
@@ -318,6 +426,10 @@ func _process(dt: float) -> void:
 		packet_counts.clear()
 	if steam_ready: steam.run_callbacks()
 	if not active: return
+	for id in pending_resumes.keys():
+		if Time.get_ticks_msec()-pending_resumes[id] > 30000:
+			pending_resumes.erase(id)
+			_peer_left(int(id))
 	if loading and Time.get_ticks_msec()-loading_started > 30000:
 		_connection_lost("战场加载超时，请重新创建房间")
 		return
@@ -353,11 +465,36 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 	if raw.is_empty(): return
 	var packet = bytes_to_var(raw) # Objects are intentionally prohibited.
 	if not packet is Dictionary or packet.get("protocol") != PROTOCOL: return
-	if packet.get("type") == "hello" and is_host() and transport == "lan" and not playing and members.size() < 4:
-		if not packet.get("name") is String: return
-		members[sender] = packet.name.left(32)
-		broadcast({"type":"members","members":members,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
-		changed.emit()
+	if packet.get("type") == "hello" and is_host() and transport == "lan":
+		admit_lan(sender,packet)
+		return
+	if is_host() and transport == "lan":
+		var identity = ""
+		for id in routes:
+			if str(routes[id]) == sender: identity = id; break
+		if identity.is_empty(): return
+		sender = identity
+	if sender == host_id and not is_host() and packet.get("type") == "welcome":
+		if not packet.get("identity") is String or not packet.get("secret") is String or packet.secret.length() != 64: return
+		local_id = packet.identity
+		resume_room = room_code
+		resume_id = local_id
+		resume_secret = packet.secret
+		save_resume_identity()
+		return
+	if sender == host_id and not is_host() and packet.get("type") == "rejected":
+		_connection_lost(str(packet.get("reason","房间拒绝加入")))
+		return
+	if packet.get("type") == "resume_request" and is_host() and transport == "steam" and playing:
+		if not members.has(sender):
+			if not accepts_new_members() or members.size() >= 4:
+				send_to(sender,{"type":"rejected","reason":"战斗已开始或房间已满，仅允许原成员重连"},true)
+				return
+			members[sender] = str(steam.getFriendPersonaName(int(sender))).left(32)
+			broadcast({"type":"members","members":members,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
+		if sender == host_id: return
+		pending_resumes[sender] = Time.get_ticks_msec()
+		send_to(sender,preparation_packet(),true)
 		return
 	if sender != host_id and not members.has(sender): return
 	if sender == host_id: last_host = Time.get_ticks_msec()/1000.0
@@ -368,12 +505,21 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 				defense_difficulty = packet.defense_difficulty
 				nonce = packet.nonce
 				members = packet.members
+				reconnecting = packet.get("resume",false) == true
+				receive_sequence = -1
 				loading = true
 				loading_started = Time.get_ticks_msec()
 				status = "正在加载房主选择的战场…"
 				map_preparing.emit()
 				changed.emit()
 		"map_ready":
+			if is_host() and playing and pending_resumes.has(sender) and packet.get("session") == nonce and packet.get("map_id") == map_id:
+				pending_resumes.erase(sender)
+				input_sequences.erase(sender)
+				received_edges.erase(sender)
+				send_to(sender,{"type":"start","members":members,"nonce":nonce,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
+				member_rejoined.emit(sender)
+				return
 			if is_host() and loading and members.has(sender) and packet.get("session") == nonce and packet.get("map_id") == map_id:
 				ready_members[sender] = true
 				finish_preparing()
@@ -399,7 +545,7 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 				loading = false
 				match_started.emit()
 		"input":
-			if is_host() and playing and packet.get("session") == nonce and packet.get("command") is Dictionary and packet.get("seq") is int:
+			if is_host() and playing and not pending_resumes.has(sender) and packet.get("session") == nonce and packet.get("command") is Dictionary and packet.get("seq") is int:
 				if packet.seq > input_sequences.get(sender,-1):
 					input_sequences[sender] = packet.seq
 					input_received.emit(sender,recover_input_edges(sender,packet.command))
@@ -417,8 +563,22 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 
 func valid_world(value) -> bool:
 	if not value is Dictionary or value.get("map_id") != map_id: return false
+	var shared = value.get("shared_progression")
+	var Store = preload("res://scripts/progression_store.gd")
+	if not Store.valid(shared) or shared.version != 7 or shared.coins != 0 or shared.diamonds != 0: return false
+	var profile = Store.new()
+	profile.data = shared
+	if not value.get("coop_host","") is String: return false
+	if not value.get("coin_drops",[]) is Array or value.get("coin_drops",[]).size() > 512: return false
+	for drop in value.get("coin_drops",[]):
+		if not drop is Dictionary or not drop.get("owner") is String: return false
+		for field in ["pos","origin","scatter"]:
+			if not drop.get(field) is Vector3 or not drop[field].is_finite(): return false
+		for field in ["age","value"]:
+			if not (drop.get(field) is int or drop.get(field) is float) or not is_finite(drop[field]): return false
 	if not value is Dictionary or not value.has_all(["pawns","zombies","mode","elapsed","wave","cleared","spawned","kills","rest","failed","cause","culprit"]): return false
 	if not value.pawns is Dictionary or value.pawns.size() > 4 or not value.zombies is Array: return false
+	if value.get("coop_host","") != "" and (not members.has(value.coop_host) or not value.get("pawns",{}).has(value.coop_host)): return false
 	if value.mode != "defense" or not value.get("won",false) is bool: return false
 	if value.mode == "defense":
 		if map_id != "graypine_defense" or not value.get("defense") is Dictionary: return false
@@ -446,17 +606,17 @@ func valid_world(value) -> bool:
 			for field in ["reserve","weapon1","weapon2","weapon_slot","slot","grenades"]:
 				if not p[field] is int: return false
 			if p.weapon1 < 0 or p.weapon1 >= Data.weapons.size() or p.weapon2 < 0 or p.weapon2 >= Data.weapons.size(): return false
-			if p.weapon_slot not in [1,2] or p.slot < 1 or p.slot > 4 or p.grenades < 0 or p.grenades > 3 or p.reserve < 0: return false
+			if p.weapon_slot not in [1,2] or p.slot < 1 or p.slot > 4 or p.grenades < 0 or p.grenades > profile.grenade_capacity() or p.reserve < 0: return false
 			if not p.reserves is Array or p.reserves.size() != 10: return false
 			for index in 10:
-				if not p.reserves[index] is int or p.reserves[index] < 0 or p.reserves[index] > Data.defense_full_reserve(index): return false
+				if not p.reserves[index] is int or p.reserves[index] < 0 or p.reserves[index] > 1000000000: return false
 			for field in ["slot_ammo","slot_reserves"]:
 				if not p[field] is Array or p[field].size() != 2: return false
 				for index in 2:
 					var weapon: int = p.weapon1 if index == 0 else p.weapon2
-					var limit: int = int(Data.weapons[weapon].capacity) if field == "slot_ammo" else Data.defense_full_reserve(weapon)
+					var limit: int = roundi(float(Data.weapons[weapon].capacity)*profile.magazine_multiplier(str(Data.weapons[weapon].id))) if field == "slot_ammo" else 1000000000
 					if not p[field][index] is int or p[field][index] < 0 or p[field][index] > limit: return false
-			if p.reserve > Data.defense_full_reserve(p.weapon1 if p.weapon_slot == 1 else p.weapon2): return false
+			if p.reserve > 1000000000: return false
 			if not p.hint is String or p.hint.length() > 160: return false
 		if not p.get("crouch",0.0) is float and not p.get("crouch",0.0) is int: return false
 		if not is_finite(p.get("crouch",0.0)) or p.get("crouch",0.0) < 0 or p.get("crouch",0.0) > 1: return false
@@ -465,7 +625,11 @@ func valid_world(value) -> bool:
 		if not p.appearance[0] is int or int(p.appearance[0]) < 0 or int(p.appearance[0]) >= Data.MODELS.size(): return false
 		for key in ["hp","height","yaw","pitch","weapon","fire_anim","switch","reload","hits","shots","kills","protection","requested"]:
 			if not (p[key] is int or p[key] is float) or not is_finite(p[key]): return false
-		if p.hp < 0 or p.hp > 100 or p.weapon < 0 or p.weapon > 9 or p.height < -2 or p.height > 32: return false
+		if p.has("connected") and not p.connected is bool: return false
+		for field in ["ultimate_cd","ultimate_remaining","ultimate_sheathe"]:
+			if not (p.get(field,0.0) is int or p.get(field,0.0) is float) or not is_finite(float(p.get(field,0.0))) or p.get(field,0.0) < 0 or p.get(field,0.0) > 100: return false
+		if p.get("ultimate_remaining",0.0) > 10: return false
+		if p.hp < 0 or p.hp > profile.max_health() or p.weapon < 0 or p.weapon > 9 or p.height < -2 or p.height > 32: return false
 	for z in value.zombies:
 		if not z is Dictionary or not z.has_all(["id","pos","kind","hp","armor","down","born","heading","attack_time","rage","rage_pause","state"]): return false
 		if z.get("map_id") != map_id: return false
@@ -476,6 +640,15 @@ func valid_world(value) -> bool:
 			if not (z[key] is int or z[key] is float) or not is_finite(z[key]): return false
 	return true
 
+func _lan_peer_left(id: int) -> void:
+	if not is_host():
+		_peer_left(id)
+		return
+	for identity in routes.keys():
+		if routes[identity] == id:
+			_peer_left(int(identity))
+			return
+
 func _peer_left(id: int) -> void:
 	if not active: return
 	var key = str(id)
@@ -485,7 +658,11 @@ func _peer_left(id: int) -> void:
 	if key == host_id and not is_host():
 		_connection_lost("房主已断开连接")
 		return
-	members.erase(key)
+	routes.erase(key)
+	pending_resumes.erase(key)
+	if not playing:
+		members.erase(key)
+		resume_tokens.erase(key)
 	received_edges.erase(key)
 	input_sequences.erase(key)
 	member_left.emit(key)
@@ -521,8 +698,12 @@ func leave() -> void:
 	local_id = "solo"
 	host_id = ""
 	members.clear()
+	routes.clear()
+	resume_tokens.clear()
+	pending_resumes.clear()
+	reconnecting = false
 	input_sequences.clear()
-	sent_edges = {"jump":0,"reload":0,"use_self":0,"shove":0,"wave_ready":0,"fire_pressed":0}
+	sent_edges = {"jump":0,"reload":0,"use_self":0,"shove":0,"wave_ready":0,"fire_pressed":0,"ultimate":0}
 	received_edges.clear()
 	room_code = ""
 	nonce = ""

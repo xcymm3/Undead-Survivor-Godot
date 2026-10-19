@@ -319,6 +319,8 @@ func sync() -> void:
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "defense":
 		controls_hint.text = "1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷 · Q 终极技能 · R 换弹 · ESC 暂停" if defense.get("started",false) else "修复水晶"
+		if not defense.get("started",false) and not sim.can_manage(ui.game.local_pawn()): controls_hint.text = "等待房主整备并修复水晶开战"
+		if ui.game.local_pawn().get("hp",1) <= 0: controls_hint.text = "左键 切换观战队友 · ESC 菜单"
 		if intro_active: controls_hint.text = "ESC 暂停"
 		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id) if w.id == "ultimate" else sim.progression.level(w.id)+1]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
@@ -362,7 +364,7 @@ func sync() -> void:
 		var item: Dictionary = cards[ids[i]] if cards.has(ids[i]) else health_card(ids[i])
 		health_row.move_child(item.panel,i)
 		item.name.text = "我" if ids[i] == Session.local_id and not Session.playing else str(pawn.get("name",ids[i]))
-		item.hp.text = "+%d" % pawn.hp if pawn.hp > 0 else "阵亡"
+		item.hp.text = "已断线" if not pawn.get("connected",true) else "+%d" % pawn.hp if pawn.hp > 0 else "阵亡"
 		item.bar.max_value = pawn.get("max_hp",100)
 		item.bar.value = pawn.hp
 		item.bar.modulate = Color.WHITE if pawn.hp > 50 else Color("e0bc62") if pawn.hp > 25 else Color("dd6958")
@@ -377,7 +379,7 @@ func sync() -> void:
 		rest_label.text = str(defense.get("objective",""))+"\n"+str(p.get("hint",""))
 	var local: Dictionary = ui.game.local_pawn()
 	spectator_label.visible = not local.is_empty() and local.hp <= 0 and Session.playing
-	if spectator_label.visible: spectator_label.text = "正在观战 %s · 左键切换队友" % p.name
+	if spectator_label.visible: spectator_label.text = "本局已阵亡，不可复活 · 观战 %s · 左键切换队友" % p.name
 	network_card.visible = Session.playing and not Session.is_host() and Data.settings.network_stats
 	if network_card.visible:
 		var metrics = Session.network_metrics()

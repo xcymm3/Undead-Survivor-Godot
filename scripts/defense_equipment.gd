@@ -6,41 +6,43 @@ func _init(defense_director) -> void:
 	super(defense_director)
 
 func initialize() -> void:
-	for p in sim.pawns.values():
-		# Two independent weapon inventories; grenades replenish on their fifteen-second timer.
-		p.weapon1 = 0
-		p.weapon2 = 2
-		p.slot = 1
-		p.weapon_slot = 1
-		p.slot_ammo = [sim.weapon_capacity(0),sim.weapon_capacity(2)]
-		p.slot_reserves = [roundi(Data.defense_full_reserve(0)*sim.progression.reserve_multiplier()),roundi(Data.defense_full_reserve(2)*sim.progression.reserve_multiplier())]
-		p.grenade_capacity = sim.progression.grenade_capacity()
-		p.grenades = p.grenade_capacity
-		p.max_hp = sim.progression.max_health()
-		p.hp = p.max_hp
-		p.combat_remaining = 0.0
-		p.grenade_ready_at = 0.0
-		p.grenade_replenish = 15.0
-		p.use_latch = false
-		p.pickup_latched = false
-		p.hurt_at = -100.0
-		p.action_hurt = -100.0
-		p.interaction = ""
-		p.interact_time = 0.0
-		p.reserves = []
-		p.reserves.resize(10)
-		p.reserves.fill(0)
-		p.weapon = p.weapon1
-		p.requested = p.weapon1
-		p.ammo.fill(0)
-		p.ammo[p.weapon1] = sim.weapon_capacity(p.weapon1)
-		p.reserves[p.weapon1] = p.slot_reserves[0]
-		p.ammo[p.weapon2] = sim.weapon_capacity(p.weapon2)
-		p.reserves[p.weapon2] = p.slot_reserves[1]
-		p.reserve = p.reserves[p.weapon1]
+	for p in sim.pawns.values(): initialize_pawn(p)
 	director.state.projectiles = []
 	director.state.pickup_motion = []
 	director.state.pickup_serial = 0
+
+func initialize_pawn(p: Dictionary) -> void:
+	# Two independent weapon inventories; grenades replenish on their fifteen-second timer.
+	p.weapon1 = 0
+	p.weapon2 = 2
+	p.slot = 1
+	p.weapon_slot = 1
+	p.slot_ammo = [sim.weapon_capacity(0),sim.weapon_capacity(2)]
+	p.slot_reserves = [roundi(Data.defense_full_reserve(0)*sim.progression.reserve_multiplier()),roundi(Data.defense_full_reserve(2)*sim.progression.reserve_multiplier())]
+	p.grenade_capacity = sim.progression.grenade_capacity()
+	p.grenades = p.grenade_capacity
+	p.max_hp = sim.progression.max_health()
+	p.hp = p.max_hp
+	p.combat_remaining = 0.0
+	p.grenade_ready_at = 0.0
+	p.grenade_replenish = 15.0
+	p.use_latch = false
+	p.pickup_latched = false
+	p.hurt_at = -100.0
+	p.action_hurt = -100.0
+	p.interaction = ""
+	p.interact_time = 0.0
+	p.reserves = []
+	p.reserves.resize(10)
+	p.reserves.fill(0)
+	p.weapon = p.weapon1
+	p.requested = p.weapon1
+	p.ammo.fill(0)
+	p.ammo[p.weapon1] = sim.weapon_capacity(p.weapon1)
+	p.reserves[p.weapon1] = p.slot_reserves[0]
+	p.ammo[p.weapon2] = sim.weapon_capacity(p.weapon2)
+	p.reserves[p.weapon2] = p.slot_reserves[1]
+	p.reserve = p.reserves[p.weapon1]
 
 func award_wave_ammo(p: Dictionary) -> void:
 	# Add to reserve only, including the stowed gun; preserve magazines and reloads.

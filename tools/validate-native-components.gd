@@ -692,8 +692,8 @@ func run() -> void:
 	retired_world = defense_packet.duplicate(true)
 	retired_world.map_id = "graypine_night"
 	check(not network.valid_world(retired_world),"Retired night map network snapshot is rejected")
-	defense_packet.pawns.solo.reserves[0] = data.defense_full_reserve(0)+1
-	check(not network.valid_world(defense_packet),"Defense rejects reserves above seventeen magazines")
+	defense_packet.pawns.solo.reserves[0] = 1000000001
+	check(not network.valid_world(defense_packet),"Defense rejects implausible reserves while allowing progression and wave rewards")
 	network.members = original_members
 	game.ui.tick(.016)
 	check(game.ui.native_hud.visible,"Native HUD appears on game start")
