@@ -76,6 +76,7 @@ const CHARGE_DAMAGE = 30
 const CHARGE_KNOCKBACK = .65
 const CHARGE_WALL_STUN = 2.0
 const ATTACK_TURN_SPEED = 2.09439510239 # 120 degrees per second
+const PLAYER_TARGET_RADIUS_SQUARED = 20.0*20.0
 const IMP_SPEED_MULTIPLIER = 1.296 # Existing 1.08 speed increased by 20 percent.
 const BERSERKER_RAGE_SPEED = 7.2
 const FOOTBALL_CHARGE_SPEED = 12.0
@@ -164,6 +165,7 @@ func spawn(pos: Vector2, kind: String) -> void:
 	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"spawn_wave":wave,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
 	if kind == "crawler": zombies[-1].chase_speed *= .85
 	if kind == "dancer":
+		zombies[-1].chase_speed *= .5
 		zombies[-1].max_hp = health
 		zombies[-1].summon_clock = preload("res://scripts/dancer_boss.gd").INTERVAL
 		zombies[-1].dance_remaining = 0.0
@@ -299,7 +301,7 @@ func choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
 	prepare_target_context()
 	var cached: Dictionary = target_cache.get(z.id,{})
 	# Entering the player radius always bypasses far-target throttling.
-	if not cached.is_empty() and cached.revision == arena.navigation_revision and elapsed < cached.until and living.all(func(p): return z.pos.distance_squared_to(p.pos)>225):
+	if not cached.is_empty() and cached.revision == arena.navigation_revision and elapsed < cached.until and living.all(func(p): return z.pos.distance_squared_to(p.pos)>PLAYER_TARGET_RADIUS_SQUARED):
 		var current: Dictionary = target_by_id(cached.id)
 		if not current.is_empty() and current.hp > 0 and (current.get("is_structure",false) or current.get("is_crystal",false)) and z.pos.distance_squared_to(current.pos)>144:
 			if current.get("is_structure",false): current = defense_director.structures.target(defense_director.structures.find(cached.id),z.pos)
@@ -320,10 +322,10 @@ func choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
 			nearest = distance
 			item = building
 	var target: Dictionary = defense_director.structures.target(item,z.pos) if item.get("kind","") in ["gate","turret"] else crystal_target() if not item.is_empty() else living[0]
-	if z.kind not in ["imp","giant"]:
+	if z.kind not in ["imp","giant","dancer"]:
 		for player in living:
 			var distance: float = z.pos.distance_squared_to(player.pos)
-			if distance <= 225 and distance < nearest and player_reachable(z,player):
+			if distance <= PLAYER_TARGET_RADIUS_SQUARED and distance < nearest and player_reachable(z,player):
 				nearest = distance
 				target = player
 	var barrier = cached_barrier(z.pos,target.pos)
@@ -370,7 +372,7 @@ func path_priority(z: Dictionary) -> float:
 	var nearest = INF
 	for player in pawns.values():
 		if player.hp > 0: nearest = minf(nearest,z.pos.distance_squared_to(player.pos))
-	return (20.0 if nearest<=225 else 0.0)+(10.0 if z.get("move_speed",0.0)<.05 else 0.0)
+	return (20.0 if nearest<=PLAYER_TARGET_RADIUS_SQUARED else 0.0)+(10.0 if z.get("move_speed",0.0)<.05 else 0.0)
 
 func original_choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
 	var buildings: Array = []
@@ -386,10 +388,10 @@ func original_choose_zombie_target(z: Dictionary, living: Array) -> Dictionary:
 		if distance < nearest:
 			nearest = distance
 			target = candidate
-	if z.kind not in ["imp","giant"]:
+	if z.kind not in ["imp","giant","dancer"]:
 		for candidate in living:
 			var distance: float = z.pos.distance_squared_to(candidate.pos)
-			if distance > 225 or distance >= nearest: continue
+			if distance > PLAYER_TARGET_RADIUS_SQUARED or distance >= nearest: continue
 			if not player_reachable(z,candidate): continue
 			nearest = distance
 			target = candidate

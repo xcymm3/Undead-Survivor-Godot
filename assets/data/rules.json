@@ -297,7 +297,7 @@
     },
     "imp": {
       "label": "小鬼僵尸",
-      "health": 800,
+      "health": 1000,
       "armor": 0,
       "tier": 2
     },

@@ -160,7 +160,7 @@ func run() -> void:
 	validate_summon_cap(sim)
 	sim.spawn(Vector2(8,23),"dancer")
 	var boss: Dictionary = sim.zombies[-1]
-	check(boss.chase_speed >= 4.6 and boss.chase_speed <= 5.2,"Dancing boss uses the ordinary movement speed")
+	check(boss.chase_speed >= 2.3 and boss.chase_speed <= 2.6,"Dancing boss uses half the ordinary movement speed")
 	Boss.step(sim,9.9)
 	check(boss.dance_remaining == 0 and boss.summon_roster.is_empty(),"Boss cannot summon before ten seconds")
 	Boss.step(sim,.11)
@@ -210,6 +210,7 @@ func run() -> void:
 	game.ui.show_result()
 	check(game.ui.menu.find_children("*","Label",true,false).any(func(label): return label.text == "游戏通关"),"Native result screen explicitly displays campaign victory")
 	game.return_home()
+	await validate_balance(game)
 	game.queue_free()
 	await process_frame
 	print("CAMPAIGN VALIDATION: %d checks; %d failures" % [checks,failures])
@@ -241,3 +242,30 @@ func validate_summon_cap(sim) -> void:
 	check(sim.alive_count()+boss.summon_roster.size() == 76 and boss.dance_remaining == 0 and not sim.events.any(func(event): return event.kind == "disco"),"Pending summons count towards admission; rejected calls still allow the existing backlog to release")
 	sim.zombies.clear()
 	sim.events.clear()
+
+func validate_balance(game) -> void:
+	game.start_solo("defense",20261019)
+	await physics_frame
+	var sim = game.sim
+	var p: Dictionary = game.local_pawn()
+	for item in sim.defense.structures: item.hp = 0
+	sim.defense.crystal_hp = 3000
+	sim.defense_director.sync_world()
+	sim.spawn(Vector2(24,0),"imp")
+	check(sim.zombies[-1].hp == 1000 and sim.zombies[-1].body == 1000 and sim.zombies[-1].armor == 0,"Imp has 1000 unarmored health")
+	p.pos = Vector2(24,1)
+	p.height = 3.0
+	for kind in ["imp","giant","dancer"]:
+		sim.spawn(Vector2(24,0),kind)
+		var z: Dictionary = sim.zombies[-1]
+		check(sim.original_choose_zombie_target(z,[p]).id == "crystal" and sim.choose_zombie_target(z,[p]).id == "crystal","Building-only enemy ignores a closer reachable player: "+kind)
+	sim.spawn(Vector2(24,0),"normal")
+	var normal: Dictionary = sim.zombies[-1]
+	for distance in [20.1,20.0,19.9]:
+		p.pos = Vector2(24,distance)
+		var expected: String = "crystal" if distance > 20 else p.id
+		check(sim.original_choose_zombie_target(normal,[p]).id == expected and sim.choose_zombie_target(normal,[p]).id == expected,"Both target selectors respect the 20m boundary and bypass a far-target cache: "+str(distance))
+	p.pos = Vector2(24,19)
+	p.height = 4.1
+	check(sim.choose_zombie_target(normal,[p]).id == "crystal","Expanded detection still rejects an unreachable elevated player")
+	game.return_home()

@@ -171,7 +171,7 @@ func run() -> void:
 		sim.pawns.solo.pos = z.pos+Vector2(0,.5)
 		sim.pawns.solo.height = layout.height(sim.pawns.solo.pos)
 		var chosen: Dictionary = sim.choose_zombie_target(z,sim.pawns.values())
-		check(chosen.id == (attacked.id if kind in ["imp","giant"] else "solo"),"%s preserves nearest-target priority and dedicated crystal-attacker rules (enemy=%s player=%s chosen=%s gate=%s)" % [kind,z.pos,sim.pawns.solo.pos,chosen.id,manager.find("bridge_gate").hp])
+		check(chosen.id == (attacked.id if kind in ["imp","giant","dancer"] else "solo"),"%s preserves nearest-target priority and dedicated crystal-attacker rules (enemy=%s player=%s chosen=%s gate=%s)" % [kind,z.pos,sim.pawns.solo.pos,chosen.id,manager.find("bridge_gate").hp])
 	# Every type attacks the barrier, including dedicated crystal attackers.
 	for kind in data.enemies.keys():
 		sim = fresh()
@@ -281,7 +281,8 @@ func run() -> void:
 		z.hp = z.body+z.armor
 		z.pos = mine.pos+Vector2(0,[0,-5,-10,-12][i])
 	sim.equipment.explode({"id":-1,"owner":"solo","damage_scale":.5,"pos":Vector3(mine.pos.x,mine.height+.16,mine.pos.y)})
-	check(sim.zombies.map(func(z): return z.hp) == mine_health,"Mine matches its explicit half-strength grenade falloff and armor at every sampled distance")
+	for i in sim.zombies.size():
+		check(is_equal_approx(before_health[i]-mine_health[i],2.0*(before_health[i]-sim.zombies[i].hp)),"Mine doubles previous half-strength grenade damage with identical falloff and armor: "+str(i))
 	var after: Array = sim.zombies.map(func(z): return z.hp)
 	manager.step(5.0)
 	check(sim.zombies.map(func(z): return z.hp) == after,"Spent mine cannot detonate a second time")
