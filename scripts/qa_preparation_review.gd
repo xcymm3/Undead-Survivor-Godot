@@ -10,6 +10,12 @@ func _ready() -> void:
 
 func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('preparationReview')",true))
+	if scenario.begins_with("tutorial_"):
+		var capture = preload("res://scripts/qa_tutorial_review.gd").new()
+		capture.game = game
+		game.add_child(capture)
+		await capture.stage(scenario)
+		return
 	Progress.store.data.coins = 12450
 	Progress.store.data.diamonds = 37
 	var parts = scenario.split("_")
@@ -161,7 +167,7 @@ func stage_redesign(scenario: String, p: Dictionary) -> void:
 	var layout = Data.Maps.Defense
 	var center = Vector3(layout.CRYSTAL.x,4.6,layout.CRYSTAL.y)
 	if scenario.begins_with("intro_"):
-		game.sim.defense.intro_elapsed = float(scenario.get_slice("_",1))*5.0+2.5
+		game.sim.defense.intro_elapsed = float(scenario.get_slice("_",1))*3.0+1.5
 	if scenario == "map_spawn" or scenario.begins_with("intro_"):
 		game.camera.position = Vector3(p.pos.x,p.height+1.65,p.pos.y)
 		game.camera.rotation = Vector3(0,p.yaw,0)
