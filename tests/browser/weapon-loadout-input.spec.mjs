@@ -13,8 +13,11 @@ test('real input fires cancels and completes second-weapon reload', async ({ pag
     await page.mouse.click(canvas.x+(button.x+button.width/2)*canvas.width/1440, canvas.y+(button.y+button.height/2)*canvas.height/900);
   }
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense');
+  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 15, null, { timeout: 45_000 });
+  const beforeEmptySlot = await page.evaluate(() => window.__survivorSnapshot.frames);
   await page.keyboard.press('4');
-  await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 4);
+  await page.waitForFunction(frame => window.__survivorSnapshot.frames > frame + 1, beforeEmptySlot);
+  expect(await page.evaluate(() => window.__survivorSnapshot.player.slot)).toBe(1);
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 2 && window.__survivorSnapshot.player.switch <= 0);
   await page.mouse.click(480, 300);

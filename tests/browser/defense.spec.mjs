@@ -26,7 +26,7 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   expect(state.player.weapon1).toBe(0);
   expect(state.player.weapon2).toBe(2);
   expect(state.player.medkits).toBeUndefined();
-  expect(state.player.grenades).toBe(1);
+  expect(state.player.grenades).toBe(0);
   expect(state.menu).toBe('');
   expect(state.paused).toBe(false);
   // The opening black-screen story deliberately blocks all gameplay input.
@@ -90,7 +90,7 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   await page.waitForFunction(() => window.__survivorSnapshot.elapsed > 3.1 && !window.__survivorSnapshot.announcement.visible);
   state = await snapshot(page);
   expect(state.defense.waiting).toBe(false);
-  expect(state.player.grenades).toBe(1);
+  expect(state.player.grenades).toBe(0);
   expect(state.defense.ready_players).toEqual([]);
   await page.waitForFunction(() => window.__survivorSnapshot?.enemies?.length > 0, null, { timeout: 10_000 });
   state = await snapshot(page);
@@ -98,10 +98,11 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   expect(state.player.ammo[state.player.weapon1]).toBe(30);
   expect(state.player.reserves[state.player.weapon1]).toBe(255);
   expect(state.defense.crystal_hp).toBe(state.defense.crystal_max_hp);
+  const beforeEmptySlot = await snapshot(page);
   await page.keyboard.press('4');
-  await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 4);
-  await page.mouse.click(480, 300);
-  await page.waitForFunction(() => window.__survivorSnapshot.player.grenades === 0);
+  await page.waitForFunction(frame => window.__survivorSnapshot.frames > frame + 1, beforeEmptySlot.frames);
+  expect((await snapshot(page)).player.slot).toBe(1);
+  expect((await snapshot(page)).player.grenade_capacity).toBe(0);
   await page.keyboard.press('1');
   await page.waitForFunction(() => window.__survivorSnapshot.player.slot === 1 && window.__survivorSnapshot.player.weapon === 0);
   await page.screenshot({ path: info.outputPath('defense-wave-started.png') });
