@@ -120,7 +120,7 @@ func build_owner() -> void:
 	owner_model.add_child(owner_alert)
 	owner_dialogue = Label3D.new()
 	owner_dialogue.name = "OwnerDialogue"
-	owner_dialogue.font = title.font
+	owner_dialogue.font = preload("res://assets/fonts/SmileySans-Oblique.otf")
 	owner_dialogue.font_size = 42
 	owner_dialogue.pixel_size = .003
 	owner_dialogue.position.y = 2.85

@@ -21,7 +21,7 @@ static func validate(game, check: Callable) -> void:
 	var all_glyphs = true
 	for line in Intro.LINES:
 		for character in line: all_glyphs = all_glyphs and story_font.has_char(character.unicode_at(0))
-	check.call(all_glyphs,"The licensed arcade typeface contains every opening-story character")
+	check.call(all_glyphs,"The opening serif typeface contains every opening-story character")
 
 	check.call(Intro.line_alpha(sim.defense,0) == 0,"Narrative caption starts transparent over black")
 	var origin: Vector2 = p.pos
@@ -44,6 +44,11 @@ static func validate(game, check: Callable) -> void:
 	check.call(not game.ui.native_hud.tutorial_overlay.black.visible and Tutorial.hint_mode(sim.defense) == "movement","Black lifts and sprint/crouch tips appear")
 	var world = game.arena.scenery
 	world.sync(sim.defense)
+	var dialogue_font = world.shop.owner_dialogue.font
+	var dialogue_glyphs = true
+	for line in Tutorial.SHOP_LINES+Tutorial.DEFENSE_LINES:
+		for character in line: dialogue_glyphs = dialogue_glyphs and dialogue_font.has_char(character.unicode_at(0))
+	check.call(dialogue_glyphs,"The shopkeeper typeface contains every dialogue character")
 	check.call(not world.shop.owner_model.visible,"Shopkeeper initially absent")
 	check.call(world.preparation.stations.values().all(func(station): return station.broken.visible and not station.prop.visible and not station.cover.visible),"All stations are broken without display props")
 	check.call(world.structure_view.actors.values().all(func(actor): return not actor.root.visible),"Tower and gate ghosts initially hidden")

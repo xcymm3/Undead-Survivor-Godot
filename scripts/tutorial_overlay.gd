@@ -10,7 +10,7 @@ var shove_icon: Control
 const Intro = preload("res://scripts/first_attempt_intro.gd")
 const Tutorial = preload("res://scripts/onboarding.gd")
 const StoryFont = preload("res://assets/fonts/ZCOOLQingKeHuangYou-Regular.ttf")
-const UpgradeArt = preload("res://scripts/upgrade_art.gd")
+const OpeningFont = preload("res://assets/fonts/SourceHanSerifSC-SemiBold.otf")
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -44,12 +44,12 @@ func _ready() -> void:
 		var row = Label.new()
 		row.text = value
 		row.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		row.add_theme_font_override("font",UpgradeArt.font())
+		row.add_theme_font_override("font",OpeningFont)
 		row.add_theme_font_size_override("font_size",38)
-		row.add_theme_color_override("font_color",UpgradeArt.PAPER)
-		row.add_theme_color_override("font_outline_color",UpgradeArt.INK)
-		row.add_theme_constant_override("outline_size",6)
-		row.add_theme_color_override("font_shadow_color",UpgradeArt.INK)
+		row.add_theme_color_override("font_color",Color("f1eadc"))
+		row.add_theme_color_override("font_outline_color",Color("161b18"))
+		row.add_theme_constant_override("outline_size",0)
+		row.add_theme_color_override("font_shadow_color",Color("161b18"))
 		row.add_theme_constant_override("shadow_offset_x",2)
 		row.add_theme_constant_override("shadow_offset_y",3)
 		column.add_child(row)
