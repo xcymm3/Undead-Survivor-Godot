@@ -1,6 +1,9 @@
 extends SceneTree
 const Fixture = preload("res://tools/preparation-fixture.gd")
 const Store = preload("res://scripts/progression_store.gd")
+class SlowRegen extends "res://scripts/progression_store.gd":
+	func regen_rate() -> float: return .2
+
 var checks = 0
 var failures = 0
 var game
@@ -216,16 +219,16 @@ func run() -> void:
 	check(p.hp == 60,"Strong waits all five combat seconds")
 	sim.update_defense_regen(p,.4)
 	sim.update_defense_regen(p,.6)
-	check(p.hp == 60 and is_equal_approx(p.regen_credit,.5),"Strong accumulates half a health per second at rank one")
+	check(is_equal_approx(p.hp,60.5) and is_zero_approx(p.regen_credit),"Strong accumulates half a health per second at rank one")
 	p.protection = 0
 	sim.damage_pawn(p,{"pos":p.pos+Vector2(0,1),"id":99},10)
 	sim.update_defense_regen(p,4.9)
-	check(p.hp == 50,"Taking damage restarts the five-second delay")
+	check(is_equal_approx(p.hp,50.5),"Taking damage restarts the five-second delay")
 	sim.fire(p,data.weapons[0])
 	sim.update_defense_regen(p,4.9)
-	check(p.hp == 52,"Attacking permits healing after five seconds without incoming damage")
+	check(is_equal_approx(p.hp,52.9),"Attacking permits healing after five seconds without incoming damage")
 	sim.update_defense_regen(p,2)
-	check(p.hp == 53,"Healing continues while attacking")
+	check(is_equal_approx(p.hp,53.9),"Healing continues while attacking")
 	p.combat_remaining = 2.0
 	p.switch = 0.0
 	p.shove_cd = 0.0
@@ -243,6 +246,19 @@ func run() -> void:
 	p.hp = 0
 	sim.update_defense_regen(p,100)
 	check(p.hp == 0,"Strong cannot revive a dead player")
+	var original_profile = sim.progression
+	sim.progression = SlowRegen.new()
+	p.hp = 60.0
+	p.combat_remaining = 0
+	for tick in 10: sim.update_defense_regen(p,.1)
+	check(is_equal_approx(p.hp,60.2) and "%d" % p.hp == "60","A 0.2/s rate heals exactly 0.2 per second while displayed health remains an integer")
+	p.protection = 0
+	sim.damage_pawn(p,{"pos":p.pos+Vector2(0,1),"id":99},10)
+	check(is_equal_approx(p.hp,50.2),"Incoming damage preserves fractional health")
+	sim.update_defense_regen(p,5)
+	check(is_equal_approx(p.hp,50.2),"Combat delay does not erase already healed fractional health")
+	sim.progression = original_profile
+
 	p.hp = 100
 	game.resume_game()
 	sim.spawn(Vector2(12,25),"bucket")

@@ -303,20 +303,20 @@ func run() -> void:
 	sim.update_defense_regen(pawn,5.0)
 	check(pawn.hp == 80,"Strong waits five full seconds before healing")
 	sim.update_defense_regen(pawn,1.0)
-	check(pawn.hp == 80 and is_equal_approx(pawn.regen_credit,.5),"Rank-one Strong accumulates half a health per second out of combat")
+	check(is_equal_approx(pawn.hp,80.5) and is_zero_approx(pawn.regen_credit),"Rank-one Strong accumulates half a health per second out of combat")
 	sim.update_defense_regen(pawn,1.0)
 	check(pawn.hp == 81 and is_zero_approx(pawn.regen_credit),"Two seconds of rank-one Strong restore one whole health")
 	var shots_before: int = pawn.shots
 	for i in 80:
 		sim.submit(pawn.id,command(int(pawn.weapon),false,int(pawn.slot),0.0,0.0,true))
 		sim.update_pawn(pawn,.05)
-	check(pawn.shots > shots_before and pawn.hp == 83,"Continuous live firing permits half-rate Strong healing without incoming damage")
+	check(pawn.shots > shots_before and is_equal_approx(pawn.hp,83),"Continuous live firing permits half-rate Strong healing without incoming damage")
 	pawn.regen_credit = .75
 	pawn.protection = 0.0
-	var hurt_hp: int = pawn.hp
+	var hurt_hp: float = pawn.hp
 	check(sim.damage_pawn(pawn,{"pos":pawn.pos+Vector2(0,1),"id":99},10),"Regeneration regression applies real enemy damage")
 	sim.update_defense_regen(pawn,.25)
-	check(pawn.hp == hurt_hp-10 and pawn.regen_credit == 0,"Damage clears partial healing and restarts the delay")
+	check(is_equal_approx(pawn.hp,hurt_hp-10) and pawn.regen_credit == 0,"Damage clears partial healing and restarts the delay")
 	pawn.hp = 109
 	pawn.combat_remaining = 0
 	sim.update_defense_regen(pawn,2.0)

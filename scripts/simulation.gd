@@ -574,7 +574,7 @@ func recover_defense_fall(p: Dictionary, body) -> void:
 	body.position = Vector3(return_position.x,p.height,return_position.y)
 	body.velocity = Vector3.ZERO
 	body.grounded = false
-	p.hp = maxi(0,p.hp-DEFENSE_FALL_DAMAGE)
+	p.hp = maxf(0,p.hp-DEFENSE_FALL_DAMAGE)
 	enter_combat(p)
 	p.protection = .65
 	p.damage_dir = Vector2.ZERO
@@ -595,17 +595,14 @@ func update_defense_regen(p: Dictionary, dt: float) -> void:
 	if p.hp >= maximum or healing_time <= 0 or progression.regen_rate() <= 0:
 		if p.hp >= maximum or progression.regen_rate() <= 0: p.regen_credit = 0.0
 		return
-	p.regen_credit = float(p.get("regen_credit",0.0))+healing_time*progression.regen_rate()
-	var healed: int = floori(p.regen_credit)
-	if healed <= 0: return
-	var before_hp: int = p.hp
-	p.hp = mini(maximum,p.hp+healed)
+	var before_hp: float = p.hp
+	p.hp = minf(maximum,float(p.hp)+healing_time*progression.regen_rate())
+	p.regen_credit = 0.0
 	if p.hp > before_hp:
 		p["healing_flash"] = .9
 		if float(p.get("heal_cue_at",-10.0)) <= elapsed:
 			p["heal_cue_at"] = elapsed+3.0
 			events.append({"kind":"heal","player":p.id})
-	p.regen_credit = 0.0 if p.hp == maximum else p.regen_credit-healed
 
 func enter_combat(p: Dictionary) -> void:
 	p.combat_remaining = COMBAT_REGEN_DELAY
@@ -659,7 +656,7 @@ func purchase_upgrade(id: String, p: Dictionary) -> bool:
 	if not progression.purchase(id): return false
 	for pawn in pawns.values():
 		pawn.max_hp = progression.max_health()
-		if pawn.hp > 0: pawn.hp = mini(pawn.max_hp,pawn.hp+pawn.max_hp-old_health)
+		if pawn.hp > 0: pawn.hp = minf(pawn.max_hp,pawn.hp+pawn.max_hp-old_health)
 		pawn.grenade_capacity = progression.grenade_capacity()
 		pawn.grenades += pawn.grenade_capacity-old_grenades
 		for index in [0,2]:
@@ -779,7 +776,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 
 func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
 	if won or not p.get("connected",true) or p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
-	p.hp = maxi(0,p.hp-amount)
+	p.hp = maxf(0,p.hp-amount)
 	enter_combat(p)
 	# Give the rear-hit cue time to be actionable under overlapping melee attacks.
 	p.protection = .65
