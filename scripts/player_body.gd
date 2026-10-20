@@ -1,6 +1,7 @@
 extends CharacterBody3D
 ## Authority-owned capsule. Explicit motion keeps simulation/test dt independent
 ## of the scene frame; Godot sweeps resolve floors, walls, ceilings and slopes.
+const MOVEMENT_BARRIER_LAYER = 2
 const RADIUS = .3
 const HEIGHT = 1.8
 const CROUCH_HEIGHT = 1.2
@@ -14,7 +15,7 @@ static func eye_height(p: Dictionary) -> float:
 
 func _init() -> void:
 	collision_layer = 0
-	collision_mask = 1
+	collision_mask = 1|MOVEMENT_BARRIER_LAYER
 	safe_margin = .001
 	floor_snap_length = .08
 	collider = CollisionShape3D.new()

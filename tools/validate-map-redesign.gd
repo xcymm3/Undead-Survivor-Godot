@@ -29,7 +29,7 @@ static func validate(game, check: Callable) -> void:
 	var pitched_roof = game.arena.surface_hit(Vector3(6,15,Layout.SHOP_AREA.get_center().y),Vector3(6,7,Layout.SHOP_AREA.get_center().y))
 	check.call(not pitched_roof.is_empty() and pitched_roof.position.y > 9.0,"Pitched storefront roof has actual overhead collision above the preserved interior ceiling")
 	var owner = game.arena.scenery.get_node("WeaponShop/WeaponShopOwner")
-	check.call(owner.get_meta("npc_name") == "武器店老板" and owner.get_meta("face_concealed") and owner.has_node("OpaqueFaceWrap"),"Weapon shopkeeper has a named hooded model with an opaque face wrap")
+	check.call(owner.get_meta("npc_name") == "武器店老板" and owner.get_meta("face_concealed") and owner.has_node("BreathingTorso/TurningHead/OpaqueFaceWrap"),"Weapon shopkeeper has a named hooded model with an opaque face wrap")
 	for index in 4:
 		var spawn = Layout.SPAWN+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6)
 		check.call(Layout.SHOP_AREA.has_point(spawn) and game.arena.clear(spawn,spawn),"Coop spawn slot stays inside the furnished room and clear of walls: "+str(index))

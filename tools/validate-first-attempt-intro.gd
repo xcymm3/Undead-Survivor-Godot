@@ -50,6 +50,40 @@ static func validate(game, check: Callable) -> void:
 		for character in line: dialogue_glyphs = dialogue_glyphs and dialogue_font.has_char(character.unicode_at(0))
 	check.call(dialogue_glyphs,"The shopkeeper typeface contains every dialogue character")
 	check.call(not world.shop.owner_model.visible,"Shopkeeper initially absent")
+	var shop = world.shop
+	var pose = sim.defense.duplicate(true)
+	pose.tutorial_dialogue = "shop"
+	pose.tutorial_speaker_eye = Vector3(preload("res://scripts/defense_layout.gd").SHOP_OWNER.x+2,4.7,preload("res://scripts/defense_layout.gd").SHOP_OWNER.y-3)
+	pose.prop_clock = 0.0
+	shop.sync(pose)
+	pose.prop_clock = .1
+	shop.sync(pose)
+	check.call(shop.owner_head_yaw < 0 and shop.owner_head_yaw > -.3 and absf(shop.owner_chest.position.y) > 0,"Shopkeeper smoothly starts turning toward the speaker while breathing")
+	pose.prop_clock = 1.0
+	shop.sync(pose)
+	var turned: float = shop.owner_head_yaw
+	check.call(is_equal_approx(turned,atan2(-2.0,3.0)),"Shopkeeper head faces the actual speaker position")
+	pose.erase("tutorial_dialogue")
+	pose.prop_clock = 1.1
+	shop.sync(pose)
+	check.call(shop.owner_head_yaw > turned and shop.owner_head_yaw < 0,"Shopkeeper returns smoothly after dialogue")
+	pose.prop_clock = 2.0
+	shop.sync(pose)
+	check.call(is_zero_approx(shop.owner_head_yaw),"Shopkeeper returns to the resting forward direction")
+	shop.sync(sim.defense)
+	var body = preload("res://scripts/player_body.gd").new()
+	game.arena.add_child(body)
+	await game.get_tree().physics_frame
+	var owner_pos: Vector2 = preload("res://scripts/defense_layout.gd").SHOP_OWNER
+	for elevation in [3.1,4.4,5.5]:
+		for side in [false,true]:
+			body.position = Vector3(owner_pos.x-3.5 if side else owner_pos.x,elevation,owner_pos.y if side else owner_pos.y-3)
+			body.velocity = Vector3.ZERO
+			for tick in 60: body.advance(Vector2(6,0) if side else Vector2(0,6),1.0/60)
+			check.call(body.position.x < owner_pos.x-2.7 if side else body.position.z < owner_pos.y-1.7,"Counter movement barrier stops front/side entry at height "+str(elevation)+" side="+str(side))
+	body.free()
+	check.call(world.shop.has_node("Bedroom/BedFrame") and world.shop.has_node("Bedroom/Wardrobe") and world.shop.has_node("Bedroom/BedsideLight"),"Spawn room contains a bed, wardrobe and working lamp")
+
 	check.call(world.preparation.stations.values().all(func(station): return station.broken.visible and not station.prop.visible and not station.cover.visible),"All stations are broken without display props")
 	check.call(world.structure_view.actors.values().all(func(actor): return not actor.root.visible),"Tower and gate ghosts initially hidden")
 	check.call(world.preparation.blueprints.values().all(func(markers): return markers.all(func(marker): return not marker.visible)),"Mine blueprint markers initially hidden")

@@ -14,7 +14,7 @@ func stage(value: String) -> void:
 	progress.store = preload("res://scripts/progression_store.gd").new()
 	progress.store.data.coins = 150.0
 	progress.store.data.intro_seen = scenario != "tutorial_intro"
-	progress.store.data.tutorial_stage = Tutorial.SHOP_PENDING if scenario == "tutorial_dialogue" else Tutorial.DEFENSE_PENDING if scenario == "tutorial_payment" else Tutorial.FIRST_RUN
+	progress.store.data.tutorial_stage = Tutorial.SHOP_PENDING if scenario in ["tutorial_dialogue","tutorial_owner_idle"] else Tutorial.DEFENSE_PENDING if scenario == "tutorial_payment" else Tutorial.FIRST_RUN
 	game.start_solo("defense",491)
 	game.set_process(false)
 	game.set_physics_process(false)
@@ -23,14 +23,21 @@ func stage(value: String) -> void:
 	game.weapon.visible = false
 	game.get_viewport().scaling_3d_scale = 1.0
 	var pawn = game.local_pawn()
-	if scenario in ["tutorial_dialogue","tutorial_payment"]:
+	if scenario in ["tutorial_dialogue","tutorial_payment","tutorial_owner_idle"]:
 		pawn.pos = Layout.SHOP_OWNER+Vector2(1.5,-3.6)
 		game.camera.position = Vector3(pawn.pos.x,4.65,pawn.pos.y)
 		game.camera.look_at(Vector3(Layout.SHOP_OWNER.x,4.85,Layout.SHOP_OWNER.y))
 		pawn.yaw = game.camera.rotation.y
 		pawn.pitch = game.camera.rotation.x
-		Tutorial.begin_dialogue(game.sim,pawn)
+		if scenario != "tutorial_owner_idle": Tutorial.begin_dialogue(game.sim,pawn)
 		game.camera.rotation = Vector3(pawn.pitch,pawn.yaw,0)
+	elif scenario in ["tutorial_bedroom","tutorial_bedroom_door"]:
+		pawn.pos = Layout.SPAWN+Vector2(-1.4,0)
+		game.camera.position = Vector3(pawn.pos.x,4.7,pawn.pos.y)
+		game.camera.look_at(Vector3(-10.0,4.0,Layout.SHOP_AREA.end.y-2.1))
+		if scenario == "tutorial_bedroom_door":
+			game.camera.position = Vector3(-9.6,4.7,Layout.SHOP_PARTITION_Z+1.0)
+			game.camera.look_at(Vector3(-4.3,4.2,Layout.SHOP_AREA.end.y-1.3))
 	elif scenario == "tutorial_combat":
 		pawn.pos = Layout.CRYSTAL+Vector2(3.5,5)
 		game.sim.defense_director.begin_wave()
@@ -72,4 +79,4 @@ func seek(time: float) -> void:
 	RenderingServer.force_draw(true)
 	var frame = Tutorial.dialogue_frame(game.sim.defense)
 	var payment_at: float = Tutorial.DEFENSE_LINES[0].length()/Tutorial.CHARACTERS_PER_SECOND+Tutorial.LINE_PAUSE
-	JavaScriptBridge.eval("window.__tutorialReviewReady="+JSON.stringify({"scenario":scenario,"time":time,"coins":game.sim.progression.data.coins,"dialogue":frame.text,"line":frame.line,"payment_at":payment_at,"flying_coins":game.arena.scenery.preparation.money_flights.multimesh.visible_instance_count,"caption":Intro.caption(game.sim.defense),"hint":Tutorial.hint_mode(game.sim.defense),"black":game.ui.native_hud.tutorial_overlay.black.visible}),true)
+	JavaScriptBridge.eval("window.__tutorialReviewReady="+JSON.stringify({"head_yaw":game.arena.scenery.shop.owner_head_yaw,"breath_y":game.arena.scenery.shop.owner_chest.position.y,"scenario":scenario,"time":time,"coins":game.sim.progression.data.coins,"dialogue":frame.text,"line":frame.line,"payment_at":payment_at,"flying_coins":game.arena.scenery.preparation.money_flights.multimesh.visible_instance_count,"caption":Intro.caption(game.sim.defense),"hint":Tutorial.hint_mode(game.sim.defense),"black":game.ui.native_hud.tutorial_overlay.black.visible}),true)
