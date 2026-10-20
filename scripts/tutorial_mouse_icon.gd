@@ -2,10 +2,11 @@ extends Control
 var action = "aim"
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(36,44)
+	custom_minimum_size = Vector2(53,64)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _draw() -> void:
+	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*(64.0/44.0))
 	var events = InputMap.action_get_events(action)
 	var button = 0
 	if not events.is_empty() and events[0] is InputEventMouseButton: button = events[0].button_index
