@@ -258,7 +258,7 @@ func validate_shield_contacts() -> void:
 			check(not hit.is_empty() and hit.armor != lowered and hit.head == lowered,"Shield movement physically covers or exposes the head")
 			var crown: Vector3 = pose.root*Vector3(0,1.99,0)
 			hit = view.hit(z,crown+forward*5,-forward,10,0,true)
-			check(not hit.is_empty() and not hit.armor and hit.head,"Exposed upper head can be shot from the front despite intact armor")
+			check(not hit.is_empty() and hit.armor != lowered and hit.head == lowered,"Five-percent taller shield now covers the formerly exposed upper-head ray when raised")
 			hit = view.hit(z,head-forward*5,forward,10,0,true)
 			check(not hit.is_empty() and not hit.armor and hit.head,"Rear headshot bypasses the shield")
 			hit = view.hit(z,chest+side*5,-side,10,0,true)
@@ -295,12 +295,12 @@ func validate_shield_contacts() -> void:
 	z = sim.zombies[-1]
 	pose = view.pose_state(z,0,true)
 	var crown: Vector3 = pose.root*Vector3(0,1.99,0)
-	hit = view.hit(z,crown+forward*5,-forward,10,0,true)
+	hit = view.hit(z,crown-forward*5,forward,10,0,true)
 	var armor: float = z.armor
 	sim.progression.data.weapons.rifle = 0
 	var w: Dictionary = {"id":"rifle","damage":50.0,"headshotMultiplier":2.0}
 	sim.hit_enemy(z,sim.weapon_damage(w,hit.head),hit.armor,p,crown)
-	check(z.body == body-100 and z.armor == armor,"Exposed headshot applies its multiplier to body health without consuming shield armor")
+	check(z.body == body-100 and z.armor == armor,"Rear headshot applies its multiplier to body health without consuming shield armor")
 	sim.hit_enemy(z,10000,false,p,crown)
 	check(z.hp == 0 and z.body == 0 and z.armor == 0,"Body death kills the wielder even with an intact shield")
 	sim.zombies.clear()

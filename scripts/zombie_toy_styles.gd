@@ -64,8 +64,8 @@ static func details(kind: String) -> Array:
 			add(result,Vector3(0,1.03,.211),Vector3(.12,.10,.010),"e7bc70")
 			for x in [-.20,.20]: add(result,Vector3(x,1.30,.199),Vector3(.055,.28,.012),"d6badd")
 		"shield":
-			add(result,Vector3(0,1.25,.819),Vector3(.26,.26,.012),"dc9b50",5)
-			for x in [-.065,.065]: add(result,Vector3(x,1.25,.829),Vector3(.026,.16,.006),"385b78",5)
+			add(result,Vector3(0,1.2855,.819),Vector3(.26,.273,.012),"dc9b50",5)
+			for x in [-.065,.065]: add(result,Vector3(x,1.2855,.829),Vector3(.026,.168,.006),"385b78",5)
 			for x in [-.23,.23]: add(result,Vector3(x,1.37,.201),Vector3(.07,.07,.012),"dfc28b")
 		"berserker":
 			add(result,Vector3(0,.91,.199),Vector3(.65,.09,.012),"743d3e")
