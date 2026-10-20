@@ -10,24 +10,23 @@ func _ready() -> void:
 	var middle: float = area.get_center().y
 	var height: float = Layout.SHOP_CEILING_Y-3.0
 	var y: float = 3.0+height*.5
-	block("ShopFrontWall",Vector3(0,y,front),Vector3(26.6,height,.5),"354139")
-	block("ShopRearWall",Vector3(0,y,rear),Vector3(26.6,height,.5),"354139")
-	block("ShopWestWall",Vector3(-13,y,middle),Vector3(.5,height,20),"354139")
+	block("ShopFrontWall",Vector3(0,y,front),Vector3(26.6,height,.5),"8b8970")
+	block("ShopRearWall",Vector3(0,y,rear),Vector3(26.6,height,.5),"8b8970")
+	block("ShopWestWall",Vector3(-13,y,middle),Vector3(.5,height,20),"8b8970")
 	# A side-facing door keeps the crystal hidden behind the opaque front wall.
 	var a: float = Layout.SHOP_DOOR_Z-Layout.SHOP_DOOR_WIDTH/2
 	var b: float = Layout.SHOP_DOOR_Z+Layout.SHOP_DOOR_WIDTH/2
-	block("ShopEastWallFront",Vector3(13,y,(front+a)/2),Vector3(.5,height,a-front),"354139")
-	block("ShopEastWallRear",Vector3(13,y,(rear+b)/2),Vector3(.5,height,rear-b),"354139")
+	block("ShopEastWallFront",Vector3(13,y,(front+a)/2),Vector3(.5,height,a-front),"8b8970")
+	block("ShopEastWallRear",Vector3(13,y,(rear+b)/2),Vector3(.5,height,rear-b),"8b8970")
 	block("ShopDoorLintel",Vector3(13,6.95,Layout.SHOP_DOOR_Z),Vector3(.65,1.1,Layout.SHOP_DOOR_WIDTH),"554735",true,false)
 	# Roof and overhead beams collide in 3D but never mark the floor as unwalkable.
-	block("ShopRoof",Vector3(0,Layout.SHOP_CEILING_Y+.18,middle),Vector3(27.4,.36,21.4),"283632",true,false)
-	for x in [-13.45,13.45]:
-		block("RoofFascia",Vector3(x,7.68,middle),Vector3(.18,.5,21.4),"66533b",false)
-	for z in [front-.65,rear+.65]:
-		block("RoofFascia",Vector3(0,7.68,z),Vector3(27.2,.5,.18),"66533b",false)
+	block("ShopRoof",Vector3(0,Layout.SHOP_CEILING_Y+.08,middle),Vector3(26.4,.16,20.4),"6b705b",true,false)
 	for z in [front+2,front+8,front+14,front+19]:
 		block("CeilingBeam",Vector3(0,7.3,z),Vector3(26,.25,.2),"625239",true,false)
-		block("RoofSeam",Vector3(0,7.89,z),Vector3(27,.04,.09),"63716a",false)
+	var exterior = preload("res://scripts/weapon_shop_exterior.gd").new()
+	exterior.name = "Storefront"
+	add_child(exterior)
+	obstacles.append_array(exterior.obstacles)
 	for x in [-12.65,12.65]:
 		for z in [front+.35,rear-.35]:
 			block("TimberCornerPost",Vector3(x,y,z),Vector3(.24,height,.24),"755b3c",false)

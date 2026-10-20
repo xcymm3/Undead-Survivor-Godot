@@ -25,6 +25,8 @@ static func validate(game, check: Callable) -> void:
 	check.call(not game.arena.surface_hit(spawn_eye,crystal_eye).is_empty(),"Opaque shop walls hide the crystal from the initial spawn")
 	var roof = game.arena.surface_hit(spawn_eye,spawn_eye+Vector3.UP*6)
 	check.call(not roof.is_empty() and roof.position.y >= 7.0,"Rear spawn has an actual collidable ceiling")
+	var pitched_roof = game.arena.surface_hit(Vector3(6,15,Layout.SHOP_AREA.get_center().y),Vector3(6,7,Layout.SHOP_AREA.get_center().y))
+	check.call(not pitched_roof.is_empty() and pitched_roof.position.y > 9.0,"Pitched storefront roof has actual overhead collision above the preserved interior ceiling")
 	var owner = game.arena.scenery.get_node("WeaponShop/WeaponShopOwner")
 	check.call(owner.get_meta("npc_name") == "武器店老板" and owner.get_meta("face_concealed") and owner.has_node("OpaqueFaceWrap"),"Weapon shopkeeper has a named hooded model with an opaque face wrap")
 	for index in 4:
