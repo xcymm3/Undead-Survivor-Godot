@@ -85,9 +85,9 @@ pause={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":4194305)]
 }
-mute={
+ultimate={
 "deadzone": 0.2,
-"events": [Object(InputEventKey,"physical_keycode":77)]
+"events": [Object(InputEventKey,"physical_keycode":81)]
 }
 fullscreen={
 "deadzone": 0.2,

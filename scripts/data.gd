@@ -7,7 +7,9 @@ var parts: Array = rules.parts
 const Maps = preload("res://scripts/map_catalog.gd")
 signal settings_changed
 var window_mode = preload("res://scripts/window_mode.gd").new()
-var settings = {"sensitivity": 0.0022, "volume": 1.0, "muted": false, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 3, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_defense", "defense_difficulty":"normal"}
+var settings = {"sensitivity": 0.0022, "volume": 1.0, "muted": false, "screen_shake": 1, "bindings": {}, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 3, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_defense", "defense_difficulty":"normal"}
+const Bindings = preload("res://scripts/control_bindings.gd")
+var controls = Bindings.new()
 const GRAPHICS_PRESETS = [
     {"resolution":.5,"aa":0,"shadows":0,"effects":0,"distance":0,"frame_limit":60,"pixelated":true},
     {"resolution":.67,"aa":1,"shadows":1,"effects":0,"distance":1,"frame_limit":60,"pixelated":false},
@@ -47,6 +49,9 @@ func _ready() -> void:
 		if arg.begins_with("--map=") and Maps.valid(arg.trim_prefix("--map=")): settings.map_id = arg.trim_prefix("--map=")
 	settings.sensitivity = clampf(settings.sensitivity, .00022, .0044)
 	settings.volume = clampf(settings.volume, 0, 1)
+	settings.muted = false
+	settings.screen_shake = clampi(int(settings.screen_shake),0,2)
+	controls.initialize(settings.bindings)
 	settings.quality = clampi(settings.quality, 0, 5)
 	settings.resolution = clampf(settings.resolution,.5,1)
 	for key in ["aa","shadows","effects","distance"]: settings[key] = clampi(settings[key],0,4 if key == "shadows" else 3 if key == "aa" else 2)
@@ -167,3 +172,18 @@ static func pellet(w: Dictionary, index: int, shot: int, aiming := false) -> Vec
 	var columns = ceili((w.pellets - 1) / 2.0)
 	var horizontal = floorf((index - 1) / 2.0) / (columns - 1) * 2 - 1
 	return Vector2(horizontal * w.spread, (-1 if (index - 1) % 2 == 0 else 1) * (1 - .3 * absf(horizontal)) * w.get("spreadVertical", w.spread))
+
+func binding_label(action: String) -> String:
+	return controls.label_for(action)
+
+func rebind(action: String, event: InputEvent) -> String:
+	var result: String = controls.rebind(action,event)
+	if result.is_empty():
+		settings.bindings = controls.export_bindings()
+		save()
+	return result
+
+func reset_bindings() -> void:
+	controls.restore()
+	settings.bindings = {}
+	save()

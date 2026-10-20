@@ -76,7 +76,7 @@ static func description(sim, id: String) -> String:
 	var profile = sim.progression
 	if id == "unsupported_weapon": return "此装备无需升级"
 	if id == "crystal":
-		if sim.defense.get("crystal_repair_required",false): return "水晶已破损\n长按 E 修复\n修复完成立即开始进攻"
+		if sim.defense.get("crystal_repair_required",false): return "水晶已破损\n长按 %s 修复\n修复完成立即开始进攻" % sim.arena.get_node("/root/Data").binding_label("interact")
 		return "水晶\n%d / %d" % [sim.defense.crystal_hp,sim.defense.crystal_max_hp]
 	var price: int = profile.cost(id)
 	var cost_text = "%d%s" % [price," 钻石" if id in profile.TALENTS else " 金币"] if price >= 0 else ""

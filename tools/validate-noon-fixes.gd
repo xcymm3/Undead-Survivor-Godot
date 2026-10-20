@@ -147,7 +147,7 @@ func run() -> void:
 	var slider = game.ui.menu.find_child("Sensitivity",true,false)
 	slider.value = 137
 	check(is_equal_approx(root.get_node("Data").settings.sensitivity,.0022*1.37),"Sensitivity slider still applies and persists its numeric value")
-	game.ui.settings_tab = 1
+	game.ui.settings_tab = 2
 	game.ui.show_settings()
 	await process_frame
 	check(game.ui.menu.find_children("*","OptionButton",true,false).is_empty(),"Graphics settings use arrow selectors instead of dropdown forms")

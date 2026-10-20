@@ -17,6 +17,8 @@ var message = ""
 var portraits: Dictionary = {}
 var victory_caption: Label
 var native_hud
+var binding_action = ""
+var binding_button: Button
 var settings_tab = 0
 var overlay_state: Array = []
 const INK = Color("eee4c9")
@@ -462,14 +464,16 @@ func field_slider(parent: VBoxContainer, caption: String, minimum: float, maximu
 		callback.call(v))
 
 func show_settings() -> void:
+	binding_action = ""
+	game.reset_mouse_buttons()
 	Data.sync_window_mode()
 	var shell = field_shell("战场设置","调整操控、声音与画面 · 更改自动保存")
 	current = "settings"
 	var navigation = HBoxContainer.new()
 	navigation.add_theme_constant_override("separation",16)
 	shell.add_child(navigation)
-	for index in 2:
-		var tab = home_button(navigation,["操控与声音","画面设置"][index],func():
+	for index in 3:
+		var tab = home_button(navigation,["操控设置","声音设置","画面设置"][index],func():
 			settings_tab = index
 			show_settings(),settings_tab == index)
 		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -488,14 +492,32 @@ func show_settings() -> void:
 		field_slider(column,"鼠标灵敏度",10,200,Data.settings.sensitivity/.0022*100,func(v):
 			Data.settings.sensitivity = v/100*.0022
 			Data.save())
-		paragraph(column,"中键切换开镜；开镜转向随视野降低。",16,SETTINGS_MUTED)
+		field_choice(column,"镜头抖动",["关闭","轻度","标准"],int(Data.settings.screen_shake),func(v):
+			Data.settings.screen_shake = v
+			game.screen_shake.clear()
+			Data.save())
+		paragraph(column,"点击按键后输入新按键或鼠标键，Esc 取消；重复绑定自动交换。开镜为切换模式。",16,SETTINGS_MUTED)
+		for spec in Data.Bindings.ACTIONS:
+			var row = HBoxContainer.new()
+			column.add_child(row)
+			var title = label(spec[1],18,SETTINGS_INK)
+			title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(title)
+			var control = home_button(row,Data.binding_label(spec[0]),func(): pass)
+			control.name = "Binding_"+spec[0]
+			control.custom_minimum_size = Vector2(230,44)
+			control.pressed.connect(func():
+				if is_instance_valid(binding_button) and not binding_action.is_empty(): binding_button.text = Data.binding_label(binding_action)
+				binding_action = spec[0]
+				binding_button = control
+				control.text = "请按键 · Esc 取消")
+		home_button(column,"恢复默认键位",func():
+			Data.reset_bindings()
+			show_settings())
+	elif settings_tab == 1:
 		settings_heading(column,"声音")
 		field_slider(column,"主音量",0,100,Data.settings.volume*100,func(v):
 			Data.settings.volume = v/100
-			Data.apply_settings()
-			Data.save())
-		field_choice(column,"静音（M）",["关闭","开启"],int(Data.settings.muted),func(v):
-			Data.settings.muted = v == 1
 			Data.apply_settings()
 			Data.save())
 	else:
@@ -785,3 +807,20 @@ func delete_confirmed_slot(index: int) -> void:
 	else:
 		var column = panel("删除失败","无法访问存档文件，请检查用户目录权限。")
 		button(column,"返回",show_save_slots)
+
+func capture_binding(event: InputEvent) -> bool:
+	if current != "settings" or binding_action.is_empty(): return false
+	if event is InputEventMouseMotion: return false
+	if not event.is_pressed() or event.is_echo(): return true
+	if event is InputEventKey and event.physical_keycode == KEY_ESCAPE:
+		binding_button.text = Data.binding_label(binding_action)
+		binding_action = ""
+		return true
+	var result = Data.rebind(binding_action,event)
+	if result.is_empty():
+		var scroll_position: int = menu.find_child("FieldSettings",true,false).scroll_vertical
+		show_settings()
+		menu.find_child("FieldSettings",true,false).set_deferred("scroll_vertical",scroll_position)
+	else:
+		binding_button.text = result+" · 重试"
+	return true

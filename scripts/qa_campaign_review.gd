@@ -30,7 +30,7 @@ func stage() -> void:
 					item.mouse_entered.emit()
 					await get_tree().create_timer(.16).timeout
 		if scenario in ["settings","settings_graphics"]:
-			game.ui.settings_tab = 1 if scenario == "settings_graphics" else 0
+			game.ui.settings_tab = 2 if scenario == "settings_graphics" else 1 if scenario == "settings_sound" else 0
 			game.ui.show_settings()
 		if scenario == "saves": game.ui.show_save_slots()
 	else:

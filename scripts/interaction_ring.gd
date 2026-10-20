@@ -97,9 +97,12 @@ func sync(value: float, eye: Vector3, enabled: bool, status := "ready") -> void:
 	rectangle(mesh,Rect2(-INNER,-INNER,2*INNER,2*INNER),PAPER if enabled else MUTED,.005)
 	if progress > 0:
 		sector(mesh,progress,SUCCESS if status == "complete" else FILL)
-	pixel_letter(mesh)
+	var key: String = get_node("/root/Data").binding_label("interact")
+	if key == "E": pixel_letter(mesh)
+	letter.visible = key != "E"
+	letter.pixel_size = .003*minf(1.0,1.8/maxi(1,key.length()))
 	mesh.surface_end()
 	arc.mesh = mesh
-	letter.text = "E"
+	letter.text = key
 	hint.text = {"complete":"完成","maxed":"满级","error":"不足","disabled":"不可用"}.get(status,"长按")
 	hint.modulate = SUCCESS if status == "complete" else ERROR if status == "error" else FRAME if enabled else MUTED

@@ -3,6 +3,7 @@ const Simulation = preload("res://scripts/simulation.gd")
 const Arena = preload("res://scripts/arena.gd")
 const EnemyView = preload("res://scripts/enemy_view.gd")
 const DefensePopulation = preload("res://scripts/defense_population.gd")
+var screen_shake = preload("res://scripts/screen_shake.gd").new()
 var visual_ray_index = preload("res://scripts/enemy_ray_index.gd").new()
 var arena
 var enemies
@@ -184,6 +185,7 @@ func prepare_coop() -> void:
 	if Session.active and Session.loading: Session.confirm_map_ready()
 
 func reset_game() -> void:
+	screen_shake.clear()
 	awaiting_coop_snapshot = false
 	display_buffer.clear()
 	if sound: sound.clear_effects()
@@ -317,6 +319,10 @@ func _process(dt: float) -> void:
 			aim_distance = impact.distance
 			aim_target = camera.position-camera.global_basis.z*aim_distance
 	weapon.sync(p,dt,visual_time,camera.to_local(aim_target))
+	# Visual impulse is applied after aim queries; authority yaw/pitch never change.
+	var shake: Vector2 = screen_shake.step(dt,int(Data.settings.screen_shake))
+	camera.rotation.x += shake.x
+	camera.rotation.y += shake.y
 	sound.sync_ultimate(p,running and not paused and focused and not finished)
 	var equipment_slot: int = p.get("slot",1)
 	weapon.visible = equipment_slot < 4 and not finished
@@ -389,6 +395,10 @@ func handle_effects(events: Array) -> void:
 				effects.explosion(event.position)
 				sound.play_at("grenade-explosion",event.position,-10)
 			"explosion":
+				var viewer: Dictionary = view_pawn() if running and not finished else {}
+				if not viewer.is_empty() and not paused:
+					var eye = Vector3(viewer.pos.x,viewer.height+1.6,viewer.pos.y)
+					screen_shake.trigger(eye.distance_to(event.position),int(Data.settings.screen_shake))
 				effects.explosion(event.position)
 				sound.play_at("grenade-explosion",event.position,-6)
 			"grenade_throw", "grenade_fuse":
@@ -483,6 +493,7 @@ func update_finish_camera(dt: float) -> void:
 	camera.global_transform = finish_camera_start if sim.boss_victory else finish_camera_start.interpolate_with(target,amount)
 	if death_timer >= (5.8 if sim.boss_victory else 3.8) and ui.current != "result": ui.show_result()
 func pause_game() -> void:
+	screen_shake.clear()
 	if not running or finished: return
 	reset_mouse_buttons()
 	paused = true
@@ -504,6 +515,7 @@ func resume_game() -> void:
 	sound.set_playing(true)
 
 func return_home() -> void:
+	screen_shake.clear()
 	if Progress.store: Progress.store.save()
 	display_buffer.clear()
 	if sound: sound.clear_effects()
@@ -574,6 +586,9 @@ func reset_mouse_buttons() -> void:
 
 func _input(event: InputEvent) -> void:
 	request_draw()
+	if ui and ui.capture_binding(event):
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_released("fire"): fire_held = false
 	if not running or paused or finished or not focused: return
 	if event.is_action("fire") and not event.is_echo():
@@ -599,10 +614,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				if paused: resume_game()
 				else: pause_game()
 			elif ui.current != "home": ui.back()
-		if event.is_action_pressed("mute"):
-			Data.settings.muted = not Data.settings.muted
-			Data.apply_settings()
-			Data.save()
 		if event.is_action_pressed("fullscreen"):
 			Data.toggle_fullscreen()
 			Data.save()
@@ -619,7 +630,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	else:
 		if event.is_action_pressed("weapon_previous"): requested_weapon = posmod(requested_weapon-1,10)
 		if event.is_action_pressed("weapon_next"): requested_weapon = (requested_weapon+1)%10
-	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_Q: ultimate_pending = true
+	if event.is_action_pressed("ultimate") and not event.is_echo(): ultimate_pending = true
 	if event.is_action_pressed("jump"): jump_pending = true
 	if event.is_action_pressed("reload"): reload_pending = true
 	for i in 10:

@@ -95,7 +95,7 @@ func setup(owner_ui) -> void:
 		title.custom_minimum_size.x = 40
 		var note = text(detail,12)
 		equipment_slots.append({"panel":panel,"icon":icon,"title":title,"note":note,
-			"selected":slot_style(true),"idle":slot_style(false)})
+			"key":key,"selected":slot_style(true),"idle":slot_style(false)})
 	var cooldown_row = HBoxContainer.new()
 	column.add_child(cooldown_row)
 	ultimate_ring = preload("res://scripts/cooldown_ring.gd").new()
@@ -309,7 +309,8 @@ func sync() -> void:
 	crystal_alert.visible = float(defense.get("crystal_alert_until",-1)) > sim.elapsed
 	ultimate_ring.visible = sim.mode == "defense"
 	var charge = 1.0-float(p.get("ultimate_cd",0.0))/preload("res://scripts/ultimate.gd").cooldown(sim.progression)
-	ultimate_ring.sync(charge,"%d%%" % floori(charge*100) if not preload("res://scripts/ultimate.gd").active(p) else "Q","终极技能 %ds" % ceili(p.ultimate_remaining) if preload("res://scripts/ultimate.gd").active(p) else "终极技能 · Q")
+	controls_hint.text = "ESC 暂停 · %s 换弹 · %s 交互" % [Data.binding_label("reload"),Data.binding_label("interact")]
+	ultimate_ring.sync(charge,"%d%%" % floori(charge*100) if not preload("res://scripts/ultimate.gd").active(p) else Data.binding_label("ultimate"),"终极技能 %ds" % ceili(p.ultimate_remaining) if preload("res://scripts/ultimate.gd").active(p) else "终极技能 · "+Data.binding_label("ultimate"))
 	ultimate_notice.text = p.get("ultimate_notice","") if p.get("ultimate_notice_until",0.0) > sim.elapsed else ""
 	var w: Dictionary = sim.combat_weapon(p)
 	weapon_label.text = str(w.label)
@@ -341,6 +342,7 @@ func sync() -> void:
 			var selected: bool = p.slot == i+1
 			var available: bool = i < 3 or p.grenades > 0
 			item.panel.add_theme_stylebox_override("panel",item.selected if selected else item.idle)
+			item.key.text = Data.binding_label("weapon_%d" % i)
 			item.icon.kind = str(Data.weapons[index].id) if i < 3 else "grenade"
 			item.icon.modulate = Color("c7ef8a") if selected and available else Color("f2eedf") if available else Color("647064")
 			item.title.text = Data.weapons[index].label if i < 3 else "手雷  %d / %d" % [p.grenades,p.grenade_capacity]

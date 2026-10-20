@@ -209,13 +209,12 @@ func run() -> void:
 	var saved_settings: Dictionary = data.settings.duplicate(true)
 	for fullscreen in [false,true]:
 		data.settings.fullscreen = fullscreen
-		game.ui.settings_tab = 0
+		game.ui.settings_tab = 1
 		game.ui.show_settings()
 		game.ui.menu.find_child("MasterVolume",true,false).value = 37
-		for control in game.ui.menu.find_children("*","Button",true,false):
-			if control.accessibility_name == "静音（M）：下一项": control.pressed.emit()
-		check(data.settings.fullscreen == fullscreen,"Volume and mute callbacks preserve fullscreen preference: "+str(fullscreen))
-		game.ui.settings_tab = 1
+		check(game.ui.menu.find_children("*","HSlider",true,false).size() == 1,"Sound page contains only master volume")
+		check(data.settings.fullscreen == fullscreen,"Master volume callback preserve fullscreen preference: "+str(fullscreen))
+		game.ui.settings_tab = 2
 		game.ui.show_settings()
 		for control in game.ui.menu.find_children("*","Button",true,false):
 			if control.accessibility_name.ends_with("：下一项") and not control.accessibility_name.begins_with("全屏") and not control.accessibility_name.begins_with("画质预设"):

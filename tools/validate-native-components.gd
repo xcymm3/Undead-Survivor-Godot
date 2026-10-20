@@ -664,6 +664,7 @@ func run() -> void:
 	await process_frame
 	game.set_process(false)
 	game.set_physics_process(false)
+	validate_settings_controls()
 	var maps = load("res://scripts/map_catalog.gd")
 	check(maps.IDS == ["graypine_defense"] and game.arena.map_id == "graypine_defense","Only crystal defense is registered and loaded")
 	check(game.ui.root.find_children("MapSelection","",true,false).is_empty(),"Homepage has no map selection control")
@@ -1392,3 +1393,73 @@ func validate_equipment() -> void:
 	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
 	await physics_frame
 	await process_frame
+
+func validate_settings_controls() -> void:
+	var data = root.get_node("Data")
+	var saved: Dictionary = data.settings.duplicate(true)
+	data.reset_bindings()
+	game.start_solo("defense",71245)
+	game.sim.defense.erase("intro_elapsed")
+	var key = InputEventKey.new()
+	key.physical_keycode = KEY_J
+	key.pressed = true
+	check(data.rebind("ultimate",key).is_empty() and key.is_action_pressed("ultimate"),"Ultimate accepts a saved keyboard binding")
+	game._unhandled_input(key)
+	check(game.input_state().ultimate,"Rebound ultimate reaches authoritative command")
+	key.physical_keycode = KEY_S
+	check(data.rebind("forward",key).is_empty() and key.is_action_pressed("forward"),"Movement key actually follows the rebound action")
+	key.physical_keycode = KEY_W
+	check(key.is_action_pressed("back"),"Duplicate bindings swap instead of driving two movement actions")
+	key.physical_keycode = KEY_F11
+	check(not data.rebind("fire",key).is_empty(),"Reserved fullscreen shortcut cannot become fire")
+	var mouse = InputEventMouseButton.new()
+	mouse.button_index = MOUSE_BUTTON_RIGHT
+	mouse.pressed = true
+	check(data.rebind("fire",mouse).is_empty(),"Gunfire can bind to a mouse button")
+	game._input(mouse)
+	check(game.input_state().fire,"Rebound mouse button reaches gunfire command")
+	mouse.pressed = false
+	game._input(mouse)
+	check(not game.fire_held,"Rebound fire release stops automatic fire")
+	var stored = JSON.parse_string(JSON.stringify(data.settings.bindings))
+	data.controls.restore()
+	data.controls.initialize(stored)
+	check(data.binding_label("ultimate") == "J" and data.binding_label("forward") == "S" and data.binding_label("fire") == "鼠标右键","Bindings survive JSON save/load round trip")
+	game.pause_game()
+	game.ui.settings_tab = 0
+	game.ui.show_settings()
+	check(game.ui.menu.find_child("Binding_ultimate",true,false) != null and game.ui.menu.find_child("MasterVolume",true,false) == null,"Controls page exposes bindings independently of sound")
+	game.ui.menu.find_child("Binding_interact",true,false).pressed.emit()
+	key.physical_keycode = KEY_K
+	check(game.ui.capture_binding(key) and data.binding_label("interact") == "K","Binding capture commits a new key")
+	game.ui.menu.find_child("Binding_interact",true,false).pressed.emit()
+	key.physical_keycode = KEY_ESCAPE
+	check(game.ui.capture_binding(key) and data.binding_label("interact") == "K" and game.ui.binding_action.is_empty(),"Escape cancels capture without changing the binding")
+	data.reset_bindings()
+	check(data.binding_label("interact") == "E" and data.binding_label("ultimate") == "Q" and data.binding_label("forward") == "W","Restore defaults removes all custom bindings")
+	var shake = preload("res://scripts/screen_shake.gd").new()
+	shake.trigger(0,1)
+	var near: float = shake.step(.016,1).length()
+	shake.clear()
+	shake.trigger(10,1)
+	check(shake.step(.016,1).length() < near,"Explosion camera shake attenuates with distance")
+	shake.clear()
+	shake.trigger(15,1)
+	check(shake.step(.016,1) == Vector2.ZERO,"Distant explosions do not shake")
+	shake.trigger(0,1)
+	for i in 100: shake.trigger(0,1)
+	check(shake.amplitude <= deg_to_rad(.3),"Simultaneous explosions have a bounded shake amplitude")
+	check(shake.step(.3,1) == Vector2.ZERO,"Shake settles completely after a short impulse")
+	shake.trigger(0,1)
+	check(shake.step(.016,0) == Vector2.ZERO and shake.remaining == 0,"Disabled shake clears active impulses immediately")
+	game.resume_game()
+	game.screen_shake.clear()
+	var original_yaw: float = game.yaw
+	var original_pitch: float = game.pitch
+	var pawn = game.local_pawn()
+	game.handle_effects([{"kind":"explosion","position":Vector3(pawn.pos.x,pawn.height,pawn.pos.y)}])
+	check(game.screen_shake.remaining > 0 and game.yaw == original_yaw and game.pitch == original_pitch,"Real explosion events trigger only local feedback without changing authoritative aim")
+	game.return_home()
+	data.settings = saved
+	data.controls.initialize(saved.bindings)
+	data.apply_settings()
