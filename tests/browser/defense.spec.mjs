@@ -9,7 +9,7 @@ async function clickButton(page, text) {
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
 }
 
-test('吊桥水晶防守使用真实输入换装并过桥后长按E修复水晶开始进攻', async ({ page }, info) => {
+test('店内出生后使用真实输入穿过武器前厅并出门修复水晶开始进攻', async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   await page.goto('/');
@@ -32,10 +32,27 @@ test('吊桥水晶防守使用真实输入换装并过桥后长按E修复水晶�
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 2 && window.__survivorSnapshot?.player?.weapon === 2);
   expect(state.defense.crystal_hp).toBe(0);
-  expect(state.player.z).toBeLessThan(-62);
-  await page.keyboard.down('w');
-  await page.waitForFunction(() => window.__survivorSnapshot?.player?.z > 14.1, null, { timeout: 90_000 });
-  await page.keyboard.up('w');
+  expect(state.player.x).toBeCloseTo(-6.5, 1);
+  expect(state.player.z).toBeGreaterThan(45);
+  // Follow the actual backroom passage, showroom aisle and side-facing door.
+  // Each leg uses real keyboard input and observes authority positions.
+  for (const [key, axis, threshold, increasing] of [
+    ['w', 'z', 39.2, false],
+    ['d', 'x', 15.0, true],
+    ['w', 'z', 31.0, false],
+    ['a', 'x', 2.5, false],
+    ['w', 'z', 21.3, false],
+  ]) {
+    await page.keyboard.down(key);
+    try {
+      await page.waitForFunction(({ axis, threshold, increasing }) => {
+        const value = window.__survivorSnapshot?.player?.[axis];
+        return Number.isFinite(value) && (increasing ? value >= threshold : value <= threshold);
+      }, { axis, threshold, increasing }, { timeout: 60_000 });
+    } finally {
+      await page.keyboard.up(key);
+    }
+  }
   await page.keyboard.press('3');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 3 && window.__survivorSnapshot?.player?.weapon === 6);
   await page.keyboard.press('1');
