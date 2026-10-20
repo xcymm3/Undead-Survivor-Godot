@@ -47,8 +47,8 @@ func run() -> void:
 	var layout = data.Maps.Defense
 	check(is_equal_approx(layout.PLATEAU.size.y,82.0*2.0/3.0+12) and is_equal_approx(layout.BOUNDS.end.y,layout.PLATEAU.end.y),"Plateau and world boundary extend twelve metres behind the existing shop")
 	check(layout.PLATEAU.position.x == -24 and layout.PLATEAU.end.x == 24 and layout.CRYSTAL.is_equal_approx(Vector2(0,52.0/3)),"Plateau narrows eight metres per side without moving the crystal")
-	check(layout.SHOP_AREA.get_center().x == layout.CRYSTAL.x and layout.SPAWN.y > layout.SHOP_AREA.end.y and layout.CRYSTAL.y < layout.SHOP_AREA.position.y,"Player spawns behind the shop facing the existing crystal approach")
-	check(game.arena.clear(layout.SPAWN,Vector2(0,layout.SHOP_WALL_Z-2)),"Rear spawn connects to the shop through the open rear area")
+	check(layout.SHOP_AREA.get_center().x == layout.CRYSTAL.x and layout.SHOP_AREA.has_point(layout.SPAWN) and layout.CRYSTAL.y < layout.SHOP_AREA.position.y,"Player spawns inside the shop behind the weapon showroom")
+	check(game.arena.clear(layout.SPAWN,Vector2(layout.SHOP_PASSAGE_X,layout.SHOP_DOOR_Z)),"Rear room connects to the showroom through its offset passage")
 	for side in [-1.0,1.0]:
 		check(not game.arena.clear(Vector2(side*23,20),Vector2(side*25,20)),"Navigation blocks the removed plateau strip: "+str(side))
 	check(game.arena.obstacles.size() >= 5,"Chasm, ramp shelves and solid shop furniture participate in navigation")
@@ -56,7 +56,7 @@ func run() -> void:
 	check(not game.arena.clear(Vector2(12,-20),Vector2(12,0)),"Ramp-side shelves cannot bypass the central climb")
 	# Five talent stands now include a centre stand; the walkways lie between stands.
 	for aisle_x in [-2.5,2.5]:
-		check(game.arena.clear(Vector2(aisle_x,layout.SHOP_AREA.position.y-2),Vector2(aisle_x,layout.SHOP_AREA.get_center().y)),"Zombies can enter the shop between the talent stands: "+str(aisle_x))
+		check(game.arena.clear(Vector2(aisle_x,layout.SHOP_FRONT_Z+1.5),Vector2(aisle_x,layout.SHOP_DOOR_Z)),"Showroom aisles remain clear between talent stands: "+str(aisle_x))
 	check(not game.arena.clear(Vector2(0,layout.SHOP_AREA.position.y-2),layout.SHOP_AREA.get_center()),"The centre talent stand remains solid for enemy navigation")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Bridge and ramp form one open approach lane")
 	check(not game.arena.clear(Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997),data.Maps.Defense.CRYSTAL),"Crystal body blocks enemy navigation")
@@ -88,19 +88,18 @@ func run() -> void:
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Environmental cover preserves the central bridge, ramp and field lane")
 	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).is_empty(),"Shop removes all free weapon racks")
 	check(game.arena.scenery.has_node("PreparationWorld/Station_rifle") and game.arena.scenery.find_children("Label3D","Label3D",true,false).is_empty(),"Rear shop has physical display stations without persistent signs")
-	var shop_walls = game.arena.scenery.find_children("*","StaticBody3D",true,false).filter(func(node): return str(node.name).contains("WeaponShopWall"))
-	check(shop_walls.is_empty() and not game.arena.scenery.has_node("ShopEntranceLintel"),"Shop rear wall and lintel are removed")
+	check(game.arena.scenery.has_node("WeaponShop/ShopRoof") and game.arena.scenery.has_node("WeaponShop/ShopRearWall"),"Shop is enclosed by actual solid walls and a roof")
 	check(not game.arena.scenery.has_node("EntryPad") and game.arena.scenery.find_children("EntryArrow*","*",true,false).is_empty() and game.arena.scenery.find_children("ArrowWing*","*",true,false).is_empty(),"Rear spawn has no arrow board or arrow decorations")
-	check(game.arena.clear(Vector2(-6,layout.SHOP_WALL_Z-1),Vector2(-6,layout.SHOP_WALL_Z+2)) and game.arena.clear(Vector2(6,layout.SHOP_WALL_Z-1),Vector2(6,layout.SHOP_WALL_Z+2)),"Removed rear wall leaves both sides open for navigation")
-	var spawn_floor = game.arena.surface_hit(Vector3(layout.SPAWN.x,8,layout.SPAWN.y),Vector3(layout.SPAWN.x,-1,layout.SPAWN.y))
+	check(game.arena.clear(Vector2(11,layout.SHOP_DOOR_Z),Vector2(15,layout.SHOP_DOOR_Z)),"Side doorway is open to both player and enemy navigation")
+	var spawn_floor = game.arena.surface_hit(Vector3(layout.SPAWN.x,6,layout.SPAWN.y),Vector3(layout.SPAWN.x,-1,layout.SPAWN.y))
 	check(not spawn_floor.is_empty() and spawn_floor.position.y >= 3,"Rear spawn stands on native plateau collision")
-	check(game.arena.surface_hit(Vector3(0,4.5,layout.SPAWN.y),Vector3(0,4.5,layout.SHOP_WALL_Z-2)).is_empty(),"Open rear shop area clears a standing player's native collision height")
+	check(game.arena.surface_hit(Vector3(layout.SPAWN.x,4.5,layout.SPAWN.y),Vector3(layout.SPAWN.x,4.5,layout.SHOP_DOOR_Z)).is_empty(),"Offset backroom passage clears a standing player capsule")
 	var entry_body = preload("res://scripts/player_body.gd").new()
 	game.arena.add_child(entry_body)
 	await physics_frame
-	entry_body.position = Vector3(0,3.12,layout.SPAWN.y)
+	entry_body.position = Vector3(layout.SPAWN.x,3.12,layout.SPAWN.y)
 	for tick in 110: entry_body.advance(Vector2(0,-6),1.0/60)
-	check(entry_body.position.z < layout.SHOP_WALL_Z-2 and entry_body.position.y >= 3,"Standing player capsule walks from rear spawn into the open shop")
+	check(entry_body.position.z < layout.SHOP_WALL_Z-2 and entry_body.position.y >= 2.99,"Standing player capsule walks from the backroom into the showroom: "+str(entry_body.position))
 	for side in [-1.0,1.0]:
 		entry_body.position = Vector3(side*22,3.12,20)
 		entry_body.velocity = Vector3.ZERO

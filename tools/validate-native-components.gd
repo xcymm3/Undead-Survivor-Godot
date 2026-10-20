@@ -170,20 +170,21 @@ func validate_flame() -> void:
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
-	p.pos = Vector2(8,36.0)
+	# Keep this combat fixture outside the enclosed weapon shop.
+	p.pos = Vector2(8,26.0)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0
 	p.pitch = 0
 	p.weapon = 7
 	sim.zombies.clear()
-	sim.spawn(Vector2(8,30.0),"normal")
+	sim.spawn(Vector2(8,20.0),"normal")
 	var z: Dictionary = sim.zombies[0]
 	var before: float = z.hp
 	sim.fire(p,root.get_node("Data").weapons[7])
 	check(is_equal_approx(before-z.hp,45),"Overlapping flame rays apply damage only once per tick")
 	sim.zombies.clear()
-	sim.spawn(Vector2(8,28.0),"normal")
-	sim.spawn(Vector2(8.65,26.0),"normal")
+	sim.spawn(Vector2(8,18.0),"normal")
+	sim.spawn(Vector2(8.65,16.0),"normal")
 	var initial_hp: Array = sim.zombies.map(func(enemy): return enemy.hp)
 	sim.fire(p,root.get_node("Data").weapons[7])
 	check(sim.zombies[0].hp < initial_hp[0] and sim.zombies[1].hp < initial_hp[1],"Flame covers off-axis enemies and penetrates the front row")
@@ -207,13 +208,13 @@ func validate_sniper_penetration() -> void:
 	var w: Dictionary = root.get_node("Data").weapons[5].duplicate(true)
 	# Isolate penetration from the standing pose's head/body intersection.
 	w.headshotMultiplier = 1
-	p.pos = Vector2(8,36.0)
+	p.pos = Vector2(8,26.0)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0
 	p.pitch = 0
 	p.weapon = 5
 	sim.zombies.clear()
-	for depth in [30,28,26,24]:
+	for depth in [20,18,16,14]:
 		sim.spawn(Vector2(8,depth),"normal")
 		sim.zombies[-1].hp = 2000
 		sim.zombies[-1].body = 2000
@@ -325,13 +326,13 @@ func validate_rifle_penetration() -> void:
 	w.spread = 0
 	w.adsSpread = 0
 	w.headshotMultiplier = 1
-	p.pos = Vector2(8,36)
+	p.pos = Vector2(8,26)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0
 	p.pitch = 0
 	p.weapon = 0
 	# Deliberately reverse the storage order; impacts must still follow distance.
-	for depth in [24,26,28,30]:
+	for depth in [14,16,18,20]:
 		sim.spawn(Vector2(8,depth),"normal")
 		sim.zombies[-1].hp = 2000
 		sim.zombies[-1].body = 2000
@@ -351,8 +352,8 @@ func validate_rifle_penetration() -> void:
 	check(is_equal_approx(2000-sim.zombies[-1].hp,240) and is_equal_approx(2000-sim.zombies[-2].hp,160),"Headshot multiplier is retained through rifle penetration")
 	w.headshotMultiplier = 1
 	sim.zombies.clear()
-	sim.spawn(Vector2(8,30),"bucket")
-	sim.spawn(Vector2(8,28),"normal")
+	sim.spawn(Vector2(8,20),"bucket")
+	sim.spawn(Vector2(8,18),"normal")
 	var armored_hp: float = sim.zombies[0].hp
 	var behind_hp: float = sim.zombies[1].hp
 	sim.fire(p,w)
@@ -383,13 +384,13 @@ func validate_pistol_and_equip() -> void:
 	# Penetration is tested while aimed so hip spread cannot obscure hit ordering.
 	p.aim = true
 	w.headshotMultiplier = 1
-	p.pos = Vector2(8,36)
+	p.pos = Vector2(8,26)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0
 	p.pitch = 0
 	p.weapon = 2
 	p.slot = 2
-	for depth in [24,26,28]:
+	for depth in [14,16,18]:
 		sim.spawn(Vector2(8,depth),"normal")
 		sim.zombies[-1].hp = 2000
 		sim.zombies[-1].body = 2000
@@ -1329,7 +1330,7 @@ func validate_inventory() -> void:
 	game.requested_slot = 3
 	game.cycle_equipment(1)
 	check(game.requested_slot == 1,"Wheel skips the empty grenade slot")
-	p.pos = Vector2(0,36.0)
+	p.pos = Vector2(0,32.0)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0.0
 	p.pitch = 0.0

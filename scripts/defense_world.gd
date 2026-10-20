@@ -101,7 +101,11 @@ func make_ramp() -> void:
 
 func make_safe_zone() -> void:
 	var safe = DefenseLayout.SHOP_AREA
-	block("SafeZoneFloor",Vector3(0,3.035,safe.get_center().y),Vector3(26,.06,safe.size.y),"314c45",false)
+	block("SafeZoneFloor",Vector3(0,3.025,safe.get_center().y),Vector3(safe.size.x,.05,safe.size.y),"314c45",false)
+	var shop = preload("res://scripts/weapon_shop.gd").new()
+	shop.name = "WeaponShop"
+	add_child(shop)
+	obstacles.append_array(shop.obstacles)
 	preparation = preload("res://scripts/preparation_world.gd").new()
 	preparation.name = "PreparationWorld"
 	add_child(preparation)

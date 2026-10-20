@@ -44,7 +44,8 @@ func run() -> void:
 	await physics_frame
 	# The shop is ordinary walkable terrain, including pursuit of its occupant.
 	var layout = root.get_node("Data").Maps.Defense
-	sim.spawn(Vector2(0,layout.SHOP_AREA.position.y-.5),"normal")
+	sim.pawns.solo.pos = Vector2(10.5,layout.SHOP_DOOR_Z)
+	sim.spawn(Vector2(15,layout.SHOP_DOOR_Z),"normal")
 	var z: Dictionary = sim.zombies[-1]
 	for tick in 100:
 		sim.elapsed += .05
