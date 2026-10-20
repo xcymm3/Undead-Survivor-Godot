@@ -310,7 +310,7 @@
     },
     "berserker": {
       "label": "狂暴僵尸",
-      "health": 6000,
+      "health": 8000,
       "armor": 0,
       "tier": 3
     },

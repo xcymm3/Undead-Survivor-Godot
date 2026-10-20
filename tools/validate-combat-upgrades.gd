@@ -118,7 +118,7 @@ func run() -> void:
 	var sim = game.sim
 	var p: Dictionary = sim.pawns.solo
 	var data = root.get_node("Data")
-	var expected_health = {"normal":200,"cone":400,"bucket":800,"imp":1000,"shield":2400,"berserker":6000,"giant":12000,"football":18000,"dancer":180000}
+	var expected_health = {"normal":200,"cone":400,"bucket":800,"imp":1000,"shield":2400,"berserker":8000,"giant":12000,"football":18000,"dancer":180000}
 	for kind in expected_health:
 		check(data.enemies[kind].health == expected_health[kind],"Current enemy health: "+kind)
 	for kind in {"cone":100,"bucket":300,"shield":1000,"giant":2000,"football":6000}:

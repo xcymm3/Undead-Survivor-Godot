@@ -60,17 +60,19 @@ func validate_combat_revision() -> void:
 		sim.zombies.clear()
 		sim.spawn(Vector2(8,27),kind)
 		var z: Dictionary = sim.zombies[0]
-		check(z.hp == (18000 if kind == "football" else 6000),"Updated boss health "+kind)
+		check(z.hp == (18000 if kind == "football" else 8000),"Updated boss health "+kind)
 		if kind == "football":
 			check(z.body == 6000 and z.armor == 12000,"Football has twelve thousand armor and six thousand body health")
 			check(z.chase_speed >= 4.6 and z.chase_speed <= 5.2,"Football pursuit uses the ordinary random speed range")
 			z.state = "charging"
 		else:
-			z.hp = 1501
-			z.body = 1501
-			sim.hit_enemy(z,2,false,p,Vector3(0,1,27))
+			sim.hit_enemy(z,3999,false,p,Vector3(0,1,27))
+			check(z.hp == 4001 and not z.rage,"Berserker stays calm above half health")
+			z.pos = Vector2(8,27)
+			sim.hit_enemy(z,1,false,p,Vector3(0,1,27))
+			check(z.hp == 4000 and z.rage,"Berserker enters rage at exactly half of eight thousand health")
 		check(z.pos == Vector2(8,27),"Charge or half-health rage prevents hit displacement "+kind)
-		if kind == "berserker": check(z.rage,"Berserker rages below half of its doubled health")
+		if kind == "berserker": check(z.rage,"Berserker retains rage at half health")
 	sim.zombies.clear()
 	sim.spawn(Vector2(8,27),"giant")
 	var armored_giant: Dictionary = sim.zombies[0]
