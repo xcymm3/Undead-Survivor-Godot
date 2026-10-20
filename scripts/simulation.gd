@@ -1276,6 +1276,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	var obstruction: Dictionary = arena.surface_hit(camera.origin,muzzle)
 	if not obstruction.is_empty():
 		var blocked_shot = {"kind":"shot","player":p.id,"weapon":p.weapon,"from":camera.origin,"to":obstruction.position}
+		if w.get("kind","gun") == "gun": blocked_shot.surface_hits = [{"position":obstruction.position,"normal":obstruction.normal}]
 		if w.id in ["shotgun", "auto-shotgun"]: blocked_shot.pellet_ends = [obstruction.position]
 		events.append(blocked_shot)
 		return
@@ -1286,6 +1287,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	var right = direction.cross(Vector3.UP).normalized()
 	var up = right.cross(direction).normalized()
 	var pellet_ends: Array[Vector3] = []
+	var surface_hits: Array = []
 	var shotgun: bool = w.id in ["shotgun", "auto-shotgun"]
 	var shotgun_hits: Dictionary = {}
 	var impact_point = target
@@ -1332,6 +1334,8 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 			hit_enemy(hit.z,amount*penetration,hit.armor,p,muzzle+ray*hit.distance)
 			if w.has("penetrationTargets"): penetration *= float(w.penetrationDamage)
 		if not shotgun and not candidates.is_empty() and not w.get("piercing",false): distance = candidates[0].distance
+		if weapon_kind == "gun" and not wall.is_empty() and is_equal_approx(distance,muzzle.distance_to(wall.position)):
+			surface_hits.append({"position":wall.position,"normal":wall.normal})
 		if pellet == 0: target = muzzle+ray*distance
 		if w.id in ["shotgun", "auto-shotgun"]: pellet_ends.append(muzzle+ray*distance)
 	if shotgun and not shotgun_hits.is_empty():
@@ -1343,6 +1347,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 		events.append({"kind":"shotgun_impact","player":p.id,"position":impact_point,"hits":shotgun_hits.size()})
 	if landed: p.hits += 1
 	var shot_event = {"kind":"shot","player":p.id,"weapon":p.weapon,"from":muzzle,"to":target}
+	if not surface_hits.is_empty(): shot_event.surface_hits = surface_hits
 	if not pellet_ends.is_empty(): shot_event.pellet_ends = pellet_ends
 	events.append(shot_event)
 

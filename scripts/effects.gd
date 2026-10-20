@@ -11,9 +11,18 @@ var flame_clock = 0.0
 var flame_light_time = 0.0
 var flame_light_strength = 1.0
 const FLAME_LIMIT = 640
+const TRACER_HOLD = .04
+const TRACER_RETRACT = .06
+const TRACER_LIMIT = 192
+const FLASH_LIMIT = 64
+var tracers: Array = []
+var flashes: Array = []
+var gun_mesh: MultiMesh
 
 func clear() -> void:
 	particles.clear()
+	tracers.clear()
+	flashes.clear()
 	flame_particles.clear()
 	flame_mesh.visible_instance_count = 0
 	flame_light_time = 0
@@ -34,6 +43,22 @@ func _ready() -> void:
 	material.roughness = .85
 	view.material_override = material
 	add_child(view)
+	gun_mesh = MultiMesh.new()
+	gun_mesh.transform_format = MultiMesh.TRANSFORM_3D
+	gun_mesh.use_colors = true
+	gun_mesh.mesh = BoxMesh.new()
+	gun_mesh.mesh.size = Vector3.ONE
+	gun_mesh.instance_count = TRACER_LIMIT+FLASH_LIMIT*3
+	gun_mesh.visible_instance_count = 0
+	var gun_view = MultiMeshInstance3D.new()
+	gun_view.multimesh = gun_mesh
+	gun_view.custom_aabb = AABB(Vector3(-260,-80,-260),Vector3(520,200,520))
+	gun_view.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var gun_material = StandardMaterial3D.new()
+	gun_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	gun_material.vertex_color_use_as_albedo = true
+	gun_view.material_override = gun_material
+	add_child(gun_view)
 	flame_mesh = MultiMesh.new()
 	flame_mesh.transform_format = MultiMesh.TRANSFORM_3D
 	flame_mesh.use_colors = true
@@ -131,20 +156,84 @@ func step_flame(dt: float) -> void:
 		flame_mesh.set_instance_color(i,color)
 
 func eject_shell(from: Vector3, direction: Vector3, shotgun := false) -> void:
-	# Ballistics are invisible. Only a single spent casing leaves the weapon;
-	# muzzle flashes are attached to the first-person, partner and turret models.
 	if particles.size() >= 384: particles.pop_front()
 	var right = direction.normalized().cross(Vector3.UP)
-	particles.append({"pos":from,"velocity":right*1.8+Vector3.UP*1.2,"life":.85,
+	if right.length_squared() < .01: right = Vector3.RIGHT
+	particles.append({"kind":"casing","pos":from,"velocity":right*1.8+Vector3.UP*1.2,"life":.85,
+		"basis":Basis.IDENTITY,"spin":Vector3(9,13,5),
 		"color":Color("ad4833") if shotgun else Color("bb9751"),"size":.03,
 		"scale":Vector3(.035,.035,.08) if shotgun else Vector3(.03,.025,.085)})
 
+func gunshot(from: Vector3, to: Vector3, pellet_ends: Array = [], surface_hits: Array = [], shotgun := false, eject := true) -> void:
+	var direction = (to-from).normalized()
+	if direction.length_squared() < .01: direction = Vector3.FORWARD
+	if from.distance_to(to) >= .2:
+		if flashes.size() >= FLASH_LIMIT: flashes.pop_front()
+		flashes.append({"pos":from+direction*.06,"direction":direction,"age":0.0})
+	for endpoint in ([to] if pellet_ends.is_empty() else pellet_ends):
+		if from.distance_to(endpoint) < .01: continue
+		# Cosmetic muzzle positions also respect geometry, independently of damage.
+		var wall: Dictionary = collision_query.call(from,endpoint) if collision_query.is_valid() else {}
+		var clipped: Vector3 = wall.position if not wall.is_empty() else endpoint
+		if from.distance_to(clipped) < .01: continue
+		if tracers.size() >= TRACER_LIMIT: tracers.pop_front()
+		tracers.append({"from":from,"to":clipped,"age":0.0})
+	if eject:
+		var right = direction.cross(Vector3.UP).normalized()
+		eject_shell(from-direction*.16+right*.04,direction,shotgun)
+	for hit in surface_hits: surface_impact(hit.position,hit.normal)
+	update_gun_visuals()
+
+func surface_impact(pos: Vector3, normal: Vector3) -> void:
+	for i in [3,5,7][int(Data.settings.effects)]:
+		if particles.size() >= 384: particles.pop_front()
+		var scatter = Vector3(randf_range(-1,1),randf_range(-1,1),randf_range(-1,1))
+		var direction = (normal+scatter*.65).normalized()
+		particles.append({"kind":"surface","pos":pos+normal*.015,"velocity":direction*randf_range(.8,2.4),"life":randf_range(.12,.28),"color":Color("ffe4a1") if i < 2 else Color("9a9485"),"size":.025 if i < 2 else .045})
+
+static func tracer_start(tracer: Dictionary) -> Vector3:
+	var progress = clampf((float(tracer.age)-TRACER_HOLD)/TRACER_RETRACT,0,1)
+	return tracer.from.lerp(tracer.to,progress)
+
+static func tracer_transform(tracer: Dictionary) -> Transform3D:
+	var start = tracer_start(tracer)
+	var delta: Vector3 = tracer.to-start
+	var basis = Basis(Quaternion(Vector3.UP,delta.normalized()))*Basis.from_scale(Vector3(.014,delta.length(),.014))
+	return Transform3D(basis,(start+tracer.to)*.5)
+
+func update_gun_visuals() -> void:
+	var index = 0
+	for tracer in tracers:
+		var start = tracer_start(tracer)
+		var delta: Vector3 = tracer.to-start
+		var length = delta.length()
+		if length < .001: continue
+		gun_mesh.set_instance_transform(index,tracer_transform(tracer))
+		gun_mesh.set_instance_color(index,Color("ffe4a1"))
+		index += 1
+	for flash in flashes:
+		var basis = Basis(Quaternion(Vector3.FORWARD,flash.direction))
+		var scale = 1.0-float(flash.age)/.035
+		for size in [Vector3(.07,.07,.25),Vector3(.27,.025,.07),Vector3(.025,.22,.07)]:
+			gun_mesh.set_instance_transform(index,Transform3D(basis*Basis.from_scale(size*maxf(.1,scale)),flash.pos))
+			gun_mesh.set_instance_color(index,Color("fff0bc") if index%3 == 0 else Color("ffb447"))
+			index += 1
+	gun_mesh.visible_instance_count = index
+
 func step(dt: float) -> void:
 	step_flame(dt)
+	for tracer in tracers: tracer.age += dt
+	for flash in flashes: flash.age += dt
+	tracers = tracers.filter(func(tracer): return tracer.age < TRACER_HOLD+TRACER_RETRACT)
+	flashes = flashes.filter(func(flash): return flash.age < .035)
+	update_gun_visuals()
 	for p in particles:
 		p.life -= dt
 		p.pos += p.velocity*dt
 		if p.get("gravity",true): p.velocity.y -= 7*dt
+		if p.has("spin"):
+			var spin: Vector3 = p.spin
+			p.basis = (Basis.from_euler(spin*dt)*p.basis).orthonormalized()
 	particles = particles.filter(func(p): return p.life > 0)
 	multi.visible_instance_count = particles.size()
 	for i in particles.size():

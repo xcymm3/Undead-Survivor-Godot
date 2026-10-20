@@ -381,7 +381,7 @@ func handle_effects(events: Array) -> void:
 			"crystal_hit":
 				sound.play("crystal-hit",-2)
 			"turret_shot":
-				effects.eject_shell(event.from,event.to-event.from)
+				effects.gunshot(event.from,event.to)
 				sound.play_at(sound.weapon_cue(0),event.from,-12)
 			"structure_hit":
 				sound.play_at("enemy-impact",event.position,-10)
@@ -417,7 +417,8 @@ func handle_effects(events: Array) -> void:
 					if not arena.surface_hit(event.from,visual_origin).is_empty(): visual_origin = event.from
 					effects.flame(visual_origin,event.to)
 				elif kind == "gun":
-					if w.id != "revolver": effects.eject_shell(visual_origin,event.to-event.from,w.id in ["shotgun","auto-shotgun"])
+					if not arena.surface_hit(event.from,visual_origin).is_empty(): visual_origin = event.from
+					effects.gunshot(visual_origin,event.to,event.get("pellet_ends",[]),event.get("surface_hits",[]),w.id in ["shotgun","auto-shotgun"],w.id != "revolver")
 			"blood", "death":
 				effects.burst(event.position)
 				if event.get("player") == Session.local_id: ui.hit_flash = .12
