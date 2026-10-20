@@ -186,6 +186,10 @@ func stage_multiplayer(scenario: String) -> void:
 
 func stage_ultimate(scenario: String) -> void:
 	game.start_solo("defense",42)
+	# This exported preview must not depend on development-only tools/.
+	game.sim.defense.erase("intro_elapsed")
+	game.sim.defense["tutorial_stage"] = 5
+	game.sim.defense_director.sync_world()
 	await get_tree().physics_frame
 	game.ui.clear_menu()
 	game.sim.roster.clear()

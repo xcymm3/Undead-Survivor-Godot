@@ -44,6 +44,9 @@ static func swing_pose(progress: float, direction: int) -> Transform3D:
 	var b: Array = keys[index+1]
 	var blend = cursor-index
 	var position = Vector3(a[0],a[1],a[2]).lerp(Vector3(b[0],b[1],b[2]),blend)
+	# Expand the authored side-to-side wrist travel while clearing the right HUD.
+	position.x = (position.x-.20)*1.35+.12
+	position.z -= .22
 	var rotation = Quaternion(a[3],a[4],a[5],a[6]).slerp(Quaternion(b[3],b[4],b[5],b[6]),blend)
 	return Transform3D(Basis(rotation).scaled(Vector3.ONE*SIZE),position)
 

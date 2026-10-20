@@ -1,6 +1,6 @@
 extends Node3D
-const TIP = 1.55
-const SHEATH_LENGTH = 1.61
+const TIP = 1.85
+const SHEATH_LENGTH = 1.91
 const CURVE = .065
 const TIP_POINT = Vector3(CURVE+.027,TIP,0)
 const SHEATH_INNER_WIDTH = .098
@@ -12,6 +12,7 @@ func _init() -> void:
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	surface.set_smooth_group(-1)
 	var rings = [Vector2(.025,.039),Vector2(.35,.038),Vector2(.70,.037),Vector2(1.05,.035),Vector2(1.36,.032),Vector2(1.40,.027),Vector2(TIP,0)]
+	for i in rings.size()-1: rings[i].x *= TIP/1.55
 	var colors = [Color("eef2ed"),Color("a3b3bf"),Color("657783"),Color("a3b3bf"),Color("eef2ed")]
 	for i in rings.size()-1:
 		var a = section(rings[i])
