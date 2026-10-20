@@ -24,7 +24,7 @@ var notice = ""
 var data: Dictionary = defaults()
 
 static func defaults() -> Dictionary:
-	return {"version":7,"intro_seen":false,"tutorial_stage":0,"tutorial_blueprint_paid":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0,"greed":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
+	return {"version":8,"ultimate_unlocked":false,"intro_seen":false,"tutorial_stage":0,"tutorial_blueprint_paid":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0,"greed":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
 
 func _init(save_path := "") -> void:
 	path = save_path
@@ -34,9 +34,10 @@ static func bounded_integer(value, maximum: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and value >= 0 and value <= maximum and float(value) == floor(float(value))
 
 static func valid(value) -> bool:
-	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,7) or value.version < 1: return false
+	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,8) or value.version < 1: return false
 	if value.has("tutorial_stage") and not bounded_integer(value.tutorial_stage,5): return false
 	if value.has("tutorial_blueprint_paid") and not value.tutorial_blueprint_paid is bool: return false
+	if value.version >= 8 and not value.get("ultimate_unlocked") is bool: return false
 	if value.has("intro_seen") and not value.intro_seen is bool: return false
 	if not (value.coins is int or value.coins is float) or not is_finite(float(value.coins)) or value.coins < 0 or value.coins > MAX_CURRENCY: return false
 	if value.version < 7 and not bounded_integer(value.coins,MAX_CURRENCY): return false
@@ -132,6 +133,12 @@ func load_save() -> void:
 			data.version = 7
 			dirty = true
 
+		if data.version == 7:
+			# Veterans retain access; untouched saves still experience the unlock beat.
+			data["ultimate_unlocked"] = data.get("ultimate_level",0) > 0 or data.get("tutorial_stage",0) > 0 or data.best_wave > 0 or data.cleared_total > 0 or data.coins > 0 or data.grenade_level > 0 or data.weapons.values().any(func(rank): return rank > 0) or data.talents.values().any(func(rank): return rank > 0)
+			data.version = 8
+			dirty = true
+
 func save() -> bool:
 	if path.is_empty() or not dirty: return true
 	var file = FileAccess.open(path+".tmp",FileAccess.WRITE)
@@ -224,7 +231,7 @@ func damage_multiplier() -> float: return 1.0+.05*level("precise")
 func ultimate_cooldown_multiplier() -> float: return 1.0-.1*level("swift")
 func reserve_multiplier() -> float: return 1.0+.1*level("supply")
 func coin_multiplier() -> float: return 1.0+.1*level("greed")
-func grenade_capacity() -> int: return 1+level("grenade")
+func grenade_capacity() -> int: return level("grenade")
 
 func magazine_multiplier(weapon: String) -> float:
 	return pow(1.2,level(weapon+"_magazine")) if weapon in ["rifle","pistol"] else 1.0

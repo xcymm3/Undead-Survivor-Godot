@@ -19,6 +19,7 @@ func initialize_pawn(p: Dictionary) -> void:
 	p.weapon_slot = 1
 	p.slot_ammo = [sim.weapon_capacity(0),sim.weapon_capacity(2)]
 	p.slot_reserves = [roundi(Data.defense_full_reserve(0)*sim.progression.reserve_multiplier()),roundi(Data.defense_full_reserve(2)*sim.progression.reserve_multiplier())]
+	p.ultimate_unlocked = sim.progression.data.get("ultimate_unlocked",false)
 	p.grenade_capacity = sim.progression.grenade_capacity()
 	p.grenades = p.grenade_capacity
 	p.max_hp = sim.progression.max_health()

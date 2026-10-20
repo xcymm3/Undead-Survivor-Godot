@@ -101,7 +101,7 @@ static func description(sim, id: String) -> String:
 		detail = "伤害 %s · 持续10秒" % number(preload("res://scripts/ultimate.gd").damage_for_level(profile.level(id))*profile.damage_multiplier())
 		var title = "终极技能  "+level_text.replace("LV MAX","已满级").replace("LV","等级 ")
 		return (title+"\n"+detail+"\n"+cost_text).strip_edges()
-	elif id == "grenade": detail = "容量 %d / 5" % profile.grenade_capacity()
+	elif id == "grenade": detail = "容量 %d / 4" % profile.grenade_capacity()
 	elif id in profile.MINES:
 		var item = sim.defense_director.structures.find(id)
 		return "地雷\n"+("已触发" if item.get("triggered",false) else "已布置") if profile.owned(id) else "地雷\n"+cost_text
@@ -146,7 +146,7 @@ static func upgrade_details(sim, id: String) -> Dictionary:
 		rows.append(["持续时间","10秒","10秒"])
 		var cooldown = number(preload("res://scripts/ultimate.gd").cooldown(profile))+"秒"
 		rows.append(["冷却时间",cooldown,cooldown])
-	elif id == "grenade": rows.append(["持有上限",str(1+rank),str(1+next_rank)])
+	elif id == "grenade": rows.append(["持有上限",str(rank),str(next_rank)])
 	elif id == "strong":
 		rows.append(["最大生命",str(100+10*rank),str(100+10*next_rank)])
 		rows.append(["每秒回复",number(.5*rank),number(.5*next_rank)])

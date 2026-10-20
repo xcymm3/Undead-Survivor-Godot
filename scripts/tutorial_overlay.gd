@@ -115,8 +115,8 @@ func sync(state: Dictionary) -> void:
 	var mode = Tutorial.hint_mode(state)
 	hints.visible = not mode.is_empty()
 	hint_frame.visible = hints.visible
-	movement.visible = mode == "movement"
-	movement.text = "%s 疾跑     %s 蹲下" % [Data.binding_label("sprint"),Data.binding_label("crouch")]
+	movement.visible = mode in ["movement","ultimate"]
+	movement.text = Data.binding_label("ultimate")+" 终极技能" if mode == "ultimate" else "%s 疾跑     %s 蹲下" % [Data.binding_label("sprint"),Data.binding_label("crouch")]
 	for child in hints.get_children():
 		if child != movement: child.visible = mode == "combat"
 	aim_icon.queue_redraw()

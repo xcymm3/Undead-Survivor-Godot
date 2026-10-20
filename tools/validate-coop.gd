@@ -124,6 +124,7 @@ func host_test() -> void:
 	profile.data.talents.greed = 1
 	profile.data.grenade_level = 4
 	profile.data.ultimate_level = 4
+	profile.data.ultimate_unlocked = true
 	profile.data.coins = 10000.0
 	profile.data.diamonds = 5
 	net.host_lan("房主",int(address.get_slice(":",1)))
@@ -141,7 +142,7 @@ func host_test() -> void:
 	publish("preparation")
 	if not await until(func(): return acknowledgements.has("preparation"),"guest joining during world preparation"): return
 	check(sim.progression == profile and sim.coop_host == net.host_id,"Authority uses the selected host Store")
-	check(p.hp == 150 and p.grenades == 5 and p.ammo[0] == sim.weapon_capacity(0),"Guests inherit health, grenade and magazine upgrades")
+	check(p.hp == 150 and p.ultimate_unlocked and p.grenades == 4 and p.ammo[0] == sim.weapon_capacity(0),"Guests inherit health, grenade and magazine upgrades")
 	check(sim.progression.level("rifle") == 5,"Shared weapon rank follows host")
 	sim.prepare_wave()
 	check(sim.defense.wave_budget == preload("res://scripts/defense_population.gd").budget(1,1),"Coop population budget remains identical to solo")
@@ -175,7 +176,7 @@ func host_test() -> void:
 	p.input_age = 0.0
 	sim.update_arsenal(p,{"fire":true},.01)
 	check(p.ammo[0] == guest_ammo-1 and host.ammo == host_ammo,"Guest gunfire consumes only guest ammunition")
-	check(sim.equipment.throw_grenade(p) and p.grenades == 4 and host.grenades == host_grenades,"Guest grenade throw consumes only guest grenades")
+	check(sim.equipment.throw_grenade(p) and p.grenades == 3 and host.grenades == host_grenades,"Guest grenade throw consumes only guest grenades")
 	sim.defense.projectiles.clear()
 	host.pos = Vector2(10,23)
 	p.pos = Vector2(9,23)
@@ -306,7 +307,7 @@ func client_test() -> void:
 	root.add_child(early)
 	early.map_preparing.connect(early.confirm_map_ready)
 	var joined_world = [false]
-	early.world_received.connect(func(state): joined_world[0] = state.pawns.has(early.local_id) and state.pawns[early.local_id].hp == 150 and state.pawns[early.local_id].grenades == 5)
+	early.world_received.connect(func(state): joined_world[0] = state.pawns.has(early.local_id) and state.pawns[early.local_id].hp == 150 and state.pawns[early.local_id].grenades == 4)
 	early.join_lan(address,"战前加入队员")
 	await until(func(): return early.playing and joined_world[0],"new member joins while host is already preparing in-world")
 	check(early.playing and joined_world[0],"New guest can join the preparation scene and inherits current host upgrades")
@@ -320,7 +321,7 @@ func client_test() -> void:
 	check(game.sim.progression.level("rifle") == 5 and personal.level("rifle") == 2,"Host rank overrides guest only inside the room")
 	check(game.sim.progression.data.coins == 0 and game.sim.progression.data.diamonds == 0,"Guest wallet stays zero despite host rewards")
 	check(p.hp == 57 and p.ammo[0] == 7 and p.grenades == 2 and p.ultimate_cd == 37,"Guest receives independent battle inventory")
-	check(game.sim.progression.grenade_capacity() == 5 and p.max_hp == 150,"Client renders host talent and capacity upgrades")
+	check(game.sim.progression.grenade_capacity() == 4 and p.ultimate_unlocked and p.max_hp == 150,"Client renders host talent and capacity upgrades")
 	var stranger = load("res://scripts/session.gd").new()
 	root.add_child(stranger)
 	var rejected = [false]

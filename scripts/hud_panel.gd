@@ -3,6 +3,7 @@ extends Control
 var tutorial_overlay: Control
 var upgrade_details: Control
 var crystal_alert: Label
+var grenade_ring: Control
 var ultimate_ring: Control
 var ultimate_notice: Label
 var controls_hint: Label
@@ -102,6 +103,8 @@ func setup(owner_ui) -> void:
 	ultimate_ring = preload("res://scripts/cooldown_ring.gd").new()
 	cooldown_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	cooldown_row.add_child(ultimate_ring)
+	grenade_ring = preload("res://scripts/cooldown_ring.gd").new()
+	cooldown_row.add_child(grenade_ring)
 	ultimate_notice = text(column,14)
 	crystal_alert = text(content,28)
 	crystal_alert.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -312,9 +315,15 @@ func sync() -> void:
 		crystal_bar.modulate = Color("7fe7ef") if crystal_bar.value > crystal_bar.max_value*.3 else Color("ee6658")
 	crystal_alert.visible = float(defense.get("crystal_alert_until",-1)) > sim.elapsed
 	ultimate_ring.visible = sim.mode == "defense"
-	var charge = 1.0-float(p.get("ultimate_cd",0.0))/preload("res://scripts/ultimate.gd").cooldown(sim.progression)
+	var ultimate = preload("res://scripts/ultimate.gd")
+	var unlocked: bool = ultimate.unlocked(p)
+	var charge = 1.0-float(p.get("ultimate_cd",0.0))/ultimate.cooldown(sim.progression) if unlocked else 0.0
 	controls_hint.text = "ESC 暂停 · %s 换弹 · %s 交互" % [Data.binding_label("reload"),Data.binding_label("interact")]
-	ultimate_ring.sync(charge,"%d%%" % floori(charge*100) if not preload("res://scripts/ultimate.gd").active(p) else Data.binding_label("ultimate"),"终极技能 %ds" % ceili(p.ultimate_remaining) if preload("res://scripts/ultimate.gd").active(p) else "终极技能 · "+Data.binding_label("ultimate"))
+	ultimate_ring.sync(charge,"未解锁" if not unlocked else "%d%%" % floori(charge*100) if not ultimate.active(p) else Data.binding_label("ultimate"),"终极技能" if not unlocked else "终极技能 %ds" % ceili(p.ultimate_remaining) if ultimate.active(p) else "终极技能 · "+Data.binding_label("ultimate"),not unlocked)
+	grenade_ring.visible = sim.mode == "defense"
+	var grenade_capacity: int = p.get("grenade_capacity",0)
+	var grenade_charge = 0.0 if grenade_capacity == 0 else 1.0 if p.grenades >= grenade_capacity else clampf(1.0-float(p.get("grenade_replenish",15.0))/15.0,0,1)
+	grenade_ring.sync(grenade_charge,"未解锁" if grenade_capacity == 0 else "%d%%" % floori(grenade_charge*100),"手雷 %d/%d" % [p.get("grenades",0),grenade_capacity],grenade_capacity == 0)
 	ultimate_notice.text = p.get("ultimate_notice","") if p.get("ultimate_notice_until",0.0) > sim.elapsed else ""
 	var w: Dictionary = sim.combat_weapon(p)
 	weapon_label.text = str(w.label)
@@ -323,7 +332,7 @@ func sync() -> void:
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
 	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
 	if sim.mode == "defense":
-		controls_hint.text = "1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷 · Q 终极技能 · R 换弹 · ESC 暂停" if defense.get("started",false) else "修复水晶"
+		controls_hint.text = ("1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷"+(" · "+Data.binding_label("ultimate")+" 终极技能" if unlocked else "")+" · R 换弹 · ESC 暂停") if defense.get("started",false) else "修复水晶"
 		if not defense.get("started",false) and not sim.can_manage(ui.game.local_pawn()): controls_hint.text = "等待房主整备并修复水晶开战"
 		if ui.game.local_pawn().get("hp",1) <= 0: controls_hint.text = "左键 切换观战队友 · ESC 菜单"
 		if intro_active: controls_hint.text = "ESC 暂停"
@@ -351,7 +360,7 @@ func sync() -> void:
 			item.icon.modulate = Color("c7ef8a") if selected and available else Color("f2eedf") if available else Color("647064")
 			item.title.text = Data.weapons[index].label if i < 3 else "手雷  %d / %d" % [p.grenades,p.grenade_capacity]
 			item.note.visible = true
-			item.note.text = "%d / %d" % [p.slot_ammo[i],p.slot_reserves[i]] if i < 2 else "无需弹药" if i == 2 else "每15秒补充1颗"
+			item.note.text = "%d / %d" % [p.slot_ammo[i],p.slot_reserves[i]] if i < 2 else "无需弹药" if i == 2 else "商店购买解锁" if grenade_capacity == 0 else "每15秒补充1颗"
 			if i < 2 and Data.weapons[index].get("infiniteAmmo",false): item.note.text = "无需弹药"
 			item.icon.queue_redraw()
 	else:

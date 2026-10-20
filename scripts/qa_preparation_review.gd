@@ -26,6 +26,7 @@ func stage() -> void:
 		if building_id in Progress.store.MINES: Progress.store.data.mines[building_id] = true
 		else: Progress.store.data.buildings[building_id].owned = true
 	Progress.store.data["tutorial_stage"] = 0 if scenario.begins_with("intro_") else 5
+	Progress.store.data["ultimate_unlocked"] = not scenario.begins_with("intro_")
 	Progress.store.data["intro_seen"] = not scenario.begins_with("intro_")
 	if scenario.begins_with("ultimate_"): Progress.store.data.ultimate_level = 1
 	if scenario.begins_with("upgrade_"):

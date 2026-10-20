@@ -458,6 +458,7 @@ func target_by_id(id: String) -> Dictionary:
 
 func damage_crystal(z: Dictionary, amount: int) -> bool:
 	if mode != "defense" or defense.get("crystal_hp",0) <= 0: return false
+	if amount > 0: preload("res://scripts/onboarding.gd").unlock_ultimate(self,z)
 	defense.crystal_hp = maxi(0,int(defense.crystal_hp)-amount)
 	if defense.crystal_hp == 0: defense["crystal_broken_at"] = defense.prop_clock
 	defense.objective = "水晶遭到攻击 · 剩余 %d / %d" % [defense.crystal_hp,defense.crystal_max_hp]

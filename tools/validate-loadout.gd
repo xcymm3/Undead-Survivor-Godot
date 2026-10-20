@@ -12,7 +12,7 @@ static func validate(game, check: Callable) -> void:
 	var p: Dictionary = game.local_pawn()
 	var equipment = sim.equipment
 	check.call(p.weapon1 == 0 and p.weapon2 == 2 and p.slot_ammo == [30,15],"Fixed loadout starts with rifle and pistol")
-	check.call(p.grenades == 1 and p.grenade_capacity == 1,"New progress carries one grenade")
+	check.call(p.grenades == 0 and p.grenade_capacity == 0,"New progress starts without grenade capacity")
 	check.call(not p.has("medkits") and not p.has("healing"),"Medical inventory remains removed")
 	check.call(not equipment.pickup(p,"weapon:8") and not equipment.pickup(p,"weapon:0"),"Armory identifiers cannot exchange or refill guns")
 	p.switch = 0.0
@@ -42,8 +42,10 @@ static func validate(game, check: Callable) -> void:
 	check.call(p.hp == 35 and p.grenades == 0,"Wave start preserves health and grenade stock")
 	check.call(p.slot_ammo == [29,15] and p.slot_reserves == [255,114],"Wave start never refills firearm ammunition")
 	p.input = {"yaw":0.0,"pitch":0.0}
+	sim.progression.data.grenade_level = 1
+	p.grenade_capacity = sim.progression.grenade_capacity()
 	p.grenades = 1
-	check.call(equipment.throw_grenade(p) and p.grenades == 0,"Throwing consumes the initial one-grenade stock")
+	check.call(equipment.throw_grenade(p) and p.grenades == 0,"Throwing consumes a purchased grenade")
 	sim.defense_director.finish_wave()
 	check.call(p.grenades == 0,"Entering the next preparation does not refill grenades")
 	p.pos = game.get_node("/root/Data").Maps.Defense.SPAWN
@@ -54,6 +56,15 @@ static func validate(game, check: Callable) -> void:
 	check.call(game.ui.native_hud.equipment_slots.size() == 4,"HUD exposes four fixed equipment slots")
 	check.call(game.ui.native_hud.equipment_slots[0].title.text == "步枪" and game.ui.native_hud.equipment_slots[1].title.text == "半自动手枪","HUD names both fixed guns")
 	check.call(game.ui.native_hud.equipment_slots[2].title.text == "消防斧" and game.ui.native_hud.equipment_slots[3].title.text == "手雷  0 / 1","HUD displays axe and current grenade capacity")
+	p.grenade_replenish = 15.0
+	p.input = {}
+	sim.update_pawn(p,7.5)
+	game.ui.native_hud.sync()
+	check.call(p.grenades == 0 and is_equal_approx(game.ui.native_hud.grenade_ring.progress,.5),"Grenade ring shows half charge after half the fifteen-second refill interval")
+	sim.update_pawn(p,7.5)
+	game.ui.native_hud.sync()
+	check.call(p.grenades == 1 and game.ui.native_hud.grenade_ring.progress == 1.0,"Grenade refill and charge ring reach full capacity together")
+
 	game.start_solo("defense",71245)
 	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	p = game.local_pawn()

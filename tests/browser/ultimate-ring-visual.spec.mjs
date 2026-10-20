@@ -12,7 +12,7 @@ test('仅审查大招蓝色渐变充能环', async ({ page }, info) => {
     await page.goto(`/?preparationReview=ultimate_${charge}`);
     await page.waitForFunction(() => Boolean(window.__preparationReviewReady), null, { timeout: 90_000 });
     const state = await page.evaluate(() => window.__preparationReviewReady);
-    expect(state.ring_count).toBe(1);
+    expect(state.ring_count).toBe(2);
     expect(state.charge).toBeCloseTo(charge / 100, 3);
     expect(state.objective_text).toBe('修复水晶');
     const { x, y, width, height } = state.ring_rect;

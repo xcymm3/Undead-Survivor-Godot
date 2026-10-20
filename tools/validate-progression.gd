@@ -23,6 +23,7 @@ func run() -> void:
 	var profile = Store.new()
 	check(Store.valid(profile.data) and profile.data.coins == 0 and profile.data.diamonds == 0,"Fresh progress starts without currencies")
 	check(not profile.purchase("rifle") and profile.level("rifle") == 0,"Insufficient coins cannot purchase an upgrade")
+	check(not profile.data.ultimate_unlocked and profile.grenade_capacity() == 0,"Fresh progress has neither the ultimate unlock nor grenade capacity")
 	for kind in Store.COIN_REWARDS:
 		check(profile.award_kill(kind) == Store.COIN_REWARDS[kind],"Reward tier: "+kind)
 	var expected_rewards = {"normal":1,"cone":2,"bucket":5,"imp":10,"shield":25,"berserker":100,"giant":150,"football":250,"dancer":2000}
@@ -40,9 +41,9 @@ func run() -> void:
 	for id in Store.WEAPONS:
 		check(profile.cost(id) == 50 and profile.purchase(id) and profile.cost(id) == 100,"First weapon upgrade uses the next fixed price: "+id)
 		check(profile.purchase(id) and is_equal_approx(profile.weapon_multiplier(id),1.44),"Weapon damage compounds by twenty percent: "+id)
-	for count in range(2,6):
-		check(profile.cost("grenade") == [300,450,650,1000][count-2] and profile.purchase("grenade") and profile.grenade_capacity() == count,"Grenade capacity increases to "+str(count))
-	check(not profile.purchase("grenade") and profile.cost("grenade") == -1,"Grenade capacity cannot exceed five")
+	for count in range(1,5):
+		check(profile.cost("grenade") == [300,450,650,1000][count-1] and profile.purchase("grenade") and profile.grenade_capacity() == count,"Grenade capacity increases to "+str(count))
+	check(not profile.purchase("grenade") and profile.cost("grenade") == -1,"Grenade capacity cannot exceed four")
 	for id in Store.BUILDINGS:
 		check(profile.cost(id) == 100,"Each building uses its confirmed manufacturing price: "+id)
 		check(not profile.owned(id) and profile.purchase(id) and profile.owned(id),"Manufacturing grants persistent ownership: "+id)
@@ -97,14 +98,14 @@ func run() -> void:
 	legacy_file.store_string(JSON.stringify(legacy))
 	legacy_file.close()
 	var migrated = Store.new(path)
-	check(migrated.data.version == 7 and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("pistol") == 4 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
+	check(migrated.data.version == 8 and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("pistol") == 4 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
 	check(migrated.owned("crystal_mine") and not migrated.owned("ramp_mine") and not migrated.owned("gate_mine") and not migrated.owned("bridge_entry_gate"),"Old free mine is retained while new defenses require purchase")
 	check(migrated.dirty and migrated.save() and Store.new(path).data == migrated.data,"Migrated progress persists and reloads without repeating migration")
 	var corrupt_primary = FileAccess.open(path,FileAccess.WRITE)
 	corrupt_primary.store_string("{broken")
 	corrupt_primary.close()
 	var legacy_backup = Store.new(path)
-	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == 7 and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
+	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == 8 and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
 	var version_two = Store.defaults()
 	version_two.version = 2
 	version_two.coins = 1234
@@ -115,7 +116,7 @@ func run() -> void:
 	v2_file.store_string(JSON.stringify(version_two))
 	v2_file.close()
 	var upgraded_v2 = Store.new(path)
-	check(upgraded_v2.data.version == 7 and upgraded_v2.level("pistol") == 7 and upgraded_v2.data.coins == 1234 and upgraded_v2.data.diamonds == 9 and not upgraded_v2.data.weapons.has("revolver"),"Version-two saves migrate revolver upgrades without losing currencies")
+	check(upgraded_v2.data.version == 8 and upgraded_v2.level("pistol") == 7 and upgraded_v2.data.coins == 1234 and upgraded_v2.data.diamonds == 9 and not upgraded_v2.data.weapons.has("revolver"),"Version-two saves migrate revolver upgrades without losing currencies")
 	check(upgraded_v2.save() and Store.new(path).data == upgraded_v2.data,"Migrated pistol state survives a second disk reload")
 	var old_v3 = Store.defaults()
 	old_v3.version = 3
@@ -127,7 +128,7 @@ func run() -> void:
 	old_file.store_string(JSON.stringify(old_v3))
 	old_file.close()
 	var migrated_v3 = Store.new(path)
-	check(migrated_v3.data.version == 7 and migrated_v3.data.coins == 555 and migrated_v3.level("rifle") == 10 and migrated_v3.level("bridge_gate") == 10 and migrated_v3.data.magazines == {"rifle_magazine":0,"pistol_magazine":0},"Old saves gain zero magazine levels and clamp previous upgrades to the new ten-level limit")
+	check(migrated_v3.data.version == 8 and migrated_v3.data.coins == 555 and migrated_v3.level("rifle") == 10 and migrated_v3.level("bridge_gate") == 10 and migrated_v3.data.magazines == {"rifle_magazine":0,"pistol_magazine":0},"Old saves gain zero magazine levels and clamp previous upgrades to the new ten-level limit")
 	migrated_v3.data.coins = 1000
 	check(migrated_v3.purchase("pistol_magazine") and Store.new(path).level("pistol_magazine") == 1,"Magazine purchases persist across disk reloads")
 	for suffix in ["",".tmp",".bak"]:
@@ -183,7 +184,7 @@ func run() -> void:
 	for rank in range(2,6): check(Fixture.buy(sim,p,"supply"),"Additional Supply purchase "+str(rank))
 	check(p.reserves[0] == 383 and p.reserves[2] == 192,"Repeated Supply purchases retain exact reserve rounding")
 	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),151.2) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),302.4),"Instinct increases both body and head damage without changing base headshot ratio")
-	check(Fixture.buy(sim,p,"grenade") and p.grenades == 2 and p.grenade_capacity == 2,"Capacity purchase immediately grants its extra grenade")
+	check(Fixture.buy(sim,p,"grenade") and p.grenades == 1 and p.grenade_capacity == 1,"Capacity purchase immediately grants its extra grenade")
 	check(Fixture.buy(sim,p,"bridge_entry_gate"),"New bridge-end gate can be bought")
 	var shop_position: Vector2 = p.pos
 	var shop_height: float = p.height
@@ -400,7 +401,19 @@ func validate_talent_economy() -> void:
 	file.store_string(JSON.stringify(legacy))
 	file.close()
 	var migrated = Store.new(path)
-	check(migrated.data.version == 7 and migrated.level("precise") == 3 and migrated.level("swift") == 4 and migrated.level("greed") == 0 and migrated.data.coins == 123,"Version six retains old talent levels and adds zero Greed")
+	check(migrated.data.version == 8 and migrated.level("precise") == 3 and migrated.level("swift") == 4 and migrated.level("greed") == 0 and migrated.data.coins == 123,"Version six retains old talent levels and adds zero Greed")
+	var v7 = Store.defaults()
+	v7.version = 7
+	v7.erase("ultimate_unlocked")
+	file = FileAccess.open(path,FileAccess.WRITE)
+	file.store_string(JSON.stringify(v7))
+	file.close()
+	check(not Store.new(path).data.ultimate_unlocked,"An untouched version-seven save still receives the new skill tutorial")
+	v7.tutorial_stage = 5
+	file = FileAccess.open(path,FileAccess.WRITE)
+	file.store_string(JSON.stringify(v7))
+	file.close()
+	check(Store.new(path).data.ultimate_unlocked,"A veteran version-seven save keeps access to the formerly available skill")
 	check(is_equal_approx(migrated.damage_multiplier(),1.15) and is_equal_approx(preload("res://scripts/ultimate.gd").cooldown(migrated),60),"Inherited levels use Instinct and ultimate cooldown effects")
 	for rank in range(6):
 		for id in Store.TALENTS: profile.data.talents[id] = rank

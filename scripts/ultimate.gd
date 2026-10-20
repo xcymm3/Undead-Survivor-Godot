@@ -12,6 +12,9 @@ static func damage_for_level(rank: int) -> float:
 static func cooldown(progression) -> float:
 	return COOLDOWN*progression.ultimate_cooldown_multiplier()
 
+static func unlocked(p: Dictionary) -> bool:
+	return p.get("ultimate_unlocked",false)
+
 static func active(p: Dictionary) -> bool:
 	return p.get("ultimate_remaining",0.0) > 0
 
@@ -37,10 +40,14 @@ static func tick(sim, p: Dictionary, input: Dictionary, dt: float) -> bool:
 	if input.get("ultimate",false):
 		if was_active: p.ultimate_remaining = 0.0
 		elif p.ultimate_sheathe <= 0 and p.hp > 0:
-			if p.ultimate_cd > 0:
+			if not unlocked(p):
+				p.ultimate_notice = "终极技能未解锁"
+				p.ultimate_notice_until = sim.elapsed+1.5
+			elif p.ultimate_cd > 0:
 				p.ultimate_notice = "终极技能冷却中"
 				p.ultimate_notice_until = sim.elapsed+1.5
 			elif sim.defense.get("started",false):
+				sim.defense.erase("ultimate_tutorial_hint")
 				sim.equipment.save_weapon_slot(p)
 				p.ultimate_saved_slot = p.slot
 				p.ultimate_remaining = DURATION

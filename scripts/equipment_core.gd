@@ -1,6 +1,6 @@
 extends RefCounted
 ## Authority-only equipment, pickups and ballistic grenades.
-const MAX_GRENADES = 5
+const MAX_GRENADES = 4
 const GRENADE_FUSE = 1.5
 const GRENADE_RADIUS = 11.0
 const GRENADE_THROW_INTERVAL = 1.0

@@ -189,6 +189,8 @@ func stage_ultimate(scenario: String) -> void:
 	# This exported preview must not depend on development-only tools/.
 	game.sim.defense.erase("intro_elapsed")
 	game.sim.defense["tutorial_stage"] = 5
+	game.sim.progression.data["ultimate_unlocked"] = true
+	for pawn in game.sim.pawns.values(): pawn["ultimate_unlocked"] = true
 	game.sim.defense_director.sync_world()
 	await get_tree().physics_frame
 	game.ui.clear_menu()

@@ -601,7 +601,7 @@ func valid_world(value) -> bool:
 	if not value is Dictionary or value.get("map_id") != map_id: return false
 	var shared = value.get("shared_progression")
 	var Store = preload("res://scripts/progression_store.gd")
-	if not Store.valid(shared) or shared.version != 7 or shared.coins != 0 or shared.diamonds != 0: return false
+	if not Store.valid(shared) or shared.version != 8 or shared.coins != 0 or shared.diamonds != 0: return false
 	var profile = Store.new()
 	profile.data = shared
 	if not value.get("coop_host","") is String: return false
@@ -641,6 +641,7 @@ func valid_world(value) -> bool:
 			if not p.has_all(["reserve","weapon1","weapon2","weapon_slot","slot","reserves","slot_ammo","slot_reserves","grenades","hint"]): return false
 			for field in ["reserve","weapon1","weapon2","weapon_slot","slot","grenades"]:
 				if not p[field] is int: return false
+			if not p.get("ultimate_unlocked") is bool or p.ultimate_unlocked != shared.ultimate_unlocked: return false
 			if p.weapon1 < 0 or p.weapon1 >= Data.weapons.size() or p.weapon2 < 0 or p.weapon2 >= Data.weapons.size(): return false
 			if p.weapon_slot not in [1,2] or p.slot < 1 or p.slot > 4 or p.grenades < 0 or p.grenades > profile.grenade_capacity() or p.reserve < 0: return false
 			if not p.reserves is Array or p.reserves.size() != 10: return false

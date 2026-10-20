@@ -4,6 +4,8 @@ const Catalog = preload("res://scripts/preparation_catalog.gd")
 static func skip_tutorial(sim) -> void:
 	# Ordinary combat/economy fixtures begin after onboarding; its own validator
 	# starts a genuine new save and exercises every locked and unlocked stage.
+	sim.progression.data["ultimate_unlocked"] = true
+	for pawn in sim.pawns.values(): pawn["ultimate_unlocked"] = true
 	sim.defense.erase("intro_elapsed")
 	sim.defense.erase("tutorial_dialogue")
 	sim.defense["tutorial_stage"] = 5

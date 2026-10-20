@@ -117,7 +117,21 @@ static func finish_attempt(sim) -> void:
 	sim.progression.dirty = true
 	sim.progression.save()
 
+static func unlock_ultimate(sim, zombie: Dictionary) -> void:
+	if sim.progression.data.get("ultimate_unlocked",false) or not sim.defense.get("started",false): return
+	if not zombie.has_all(["id","kind"]): return
+	sim.progression.data["ultimate_unlocked"] = true
+	sim.progression.dirty = true
+	sim.progression.save()
+	for pawn in sim.pawns.values():
+		pawn["ultimate_unlocked"] = true
+		pawn["ultimate_cd"] = 0.0
+	sim.defense["ultimate_tutorial_hint"] = true
+	sim.events.append({"kind":"ultimate_unlocked"})
+
 static func hint_mode(state: Dictionary) -> String:
-	if stage(state) == COMPLETE or blocked(state): return ""
+	if blocked(state): return ""
+	if state.get("ultimate_tutorial_hint",false): return "ultimate"
+	if stage(state) == COMPLETE: return ""
 	if not state.get("started",false): return "movement"
 	return "combat" if int(state.get("wave",1)) < 3 else ""

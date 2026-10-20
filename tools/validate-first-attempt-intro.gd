@@ -16,6 +16,15 @@ static func validate(game, check: Callable) -> void:
 	await game.get_tree().physics_frame
 	var sim = game.sim
 	var p = game.local_pawn()
+	check.call(not p.ultimate_unlocked and p.grenades == 0 and p.grenade_capacity == 0,"A new save starts with locked ultimate and zero grenade capacity")
+	game.ui.native_hud.sync()
+	check.call(game.ui.native_hud.ultimate_ring.caption == "未解锁" and game.ui.native_hud.grenade_ring.detail == "手雷 0/0","HUD shows the locked ultimate and 0/0 grenades together")
+	var ultimate = preload("res://scripts/ultimate.gd")
+	sim.defense.started = true
+	ultimate.tick(sim,p,{"ultimate":true},0)
+	check.call(not ultimate.active(p),"Ultimate input cannot bypass its initial lock")
+	sim.defense.started = false
+
 	check.call(Intro.active(sim.defense) and Intro.LINES.size() == 5,"New save starts five cumulative narrative rows")
 	var story_font = game.ui.native_hud.tutorial_overlay.story_lines[0].get_theme_font("font")
 	var all_glyphs = true
@@ -97,6 +106,25 @@ static func validate(game, check: Callable) -> void:
 	sim.defense.wave = 3
 	check.call(Tutorial.hint_mode(sim.defense).is_empty(),"Mouse tips disappear at wave three")
 	check.call(game.ui.native_hud.tutorial_overlay.aim_icon.action == "aim" and game.ui.native_hud.tutorial_overlay.shove_icon.action == "shove","Combat guidance uses mouse icon controls")
+	sim.spawn(preload("res://scripts/defense_layout.gd").CRYSTAL+Vector2(0,-2),"normal")
+	var attacker: Dictionary = sim.zombies[-1]
+	sim.damage_crystal(attacker,1)
+	game.ui.native_hud.sync()
+	check.call(p.ultimate_unlocked and p.ultimate_cd == 0 and game.ui.native_hud.ultimate_ring.caption == "100%" and Tutorial.hint_mode(sim.defense) == "ultimate","The first enemy crystal hit unlocks and fully charges the ultimate with a top hint")
+	check.call(Store.new(path).data.ultimate_unlocked,"The ultimate unlock persists immediately in the save")
+	p.ultimate_cd = 37.0
+	sim.damage_crystal(attacker,1)
+	check.call(p.ultimate_cd == 37,"Later crystal hits do not refill ultimate cooldown")
+	p.ultimate_cd = 0.0
+	ultimate.tick(sim,p,{"ultimate":true},0)
+	check.call(ultimate.active(p) and not sim.defense.get("ultimate_tutorial_hint",false),"First successful ultimate use clears its teaching hint")
+	p.ultimate_remaining = 0.0
+	p.ultimate_sheathe = 0.0
+	p.weapon = p.weapon1
+	p.requested = p.weapon1
+	p.slot = 1
+	p.erase("ultimate_saved_slot")
+
 	sim.failed = true
 	sim.progression.data.coins = 50
 	Tutorial.finish_attempt(sim)
@@ -111,7 +139,7 @@ static func validate(game, check: Callable) -> void:
 	p = game.local_pawn()
 	world = game.arena.scenery
 	await game.get_tree().physics_frame
-	check.call(not Intro.active(sim.defense) and world.shop.owner_model.visible and world.shop.owner_alert.visible,"Reload shows merchant exclamation without replaying intro")
+	check.call(not Intro.active(sim.defense) and p.ultimate_unlocked and world.shop.owner_model.visible and world.shop.owner_alert.visible,"Reload shows merchant exclamation without replaying intro")
 	sim.coop_host = p.id
 	check.call(not Tutorial.begin_dialogue(sim,{"id":"guest"}) and not Tutorial.talking(sim.defense),"A guest cannot advance the host tutorial")
 	sim.coop_host = ""

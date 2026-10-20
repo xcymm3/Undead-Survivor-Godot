@@ -115,7 +115,7 @@ func run() -> void:
 	check(sim.mode == "defense" and not sim.defense.started,"Entering the map does not start waves")
 	check(sim.defense.difficulty == "normal" and is_equal_approx(sim.defense.difficulty_multiplier,1.0),"Defense always uses Normal difficulty despite a legacy Easy setting")
 	check(pawn.weapon1 == 0 and pawn.weapon2 == 2 and pawn.slot == 1,"Defense starts with fixed rifle, pistol and axe slots")
-	check(not pawn.has("medkits") and pawn.grenades == 1,"Medical inventory is absent and new players carry one grenade")
+	check(not pawn.has("medkits") and pawn.grenades == 0 and pawn.grenade_capacity == 0,"Medical inventory is absent and new players have no grenades")
 	check(pawn.reserves[pawn.weapon1] == data.defense_full_reserve(pawn.weapon1) and pawn.reserves[pawn.weapon2] == data.defense_full_reserve(pawn.weapon2),"Defense firearms start with seventeen reserve magazines")
 	var prestart_shoves: int = pawn.shoves
 	var shove_command: Dictionary = command()
@@ -154,6 +154,8 @@ func run() -> void:
 	pawn.height = 3
 	check(sim.defense.started and not sim.defense.waiting and sim.rest == 0 and not sim.roster.is_empty(),"Repairing the crystal starts wave one immediately without a countdown")
 	check(sim.wave == 1 and sim.events.filter(func(event): return event.kind == "wave_start").size() == 1,"Crystal defense sounds one low horn when wave one begins")
+	pawn.grenade_capacity = 1 # This throwing fixture supplies a purchased grenade.
+	pawn.grenades = 1
 	var grenades_before: int = pawn.grenades
 	sim.submit("solo",command(int(pawn.weapon),false,4,pawn.yaw,pawn.pitch,true))
 	sim.step(.05)
@@ -469,7 +471,7 @@ func run() -> void:
 	sim.defense.party = sim.pawns.size()
 	sim.defense_director.equipment.initialize()
 	sim.defense_director.begin_wave()
-	check(sim.pawns.solo.grenades == 1 and sim.pawns.two.grenades == 1,"Wave start refills grenades for every coop player")
+	check(sim.pawns.solo.grenades == 0 and sim.pawns.two.grenades == 0,"Unpurchased grenades remain empty for every coop player")
 
 	print("DEFENSE VALIDATION: %d checks; %d failures" % [checks,failures])
 	game.queue_free()
