@@ -298,8 +298,8 @@ func show_home() -> void:
 	actions.resized.connect(func(): actions.position.x = (stage.size.x-actions.size.x)*.5)
 	actions.add_theme_constant_override("separation",14)
 	stage.add_child(actions)
-	for item in [["开始防守",func(): game.start_solo("defense")],["多人合作",show_multiplayer],["设置",show_settings],["武器与操作",show_guide],["退出游戏",func(): game.quit_game()]]:
-		var option = home_button(actions,item[0],item[1],item[0] == "开始防守")
+	for item in [["单人游戏",func(): game.start_solo("defense")],["多人游戏",show_multiplayer],["设置",show_settings],["退出游戏",func(): game.quit_game()]]:
+		var option = home_button(actions,item[0],item[1],item[0] == "单人游戏")
 		option.custom_minimum_size = Vector2(188,76)
 		option.add_theme_font_size_override("font_size",25)
 	var save = home_button(actions,"存档 %d" % (Progress.active_slot+1),show_save_slots)
@@ -402,7 +402,6 @@ func show_pause() -> void:
 	button(column,"继续游戏",func(): game.resume_game(),true)
 	if not Session.playing: button(column,"重新开始",func(): game.start_solo(game.sim.mode))
 	button(column,"设置",show_settings)
-	button(column,"武器与操作",show_guide)
 	button(column,"结束房间并返回" if Session.is_host() else "离开房间" if Session.playing else "返回主菜单",func(): game.return_home())
 
 func back() -> void:

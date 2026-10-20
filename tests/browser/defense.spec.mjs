@@ -16,7 +16,7 @@ test('吊桥水晶防守使用真实输入换装并过桥后长按E修复水晶�
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   await page.waitForFunction(() => window.__survivorSnapshot?.map_id === 'graypine_defense');
   await page.screenshot({ path: info.outputPath('defense-home.png') });
-  await clickButton(page, '开始防守');
+  await clickButton(page, '单人游戏');
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense' && window.__survivorSnapshot?.running);
   let state = await snapshot(page);
   expect(state.defense.difficulty).toBe('normal');

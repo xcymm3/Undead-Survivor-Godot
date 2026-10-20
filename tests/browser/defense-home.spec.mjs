@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('主页只提供普通难度水晶防线，可直接开始防守', async ({ page }) => {
+test('主页只提供普通难度水晶防线，可直接单人游戏', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
   page.on('console', message => { if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text()); });
@@ -8,12 +8,12 @@ test('主页只提供普通难度水晶防线，可直接开始防守', async ({
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   const home = await page.evaluate(() => window.__survivorSnapshot);
   expect(home.map_id).toBe('graypine_defense');
-  expect(home.buttons.some(button => button.text === '多人合作' && !button.disabled)).toBe(true);
+  expect(home.buttons.some(button => button.text === '多人游戏' && !button.disabled)).toBe(true);
   expect(home.buttons.some(button => /灰松夜路|保卫水晶/.test(button.text))).toBe(false);
   for (const difficulty of ['简单', '普通', '困难']) {
     expect(home.buttons.some(button => button.text === difficulty)).toBe(false);
   }
-  const button = home.buttons.find(button => button.text === '开始防守' && !button.disabled);
+  const button = home.buttons.find(button => button.text === '单人游戏' && !button.disabled);
   expect(button).toBeTruthy();
   const canvas = await page.locator('canvas').boundingBox();
   await page.mouse.click(canvas.x + (button.x + button.width / 2) * canvas.width / 1440,

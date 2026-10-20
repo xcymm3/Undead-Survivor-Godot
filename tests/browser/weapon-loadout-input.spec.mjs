@@ -6,7 +6,7 @@ test('real input fires cancels and completes second-weapon reload', async ({ pag
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   expect(await page.evaluate(() => window.__survivorSnapshot.map_id)).toBe('graypine_defense');
-  for (const text of ['开始防守']) {
+  for (const text of ['单人游戏']) {
     const button = await page.evaluate(text => window.__survivorSnapshot.buttons.find(b => b.text === text && !b.disabled), text);
     expect(button).toBeTruthy();
     const canvas = await page.locator('canvas').boundingBox();

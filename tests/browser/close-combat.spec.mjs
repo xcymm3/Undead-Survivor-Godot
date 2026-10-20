@@ -6,7 +6,7 @@ test('right shove cooldown ring and middle toggle use real input', async ({ page
   page.on('console', message => { if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text()); });
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
-  const button = await page.evaluate(() => window.__survivorSnapshot.buttons.find(item => item.text === '开始防守' && !item.disabled));
+  const button = await page.evaluate(() => window.__survivorSnapshot.buttons.find(item => item.text === '单人游戏' && !item.disabled));
   expect(button).toBeTruthy();
   const canvas = await page.locator('canvas').boundingBox();
   await page.mouse.click(canvas.x + (button.x + button.width / 2) * canvas.width / 1440,
