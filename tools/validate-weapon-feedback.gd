@@ -40,6 +40,7 @@ static func validate(game, check: Callable) -> void:
 		var shots: Array = game.sim.events.filter(func(event): return event.kind == "shot")
 		check.call(shots.size() == 1,w.id+": authority emits one weapon shot event")
 		game.handle_effects(shots)
+		game.flush_view_shots()
 		if gun:
 			var count = 0 if w.id == "revolver" else 1
 			var casings: Array = game.effects.particles.filter(func(particle): return particle.get("kind","") == "casing")
@@ -83,6 +84,7 @@ static func validate(game, check: Callable) -> void:
 	check.call(packet.effects[0].surface_hits[0].position == wall_shot.to,"Authoritative surface impacts survive the actual coop event encoding")
 	game.effects.clear()
 	game.handle_effects(game.sim.events)
+	game.flush_view_shots()
 	game.effects.step(.2)
 	check.call(game.sim.zombies[0].hp == health,"Playing and expiring gun effects cannot apply damage again")
 	var state: Dictionary = game.sim.defense.duplicate(true)
@@ -110,6 +112,7 @@ static func validate(game, check: Callable) -> void:
 	game.sound.clear_effects()
 	game.weapon.sync(game.local_pawn(),.016,game.sim.elapsed)
 	partner.free()
+	validate_jump_tracer(game,check)
 	validate_tracer_lifetime(game.effects,check)
 
 static func validate_tracer_lifetime(fx, check: Callable) -> void:
@@ -142,3 +145,34 @@ static func validate_tracer_lifetime(fx, check: Callable) -> void:
 	fx.clear()
 	check.call(fx.gun_mesh.visible_instance_count == 0 and fx.tracers.is_empty() and fx.flashes.is_empty(),"Returning to menu clears all transient gun visuals")
 	fx.collision_query = saved_query
+
+static func validate_jump_tracer(game, check: Callable) -> void:
+	var pawn: Dictionary = game.local_pawn()
+	var saved = pawn.duplicate(true)
+	var camera_pose: Transform3D = game.camera.transform
+	game.effects.clear()
+	game.pending_view_shots.clear()
+	pawn.weapon = 0
+	pawn.aim = false
+	pawn.reloading = false
+	pawn.pos = Vector2(0,8)
+	pawn.height = 4.2
+	game.camera.position = Vector3(0,4.7,8)
+	game.camera.rotation = Vector3.ZERO
+	game.weapon.sync(pawn,.016,0)
+	var event = {"kind":"shot","player":pawn.id,"weapon":0,"from":Vector3(0,5.7,7.5),"to":Vector3(0,5.7,-15)}
+	game.handle_effects([event])
+	check.call(game.effects.tracers.is_empty() and game.pending_view_shots.size() == 1,"Local shot waits for the render camera instead of using the previous physics-frame muzzle")
+	game.camera.position.y = 5.9
+	game.weapon.sync(pawn,.016,.016)
+	game.flush_view_shots()
+	check.call(game.effects.tracers[0].from.is_equal_approx(game.weapon.muzzle_position()),"Jump shot begins at the current displayed barrel")
+	for rise in [.08,-.10]:
+		game.camera.position.y += rise
+		game.weapon.sync(pawn,.016,.032)
+		game.effects.step(.016)
+		check.call(game.effects.tracer_start(game.effects.tracers[0]).is_equal_approx(game.weapon.muzzle_position()),"Held tracer follows the barrel while rising or falling")
+	pawn.assign(saved)
+	game.camera.transform = camera_pose
+	game.weapon.sync(pawn,.016,game.sim.elapsed)
+	game.effects.clear()

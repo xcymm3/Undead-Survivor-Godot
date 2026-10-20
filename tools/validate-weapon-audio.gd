@@ -27,6 +27,7 @@ static func validate(game, check: Callable) -> void:
 		if id == "axe":
 			pawn.merge({"hp":100,"weapon":6,"requested":6,"fire_anim":data.weapons[6].fireDuration,"switch":0.0,"reloading":false,"ultimate_remaining":0.0,"ultimate_sheathe":0.0},true)
 		game.handle_effects([event])
+		game.flush_view_shots()
 		var voice: AudioStreamPlayer = sound.actions.axe.voice if id == "axe" else sound.players[slot]
 		if id == "axe": pawn.merge(saved,true)
 		check.call(voice.stream == stream,id+": local firing event selects its own sound")

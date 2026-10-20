@@ -164,12 +164,12 @@ func eject_shell(from: Vector3, direction: Vector3, shotgun := false) -> void:
 		"color":Color("ad4833") if shotgun else Color("bb9751"),"size":.03,
 		"scale":Vector3(.035,.035,.08) if shotgun else Vector3(.03,.025,.085)})
 
-func gunshot(from: Vector3, to: Vector3, pellet_ends: Array = [], surface_hits: Array = [], shotgun := false, eject := true) -> void:
+func gunshot(from: Vector3, to: Vector3, pellet_ends: Array = [], surface_hits: Array = [], shotgun := false, eject := true, muzzle_source := Callable()) -> void:
 	var direction = (to-from).normalized()
 	if direction.length_squared() < .01: direction = Vector3.FORWARD
 	if from.distance_to(to) >= .2:
 		if flashes.size() >= FLASH_LIMIT: flashes.pop_front()
-		flashes.append({"pos":from+direction*.06,"direction":direction,"age":0.0})
+		flashes.append({"pos":from+direction*.06,"direction":direction,"age":0.0,"muzzle_source":muzzle_source,"target":to})
 	for endpoint in ([to] if pellet_ends.is_empty() else pellet_ends):
 		if from.distance_to(endpoint) < .01: continue
 		# Cosmetic muzzle positions also respect geometry, independently of damage.
@@ -177,7 +177,7 @@ func gunshot(from: Vector3, to: Vector3, pellet_ends: Array = [], surface_hits: 
 		var clipped: Vector3 = wall.position if not wall.is_empty() else endpoint
 		if from.distance_to(clipped) < .01: continue
 		if tracers.size() >= TRACER_LIMIT: tracers.pop_front()
-		tracers.append({"from":from,"to":clipped,"age":0.0})
+		tracers.append({"from":from,"to":clipped,"target":clipped,"age":0.0,"muzzle_source":muzzle_source})
 	if eject:
 		var right = direction.cross(Vector3.UP).normalized()
 		eject_shell(from-direction*.16+right*.04,direction,shotgun)
@@ -204,6 +204,11 @@ static func tracer_transform(tracer: Dictionary) -> Transform3D:
 func update_gun_visuals() -> void:
 	var index = 0
 	for tracer in tracers:
+		var source: Callable = tracer.get("muzzle_source",Callable())
+		if tracer.age <= TRACER_HOLD and source.is_valid():
+			tracer.from = source.call()
+			var wall: Dictionary = collision_query.call(tracer.from,tracer.target) if collision_query.is_valid() else {}
+			tracer.to = wall.position if not wall.is_empty() else tracer.target
 		var start = tracer_start(tracer)
 		var delta: Vector3 = tracer.to-start
 		var length = delta.length()
@@ -212,6 +217,11 @@ func update_gun_visuals() -> void:
 		gun_mesh.set_instance_color(index,Color("ffe4a1"))
 		index += 1
 	for flash in flashes:
+		var source: Callable = flash.get("muzzle_source",Callable())
+		if source.is_valid():
+			var origin: Vector3 = source.call()
+			flash.direction = (flash.target-origin).normalized()
+			flash.pos = origin+flash.direction*.06
 		var basis = Basis(Quaternion(Vector3.FORWARD,flash.direction))
 		var scale = 1.0-float(flash.age)/.035
 		for size in [Vector3(.07,.07,.25),Vector3(.27,.025,.07),Vector3(.025,.22,.07)]:

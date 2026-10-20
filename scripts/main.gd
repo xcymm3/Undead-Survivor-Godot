@@ -35,6 +35,7 @@ var aim_held = false
 var spectating = ""
 var snapshot_timer = 0.0
 var queued_effects: Array = []
+var pending_view_shots: Array = []
 var finish_camera_start = Transform3D.IDENTITY
 var finish_focus = Vector3.ZERO
 var death_timer = 0.0
@@ -206,6 +207,7 @@ func reset_game() -> void:
 	fire_pending = false
 	spectating = ""
 	queued_effects.clear()
+	pending_view_shots.clear()
 	for partner in partners.values(): partner.queue_free()
 	partners.clear()
 	effects.clear()
@@ -342,6 +344,7 @@ func _process(dt: float) -> void:
 	if arena.scenery.has_method("sync_focus"): arena.scenery.sync_focus(sim,p)
 	if not finished: sync_tutorial_voice()
 	effects.step(dt)
+	flush_view_shots()
 	for id in sim.pawns:
 		if id == Session.local_id:
 			if partners.has(id): partners[id].visible = false
@@ -387,6 +390,22 @@ func sync_tutorial_voice() -> void:
 	if local_pawn().pos.distance_to(Data.Maps.Defense.SHOP_OWNER) > 12: return
 	if frame.text.right(1) in ["，","。","！","？","."," "]: return
 	sound.play_at("typewriter",Vector3(Data.Maps.Defense.SHOP_OWNER.x,4.7,Data.Maps.Defense.SHOP_OWNER.y),-22)
+
+func current_shot_muzzle(event: Dictionary) -> Vector3:
+	var origin: Vector3 = event.from
+	var viewed: Dictionary = view_pawn()
+	if viewed.is_empty() or viewed.id != event.player or int(viewed.weapon) != int(event.get("weapon",0)): return origin
+	var barrel: Vector3 = weapon.muzzle_position()
+	return barrel if arena.surface_hit(origin,barrel).is_empty() else origin
+
+func flush_view_shots() -> void:
+	# Physics creates hit results; cosmetics wait for this frame's camera and gun pose.
+	for event in pending_view_shots:
+		var w: Dictionary = Data.weapons[int(event.get("weapon",0))]
+		var origin = current_shot_muzzle(event)
+		if w.get("kind","gun") == "flame": effects.flame(origin,event.to)
+		else: effects.gunshot(origin,event.to,event.get("pellet_ends",[]),event.get("surface_hits",[]),w.id in ["shotgun","auto-shotgun"],w.id != "revolver",current_shot_muzzle.bind(event))
+	pending_view_shots.clear()
 
 func handle_effects(events: Array) -> void:
 	for event in events:
@@ -446,6 +465,9 @@ func handle_effects(events: Array) -> void:
 				var visual_origin: Vector3 = event.from
 				var viewed: Dictionary = view_pawn()
 				if not viewed.is_empty() and event.player == viewed.id:
+					if kind in ["gun","flame"]:
+						pending_view_shots.append(event.duplicate(true))
+						continue
 					visual_origin = weapon.muzzle_position()
 				elif partners.has(event.player):
 					visual_origin = partners[event.player].muzzle_position()
