@@ -17,7 +17,7 @@ static func validate(game, check: Callable) -> void:
 	var sim = game.sim
 	var p = game.local_pawn()
 	check.call(Intro.active(sim.defense) and Intro.LINES.size() == 5,"New save starts five cumulative narrative rows")
-	var story_font = preload("res://assets/fonts/ZCOOLQingKeHuangYou-Regular.ttf")
+	var story_font = game.ui.native_hud.tutorial_overlay.story_lines[0].get_theme_font("font")
 	var all_glyphs = true
 	for line in Intro.LINES:
 		for character in line: all_glyphs = all_glyphs and story_font.has_char(character.unicode_at(0))
