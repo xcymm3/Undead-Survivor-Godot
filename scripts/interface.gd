@@ -674,7 +674,8 @@ func show_result() -> void:
 	actions.add_theme_constant_override("separation",24)
 	result.add_child(actions)
 	if not Session.playing:
-		var retry = home_button(actions,"重新防守",func(): game.start_solo("defense"),true)
+		var retry = home_button(actions,"重新防守",func(): game.start_solo("defense"))
+		retry.selected = true
 		retry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		retry.custom_minimum_size.y = 56
 	var home = home_button(actions,"返回主菜单",func(): game.return_home())
