@@ -156,13 +156,13 @@ func run() -> void:
 	var body = sim.player_body(pawn)
 	for side in [-1.0,1.0]:
 		for z_start in [-26.0,-19.0,-11.0]:
-			pawn.pos = Vector2(side*29,z_start)
+			pawn.pos = Vector2(side*(layout.PLATEAU.size.x/2-3),z_start)
 			pawn.height = 0
 			pawn.velocity = 0
 			body.sync_from(pawn)
 			body.velocity.y = body.JUMP_SPEED
 			for tick in 180: body.advance(Vector2(side*12,0),.01)
-			check(absf(body.position.x) < 31,"Shelf outer wall stops a sprint-jump on side %.0f at z=%.0f" % [side,z_start])
+			check(absf(body.position.x) < layout.PLATEAU.size.x/2-1,"Shelf outer wall stops a sprint-jump on side %.0f at z=%.0f" % [side,z_start])
 		pawn.pos = Vector2(side*12,-25)
 		pawn.height = 0
 		pawn.velocity = 0

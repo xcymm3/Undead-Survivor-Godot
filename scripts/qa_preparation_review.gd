@@ -146,7 +146,7 @@ func stage() -> void:
 	game.ui.native_hud.sync()
 	game.running = false
 	game.ui.native_hud.visible = true
-	if scenario == "map_overview" or scenario.begins_with("toy_"): game.ui.native_hud.visible = false
+	if scenario in ["map_overview","map_rear"] or scenario.begins_with("toy_"): game.ui.native_hud.visible = false
 	if scenario in ["open","closed"] or not building_id.is_empty() or scenario.begins_with("display") or scenario.begins_with("crystal"): game.ui.native_hud.weapon_label.get_parent().get_parent().visible = false
 	game.arena.scenery.preparation.sync(game.sim.defense)
 	RenderingServer.render_loop_enabled = false
@@ -165,15 +165,20 @@ func stage_redesign(scenario: String, p: Dictionary) -> void:
 		game.camera.position = Vector3(p.pos.x,p.height+1.65,p.pos.y)
 		game.camera.rotation = Vector3(0,p.yaw,0)
 		game.camera.fov = 70
+	elif scenario == "map_rear":
+		game.camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		game.camera.size = 36
+		game.camera.position = Vector3(23,26,layout.SPAWN.y+18)
+		game.camera.look_at(Vector3(0,3,layout.SHOP_WALL_Z-1))
 	elif scenario == "map_overview":
 		game.arena.sun.light_energy = .85
 		for environment in game.arena.find_children("*","WorldEnvironment",true,false):
 			environment.environment.ambient_light_energy = .5
 			environment.environment.fog_density = .001
 		game.camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-		game.camera.size = 118
-		game.camera.position = Vector3(-70,100,-10)
-		game.camera.look_at(Vector3(0,1,-9))
+		game.camera.size = 125
+		game.camera.position = Vector3(-65,100,42)
+		game.camera.look_at(Vector3(0,1,-2))
 		for entry in [["出生点",Vector3(0,3,layout.SPAWN.y)],["吊桥",Vector3(0,6,-45)],["水晶",center+Vector3(0,3,0)],["商店",Vector3(0,9,layout.SHOP_AREA.get_center().y)]]:
 			var label = preload("res://scripts/toy_art.gd").label(game.arena.scenery,"OverviewLabel",entry[0],entry[1],.055)
 			label.billboard = BaseMaterial3D.BILLBOARD_ENABLED

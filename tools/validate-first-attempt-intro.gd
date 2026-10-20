@@ -13,7 +13,7 @@ static func validate(game, check: Callable) -> void:
 	await game.get_tree().physics_frame
 	var sim = game.sim
 	var p = game.local_pawn()
-	check.call(Intro.active(sim.defense) and is_equal_approx(absf(p.yaw),PI),"First entry starts the narrative facing the bridge")
+	check.call(Intro.active(sim.defense) and is_zero_approx(p.yaw),"First entry starts the narrative facing the shop from the rear spawn")
 	check.call(Intro.alpha(sim.defense) == 0,"Intro fades in from transparent")
 	Fixture.face(sim,p,"crystal")
 	for index in 4:

@@ -127,12 +127,14 @@ static func build_base(world: Node3D) -> void:
 	apply_material(water,water_material)
 	var far_bank: Rect2 = world.Layout.ENEMY_SPAWN_REGION
 	textured_block(world,"FarCliff",Vector3(far_bank.get_center().x,-.5,far_bank.get_center().y),Vector3(far_bank.size.x,1,far_bank.size.y),soil,true,false)
-	textured_block(world,"DefensePlateau",Vector3(0,1.5,world.Layout.PLATEAU.get_center().y),Vector3(64,3,world.Layout.PLATEAU.size.y),grass,true,false)
+	textured_block(world,"DefensePlateau",Vector3(0,1.5,world.Layout.PLATEAU.get_center().y),Vector3(world.Layout.PLATEAU.size.x,3,world.Layout.PLATEAU.size.y),grass,true,false)
 	textured_block(world,"ApproachRoad",Vector3(0,3.035,(world.Layout.RAMP.end.y+world.Layout.CRYSTAL.y)/2),Vector3(11,.07,world.Layout.CRYSTAL.y-world.Layout.RAMP.end.y),road,false)
 	# Exposed strata and talus make both bridge-side drops read as natural cliffs.
 	for z in [-62.0,-28.0]:
+		var half_width: float = 32.0 if z < -40 else world.Layout.PLATEAU.size.x/2
+		var face_width = half_width-5.0
 		for side in [-1.0,1.0]:
-			textured_block(world,"CliffFace",Vector3(side*18.5,-1.5,z),Vector3(27,8.5,1.4),cliff,true,false)
+			textured_block(world,"CliffFace",Vector3(side*(5.0+face_width/2),-1.5,z),Vector3(face_width,8.5,1.4),cliff,true,false)
 			for offset in [-9.0,-3.0,4.0,9.0]:
 				make_rock(world,"CliffTalus",Vector3(side*18.5+offset*.62,-6.9,z+(-1.8 if z < -40 else 1.8)),Vector3(2.8,1.7,2.1),offset*9.0,false,false)
 	# Muted edge markers retain long-range readability without looking painted on.
@@ -157,19 +159,20 @@ static func make_wall_run(world: Node3D, center: Vector3, size: Vector3, posts_a
 static func build_boundaries(world: Node3D) -> void:
 	# Side walls stop at the chasm. The bridge flanks remain exposed cliff edges,
 	# while every playable outer edge is visibly and physically enclosed.
-	for x in [-31.45,31.45]:
+	for x in [world.Layout.PLATEAU.position.x+.55,world.Layout.PLATEAU.end.x-.55]:
 		# Extend down to the low shelves: a wall starting at plateau height left
 		# a three-metre passage underneath it beside the ramp.
 		make_wall_run(world,Vector3(x,2.5,(world.Layout.BOUNDS.end.y-28)/2),Vector3(1.1,6.0,world.Layout.BOUNDS.end.y+28),false)
 	# Close the cliff-facing ends of the shelves, overlapping the outer walls.
 	# The central bridge/ramp lane remains open; shelves still return to its foot.
 	for side in [-1.0,1.0]:
-		make_wall_run(world,Vector3(side*18.5,2.5,-27.75),Vector3(27,6.0,.8),true)
+		var shelf_width: float = world.Layout.PLATEAU.size.x/2-5.0
+		make_wall_run(world,Vector3(side*(5.0+shelf_width/2),2.5,-27.75),Vector3(shelf_width,6.0,.8),true)
 	var far_bank: Rect2 = world.Layout.ENEMY_SPAWN_REGION
 	for x in [far_bank.position.x+.55,far_bank.end.x-.55]:
 		make_wall_run(world,Vector3(x,1.1,far_bank.get_center().y),Vector3(1.1,2.2,far_bank.size.y),false)
 	make_wall_run(world,Vector3(0,1.6,far_bank.position.y+.55),Vector3(far_bank.size.x,3.2,1.1),true)
-	make_wall_run(world,Vector3(0,4.1,world.Layout.BOUNDS.end.y-.55),Vector3(64,2.2,1.1),true)
+	make_wall_run(world,Vector3(0,4.1,world.Layout.BOUNDS.end.y-.55),Vector3(world.Layout.PLATEAU.size.x,2.2,1.1),true)
 
 static func build_ramp_fill(world: Node3D) -> StaticBody3D:
 	# A convex earthen wedge fills the entire volume below the authored ramp.
@@ -240,12 +243,15 @@ static func build_cover(world: Node3D) -> void:
 	for index in rocks.size():
 		var entry: Array = rocks[index]
 		var position: Vector3 = entry[0]
-		if position.z >= -10: position.z = world.Layout.plateau_depth(position.z)
+		if position.z >= -10:
+			position.z = world.Layout.plateau_depth(position.z)
+			position.x *= .72
 		if world.Layout.SHOP_AREA.grow(2).has_point(Vector2(position.x,position.z)): continue
 		make_rock(world,"FieldBoulder%02d" % index,position,entry[1],entry[2],true,true)
 	# Small companion stones break up the unmistakable single-primitive silhouette.
 	for point in [Vector3(-23,3.35,-1),Vector3(24,3.32,5),Vector3(-20,3.34,15),Vector3(21,3.34,22),Vector3(-25,3.34,33),Vector3(24,3.34,41)]:
 		point.z = world.Layout.plateau_depth(point.z)
+		point.x *= .72
 		if world.Layout.SHOP_AREA.grow(1).has_point(Vector2(point.x,point.z)): continue
 		make_rock(world,"ScatterStone",point,Vector3(1.25,.72,1.0),point.x*4.0,false,false)
 
@@ -260,7 +266,9 @@ static func build_vegetation(world: Node3D) -> void:
 	]
 	for index in patches.size():
 		var point: Vector2 = patches[index]
-		if point.y >= -10: point.y = world.Layout.plateau_depth(point.y)
+		if point.y >= -10:
+			point.y = world.Layout.plateau_depth(point.y)
+			point.x *= .72
 		if world.Layout.SHOP_AREA.has_point(point): continue
 		make_grass_tuft(world,point,world.Layout.height(point)+.03,"526448" if index%3 else "6c7350")
 
@@ -272,7 +280,7 @@ static func decorate_existing(world: Node3D) -> void:
 	for node in world.get_children():
 		if not node is Node3D: continue
 		var title: String = node.name
-		if title.begins_with("BridgePlank") or title == "BridgeCollision" or title == "WeaponShopWall" or title.begins_with("ShopFrame"): apply_material(node,timber)
+		if title.begins_with("BridgePlank") or title == "BridgeCollision" or title.begins_with("WeaponShopWall") or title == "ShopEntranceLintel" or title.begins_with("ShopFrame"): apply_material(node,timber)
 		elif title.begins_with("BridgeTower") or title.begins_with("BridgeGuardRail") or title.begins_with("ShopRail"): apply_material(node,metal)
 		elif title == "StoneRamp" or title.begins_with("RampShelf") or title.begins_with("RampWall"): apply_material(node,ramp)
 		elif title == "SafeZoneFloor": apply_material(node,concrete)

@@ -85,8 +85,9 @@ func make_bridge() -> void:
 func make_ramp() -> void:
 	# Low shelves catch a sideways step at the ramp. Their upper edge remains
 	# three metres below the plateau, leaving the central ramp as the only route.
-	block("RampShelfLeft",Vector3(-18.75,-.22,-19),Vector3(26.5,.44,18),"475048",true,false)
-	block("RampShelfRight",Vector3(18.75,-.22,-19),Vector3(26.5,.44,18),"475048",true,false)
+	var shelf_width = DefenseLayout.PLATEAU.size.x/2-5.5
+	for side in [-1.0,1.0]:
+		block("RampShelfLeft" if side < 0 else "RampShelfRight",Vector3(side*(5.5+shelf_width/2),-.22,-19),Vector3(shelf_width,.44,18),"475048",true,false)
 	var angle = -atan2(3.0,18.0)
 	var ramp = block("StoneRamp",Vector3(0,1.3,-19),Vector3(10,.5,18.25),"59605b",true,false)
 	ramp.rotation.x = angle
@@ -101,18 +102,24 @@ func make_ramp() -> void:
 func make_safe_zone() -> void:
 	var safe = DefenseLayout.SHOP_AREA
 	block("SafeZoneFloor",Vector3(0,3.035,safe.get_center().y),Vector3(26,.06,safe.size.y),"314c45",false)
-	block("WeaponShopWall",Vector3(0,6,DefenseLayout.SHOP_WALL_Z),Vector3(25.5,6,.65),"493a2d",true,true)
+	var wall_width = (25.5-DefenseLayout.SHOP_ENTRANCE_WIDTH)/2
+	for side in [-1.0,1.0]:
+		block("WeaponShopWallLeft" if side < 0 else "WeaponShopWallRight",Vector3(side*(DefenseLayout.SHOP_ENTRANCE_WIDTH+wall_width)/2,6,DefenseLayout.SHOP_WALL_Z),Vector3(wall_width,6,.65),"493a2d",true,true)
+	block("ShopEntranceLintel",Vector3(0,8,DefenseLayout.SHOP_WALL_Z),Vector3(DefenseLayout.SHOP_ENTRANCE_WIDTH,2,.65),"493a2d",true,false)
+	block("RearEntryPath",Vector3(0,3.045,(DefenseLayout.SPAWN.y+DefenseLayout.SHOP_WALL_Z)/2),Vector3(5,.09,DefenseLayout.SPAWN.y-DefenseLayout.SHOP_WALL_Z),"514c40",false)
 	preparation = preload("res://scripts/preparation_world.gd").new()
 	preparation.name = "PreparationWorld"
 	add_child(preparation)
 
 func make_entry() -> void:
 	var toy = preload("res://scripts/toy_art.gd")
-	toy.box(self,"EntryPad",Vector3(0,.045,DefenseLayout.SPAWN.y),Vector3(5,.09,4),toy.BLUE)
-	for z in [-67.1,-66.4,-65.7]:
-		var arrow = toy.box(self,"EntryArrow",Vector3(0,.10,z),Vector3(.85,.025,.15),toy.YELLOW)
+	var ground = DefenseLayout.height(DefenseLayout.SPAWN)
+	toy.box(self,"EntryPad",Vector3(0,ground+.045,DefenseLayout.SPAWN.y),Vector3(5,.09,4),toy.BLUE)
+	for offset in [-1.1,-.4,.3]:
+		var z = DefenseLayout.SPAWN.y+offset
+		var arrow = toy.box(self,"EntryArrow",Vector3(0,ground+.10,z),Vector3(.85,.025,.15),toy.YELLOW)
 		for side in [-1.0,1.0]:
-			var wing = toy.box(self,"ArrowWing",Vector3(side*.30,.10,z+.17),Vector3(.15,.025,.5),toy.YELLOW)
+			var wing = toy.box(self,"ArrowWing",Vector3(side*.30,ground+.10,z+.17),Vector3(.15,.025,.5),toy.YELLOW)
 			wing.rotation.y = side*.7
 
 func sync_focus(sim, pawn: Dictionary) -> void:
@@ -128,8 +135,8 @@ func _ready() -> void:
 	# The expanded far bank does not add walkable ground beside the original plateau.
 	obstacles.append({"minX":DefenseLayout.BOUNDS.position.x,"maxX":DefenseLayout.PLATEAU.position.x,"minZ":-28.0,"maxZ":DefenseLayout.BOUNDS.end.y})
 	obstacles.append({"minX":DefenseLayout.PLATEAU.end.x,"maxX":DefenseLayout.BOUNDS.end.x,"minZ":-28.0,"maxZ":DefenseLayout.BOUNDS.end.y})
-	obstacles.append({"minX":-32.0,"maxX":-5.5,"minZ":-28.0,"maxZ":-10.0})
-	obstacles.append({"minX":5.5,"maxX":32.0,"minZ":-28.0,"maxZ":-10.0})
+	obstacles.append({"minX":DefenseLayout.PLATEAU.position.x,"maxX":-5.5,"minZ":-28.0,"maxZ":-10.0})
+	obstacles.append({"minX":5.5,"maxX":DefenseLayout.PLATEAU.end.x,"minZ":-28.0,"maxZ":-10.0})
 	make_bridge()
 	make_ramp()
 	make_safe_zone()

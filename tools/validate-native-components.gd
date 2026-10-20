@@ -187,7 +187,7 @@ func validate_flame() -> void:
 	var initial_hp: Array = sim.zombies.map(func(enemy): return enemy.hp)
 	sim.fire(p,root.get_node("Data").weapons[7])
 	check(sim.zombies[0].hp < initial_hp[0] and sim.zombies[1].hp < initial_hp[1],"Flame covers off-axis enemies and penetrates the front row")
-	p.pos = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()
+	p.pos = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()+Vector2(6,0)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = PI
 	sim.zombies.clear()
@@ -221,7 +221,7 @@ func validate_sniper_penetration() -> void:
 	for index in 4:
 		var expected: float = float(w.damage)*pow(.8,index) if index < 3 else 0.0
 		check(is_equal_approx(2000-sim.zombies[index].hp,expected),"Sniper front-to-back attenuation and three-target limit "+str(index))
-	p.pos = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()
+	p.pos = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()+Vector2(6,0)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = PI
 	sim.zombies.clear()
@@ -357,7 +357,7 @@ func validate_rifle_penetration() -> void:
 	var behind_hp: float = sim.zombies[1].hp
 	sim.fire(p,w)
 	check(is_equal_approx(armored_hp-sim.zombies[0].hp,120) and is_equal_approx(behind_hp-sim.zombies[1].hp,80),"Armored enemy still absorbs damage normally while rifle continues to the second target")
-	p.pos = data.Maps.Defense.SHOP_AREA.get_center()
+	p.pos = data.Maps.Defense.SHOP_AREA.get_center()+Vector2(6,0)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = PI
 	sim.zombies.clear()
@@ -1368,7 +1368,7 @@ func validate_equipment() -> void:
 		p.input = {"yaw":0.0,"pitch":0.0}
 		var old_hp: int = p.hp
 		sim.zombies.clear()
-		var shop_spawn: Vector2 = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()
+		var shop_spawn: Vector2 = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()+Vector2(6,0)
 		sim.spawn(shop_spawn+Vector2(0,7),"normal")
 		equipment.explode({"owner":p.id,"pos":Vector3(shop_spawn.x,4,shop_spawn.y)})
 		check(sim.zombies[0].hp > 0,"Armory wall blocks grenade blast damage")

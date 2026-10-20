@@ -251,21 +251,21 @@ func validate_balance(game) -> void:
 	for item in sim.defense.structures: item.hp = 0
 	sim.defense.crystal_hp = 3000
 	sim.defense_director.sync_world()
-	sim.spawn(Vector2(24,0),"imp")
+	sim.spawn(Vector2(20,0),"imp")
 	check(sim.zombies[-1].hp == 1000 and sim.zombies[-1].body == 1000 and sim.zombies[-1].armor == 0,"Imp has 1000 unarmored health")
-	p.pos = Vector2(24,1)
+	p.pos = Vector2(20,1)
 	p.height = 3.0
 	for kind in ["imp","giant","dancer"]:
-		sim.spawn(Vector2(24,0),kind)
+		sim.spawn(Vector2(20,0),kind)
 		var z: Dictionary = sim.zombies[-1]
 		check(sim.original_choose_zombie_target(z,[p]).id == "crystal" and sim.choose_zombie_target(z,[p]).id == "crystal","Building-only enemy ignores a closer reachable player: "+kind)
-	sim.spawn(Vector2(24,0),"normal")
+	sim.spawn(Vector2(20,0),"normal")
 	var normal: Dictionary = sim.zombies[-1]
 	for distance in [20.1,20.0,19.9]:
-		p.pos = Vector2(24,distance)
+		p.pos = Vector2(20,distance)
 		var expected: String = "crystal" if distance > 20 else p.id
 		check(sim.original_choose_zombie_target(normal,[p]).id == expected and sim.choose_zombie_target(normal,[p]).id == expected,"Both target selectors respect the 20m boundary and bypass a far-target cache: "+str(distance))
-	p.pos = Vector2(24,19)
+	p.pos = Vector2(20,19)
 	p.height = 4.1
 	check(sim.choose_zombie_target(normal,[p]).id == "crystal","Expanded detection still rejects an unreachable elevated player")
 	game.return_home()

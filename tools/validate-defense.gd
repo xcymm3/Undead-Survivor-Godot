@@ -45,9 +45,12 @@ func run() -> void:
 	game.set_physics_process(false)
 	check(game.arena.map_id == "graypine_defense","Defense map loads as an authored scene")
 	var layout = data.Maps.Defense
-	check(is_equal_approx(layout.PLATEAU.size.y,82.0*2.0/3.0) and is_equal_approx(layout.BOUNDS.end.y,layout.PLATEAU.end.y),"Plateau and world boundary shorten to two thirds of the original length")
-	check(layout.CRYSTAL == layout.PLATEAU.get_center(),"Crystal occupies the exact centre of the flat plateau")
-	check(layout.SHOP_AREA.get_center().x == layout.CRYSTAL.x and layout.SPAWN.y < layout.BRIDGE.position.y and layout.CRYSTAL.y < layout.SHOP_AREA.position.y,"Spawn, bridge, crystal and shop follow the approach order")
+	check(is_equal_approx(layout.PLATEAU.size.y,82.0*2.0/3.0+12) and is_equal_approx(layout.BOUNDS.end.y,layout.PLATEAU.end.y),"Plateau and world boundary extend twelve metres behind the existing shop")
+	check(layout.PLATEAU.position.x == -24 and layout.PLATEAU.end.x == 24 and layout.CRYSTAL.is_equal_approx(Vector2(0,52.0/3)),"Plateau narrows eight metres per side without moving the crystal")
+	check(layout.SHOP_AREA.get_center().x == layout.CRYSTAL.x and layout.SPAWN.y > layout.SHOP_AREA.end.y and layout.CRYSTAL.y < layout.SHOP_AREA.position.y,"Player spawns behind the shop facing the existing crystal approach")
+	check(game.arena.clear(layout.SPAWN,Vector2(0,layout.SHOP_WALL_Z-2)),"Rear spawn connects to the shop through the central doorway")
+	for side in [-1.0,1.0]:
+		check(not game.arena.clear(Vector2(side*23,20),Vector2(side*25,20)),"Navigation blocks the removed plateau strip: "+str(side))
 	check(game.arena.obstacles.size() >= 5,"Chasm, ramp shelves and solid shop furniture participate in navigation")
 	check(not game.arena.clear(Vector2(12,-70),Vector2(12,0)),"Chasm prevents routes that bypass the bridge")
 	check(not game.arena.clear(Vector2(12,-20),Vector2(12,0)),"Ramp-side shelves cannot bypass the central climb")
@@ -85,8 +88,23 @@ func run() -> void:
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Environmental cover preserves the central bridge, ramp and field lane")
 	check(game.arena.scenery.find_children("WeaponDisplay*","Node3D",true,false).is_empty(),"Shop removes all free weapon racks")
 	check(game.arena.scenery.has_node("PreparationWorld/Station_rifle") and game.arena.scenery.find_children("Label3D","Label3D",true,false).is_empty(),"Rear shop has physical display stations without persistent signs")
-	var shop_walls = game.arena.scenery.find_children("WeaponShopWall","StaticBody3D",true,false)
-	check(shop_walls.size() == 1 and shop_walls[0].position.x == 0 and is_equal_approx(shop_walls[0].position.z+.325,layout.PLATEAU.end.y),"Shop is centered and flush with the rear perimeter")
+	var shop_walls = game.arena.scenery.find_children("*","StaticBody3D",true,false).filter(func(node): return str(node.name).contains("WeaponShopWall"))
+	check(shop_walls.size() == 2 and shop_walls.all(func(node): return is_equal_approx(node.position.z+.325,layout.SHOP_AREA.end.y)),"Shop stays in place with a two-part rear wall and centre entrance")
+	var spawn_floor = game.arena.surface_hit(Vector3(layout.SPAWN.x,8,layout.SPAWN.y),Vector3(layout.SPAWN.x,-1,layout.SPAWN.y))
+	check(not spawn_floor.is_empty() and spawn_floor.position.y >= 3,"Rear spawn stands on native plateau collision")
+	check(game.arena.surface_hit(Vector3(0,4.5,layout.SPAWN.y),Vector3(0,4.5,layout.SHOP_WALL_Z-2)).is_empty(),"Rear shop doorway clears a standing player's native collision height")
+	var entry_body = preload("res://scripts/player_body.gd").new()
+	game.arena.add_child(entry_body)
+	await physics_frame
+	entry_body.position = Vector3(0,3.12,layout.SPAWN.y)
+	for tick in 110: entry_body.advance(Vector2(0,-6),1.0/60)
+	check(entry_body.position.z < layout.SHOP_WALL_Z-2 and entry_body.position.y >= 3,"Standing player capsule walks from rear spawn through the shop doorway")
+	for side in [-1.0,1.0]:
+		entry_body.position = Vector3(side*22,3.12,20)
+		entry_body.velocity = Vector3.ZERO
+		for tick in 45: entry_body.advance(Vector2(side*6,0),1.0/60)
+		check(absf(entry_body.position.x) < 23 and entry_body.position.y >= 3,"Native side wall prevents walking into the removed strip: "+str(side))
+	entry_body.free()
 
 	game.start_solo("defense")
 	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
@@ -125,7 +143,7 @@ func run() -> void:
 		sim.step(.05)
 	check(sim.elapsed == 0 and sim.spawned == 0 and sim.zombies.is_empty(),"Preparation keeps timer and spawns stopped")
 	check(pawn.weapon == pawn.weapon2 and pawn.slot == 2,"Defense uses weapon-slot-2 switching")
-	check(not sim.shop_available(pawn),"Spawn at the bridge entrance is outside the shop")
+	check(not sim.shop_available(pawn),"Rear spawn is outside the shop interaction area")
 	check(not sim.equipment.pickup(pawn,"weapon:5") and not sim.equipment.pickup(pawn,"weapon:7"),"Removed weapon racks cannot exchange the fixed loadout")
 	check(pawn.weapon1 == 0 and pawn.weapon2 == 2,"Invalid pickups preserve fixed weapons")
 	var fixture = preload("res://tools/preparation-fixture.gd")

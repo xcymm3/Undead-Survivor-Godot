@@ -1,14 +1,17 @@
 extends RefCounted
 ## “断崖吊桥”防守地图的共享尺寸、目标点与高度函数。
 const ID = "graypine_defense"
-const PLATEAU = Rect2(-32,-10,64,82.0*2.0/3.0)
-const CRYSTAL = Vector2(0,PLATEAU.position.y+PLATEAU.size.y/2)
+const COMBAT_DEPTH = 82.0*2.0/3.0
+const REAR_EXTENSION = 12.0
+const PLATEAU = Rect2(-24,-10,48,COMBAT_DEPTH+REAR_EXTENSION)
+const CRYSTAL = Vector2(0,-10+COMBAT_DEPTH/2)
 const CRYSTAL_RADIUS = 1.05
 const CRYSTAL_CONTACT_RADIUS = 2.3 # Crystal body plus enemy navigation clearance.
 const FALL_RETURN = CRYSTAL+Vector2(-6,3)
-const SHOP_AREA = Rect2(-13,PLATEAU.end.y-10,26,10)
-const SPAWN = Vector2(0,-66)
-const SHOP_WALL_Z = PLATEAU.end.y-.325
+const SHOP_AREA = Rect2(-13,-10+COMBAT_DEPTH-10,26,10)
+const SPAWN = Vector2(0,SHOP_AREA.end.y+7)
+const SHOP_WALL_Z = SHOP_AREA.end.y-.325
+const SHOP_ENTRANCE_WIDTH = 4.4
 const SHOP_POINT = Vector2(0,SHOP_WALL_Z-2.35)
 const BRIDGE = Rect2(-4,-62,8,34)
 const ENEMY_SPAWN_REGION = Rect2(-48,BRIDGE.position.y-96,96,96)

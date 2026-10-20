@@ -13,18 +13,20 @@ static func validate(game, check: Callable) -> void:
 	await game.get_tree().physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
-	check.call(p.pos.y < Layout.BRIDGE.position.y and Layout.BRIDGE.end.y < Layout.CRYSTAL.y and Layout.CRYSTAL.y < Layout.SHOP_AREA.position.y,"Spawn, bridge, crystal and shop follow the requested order")
-	check.call(is_equal_approx(absf(p.yaw),PI) and p.height == 0 and game.arena.clear(p.pos,p.pos),"Player starts on the far-bank entrance facing the bridge")
+	check.call(p.pos.y > Layout.SHOP_AREA.end.y and Layout.BRIDGE.end.y < Layout.CRYSTAL.y and Layout.CRYSTAL.y < Layout.SHOP_AREA.position.y,"Spawn lies behind the shop while bridge and crystal keep their existing order")
+	check.call(is_zero_approx(p.yaw) and p.height == 3 and game.arena.clear(p.pos,p.pos),"Player starts on the extended plateau facing the shop doorway")
 	check.call(sim.defense.crystal_hp == 0 and sim.defense.crystal_repair_required and sim.defense.waiting and not sim.defense.started,"New match starts with a broken crystal and stopped waves")
 	sim.step(.1)
 	check.call(not sim.failed and sim.zombies.is_empty() and sim.elapsed == 0,"Broken preparation crystal does not cause defeat or spawn enemies")
 	check.call(not Catalog.stations().any(func(entry): return entry.id == "alarm") and not game.arena.scenery.preparation.stations.has("alarm"),"No physical alarm station or lever remains")
-	# Advance the actual player capsule from the entrance across the bridge/ramp.
-	for tick in 1800:
-		if p.pos.y >= Layout.CRYSTAL.y-4: break
-		sim.submit(p.id,{"y":-1.0,"yaw":PI,"pitch":0.0,"slot":1,"weapon":0})
-		sim.update_pawn(p,1.0/60)
-	check.call(p.pos.y >= Layout.CRYSTAL.y-4 and p.height > 2.9 and p.hp == 100,"Actual capsule can walk from the new spawn across the bridge and ramp")
+	# Traverse the rear doorway and an aisle between the actual shop stands.
+	for point in [Vector2(0,Layout.SHOP_AREA.get_center().y),Vector2(2.5,Layout.SHOP_AREA.get_center().y),Layout.CRYSTAL+Vector2(2.5,4)]:
+		for tick in 800:
+			if p.pos.distance_to(point) < .2: break
+			var direction: Vector2 = (point-p.pos).normalized()
+			sim.submit(p.id,{"x":direction.x,"y":direction.y,"yaw":0.0,"pitch":0.0,"slot":1,"weapon":0})
+			sim.update_pawn(p,1.0/60)
+	check.call(p.pos.distance_to(Layout.CRYSTAL+Vector2(2.5,4)) < .2 and p.height > 2.9 and p.hp == 100,"Actual capsule walks from rear spawn through the shop to the crystal")
 	Fixture.face(sim,p,"crystal")
 	game.arena.scenery.sync_focus(sim,p)
 	check.call(Catalog.focus(sim,p).get("id","") == "crystal" and game.arena.scenery.preparation.focus_label.text.contains("修复完成立即开始"),"Aiming at broken crystal shows the immediate-start repair warning")
