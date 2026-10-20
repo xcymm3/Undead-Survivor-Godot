@@ -425,7 +425,7 @@ func validate_pistol_and_equip() -> void:
 	p.shove_anim = 0.0
 	p.sprinting = false
 	p.aim = false
-	for index in [0,2,6]:
+	for index in [0,2,4,5,6]:
 		p.weapon = index
 		p.requested = index
 		p.switch_duration = .4
@@ -438,8 +438,15 @@ func validate_pistol_and_equip() -> void:
 			for remaining in [.4,.3,.2,.1,.01]:
 				p.switch = remaining
 				game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-50))
-				check(game.weapon.transform.is_equal_approx(resting) and game.weapon.models[index].transform.is_equal_approx(model_resting),"Rifle, pistol and axe keep their resting pose throughout switching: "+str(index)+" / "+str(remaining))
+				if index == 6 or remaining == .4:
+					check(game.weapon.transform.is_equal_approx(resting),"Axe stays unchanged and gun switching begins at its resting position: "+str(index)+" / "+str(remaining))
+				else:
+					check(game.weapon.position.y < resting.origin.y and game.weapon.models[index].transform.is_equal_approx(model_resting),"Gun lowers then raises without bolt or spin model animation: "+str(index)+" / "+str(remaining))
+				if index != 6 and remaining == .2: check(is_equal_approx(game.weapon.position.y,resting.origin.y-.5),"Gun is fully lowered when the authority swaps weapons: "+str(index))
 		p.requested = index
+		p.switch = 0
+		game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-50))
+		check(game.weapon.transform.is_equal_approx(resting),"Completed switch restores the exact resting pose: "+str(index))
 	p.switch = 0.0
 
 func validate_crawler() -> void:

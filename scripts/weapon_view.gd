@@ -109,8 +109,9 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	var visual_target = aim_target.normalized()*maxf(6,aim_target.length())
 	quaternion = Quaternion(Vector3.FORWARD,(visual_target-position).normalized())
 	if w.id in ["p90","pistol","revolver","heavy-machine-gun"]: quaternion = quaternion.slerp(Quaternion.IDENTITY,ads)
-	if w.id not in ["rifle","pistol","axe"] and p.switch > 0 and p.get("pickup_remaining",0.0) <= 0:
-		position.y -= sin(clampf(1-p.switch/.4,0,1)*PI)*.5
+	if w.get("kind","gun") != "melee" and p.switch > 0 and p.get("pickup_remaining",0.0) <= 0:
+		var duration = maxf(.001,float(p.get("switch_duration",.4)))
+		position.y -= sin(clampf(1-p.switch/duration,0,1)*PI)*.5
 	models[active].rotation = Vector3.ZERO
 	if p.reloading and w.id != "revolver":
 		var reload_pulse = sin(clampf(1-p.reload/maxf(.1,w.reloadDuration),0,1)*PI)
