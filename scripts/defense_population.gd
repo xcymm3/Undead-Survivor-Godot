@@ -9,6 +9,7 @@ const MIN_GROWTH = 5
 const FINAL_BALANCE_WAVE = 10
 const FINAL_BUDGET_MULTIPLIER = .85
 const WAVE_BUDGET_SCALE = .5
+const EARLY_WAVE_BUDGETS = [20,30,60]
 const DIFFICULTIES = ["easy","normal","hard"]
 const DIFFICULTY_MULTIPLIERS = {"easy":.7,"normal":1.0,"hard":1.3}
 const DIFFICULTY_LABELS = {"easy":"简单","normal":"普通","hard":"困难"}
@@ -42,6 +43,9 @@ static func base_budget(wave: int) -> int:
 	return total
 
 static func normal_budget(wave: int, party_size: int) -> int:
+	# Authored opening budgets already include the final budget scale.
+	if wave >= 1 and wave <= EARLY_WAVE_BUDGETS.size():
+		return roundi(EARLY_WAVE_BUDGETS[wave-1]/WAVE_BUDGET_SCALE*Population.party_multiplier(party_size))
 	return roundi(base_budget(wave)*Population.party_multiplier(party_size)*budget_multiplier(wave))
 
 static func budget(wave: int, party_size: int, difficulty := "normal") -> int:

@@ -1,5 +1,5 @@
 extends SceneTree
-## Validate quarter-point composition and thirty-second bursts, then observe a
+## Validate integer-point composition and wave-specific bursts, then observe a
 ## normal solo first wave through the real authority physics and structures.
 const Population = preload("res://scripts/enemy_population.gd")
 const Defense = preload("res://scripts/defense_population.gd")
@@ -37,15 +37,21 @@ func run() -> void:
 	game.local_pawn().pos = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()
 	game.local_pawn().height = root.get_node("Data").Maps.Defense.height(game.local_pawn().pos)
 	var planner = sim.defense_spawner
-	for count in [1,3,7,20,150,151,300,1000]:
-		planner.reset(count)
-		var previous = 0
-		var complete = true
-		for batch in range(1,planner.batches+1):
-			var quota: int = planner.scheduled_count(planner.interval*batch)
-			complete = complete and quota > previous and quota-previous <= planner.batch_size
-			previous = quota
-		check(complete and previous == count and planner.scheduled_count(29.999) < count and planner.scheduled_count(30) == count,"Dynamic batches release all %d bodies at thirty seconds without oversized bursts" % count)
+	for wave in range(1,11):
+		sim.wave = wave
+		var expected_duration = [10.0,15.0,20.0][wave-1] if wave <= 3 else 30.0
+		for count in [0,1,3,7,20,150,151,300,1000]:
+			planner.reset(count)
+			var previous = 0
+			var complete = true
+			for batch in range(1,planner.batches+1):
+				var quota: int = planner.scheduled_count(planner.interval*batch)
+				complete = complete and quota > previous and quota-previous <= planner.batch_size
+				previous = quota
+			check(complete and previous == count and planner.describe().duration == expected_duration and (count == 0 or planner.scheduled_count(expected_duration-.001) < count) and planner.scheduled_count(expected_duration) == count,"Wave %d schedules %d bodies over %.0f seconds without oversized bursts" % [wave,count,expected_duration])
+	sim.wave = 1
+	for wave in range(1,11):
+		check(Defense.budget(wave,1) == [20,30,60,97,104,110,115,119,123,126][wave-1],"Exact current budget for wave "+str(wave))
 	var expected_lists = [
 		["normal"],["normal","cone"],["normal","cone","bucket"],
 		["cone","imp"],["cone","bucket","shield"],
@@ -93,9 +99,9 @@ func run() -> void:
 	sim.defense_director.begin_wave()
 	var initial_roster: Array = sim.roster.duplicate()
 	var first_plan: Dictionary = planner.describe().duplicate()
-	check(sim.wave_total == 69 and counts(initial_roster) == {"normal":69},"Normal solo first wave contains only 69 normals")
-	check(sim.defense.wave_budget == 69 and Population.points(initial_roster) == 69,"First wave spends its full 69-point budget")
-	check(planner.batches == 14 and is_equal_approx(planner.interval,30.0/14) and planner.batch_size == 5,"Full first wave schedules fourteen batches over thirty seconds")
+	check(sim.wave_total == 20 and counts(initial_roster) == {"normal":20},"Normal solo first wave contains only 20 normals")
+	check(sim.defense.wave_budget == 20 and Population.points(initial_roster) == 20,"First wave spends its full 20-point budget")
+	check(planner.batches == 4 and is_equal_approx(planner.interval,2.5) and planner.batch_size == 5,"Full first wave schedules four batches over ten seconds")
 	var before_clock: float = planner.clock
 	sim.defense.waiting = true
 	sim.step(.25)
@@ -124,12 +130,12 @@ func run() -> void:
 		last_id = sim.next_id
 		await physics_frame
 		if sim.roster.is_empty(): break
-	check(sim.spawned == 69 and sim.roster.is_empty() and planner.clock <= 30.02,"Real first-wave simulation releases its full budget by thirty seconds")
+	check(sim.spawned == 20 and sim.roster.is_empty() and planner.clock <= 10.02,"Real first-wave simulation releases its full budget by ten seconds")
 	var on_time = batches.size() == planner.batches
 	for index in batches.size():
 		var scheduled = (index+1)*planner.interval
 		on_time = on_time and batches[index].count == planner.scheduled_count(scheduled)-planner.scheduled_count(index*planner.interval) and absf(batches[index].time-scheduled) <= .02
-	check(on_time,"Real releases follow the reduced population's evenly spaced thirty-second plan")
+	check(on_time,"Real releases follow the reduced population's evenly spaced ten-second plan")
 	check(counts(all_spawned) == counts(initial_roster),"Actual spawns match the complete ordinary composition with no crawlers")
 	check(safe,"Every newborn position is outside the 2D scenery clearance margin")
 	check(sim.pawns.solo.shots == 0 and sim.pawns.solo.shoves == 0,"The spawn observation performs no player firing or shoving")
@@ -149,7 +155,7 @@ func run() -> void:
 	planner.step(.1,sim.pawns.values())
 	check(sim.spawned == 5 and sim.roster.is_empty(),"Blocked quota resumes after safe ground becomes available")
 	check(sim.zombies.all(func(z): return z.kind == "normal"),"Actual spawner replaces a legacy crawler entry with a normal zombie")
-	var output = {"seed":20260928,"mode":"solo","difficulty":"normal","budget":69,"spent":Population.points(initial_roster),"unspent":69-Population.points(initial_roster),"plan":first_plan,"counts":counts(all_spawned),"batches":batches,"spawn_safe":safe,"spawn_issues":spawn_issues,"checks":checks,"failures":failures,"scope":"actual authority physics; no browser, no full wave survival result"}
+	var output = {"seed":20260928,"mode":"solo","difficulty":"normal","budget":20,"spent":Population.points(initial_roster),"unspent":20-Population.points(initial_roster),"plan":first_plan,"counts":counts(all_spawned),"batches":batches,"spawn_safe":safe,"spawn_issues":spawn_issues,"checks":checks,"failures":failures,"scope":"actual authority physics; no browser, no full wave survival result"}
 	DirAccess.make_dir_recursive_absolute("res://artifacts")
 	var file = FileAccess.open("res://artifacts/first-wave-horde.json",FileAccess.WRITE)
 	file.store_string(JSON.stringify(output,"\t"))

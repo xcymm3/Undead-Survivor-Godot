@@ -1,6 +1,8 @@
 extends RefCounted
-## Authority wave bursts. All batches are scheduled across thirty game seconds.
+## Authority wave bursts. Opening waves ramp up to the thirty-second schedule.
 const DURATION = 30.0
+const EARLY_WAVE_DURATIONS = [10.0,15.0,20.0]
+var duration = DURATION
 const MIN_BATCH_SIZE = 5
 const MAX_BATCHES = 30
 const Layout = preload("res://scripts/defense_layout.gd")
@@ -49,6 +51,7 @@ func build_reachability() -> void:
 			queue.append(next)
 
 func reset(count: int) -> void:
+	duration = EARLY_WAVE_DURATIONS[sim.wave-1] if sim.wave >= 1 and sim.wave <= EARLY_WAVE_DURATIONS.size() else DURATION
 	clock = 0.0
 	retries_at = 0.0
 	# Placement randomness never changes wave composition or combat randomness.
@@ -56,7 +59,7 @@ func reset(count: int) -> void:
 	total = count
 	batch_size = maxi(MIN_BATCH_SIZE,ceili(float(count)/MAX_BATCHES))
 	batches = ceili(float(count)/batch_size) if count > 0 else 0
-	interval = DURATION/batches if batches > 0 else DURATION
+	interval = duration/batches if batches > 0 else duration
 
 func scheduled_count(at: float) -> int:
 	if batches == 0: return 0
@@ -64,7 +67,7 @@ func scheduled_count(at: float) -> int:
 	return roundi(float(total)*due/batches)
 
 func describe() -> Dictionary:
-	return {"duration":DURATION,"total":total,"batches":batches,"interval":interval,"max_batch":batch_size}
+	return {"duration":duration,"total":total,"batches":batches,"interval":interval,"max_batch":batch_size}
 
 func random_point() -> Vector2:
 	return Vector2(spawn_random.randf_range(spawn_region.position.x,spawn_region.end.x),spawn_random.randf_range(spawn_region.position.y,spawn_region.end.y))
