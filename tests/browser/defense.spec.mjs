@@ -35,9 +35,12 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   expect(state.player.x).toBeCloseTo(-6.5, 1);
   expect(state.player.z).toBeGreaterThan(45);
   // Follow the actual backroom passage, showroom aisle and side-facing door.
-  // Each leg uses real keyboard input and observes authority positions.
+  // Software rendering and trace capture can delay CDP key-up delivery.
+  // Real crouch input keeps stopping distance inside the showroom aisle.
+  await page.keyboard.down('Control');
+  await page.waitForFunction(() => window.__survivorSnapshot.player.crouch >= .99);
   for (const [key, axis, threshold, increasing] of [
-    ['w', 'z', 39.2, false],
+    ['w', 'z', 40.0, false],
     ['d', 'x', 15.0, true],
     ['w', 'z', 31.0, false],
     ['a', 'x', 2.5, false],
@@ -52,7 +55,14 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
     } finally {
       await page.keyboard.up(key);
     }
+    const stopped = await snapshot(page);
+    await page.waitForFunction(frame => window.__survivorSnapshot.frames > frame + 1, stopped.frames);
+    await info.attach(`route-${key}-${axis}-${threshold}`, {
+      body: JSON.stringify(await snapshot(page), null, 2), contentType: 'application/json',
+    });
   }
+  await page.keyboard.up('Control');
+  await page.waitForFunction(() => window.__survivorSnapshot.player.crouch <= .01);
   await page.keyboard.press('3');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 3 && window.__survivorSnapshot?.player?.weapon === 6);
   await page.keyboard.press('1');
