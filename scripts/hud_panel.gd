@@ -1,5 +1,6 @@
 extends Control
 ## Retained native widgets; Canvas drawing is reserved for the aiming overlay.
+var tutorial_overlay: Control
 var upgrade_details: Control
 var crystal_alert: Label
 var ultimate_ring: Control
@@ -188,6 +189,8 @@ func setup(owner_ui) -> void:
 	wave_announcement.add_theme_color_override("font_outline_color",Color(.035,.04,.05,.9))
 	wave_announcement.add_theme_constant_override("outline_size",6)
 	wave_announcement.visible = false
+	tutorial_overlay = preload("res://scripts/tutorial_overlay.gd").new()
+	add_child(tutorial_overlay)
 	layout()
 	ignore_mouse(self)
 
@@ -290,7 +293,8 @@ func sync() -> void:
 	var announcement_opacity: float = announcement_alpha(age) if defense.get("started",false) and not sim.failed and not sim.won else 0.0
 	var intro = preload("res://scripts/first_attempt_intro.gd")
 	var intro_active: bool = intro.active(defense)
-	if intro_active: announcement_opacity = intro.alpha(defense)
+	if intro_active: announcement_opacity = 0.0
+	tutorial_overlay.sync(defense)
 	wave_announcement.visible = announcement_opacity > 0
 	wave_announcement.modulate = Color(1,1,1,announcement_opacity)
 	wave_announcement.text = "第10波-最后一波！" if sim.wave == 10 else "第%d波" % sim.wave

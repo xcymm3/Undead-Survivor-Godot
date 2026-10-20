@@ -37,6 +37,7 @@ static func slot_available(p: Dictionary, slot: int) -> bool:
 	return slot in [1,2,3] or slot == 4 and p.get("grenades",0) > 0
 
 func before_movement(_dt: float) -> void:
+	if preload("res://scripts/onboarding.gd").blocked(sim.defense): return
 	for p in sim.pawns.values():
 		if p.hp <= 0 or not p.get("connected",true): continue
 		var input: Dictionary = p.input if p.input_age < .5 else {}

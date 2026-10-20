@@ -9,6 +9,7 @@ static func validate(game, check: Callable) -> void:
 	var saved = progress.store
 	progress.store = Store.new()
 	progress.store.data["intro_seen"] = true
+	progress.store.data["tutorial_stage"] = 5
 	game.start_solo("defense",20261016)
 	await game.get_tree().physics_frame
 	var sim = game.sim

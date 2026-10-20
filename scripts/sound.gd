@@ -80,6 +80,7 @@ func _ready() -> void:
 	ultimate_music.volume_db = -17
 	add_child(ultimate_music)
 	for cue in ["crystal-hit","coin-pickup","purchase"]: streams[cue] = preload("res://scripts/economy_audio.gd").make(cue)
+	streams["typewriter"] = preload("res://scripts/typewriter_audio.gd").make()
 	work = AudioStreamPlayer.new()
 	work.stream = streams.purchase
 	add_child(work)
@@ -184,6 +185,7 @@ func _exit_tree() -> void:
 
 func sync_work(p: Dictionary, enabled: bool) -> void:
 	var id = str(p.get("interaction","")) if enabled and p.get("hp",0) > 0 else ""
+	if id == "shopkeeper": id = ""
 	var time = float(p.get("interact_time",0.0))
 	if id.is_empty():
 		work.stop()

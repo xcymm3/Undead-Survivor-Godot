@@ -31,7 +31,7 @@ func near(p: Dictionary, point: Vector2, distance := 2.0) -> bool:
 	return sim.arena.surface_hit(Vector3(p.pos.x,p.height+1.1,p.pos.y),Vector3(point.x,p.height+1.1,point.y)).is_empty()
 
 func begin_wave() -> void:
-	if sim.failed or sim.won: return
+	if sim.failed or sim.won or preload("res://scripts/onboarding.gd").blocked(state): return
 	# The first launch completes the repair. Later waves preserve battle damage.
 	if not state.started:
 		for pawn in sim.pawns.values():
@@ -89,7 +89,9 @@ func target(p: Dictionary) -> Dictionary:
 
 func interactions(dt: float) -> void:
 	state.party = sim.pawns.size()
+	preload("res://scripts/onboarding.gd").tick(sim,dt)
 	var intro_blocked = Intro.active(state)
+	var dialogue_blocked = preload("res://scripts/onboarding.gd").talking(state)
 	if intro_blocked:
 		state.intro_elapsed = minf(Intro.DURATION,float(state.intro_elapsed)+dt)
 		if not Intro.active(state):
@@ -107,7 +109,7 @@ func interactions(dt: float) -> void:
 		var input: Dictionary = p.input if p.input_age < .5 else {}
 		p.input["wave_ready"] = false
 		if not input.get("interact",false): p.pickup_latched = false
-		if intro_blocked:
+		if intro_blocked or dialogue_blocked:
 			p.pickup_latched = bool(input.get("interact",false))
 			p["focus"] = {}
 			p.hint = ""
@@ -123,7 +125,7 @@ func interactions(dt: float) -> void:
 		p["focus"] = choice
 		p.hint = ""
 		if not choice.is_empty() and not preload("res://scripts/preparation_catalog.gd").available(sim,choice.id): choice = {}
-		if not choice.is_empty() and choice.id != "crystal":
+		if not choice.is_empty() and choice.id not in ["crystal","shopkeeper"]:
 			if sim.progression.data[sim.progression.currency(choice.id)] < sim.progression.cost(choice.id): choice = {}
 		if p.pickup_latched or not input.get("interact",false): choice = {}
 		if choice.is_empty():
@@ -136,7 +138,9 @@ func interactions(dt: float) -> void:
 		p.interact_time += dt
 		if p.interact_time < preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS: continue
 		p.pickup_latched = true
-		if choice.id == "crystal":
+		if choice.id == "shopkeeper":
+			preload("res://scripts/onboarding.gd").begin_dialogue(sim,p)
+		elif choice.id == "crystal":
 			begin_wave()
 		else:
 			var purchased: bool = sim.purchase_upgrade(choice.id,p)

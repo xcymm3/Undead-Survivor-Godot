@@ -39,7 +39,7 @@ func run() -> void:
 	game.set_physics_process(false)
 	check(not game.sound.streams.has("equip-rifle-bolt") and not game.sound.streams.has("equip-pistol-spin"),"Removed weapon switch sounds are not registered")
 	game.start_solo("defense",42)
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	var sim = game.sim
 	var p: Dictionary = sim.pawns.solo
 	var catalog = load("res://scripts/preparation_catalog.gd")
@@ -152,7 +152,7 @@ func run() -> void:
 	game.arena.scenery.sync(state)
 	check(damage.fragments[0].node.position != point,"Crystal fragments actually move over time")
 	game.start_solo("defense",42)
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	sim = game.sim
 	p = sim.pawns.solo
 	sim.wave = 10
@@ -232,7 +232,7 @@ func run() -> void:
 	data.settings = saved_settings
 	data.apply_settings()
 	game.start_solo("defense",42)
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	sim = game.sim
 	p = sim.pawns.solo
 	p.hp = 0

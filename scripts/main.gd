@@ -152,8 +152,7 @@ func start_solo(mode: String = "defense", random_seed := -1) -> void:
 	sim.pawns.solo.yaw = yaw
 	if random_seed >= 0: sim.random.seed = random_seed
 	sim.start(mode)
-	if mode == "defense" and not Progress.store.data.get("intro_seen",false):
-		sim.defense["intro_elapsed"] = 0.0
+	preload("res://scripts/onboarding.gd").initialize(sim)
 	resume_game()
 
 func start_coop() -> void:
@@ -170,6 +169,7 @@ func start_coop() -> void:
 		i += 1
 	sim.start("defense")
 	if Session.is_host():
+		preload("res://scripts/onboarding.gd").initialize(sim)
 		sim.progression.save()
 	else:
 		# Wait for the first authority snapshot before accepting movement or rendering.
@@ -186,6 +186,7 @@ func prepare_coop() -> void:
 
 func reset_game() -> void:
 	screen_shake.clear()
+	tutorial_voice_key = ""
 	awaiting_coop_snapshot = false
 	display_buffer.clear()
 	if sound: sound.clear_effects()
@@ -236,7 +237,7 @@ func cycle_spectator() -> void:
 	spectating = living[index].id
 
 func input_state() -> Dictionary:
-	var enabled = running and not paused and focused and not finished and (local_pawn().is_empty() or local_pawn().hp > 0)
+	var enabled = running and not paused and focused and not finished and (not sim or not preload("res://scripts/onboarding.gd").blocked(sim.defense)) and (local_pawn().is_empty() or local_pawn().hp > 0)
 	var local: Dictionary = local_pawn() if sim else {}
 	if not local.is_empty() and not Data.ads_enabled(Data.weapons[int(local.weapon)]): aim_held = false
 	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"crouch":enabled and Input.is_action_pressed("crouch"),"sprint":enabled and Input.is_action_pressed("sprint"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"fire_pressed":enabled and fire_pending,"aim":enabled and aim_held,"shove":enabled and shove_pending,"ultimate":enabled and ultimate_pending}
@@ -338,6 +339,7 @@ func _process(dt: float) -> void:
 	enemies.sync(visible_zombies,visual_time,false)
 	coins.sync(sim.coin_drops)
 	if arena.scenery.has_method("sync_focus"): arena.scenery.sync_focus(sim,p)
+	if not finished: sync_tutorial_voice()
 	effects.step(dt)
 	for id in sim.pawns:
 		if id == Session.local_id:
@@ -362,12 +364,26 @@ func _process(dt: float) -> void:
 	ui.tick(dt)
 	qa_draw(dt)
 
+var tutorial_voice_key = ""
+
+func sync_tutorial_voice() -> void:
+	var frame = preload("res://scripts/onboarding.gd").dialogue_frame(sim.defense)
+	var key = "%s:%d:%d" % [sim.defense.get("tutorial_dialogue",""),frame.line,frame.characters]
+	if key == tutorial_voice_key: return
+	tutorial_voice_key = key
+	if frame.characters <= 0 or local_pawn().is_empty(): return
+	if local_pawn().pos.distance_to(Data.Maps.Defense.SHOP_OWNER) > 12: return
+	if frame.text.right(1) in ["，","。","！","？","."," "]: return
+	sound.play_at("typewriter",Vector3(Data.Maps.Defense.SHOP_OWNER.x,4.7,Data.Maps.Defense.SHOP_OWNER.y),-22)
+
 func handle_effects(events: Array) -> void:
 	for event in events:
 		if not event is Dictionary or not event.has("kind"): continue
 		match event.kind:
 			"ultimate_start", "ultimate_end":
 				if event.player == Session.local_id: sound.sync_weapon_actions(local_pawn(),running and not paused and focused and not finished)
+			"tutorial_payment":
+				if event.player == Session.local_id: sound.play("coin-pickup",-14)
 			"coin_pickup":
 				if event.player == Session.local_id: sound.play("coin-pickup",-18)
 			"world_upgrade":
@@ -450,6 +466,7 @@ func handle_effects(events: Array) -> void:
 
 func finish_run() -> void:
 	if finished: return
+	if not Session.playing or Session.is_host(): preload("res://scripts/onboarding.gd").finish_attempt(sim)
 	Progress.store.save()
 	reset_mouse_buttons()
 	finished = true
@@ -591,6 +608,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.is_action_released("fire"): fire_held = false
 	if not running or paused or finished or not focused: return
+	if sim and preload("res://scripts/onboarding.gd").blocked(sim.defense): return
 	if event.is_action("fire") and not event.is_echo():
 		fire_held = event.is_action_pressed("fire")
 		if fire_held:
@@ -618,6 +636,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			Data.toggle_fullscreen()
 			Data.save()
 	if not running or paused or finished: return
+	if sim and preload("res://scripts/onboarding.gd").blocked(sim.defense): return
 	if event is InputEventMouseMotion and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Data.automation):
 		var sensitivity: float = Data.settings.sensitivity*tan(deg_to_rad(camera.fov)/2)/tan(deg_to_rad(61)/2)
 		var delta = event.screen_relative

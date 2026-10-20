@@ -1,4 +1,5 @@
 extends Node3D
+var repair_sparks: CPUParticles3D
 var cracks: Node3D
 var debris: Node3D
 var fragments: Array = []
@@ -51,6 +52,35 @@ func _ready() -> void:
 		fragment.scale = Vector3(.22+.04*(i%3),.20,.20)
 		debris.add_child(fragment)
 		fragments.append({"node":fragment,"origin":origin,"velocity":Vector3(cos(angle)*(.65+float(i%3)*.2),1.1+float(i%4)*.25,sin(angle)*(.65+float(i%3)*.2)),"spin":Vector3(.7+i*.1,1.3,-.6)})
+	repair_sparks = CPUParticles3D.new()
+	repair_sparks.name = "RepairSparks"
+	repair_sparks.position.y = .45
+	repair_sparks.amount = 28
+	repair_sparks.lifetime = 3.0
+	repair_sparks.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	repair_sparks.emission_sphere_radius = 1.25
+	repair_sparks.direction = Vector3.UP
+	repair_sparks.spread = 25
+	repair_sparks.gravity = Vector3(0,.08,0)
+	repair_sparks.initial_velocity_min = .15
+	repair_sparks.initial_velocity_max = .5
+	repair_sparks.scale_amount_min = .5
+	repair_sparks.scale_amount_max = 1.4
+	var spark = SphereMesh.new()
+	spark.radius = .025
+	spark.height = .05
+	spark.radial_segments = 6
+	spark.rings = 3
+	var spark_material = StandardMaterial3D.new()
+	spark_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	spark_material.albedo_color = Color("8cecf7")
+	spark_material.emission_enabled = true
+	spark_material.emission = Color("65dff2")
+	spark.material = spark_material
+	repair_sparks.mesh = spark
+	repair_sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	repair_sparks.emitting = false
+	add_child(repair_sparks)
 	cracks.visible = false
 	debris.visible = false
 

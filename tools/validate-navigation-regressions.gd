@@ -18,7 +18,7 @@ func fresh(owned := false):
 	var progress = root.get_node("Progress").store
 	for id in progress.BUILDINGS: progress.data.buildings[id].owned = owned
 	game.start_solo("defense",19457)
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	game.sim.defense_director.begin_wave()
 	game.sim.roster.clear()
 	game.local_pawn().pos = root.get_node("Data").Maps.Defense.SHOP_AREA.get_center()

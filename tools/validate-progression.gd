@@ -153,14 +153,14 @@ func run() -> void:
 	game.set_physics_process(false)
 	root.get_node("Progress").store = Store.new()
 	game.start_solo("defense",42)
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
 	check(sim.defense.structures.all(func(item): return item.hp == 0 and not item.owned),"Fresh player owns no turrets, gates or mines")
 	var view = game.arena.scenery.structure_view
 	check(view.actors.turret_left.root.visible and view.actors.turret_left.body.collision_layer == 0 and view.actors.bridge_gate.root.visible,"Unowned buildings show nonblocking construction ghosts")
-	check(view.actors.bridge_entry_gate.root.visible and view.actors.bridge_entry_gate.body.collision_layer == 0 and Store.MINES.all(func(id): return not view.actors[id].root.visible),"Unbuilt bridge-end gate is a ghost while unbought mines stay absent")
+	check(view.actors.bridge_entry_gate.root.visible and view.actors.bridge_entry_gate.body.collision_layer == 0 and Store.MINES.all(func(id): return view.actors[id].root.visible and view.actors[id].ghost),"Unlocked unbuilt gates and mines show construction ghosts")
 	sim.spawn(sim.defense_director.structures.find("ramp_mine").pos,"normal")
 	sim.defense_director.structures.step_mine(sim.defense_director.structures.find("ramp_mine"),10)
 	check(not sim.defense_director.structures.find("ramp_mine").triggered and sim.zombies[-1].hp > 0,"An unowned mine cannot trigger or damage enemies")
@@ -305,7 +305,7 @@ func run() -> void:
 	check(manager.find("bridge_gate").hp == 0 and p.grenades == 0 and p.reserves[0] == 83 and p.reserves[2] == 540,"Next wave preserves destroyed buildings and spent grenades without extra ammunition")
 	var permanent = sim.progression.data.duplicate(true)
 	game.start_solo("defense",42)
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	p = game.local_pawn()
@@ -326,7 +326,7 @@ func run() -> void:
 	check(game.ui.native_hud.currency_label.text == str(floori(sim.progression.data.coins)),"Top-right HUD shows permanent currency")
 	root.get_node("Progress").store = Store.new()
 	game.start_solo("defense",913)
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	p = game.local_pawn()
@@ -357,7 +357,7 @@ func run() -> void:
 	check(p.reserves[0] == 136 and p.reserves[2] == 118,"Clear rewards use two upgraded reserve magazines per gun")
 	var capacity_state = sim.progression.data.duplicate(true)
 	game.start_solo("defense",913)
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	p = game.local_pawn()

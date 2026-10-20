@@ -29,7 +29,7 @@ func run() -> void:
 	game.set_physics_process(false)
 	root.get_node("Data").settings.defense_difficulty = "normal"
 	game.start_solo("defense",20260928)
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	game.running = false
 	await physics_frame
 	var sim = game.sim

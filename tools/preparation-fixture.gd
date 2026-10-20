@@ -1,6 +1,14 @@
 extends RefCounted
 const Catalog = preload("res://scripts/preparation_catalog.gd")
 
+static func skip_tutorial(sim) -> void:
+	# Ordinary combat/economy fixtures begin after onboarding; its own validator
+	# starts a genuine new save and exercises every locked and unlocked stage.
+	sim.defense.erase("intro_elapsed")
+	sim.defense.erase("tutorial_dialogue")
+	sim.defense["tutorial_stage"] = 5
+	sim.defense_director.sync_world()
+
 static func face(sim, p: Dictionary, id: String) -> void:
 	var anchor = id
 	if id in sim.progression.WEAPONS or id in sim.progression.MAGAZINES:
@@ -12,7 +20,7 @@ static func face(sim, p: Dictionary, id: String) -> void:
 	for entry in Catalog.targets(sim):
 		if entry.id != anchor: continue
 		var point: Vector3 = entry.position
-		var station: bool = id in sim.progression.WEAPONS or id in sim.progression.MAGAZINES or id in sim.progression.TALENTS or id in ["grenade","alarm","ultimate"]
+		var station: bool = id in sim.progression.WEAPONS or id in sim.progression.MAGAZINES or id in sim.progression.TALENTS or id in ["grenade","alarm","ultimate","shopkeeper"]
 		p.pos = Vector2(point.x,point.z)+Vector2(0,-2 if station else 2)
 		if id in sim.progression.MAGAZINES: p.pos = Vector2(point.x-2,point.z)
 		p.height = preload("res://scripts/defense_layout.gd").height(p.pos)

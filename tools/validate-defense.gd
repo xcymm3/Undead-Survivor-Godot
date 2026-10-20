@@ -108,7 +108,7 @@ func run() -> void:
 	entry_body.free()
 
 	game.start_solo("defense")
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
 	var pawn: Dictionary = sim.pawns.solo
@@ -439,7 +439,7 @@ func run() -> void:
 	check(sim.won and sim.wave == 10,"Final-wave clear ends the campaign without wave eleven")
 	# The dormant shared host simulation also advances without repeated input.
 	game.start_solo("defense")
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	sim.add_pawn("two","二号",1)
@@ -453,7 +453,7 @@ func run() -> void:
 
 	# Failure is driven by non-recoverable crystal health, independent of player health.
 	game.start_solo("defense")
-	game.sim.defense.erase("intro_elapsed") # Fixture starts after the narrative intro.
+	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	pawn = sim.pawns.solo

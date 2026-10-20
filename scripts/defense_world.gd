@@ -6,6 +6,7 @@ var crystal: Node3D
 var crystal_core: MeshInstance3D
 var crystal_light: OmniLight3D
 var crystal_damage: Node3D
+var shop: Node3D
 var preparation: Node3D
 var pickup_animation: Node3D
 var structure_view: Node3D
@@ -102,7 +103,7 @@ func make_ramp() -> void:
 func make_safe_zone() -> void:
 	var safe = DefenseLayout.SHOP_AREA
 	block("SafeZoneFloor",Vector3(0,3.025,safe.get_center().y),Vector3(safe.size.x,.05,safe.size.y),"314c45",false)
-	var shop = preload("res://scripts/weapon_shop.gd").new()
+	shop = preload("res://scripts/weapon_shop.gd").new()
 	shop.name = "WeaponShop"
 	add_child(shop)
 	obstacles.append_array(shop.obstacles)
@@ -148,6 +149,7 @@ func _ready() -> void:
 	set_meta("navigation_obstacles",obstacles)
 
 func sync(state: Dictionary) -> void:
+	if shop: shop.sync(state)
 	if preparation: preparation.sync(state)
 	if is_instance_valid(structure_view): structure_view.sync(state)
 	sync_projectiles(state)
@@ -170,6 +172,8 @@ func sync(state: Dictionary) -> void:
 	if hp <= 0:
 		crystal.rotation.y = fmod(float(state.get("crystal_broken_at",clock)),36.0)*TAU/36.0
 		crystal.position.y = 3.0
-		crystal_light.light_energy = maxf(0,1.3-(clock-float(state.get("crystal_broken_at",clock)))*2)
+		crystal_light.light_energy = 1.5+.25*sin(clock*2.5) if state.get("crystal_repair_required",false) else maxf(0,1.3-(clock-float(state.get("crystal_broken_at",clock)))*2)
+		if state.get("crystal_repair_required",false): crystal_light.light_color = Color("65dff2")
+	crystal_damage.repair_sparks.emitting = state.get("crystal_repair_required",false) and hp <= 0
 	get_node("CrystalBody").collision_layer = 1 if hp > 0 else 0
 	crystal_damage.sync(ratio,maxf(0,clock-float(state.get("crystal_broken_at",clock))),clock)

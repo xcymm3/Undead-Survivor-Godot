@@ -14,8 +14,12 @@ static func stations() -> Array:
 	return result
 
 static func targets(sim) -> Array:
-	var result: Array = stations()
+	var tutorial = preload("res://scripts/onboarding.gd")
+	var result: Array = stations() if tutorial.shop_open(sim.defense) else []
+	if tutorial.pending(sim.defense) and not tutorial.talking(sim.defense):
+		result.append({"id":"shopkeeper","position":Vector3(Layout.SHOP_OWNER.x,4.6,Layout.SHOP_OWNER.y-1.6),"radius":1.0,"range":5.0})
 	for item in sim.defense.get("structures",[]):
+		if not tutorial.defenses_open(sim.defense): continue
 		if not item.get("owned",false) and sim.defense.started: continue
 		if item.kind == "mine" and item.get("spent",false): continue
 		var point: Vector3 = Vector3(item.pos.x,item.height+.7,item.pos.y)
@@ -27,7 +31,7 @@ static func targets(sim) -> Array:
 	return result
 
 static func focus(sim, p: Dictionary) -> Dictionary:
-	if preload("res://scripts/first_attempt_intro.gd").active(sim.defense): return {}
+	if preload("res://scripts/onboarding.gd").blocked(sim.defense): return {}
 	if sim.defense.get("started",false): return {}
 	if p.get("hp",0) <= 0 or not sim.can_manage(p): return {}
 	var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
@@ -64,9 +68,13 @@ static func focus(sim, p: Dictionary) -> Dictionary:
 	return selected
 
 static func available(sim, id: String) -> bool:
-	if preload("res://scripts/first_attempt_intro.gd").active(sim.defense): return false
+	if preload("res://scripts/onboarding.gd").blocked(sim.defense): return false
 	if sim.defense.started or sim.failed or sim.won: return false
+	if id == "shopkeeper": return preload("res://scripts/onboarding.gd").pending(sim.defense)
 	if id == "crystal": return sim.defense.get("crystal_repair_required",false)
+	if id in sim.progression.BUILDINGS or id in sim.progression.MINES:
+		if not preload("res://scripts/onboarding.gd").defenses_open(sim.defense): return false
+	elif not preload("res://scripts/onboarding.gd").shop_open(sim.defense): return false
 	if id in sim.progression.BUILDINGS:
 		var item = sim.defense_director.structures.find(id)
 		if item.get("owned",false) and item.hp <= 0: return false
@@ -111,6 +119,7 @@ static func description(sim, id: String) -> String:
 	return (level_text+"\n"+detail+"\n"+("整备已结束" if sim.defense.started else cost_text)).strip_edges()
 
 static func prompt_description(sim, id: String) -> String:
+	if id == "shopkeeper": return "武器店老板\n交谈"
 	if id in ["crystal","unsupported_weapon"]: return description(sim,id)
 	var profile = sim.progression
 	var title: String = NAMES.get(id,id)

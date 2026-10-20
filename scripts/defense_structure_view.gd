@@ -243,7 +243,7 @@ func sync(state: Dictionary) -> void:
 	for item in state.get("structures",Structures.initial_state()):
 		var actor: Dictionary = actors.get(item.id,{})
 		if actor.is_empty(): actor = create_actor(item)
-		var ghost: bool = not item.get("owned",false) and not state.get("started",false) and item.kind != "mine"
+		var ghost: bool = not item.get("owned",false) and not state.get("started",false) and preload("res://scripts/onboarding.gd").defenses_open(state)
 		if actor.get("ghost",false) != ghost:
 			actor.ghost = ghost
 			for mesh in actor.root.find_children("*","MeshInstance3D",true,false):
@@ -256,6 +256,9 @@ func sync(state: Dictionary) -> void:
 			actor.body.collision_layer = 0
 			continue
 		if item.kind == "mine":
+			if ghost:
+				actor.light.visible = false
+				continue
 			var lit: bool = fposmod(item.fuse,.24) < .12 if item.triggered else fposmod(clock,1.2) < .55
 			var color = "ff4c26" if item.triggered else "79e7a1"
 			actor.led.material_override = material(color,true) if lit else material("26372d")

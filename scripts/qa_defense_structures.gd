@@ -32,6 +32,7 @@ func _ready() -> void:
 func stage() -> void:
 	for id in ["turret_left","turret_right","bridge_gate"]: Progress.store.data.buildings[id].owned = true
 	Progress.store.data.mines.crystal_mine = true
+	Progress.store.data["tutorial_stage"] = 5
 	Progress.store.data["intro_seen"] = true
 	game.start_solo("defense",42)
 	await get_tree().physics_frame

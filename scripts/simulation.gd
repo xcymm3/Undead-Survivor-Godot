@@ -492,6 +492,11 @@ static func accelerate_in_air(horizontal: Vector2, wish: Vector2, dt: float, mul
 	return (horizontal+direction*acceleration).limit_length(PLAYER_MOVE_SPEED*multiplier)
 
 func update_pawn(p: Dictionary, dt: float) -> void:
+	if preload("res://scripts/onboarding.gd").blocked(defense):
+		p.input = {}
+		p.air = Vector2.ZERO
+		p.velocity = 0.0
+		return
 	p.damage_hint = maxf(0,p.get("damage_hint",0.0)-dt)
 	p["healing_flash"] = maxf(0,p.get("healing_flash",0.0)-dt)
 	if mode == "defense" and defense.get("started",false) and p.hp > 0:
@@ -638,7 +643,7 @@ func step_coins(dt: float) -> void:
 	coin_drops = coin_drops.filter(func(drop): return drop.age < 5.0)
 
 func shop_available(p: Dictionary) -> bool:
-	return defense_director != null and not defense.started and not failed and not won and p.get("hp",0) > 0 and defense_director.near(p,Data.Maps.Defense.SHOP_POINT,4.0)
+	return preload("res://scripts/onboarding.gd").shop_open(defense) and defense_director != null and not defense.started and not failed and not won and p.get("hp",0) > 0 and defense_director.near(p,Data.Maps.Defense.SHOP_POINT,4.0)
 
 func weapon_capacity(index: int) -> int:
 	var definition: Dictionary = Data.weapons[index]

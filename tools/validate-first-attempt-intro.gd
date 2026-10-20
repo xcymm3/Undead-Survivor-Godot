@@ -1,5 +1,6 @@
 extends RefCounted
 const Intro = preload("res://scripts/first_attempt_intro.gd")
+const Tutorial = preload("res://scripts/onboarding.gd")
 const Store = preload("res://scripts/progression_store.gd")
 const Fixture = preload("res://tools/preparation-fixture.gd")
 const Catalog = preload("res://scripts/preparation_catalog.gd")
@@ -10,42 +11,123 @@ static func validate(game, check: Callable) -> void:
 	var path = OS.get_cache_dir().path_join("intro-qa-"+str(Time.get_ticks_usec())+".json")
 	progress.store = Store.new(path)
 	game.start_solo("defense",491)
+	game.set_process(false)
+	game.set_physics_process(false)
 	await game.get_tree().physics_frame
 	var sim = game.sim
 	var p = game.local_pawn()
-	check.call(Intro.active(sim.defense) and is_zero_approx(p.yaw),"First entry starts the narrative facing the shop from the rear spawn")
-	check.call(Intro.alpha(sim.defense) == 0,"Intro fades in from transparent")
-	Fixture.face(sim,p,"crystal")
-	for index in 4:
-		Fixture.hold(sim,p,2.5 if index == 0 else 5.0)
-		game.arena.scenery.sync_focus(sim,p)
+	check.call(Intro.active(sim.defense) and Intro.LINES.size() == 5,"New save starts five narrative cards")
+	check.call(Intro.alpha(sim.defense) == 0,"Narrative caption starts transparent over black")
+	var origin: Vector2 = p.pos
+	var rounds: int = p.ammo[0]
+	sim.submit(p.id,{"x":1,"y":1,"yaw":1,"pitch":1,"fire":true,"jump":true,"slot":2,"ultimate":true})
+	sim.equipment.before_movement(.1)
+	sim.update_pawn(p,.1)
+	check.call(p.pos == origin and p.shots == 0 and p.ammo[0] == rounds and p.slot == 1 and is_zero_approx(p.yaw),"Authority blocks moving, looking, jumping, firing and switching during intro")
+	for index in 5:
+		sim.defense_director.interactions(2.5 if index == 0 else 5.0)
 		game.ui.native_hud.sync()
-		check.call(Intro.caption(sim.defense) == Intro.LINES[index] and Intro.alpha(sim.defense) == 1.0,"Caption holds for its five-second slot: "+str(index))
-		check.call(not sim.defense.started and p.interact_time == 0 and Catalog.focus(sim,p).is_empty(),"E cannot repair the crystal during caption: "+str(index))
-		check.call(not game.arena.scenery.preparation.focus_label.visible and not game.arena.scenery.preparation.interaction_ring.visible and not game.ui.native_hud.controls_hint.text.contains("E "),"No E prompt or interaction ring during caption: "+str(index))
+		check.call(Intro.caption(sim.defense) == Intro.LINES[index] and Intro.alpha(sim.defense) == 1.0,"Narrative card fully visible: "+str(index))
+		check.call(game.ui.native_hud.tutorial_overlay.black.visible and game.ui.native_hud.tutorial_overlay.black.color == Color.BLACK and game.ui.native_hud.tutorial_overlay.caption.text == Intro.LINES[index],"Opaque full-screen black accompanies caption: "+str(index))
+		check.call(Catalog.focus(sim,p).is_empty() and not sim.defense.started,"Interactions locked during caption: "+str(index))
 	check.call(not sim.progression.data.intro_seen,"Incomplete narrative is not marked seen")
-	var state = {"intro_elapsed":4.8}
-	check.call(Intro.alpha(state) > 0 and Intro.alpha(state) < 1,"Each caption fades out before the next")
-	state.intro_elapsed = 5.0
-	check.call(Intro.caption(state) == Intro.LINES[1] and Intro.alpha(state) == 0,"Next caption starts a new fade at five seconds")
-	Fixture.hold(sim,p,2.5)
-	check.call(not Intro.active(sim.defense) and not sim.defense.started and Store.new(path).data.intro_seen,"Twenty seconds completes and persists the narrative without auto-repair")
-	Fixture.hold(sim,p,1.1)
-	check.call(not sim.defense.started,"Holding E through the ending requires releasing before repair")
-	p.input = {}
-	sim.defense_director.interactions(.01)
-	game.arena.scenery.sync_focus(sim,p)
-	check.call(game.arena.scenery.preparation.focus_label.visible and Catalog.available(sim,"crystal"),"Repair prompt appears after the final fade")
+	check.call(Intro.alpha({"intro_elapsed":4.8}) > 0 and Intro.alpha({"intro_elapsed":4.8}) < 1 and Intro.alpha({"intro_elapsed":5.0}) == 0,"Cards fade out before the next fades in")
+	sim.defense_director.interactions(2.5)
+	check.call(not Intro.active(sim.defense) and Store.new(path).data.intro_seen,"Five cards finish and persist at twenty-five seconds")
+	game.ui.native_hud.sync()
+	check.call(not game.ui.native_hud.tutorial_overlay.black.visible and Tutorial.hint_mode(sim.defense) == "movement","Black lifts and sprint/crouch tips appear")
+	var world = game.arena.scenery
+	world.sync(sim.defense)
+	check.call(not world.shop.owner_model.visible,"Shopkeeper initially absent")
+	check.call(world.preparation.stations.values().all(func(station): return station.broken.visible and not station.prop.visible and not station.cover.visible),"All stations are broken without display props")
+	check.call(world.structure_view.actors.values().all(func(actor): return not actor.root.visible),"Tower and gate ghosts initially hidden")
+	check.call(world.preparation.blueprints.values().all(func(markers): return markers.all(func(marker): return not marker.visible)),"Mine blueprint markers initially hidden")
+	check.call(world.crystal_light.light_energy > 1 and world.crystal_damage.repair_sparks.emitting,"Crystal remnants retain light and particles")
+	check.call(not Catalog.available(sim,"rifle") and not Catalog.available(sim,"turret_left") and Catalog.available(sim,"crystal"),"Only repair is initially available")
+	Fixture.face(sim,p,"crystal")
 	Fixture.hold(sim,p,1.01)
-	check.call(sim.defense.started,"Fresh E hold repairs the crystal after the narrative")
+	check.call(sim.defense.started and Tutorial.hint_mode(sim.defense) == "combat" and not world.crystal_damage.repair_sparks.emitting,"Repair launches wave one and changes tips")
+	sim.defense.wave = 2
+	check.call(Tutorial.hint_mode(sim.defense) == "combat","Mouse tips last through wave two")
+	sim.defense.wave = 3
+	check.call(Tutorial.hint_mode(sim.defense).is_empty(),"Mouse tips disappear at wave three")
+	check.call(game.ui.native_hud.tutorial_overlay.aim_icon.action == "aim" and game.ui.native_hud.tutorial_overlay.shove_icon.action == "shove","Combat guidance uses mouse icon controls")
+	sim.failed = true
+	sim.progression.data.coins = 50
+	Tutorial.finish_attempt(sim)
+	check.call(Tutorial.stage(sim.defense) == Tutorial.FIRST_RUN,"Exactly fifty coins does not unlock shop dialogue")
+	sim.defense.erase("tutorial_settled")
+	sim.progression.data.coins = 50.1
+	Tutorial.finish_attempt(sim)
+	check.call(Store.new(path).data.tutorial_stage == Tutorial.SHOP_PENDING,"More than fifty coins schedules shop dialogue")
 	progress.store = Store.new(path)
-	game.start_solo("defense",491)
-	check.call(not Intro.active(game.sim.defense),"Reloading the same save does not replay the narrative")
-	var legacy = Store.defaults()
-	legacy.erase("intro_seen")
-	check.call(Store.valid(legacy),"Older saves without the intro flag remain valid")
-	legacy.intro_seen = "false"
-	check.call(not Store.valid(legacy),"Malformed intro flags are rejected")
+	game.start_solo("defense",492)
+	sim = game.sim
+	p = game.local_pawn()
+	world = game.arena.scenery
+	await game.get_tree().physics_frame
+	check.call(not Intro.active(sim.defense) and world.shop.owner_model.visible and world.shop.owner_alert.visible,"Reload shows merchant exclamation without replaying intro")
+	sim.coop_host = p.id
+	check.call(not Tutorial.begin_dialogue(sim,{"id":"guest"}) and not Tutorial.talking(sim.defense),"A guest cannot advance the host tutorial")
+	sim.coop_host = ""
+	Fixture.face(sim,p,"shopkeeper")
+	check.call(Catalog.focus(sim,p).get("id","") == "shopkeeper","Normal gaze selection reaches merchant across counter")
+	Fixture.hold(sim,p,1.01)
+	check.call(Tutorial.talking(sim.defense) and not Catalog.available(sim,"rifle"),"Interaction starts first dialogue while commerce stays locked")
+	sim.defense_director.interactions(.07)
+	check.call(Tutorial.dialogue_frame(sim.defense).characters == 1,"Dialogue reveals characters individually")
+	var first_duration: float = Tutorial.SHOP_LINES[0].length()/Tutorial.CHARACTERS_PER_SECOND+2
+	sim.defense_director.interactions(first_duration-.08)
+	check.call(Tutorial.dialogue_frame(sim.defense).line == 0 and Tutorial.dialogue_frame(sim.defense).text == Tutorial.SHOP_LINES[0],"Full line remains throughout two-second pause")
+	sim.defense_director.interactions(.02)
+	check.call(Tutorial.dialogue_frame(sim.defense).line == 1,"Next line starts after pause")
+	sim.defense_director.interactions(Tutorial.duration(sim.defense))
+	check.call(Tutorial.shop_open(sim.defense) and not Tutorial.defenses_open(sim.defense) and Catalog.available(sim,"rifle"),"First dialogue opens commerce but no construction")
+	check.call(not world.shop.owner_alert.visible and not world.shop.owner_dialogue.visible and not world.preparation.stations.rifle.broken.visible,"First conversation restores stations and clears exclamation")
+	sim.failed = true
+	sim.progression.data.coins = 100
+	Tutorial.finish_attempt(sim)
+	check.call(Tutorial.stage(sim.defense) == Tutorial.SHOP_OPEN,"Exactly one hundred coins does not unlock blueprint dialogue")
+	sim.defense.erase("tutorial_settled")
+	sim.progression.data.coins = 100.5
+	Tutorial.finish_attempt(sim)
+	progress.store = Store.new(path)
+	game.start_solo("defense",493)
+	sim = game.sim
+	p = game.local_pawn()
+	await game.get_tree().physics_frame
+	check.call(Tutorial.pending(sim.defense) and not Catalog.available(sim,"rifle") and not Catalog.available(sim,"bridge_gate"),"Second stage locks commerce and construction until dialogue finishes")
+	Fixture.face(sim,p,"shopkeeper")
+	Fixture.hold(sim,p,1.01)
+	var payment_at: float = Tutorial.DEFENSE_LINES[0].length()/Tutorial.CHARACTERS_PER_SECOND+2
+	sim.defense_director.interactions(payment_at+.01)
+	check.call(is_equal_approx(sim.progression.data.coins,50.5) and Store.new(path).data.tutorial_blueprint_paid,"Blueprint line charges and persists exactly fifty coins")
+	check.call(sim.defense.has("tutorial_payment_from") and sim.defense.has("tutorial_payment_at"),"Payment records coin flight endpoints")
+	sim.defense_director.interactions(.2)
+	game.arena.scenery.sync_focus(sim,p)
+	check.call(game.arena.scenery.preparation.money_flights.multimesh.visible_instance_count > 0,"Payment animates coins from player to merchant")
+	progress.store = Store.new(path)
+	game.start_solo("defense",494)
+	sim = game.sim
+	p = game.local_pawn()
+	await game.get_tree().physics_frame
+	Fixture.face(sim,p,"shopkeeper")
+	Fixture.hold(sim,p,1.01)
+	sim.defense_director.interactions(Tutorial.duration(sim.defense)+.1)
+	check.call(is_equal_approx(sim.progression.data.coins,50.5) and Tutorial.stage(sim.defense) == Tutorial.DEFENSE_OPEN,"Reload during paid dialogue cannot deduct again")
+	check.call(Catalog.available(sim,"turret_left") and Catalog.available(sim,"bridge_gate") and Catalog.available(sim,"crystal_mine") and Tutorial.shop_open(sim.defense),"Second dialogue opens every defense category and commerce")
+	check.call(game.arena.scenery.structure_view.actors.turret_left.root.visible and game.arena.scenery.structure_view.actors.bridge_gate.root.visible and game.arena.scenery.structure_view.actors.crystal_mine.root.visible and game.arena.scenery.structure_view.actors.crystal_mine.ghost,"Tower, gate and mine construction ghosts appear after dialogue")
+	sim.failed = true
+	Tutorial.finish_attempt(sim)
+	check.call(Store.new(path).data.tutorial_stage == Tutorial.COMPLETE,"Next attempt ending permanently finishes tutorial")
+	progress.store = Store.new(path)
+	game.start_solo("defense",495)
+	check.call(not Intro.active(game.sim.defense) and Tutorial.hint_mode(game.sim.defense).is_empty() and not Tutorial.pending(game.sim.defense) and Tutorial.defenses_open(game.sim.defense),"Completed tutorial never repeats on subsequent attempts")
+	check.call(game.sim.snapshot().defense.tutorial_stage == Tutorial.COMPLETE,"Host snapshots contain authoritative tutorial stage")
+	var malformed = Store.defaults()
+	malformed.tutorial_stage = 6
+	check.call(not Store.valid(malformed),"Malformed tutorial stages are rejected")
+	check.call(game.sound.streams.has("typewriter") and not game.sound.streams.typewriter.data.is_empty(),"Typewriter audio is registered and nonempty")
 	for suffix in ["",".bak",".tmp"]:
 		if FileAccess.file_exists(path+suffix): DirAccess.remove_absolute(path+suffix)
 	progress.store = saved

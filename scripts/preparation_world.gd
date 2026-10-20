@@ -124,7 +124,27 @@ func build_station(entry: Dictionary) -> void:
 	light.light_energy = 1.1
 	light.omni_range = 3.8
 	root.add_child(light)
-	stations[entry.id] = {"root":root,"prop":prop,"cover":cover,"light":light,"display_basis":prop.basis}
+	var broken = Node3D.new()
+	broken.name = "BrokenDisplay"
+	root.add_child(broken)
+	for index in 4:
+		var shard = MeshInstance3D.new()
+		shard.mesh = BoxMesh.new()
+		shard.mesh.size = Vector3(.9,.10,.22)
+		shard.material_override = material("483a2e")
+		shard.position = Vector3(-.65+index*.42,.98+float(index%2)*.09,-.35+float(index%3)*.3)
+		shard.rotation = Vector3(.12*index,.45*index,-.15+index*.1)
+		broken.add_child(shard)
+	for index in 3:
+		var crack = MeshInstance3D.new()
+		crack.mesh = BoxMesh.new()
+		crack.mesh.size = Vector3(.045,.02,.85)
+		crack.material_override = material("171d19")
+		crack.position = Vector3(-.7+index*.65,.96,0)
+		crack.rotation.y = -.3+index*.3
+		broken.add_child(crack)
+	broken.hide()
+	stations[entry.id] = {"broken":broken,"root":root,"prop":prop,"cover":cover,"light":light,"display_basis":prop.basis}
 
 func build_talent(parent: Node3D, id: String) -> void:
 	var before = get_children()
@@ -155,16 +175,19 @@ func build_talent(parent: Node3D, id: String) -> void:
 		if child not in before: child.reparent(parent)
 
 func sync(state: Dictionary) -> void:
-	var closed: bool = state.get("started",false)
+	var locked = not preload("res://scripts/onboarding.gd").shop_open(state)
+	var broken = preload("res://scripts/onboarding.gd").stage(state) < preload("res://scripts/onboarding.gd").SHOP_OPEN
+	var closed: bool = state.get("started",false) or locked
 	for id in stations:
 		var station: Dictionary = stations[id]
-		station.cover.visible = closed
+		station.broken.visible = broken
+		station.cover.visible = closed and not broken
 		station.prop.visible = not closed
 		station.light.light_energy = 0.0 if closed else 1.1
-		if id in ["rifle","pistol","axe"]:
+		if not closed and id in ["rifle","pistol","axe"]:
 			station.prop.basis = Basis(Vector3.UP,float(state.get("prop_clock",0.0))*TAU/40.0)*station.display_basis
 	for item in state.get("structures",[]):
-		for marker in blueprints.get(item.id,[]): marker.visible = item.kind == "mine" and not item.get("owned",false) and not closed
+		for marker in blueprints.get(item.id,[]): marker.visible = item.kind == "mine" and not item.get("owned",false) and not state.get("started",false) and preload("res://scripts/onboarding.gd").defenses_open(state)
 
 func sync_focus(sim, p: Dictionary) -> void:
 	if not sim.defense.started:
@@ -187,7 +210,7 @@ func sync_focus(sim, p: Dictionary) -> void:
 	var drops: Array = []
 	if interaction_ring.visible:
 		interaction_ring.position = choice.position+Vector3(0,.45,0)
-		var price: int = sim.progression.cost(choice.id) if choice.id != "crystal" else 0
+		var price: int = sim.progression.cost(choice.id) if choice.id not in ["crystal","shopkeeper"] else 0
 		var enabled: bool = Catalog.available(sim,choice.id) and sim.progression.data[sim.progression.currency(choice.id)] >= price
 		var time: float = p.interact_time if p.get("interaction","") == choice.id else 0.0
 		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
@@ -206,6 +229,16 @@ func sync_focus(sim, p: Dictionary) -> void:
 				var point = from.lerp(scatter,minf(1,age/.24)) if age < .24 else scatter.lerp(choice.position,t*t)
 				point.y += sin(minf(1,age/.24)*PI)*.5 if age < .24 else sin(t*PI)*.4
 				drops.append({"pos":point,"age":age,"value":1,"scale":.25,"arrival":maxf(0,(t-.8)*5)})
+	var payment_age: float = sim.defense.prop_clock-float(sim.defense.get("tutorial_payment_at",-100))
+	if payment_age >= 0 and payment_age < 2.2:
+		var source: Vector3 = sim.defense.get("tutorial_payment_from",Vector3.ZERO)
+		var destination = Vector3(Layout.SHOP_OWNER.x,4.2,Layout.SHOP_OWNER.y-.5)
+		for index in 12:
+			var age = payment_age-index*.07
+			if age < 0 or age > 1.2: continue
+			var progress = age/1.2
+			var point = source.lerp(destination,smoothstep(0,1,progress))+Vector3.UP*sin(progress*PI)*.6
+			drops.append({"pos":point,"age":age,"value":1,"scale":.25,"arrival":maxf(0,(progress-.8)*5)})
 	money_flights.sync(drops)
 	price_icon.hide()
 	focus_label.visible = not choice.is_empty()
@@ -215,7 +248,7 @@ func sync_focus(sim, p: Dictionary) -> void:
 	var right: Vector3 = get_viewport().get_camera_3d().global_basis.x
 	focus_label.position = interaction_ring.position+right*.24+Vector3(0,.04,0)
 
-	if choice.id != "crystal" and sim.progression.cost(choice.id) >= 0:
+	if choice.id not in ["crystal","shopkeeper"] and sim.progression.cost(choice.id) >= 0:
 		price_icon.texture = preload("res://scripts/currency_art.gd").diamond() if sim.progression.currency(choice.id) == "diamonds" else preload("res://scripts/currency_art.gd").coin()
 		var camera = get_viewport().get_camera_3d()
 		var width: float = focus_label.font.get_string_size(str(sim.progression.cost(choice.id)),HORIZONTAL_ALIGNMENT_LEFT,-1,focus_label.font_size).x*focus_label.pixel_size

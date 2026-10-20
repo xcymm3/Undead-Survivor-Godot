@@ -2,6 +2,8 @@ extends "res://scripts/world_geometry.gd"
 ## Solid armory shell, rear sleeping room and an anonymous shopkeeper.
 const Layout = preload("res://scripts/defense_layout.gd")
 var owner_model: Node3D
+var owner_alert: Label3D
+var owner_dialogue: Label3D
 
 func _ready() -> void:
 	var area: Rect2 = Layout.SHOP_AREA
@@ -105,3 +107,38 @@ func build_owner() -> void:
 	title.modulate = Color("e4cf9b")
 	title.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	owner_model.add_child(title)
+
+	owner_alert = Label3D.new()
+	owner_alert.name = "TutorialExclamation"
+	owner_alert.font = title.font
+	owner_alert.text = "!"
+	owner_alert.font_size = 100
+	owner_alert.pixel_size = .005
+	owner_alert.position.y = 2.9
+	owner_alert.modulate = Color("ffd263")
+	owner_alert.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	owner_model.add_child(owner_alert)
+	owner_dialogue = Label3D.new()
+	owner_dialogue.name = "OwnerDialogue"
+	owner_dialogue.font = title.font
+	owner_dialogue.font_size = 42
+	owner_dialogue.pixel_size = .003
+	owner_dialogue.position.y = 2.85
+	owner_dialogue.width = 1150
+	owner_dialogue.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	owner_dialogue.outline_size = 6
+	owner_dialogue.modulate = Color("fff0d1")
+	owner_dialogue.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	owner_model.add_child(owner_dialogue)
+	sync({"tutorial_stage":0})
+
+func sync(state: Dictionary) -> void:
+	if not owner_model: return
+	var tutorial = preload("res://scripts/onboarding.gd")
+	owner_model.visible = tutorial.stage(state) != tutorial.FIRST_RUN
+	owner_alert.visible = tutorial.pending(state) and not tutorial.talking(state)
+	owner_alert.position.y = 2.9+sin(float(state.get("prop_clock",0))*3)*.06
+	owner_model.get_node("OwnerName").visible = not tutorial.talking(state)
+	owner_dialogue.visible = tutorial.talking(state)
+	owner_dialogue.text = tutorial.dialogue_frame(state).text
+	get_node("OwnerCollision").collision_layer = 1 if owner_model.visible else 0

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('隔离审查首次轮回字幕、还原模型与无接缝水晶', async ({ page }, info) => {
+test('隔离审查首次黑幕字幕、还原模型与无接缝水晶', async ({ page }, info) => {
   test.setTimeout(600_000);
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
@@ -8,7 +8,7 @@ test('隔离审查首次轮回字幕、还原模型与无接缝水晶', async ({
     if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text());
   });
   await page.setViewportSize({ width: 1440, height: 900 });
-  for (const scenario of ['intro_0', 'intro_1', 'intro_2', 'intro_3', 'crystal_broken', 'crystal_repaired', 'toy_turret', 'toy_mine', 'toy_stands']) {
+  for (const scenario of ['intro_0', 'intro_1', 'intro_2', 'intro_3', 'intro_4', 'crystal_broken', 'crystal_repaired', 'toy_turret', 'toy_mine', 'toy_stands']) {
     await page.goto(`/?preparationReview=${scenario}`);
     await page.waitForFunction(() => Boolean(window.__preparationReviewReady), null, { timeout: 90_000 });
     const state = await page.evaluate(() => window.__preparationReviewReady);

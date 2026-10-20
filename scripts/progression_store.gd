@@ -24,7 +24,7 @@ var notice = ""
 var data: Dictionary = defaults()
 
 static func defaults() -> Dictionary:
-	return {"version":7,"intro_seen":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0,"greed":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
+	return {"version":7,"intro_seen":false,"tutorial_stage":0,"tutorial_blueprint_paid":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0,"greed":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
 
 func _init(save_path := "") -> void:
 	path = save_path
@@ -35,6 +35,8 @@ static func bounded_integer(value, maximum: int) -> bool:
 
 static func valid(value) -> bool:
 	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,7) or value.version < 1: return false
+	if value.has("tutorial_stage") and not bounded_integer(value.tutorial_stage,5): return false
+	if value.has("tutorial_blueprint_paid") and not value.tutorial_blueprint_paid is bool: return false
 	if value.has("intro_seen") and not value.intro_seen is bool: return false
 	if not (value.coins is int or value.coins is float) or not is_finite(float(value.coins)) or value.coins < 0 or value.coins > MAX_CURRENCY: return false
 	if value.version < 7 and not bounded_integer(value.coins,MAX_CURRENCY): return false
@@ -70,6 +72,7 @@ func read_save(file_path: String) -> Dictionary:
 	# migration so a second reload has exactly the same permanent state.
 	for key in ["version","diamonds","best_wave","cleared_total","grenade_level"]: parsed[key] = int(parsed[key])
 	if parsed.version >= 6: parsed.ultimate_level = int(parsed.ultimate_level)
+	if parsed.has("tutorial_stage"): parsed.tutorial_stage = int(parsed.tutorial_stage)
 	for key in OLD_WEAPONS if parsed.version < 3 else WEAPONS: parsed.weapons[key] = int(parsed.weapons[key])
 	for key in LEGACY_TALENTS if parsed.version < 7 else TALENTS: parsed.talents[key] = int(parsed.talents[key])
 	for key in LEGACY_BUILDINGS if parsed.version == 1 else BUILDINGS: parsed.buildings[key].level = int(parsed.buildings[key].level)
@@ -89,6 +92,11 @@ func load_save() -> void:
 			DirAccess.copy_absolute(path,path+".corrupt-"+str(Time.get_unix_time_from_system()))
 	if not loaded.is_empty():
 		data = loaded
+		# Existing saves keep their access; new saves start the staged tutorial.
+		if not data.has("tutorial_stage"):
+			data["tutorial_stage"] = 5 if data.get("intro_seen",false) or data.coins > 0 or data.cleared_total > 0 or data.weapons.values().any(func(level): return level > 0) else 0
+			data["tutorial_blueprint_paid"] = false
+			dirty = true
 		if data.version == 1:
 			# The old mine was free. Preserve its ownership once when migrating.
 			data.version = 2

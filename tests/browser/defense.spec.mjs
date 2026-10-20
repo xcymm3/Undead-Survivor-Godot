@@ -29,6 +29,8 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   expect(state.player.grenades).toBe(1);
   expect(state.menu).toBe('');
   expect(state.paused).toBe(false);
+  // The opening black-screen story deliberately blocks all gameplay input.
+  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 25, null, { timeout: 45_000 });
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 2 && window.__survivorSnapshot?.player?.weapon === 2);
   expect(state.defense.crystal_hp).toBe(0);
@@ -80,7 +82,6 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   const deltaX = Math.atan2(Math.sin(aimed.yaw - targetYaw), Math.cos(aimed.yaw - targetYaw)) / .0022;
   const deltaY = (aimed.pitch - targetPitch) / .0022;
   await page.mouse.move(480 + deltaX, 300 + deltaY, { steps: Math.max(1, Math.ceil(Math.max(Math.abs(deltaX), Math.abs(deltaY)) / 100)) });
-  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 20, null, { timeout: 30_000 });
   await page.waitForFunction(() => window.__survivorSnapshot.player.focus?.id === 'crystal');
   await page.keyboard.down('e');
   await page.waitForFunction(() => window.__survivorSnapshot?.defense?.started, null, { timeout: 10_000 });

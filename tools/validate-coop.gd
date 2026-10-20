@@ -114,6 +114,8 @@ func host_test() -> void:
 	var profile = root.get_node("Progress").store
 	host_save_path = OS.get_cache_dir().path_join("coop-host-"+str(OS.get_process_id())+".json")
 	profile.path = host_save_path
+	profile.data["tutorial_stage"] = 5
+	profile.data["intro_seen"] = true
 	profile.data.weapons.rifle = 5
 	profile.data.magazines.rifle_magazine = 10
 	profile.data.talents.strong = 5
