@@ -422,10 +422,11 @@ func show_save_slots() -> void:
 func show_pause() -> void:
 	var column = panel("休息片刻", "合作对局仍在进行" if Session.playing else "行动计时已暂停",560)
 	current = "pause"
-	button(column,"继续游戏",func(): game.resume_game(),true)
-	if not Session.playing: button(column,"重新开始",func(): game.start_solo(game.sim.mode))
-	button(column,"设置",show_settings)
-	button(column,"结束房间并返回" if Session.is_host() else "离开房间" if Session.playing else "返回主菜单",func(): game.return_home())
+	var resume = home_button(column,"继续游戏",func(): game.resume_game())
+	resume.selected = true
+	if not Session.playing: home_button(column,"重新开始",func(): game.start_solo(game.sim.mode))
+	home_button(column,"设置",show_settings)
+	home_button(column,"结束房间并返回" if Session.is_host() else "离开房间" if Session.playing else "返回主菜单",func(): game.return_home())
 
 func back() -> void:
 	if current == "multiplayer" and multiplayer_view and is_instance_valid(multiplayer_view.dialog):

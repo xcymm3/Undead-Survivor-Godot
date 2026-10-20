@@ -135,6 +135,7 @@ func stage() -> void:
 		game.running = true
 		game.ui.native_hud.visible = not scenario.begins_with("failure")
 		game.ui.tick(0)
+	if scenario == "pause": game.pause_game()
 	game.get_viewport().scaling_3d_scale = 1.0
 	RenderingServer.render_loop_enabled = false
 	for i in 5: await get_tree().process_frame
