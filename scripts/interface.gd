@@ -135,6 +135,27 @@ func settings_theme() -> Theme:
 	theme.set_stylebox("grabber_pressed","VScrollBar",settings_box(Color(.75,.54,.29,.95),SETTINGS_BRASS,2))
 	return theme
 
+# Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4
+# Settings retain the home menu's enamel green, cut corners and brass accents.
+func green_settings_theme() -> Theme:
+	var theme = settings_theme()
+	var art = preload("res://scripts/menu_button.gd")
+	for kind in ["Button","OptionButton"]:
+		theme.set_stylebox("normal",kind,settings_box(art.GREEN,art.GREEN.lightened(.3)))
+		theme.set_stylebox("hover",kind,settings_box(art.GREEN.lightened(.2),art.GOLD))
+		theme.set_stylebox("pressed",kind,settings_box(art.GREEN.darkened(.18),art.GOLD))
+		theme.set_stylebox("hover_pressed",kind,settings_box(art.GREEN,art.GOLD))
+		theme.set_color("font_color",kind,art.TEXT)
+		theme.set_color("font_hover_color",kind,art.HOVER_TEXT)
+	theme.set_stylebox("slider","HSlider",settings_box(art.DARK,art.GREEN.lightened(.3),3))
+	theme.set_stylebox("grabber_area","HSlider",settings_box(art.GREEN,art.GREEN.lightened(.3),3))
+	theme.set_stylebox("grabber_area_highlight","HSlider",settings_box(art.GREEN.lightened(.2),art.GOLD,3))
+	theme.set_stylebox("scroll","VScrollBar",settings_box(art.DARK,Color.TRANSPARENT,2))
+	theme.set_stylebox("grabber","VScrollBar",settings_box(art.GREEN,art.GREEN.lightened(.3),2))
+	theme.set_stylebox("grabber_highlight","VScrollBar",settings_box(art.GREEN.lightened(.2),art.GOLD,2))
+	theme.set_stylebox("grabber_pressed","VScrollBar",settings_box(art.GREEN.darkened(.18),art.GOLD,2))
+	return theme
+
 func label(text: String, size := 18, color := INK) -> Label:
 	var node = Label.new()
 	node.text = text
@@ -468,6 +489,7 @@ func show_settings() -> void:
 	game.reset_mouse_buttons()
 	Data.sync_window_mode()
 	var shell = field_shell("战场设置","调整操控、声音与画面 · 更改自动保存")
+	shell.get_parent().theme = green_settings_theme()
 	current = "settings"
 	var navigation = HBoxContainer.new()
 	navigation.add_theme_constant_override("separation",16)
@@ -475,7 +497,8 @@ func show_settings() -> void:
 	for index in 3:
 		var tab = home_button(navigation,["操控设置","声音设置","画面设置"][index],func():
 			settings_tab = index
-			show_settings(),settings_tab == index)
+			show_settings())
+		tab.selected = settings_tab == index
 		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var scroll = ScrollContainer.new()
 	scroll.name = "FieldSettings"

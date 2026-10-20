@@ -7,6 +7,7 @@ const GOLD = Color("d6af62")
 const TEXT = Color("fff0c8")
 const HOVER_TEXT = Color("fff9e5")
 var primary = false
+var selected = false
 var highlighted = false
 var motion: Tween
 var face: Control
@@ -26,6 +27,7 @@ class Face extends Control:
 		var lower = PackedVector2Array()
 		for point in polygon: lower.append(point+Vector2(0,7))
 		var color = RUST if owner_button.primary else GREEN
+		if owner_button.selected: color = color.lightened(.12)
 		if owner_button.disabled: color = DISABLED
 		elif owner_button.highlighted: color = color.lightened(.2)
 		if owner_button.is_pressed(): color = color.darkened(.18)
@@ -33,7 +35,8 @@ class Face extends Control:
 		draw_colored_polygon(polygon,color)
 		var rim = polygon.duplicate()
 		rim.append(polygon[0])
-		draw_polyline(rim,GOLD if owner_button.highlighted or owner_button.has_focus() else color.lightened(.3),2,true)
+		draw_polyline(rim,GOLD if owner_button.highlighted or owner_button.has_focus() or owner_button.selected else color.lightened(.3),2,true)
+		if owner_button.selected: draw_line(Vector2(18,h-4),Vector2(w-18,h-4),GOLD,2,true)
 		draw_line(Vector2(18,4),Vector2(w-14,4),color.lightened(.45),2,true)
 		for x in [9,w-10]:
 			draw_circle(Vector2(x,h*.5),2,GOLD)

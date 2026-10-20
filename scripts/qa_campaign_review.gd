@@ -21,7 +21,7 @@ func stage() -> void:
 		return
 	if scenario.begins_with("multiplayer_"):
 		await stage_multiplayer(scenario)
-	elif scenario in ["home","home_hover","settings","settings_graphics","saves"]:
+	elif scenario in ["home","home_hover","settings","settings_graphics","settings_sound","saves"]:
 		game.ui.show_home()
 		if scenario == "home_hover":
 			var buttons = game.ui.menu.find_children("*","Button",true,false)
@@ -29,7 +29,7 @@ func stage() -> void:
 				if item.text == "单人游戏":
 					item.mouse_entered.emit()
 					await get_tree().create_timer(.16).timeout
-		if scenario in ["settings","settings_graphics"]:
+		if scenario in ["settings","settings_graphics","settings_sound"]:
 			game.ui.settings_tab = 2 if scenario == "settings_graphics" else 1 if scenario == "settings_sound" else 0
 			game.ui.show_settings()
 		if scenario == "saves": game.ui.show_save_slots()
