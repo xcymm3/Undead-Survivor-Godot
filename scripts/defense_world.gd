@@ -102,25 +102,9 @@ func make_ramp() -> void:
 func make_safe_zone() -> void:
 	var safe = DefenseLayout.SHOP_AREA
 	block("SafeZoneFloor",Vector3(0,3.035,safe.get_center().y),Vector3(26,.06,safe.size.y),"314c45",false)
-	var wall_width = (25.5-DefenseLayout.SHOP_ENTRANCE_WIDTH)/2
-	for side in [-1.0,1.0]:
-		block("WeaponShopWallLeft" if side < 0 else "WeaponShopWallRight",Vector3(side*(DefenseLayout.SHOP_ENTRANCE_WIDTH+wall_width)/2,6,DefenseLayout.SHOP_WALL_Z),Vector3(wall_width,6,.65),"493a2d",true,true)
-	block("ShopEntranceLintel",Vector3(0,8,DefenseLayout.SHOP_WALL_Z),Vector3(DefenseLayout.SHOP_ENTRANCE_WIDTH,2,.65),"493a2d",true,false)
-	block("RearEntryPath",Vector3(0,3.045,(DefenseLayout.SPAWN.y+DefenseLayout.SHOP_WALL_Z)/2),Vector3(5,.09,DefenseLayout.SPAWN.y-DefenseLayout.SHOP_WALL_Z),"514c40",false)
 	preparation = preload("res://scripts/preparation_world.gd").new()
 	preparation.name = "PreparationWorld"
 	add_child(preparation)
-
-func make_entry() -> void:
-	var toy = preload("res://scripts/toy_art.gd")
-	var ground = DefenseLayout.height(DefenseLayout.SPAWN)
-	toy.box(self,"EntryPad",Vector3(0,ground+.045,DefenseLayout.SPAWN.y),Vector3(5,.09,4),toy.BLUE)
-	for offset in [-1.1,-.4,.3]:
-		var z = DefenseLayout.SPAWN.y+offset
-		var arrow = toy.box(self,"EntryArrow",Vector3(0,ground+.10,z),Vector3(.85,.025,.15),toy.YELLOW)
-		for side in [-1.0,1.0]:
-			var wing = toy.box(self,"ArrowWing",Vector3(side*.30,ground+.10,z+.17),Vector3(.15,.025,.5),toy.YELLOW)
-			wing.rotation.y = side*.7
 
 func sync_focus(sim, pawn: Dictionary) -> void:
 	if preparation: preparation.sync_focus(sim,pawn)
@@ -147,7 +131,6 @@ func _ready() -> void:
 	structure_view.sync({})
 	# 有碰撞的自然掩体避开中央进攻通道；峡谷段保留无围墙的断崖轮廓。
 	DefenseEnvironment.decorate(self)
-	make_entry()
 	for p in [DefenseLayout.CRYSTAL+Vector2(-12,-3),DefenseLayout.CRYSTAL+Vector2(13,-4)]:
 		block("CrystalGuard",Vector3(p.x,4.0,p.y),Vector3(3.5,2,1.2),"46534a")
 	for p in [Vector3(-4.2,5.5,-62),Vector3(4.2,5.5,-62),Vector3(-4.2,5.5,-28),Vector3(4.2,5.5,-28),Vector3(-11,6,DefenseLayout.CRYSTAL.y+2),Vector3(11,6,DefenseLayout.CRYSTAL.y+2)]:

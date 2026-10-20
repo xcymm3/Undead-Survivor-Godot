@@ -280,7 +280,7 @@ static func decorate_existing(world: Node3D) -> void:
 	for node in world.get_children():
 		if not node is Node3D: continue
 		var title: String = node.name
-		if title.begins_with("BridgePlank") or title == "BridgeCollision" or title.begins_with("WeaponShopWall") or title == "ShopEntranceLintel" or title.begins_with("ShopFrame"): apply_material(node,timber)
+		if title.begins_with("BridgePlank") or title == "BridgeCollision" or title.begins_with("ShopFrame"): apply_material(node,timber)
 		elif title.begins_with("BridgeTower") or title.begins_with("BridgeGuardRail") or title.begins_with("ShopRail"): apply_material(node,metal)
 		elif title == "StoneRamp" or title.begins_with("RampShelf") or title.begins_with("RampWall"): apply_material(node,ramp)
 		elif title == "SafeZoneFloor": apply_material(node,concrete)

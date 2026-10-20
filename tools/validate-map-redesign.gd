@@ -14,12 +14,12 @@ static func validate(game, check: Callable) -> void:
 	var sim = game.sim
 	var p: Dictionary = game.local_pawn()
 	check.call(p.pos.y > Layout.SHOP_AREA.end.y and Layout.BRIDGE.end.y < Layout.CRYSTAL.y and Layout.CRYSTAL.y < Layout.SHOP_AREA.position.y,"Spawn lies behind the shop while bridge and crystal keep their existing order")
-	check.call(is_zero_approx(p.yaw) and p.height == 3 and game.arena.clear(p.pos,p.pos),"Player starts on the extended plateau facing the shop doorway")
+	check.call(is_zero_approx(p.yaw) and p.height == 3 and game.arena.clear(p.pos,p.pos),"Player starts on the extended plateau facing the open shop")
 	check.call(sim.defense.crystal_hp == 0 and sim.defense.crystal_repair_required and sim.defense.waiting and not sim.defense.started,"New match starts with a broken crystal and stopped waves")
 	sim.step(.1)
 	check.call(not sim.failed and sim.zombies.is_empty() and sim.elapsed == 0,"Broken preparation crystal does not cause defeat or spawn enemies")
 	check.call(not Catalog.stations().any(func(entry): return entry.id == "alarm") and not game.arena.scenery.preparation.stations.has("alarm"),"No physical alarm station or lever remains")
-	# Traverse the rear doorway and an aisle between the actual shop stands.
+	# Traverse the open rear area and an aisle between the actual shop stands.
 	for point in [Vector2(0,Layout.SHOP_AREA.get_center().y),Vector2(2.5,Layout.SHOP_AREA.get_center().y),Layout.CRYSTAL+Vector2(2.5,4)]:
 		for tick in 800:
 			if p.pos.distance_to(point) < .2: break

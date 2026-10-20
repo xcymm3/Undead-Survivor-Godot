@@ -11,7 +11,6 @@ const FALL_RETURN = CRYSTAL+Vector2(-6,3)
 const SHOP_AREA = Rect2(-13,-10+COMBAT_DEPTH-10,26,10)
 const SPAWN = Vector2(0,SHOP_AREA.end.y+7)
 const SHOP_WALL_Z = SHOP_AREA.end.y-.325
-const SHOP_ENTRANCE_WIDTH = 4.4
 const SHOP_POINT = Vector2(0,SHOP_WALL_Z-2.35)
 const BRIDGE = Rect2(-4,-62,8,34)
 const ENEMY_SPAWN_REGION = Rect2(-48,BRIDGE.position.y-96,96,96)
