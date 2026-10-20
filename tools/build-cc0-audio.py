@@ -19,7 +19,12 @@ RATE = 44100
 
 
 def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    content = path.read_bytes()
+    # Source timing is unchanged by Git/Windows CRLF conversion; binary assets
+    # must retain strict byte-for-byte hashes.
+    if path.suffix in {".gd", ".py"}:
+        content = content.replace(b"\r\n", b"\n")
+    return hashlib.sha256(content).hexdigest()
 
 
 def check():
