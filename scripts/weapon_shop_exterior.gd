@@ -75,7 +75,7 @@ func build_roof() -> void:
 	block("ChimneyCrown",chimney+Vector3(0,2.27,0),Vector3(1.8,.22,1.75),IRON,false)
 	block("ChimneyMouth",chimney+Vector3(0,2.4,0),Vector3(1.2,.045,1.15),"19221e",false)
 
-func signboard(title: String, caption: String, pos: Vector3, width: float, height: float, yaw: float, size: float) -> Node3D:
+func signboard(title: String, pos: Vector3, width: float, height: float, yaw: float) -> Node3D:
 	var root = Node3D.new()
 	root.name = title
 	root.position = pos
@@ -84,17 +84,6 @@ func signboard(title: String, caption: String, pos: Vector3, width: float, heigh
 	part(root,"CarvedSignBacking",Vector3.ZERO,Vector3(width,height,.2),TIMBER)
 	for y in [-height*.5,height*.5]: part(root,"SignBrassEdge",Vector3(0,y,.12),Vector3(width+.12,.09,.05),BRASS)
 	for x in [-width*.5,width*.5]: part(root,"SignBrassEdge",Vector3(x,0,.12),Vector3(.09,height,.05),BRASS)
-	var text = Label3D.new()
-	text.name = "Lettering"
-	text.text = caption
-	text.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
-	text.font_size = 80
-	text.pixel_size = size
-	text.position.z = .15
-	text.modulate = Color("ffe0a1")
-	text.outline_size = 8
-	text.no_depth_test = false
-	root.add_child(text)
 	return root
 
 func window_display(center: Vector3, yaw: float, weapon := false) -> void:
@@ -162,8 +151,8 @@ func build_facade() -> void:
 	window_display(Vector3(-8,5.42,front-.45),PI,true)
 	window_display(Vector3(8,5.42,front-.45),PI,true)
 	window_display(Vector3(13.4,5.35,front+14),PI/2,false)
-	signboard("BattlefieldShopSign","灰松武器店",Vector3(0,8.92,front-.48),10.4,1.65,PI,.021)
-	signboard("ServicesSign","武器 · 弹药 · 改装",Vector3(0,5.45,front-.46),6.6,.84,PI,.0085)
+	signboard("BattlefieldShopSign",Vector3(0,8.92,front-.48),10.4,1.65,PI)
+	signboard("ServicesSign",Vector3(0,5.45,front-.46),6.6,.84,PI)
 	# A crossed weapon crest can be recognized before the Chinese letters resolve.
 	var crest = Vector3(0,6.65,front-.62)
 	beam("CrossedRifleEmblem",crest+Vector3(-.8,-.32,0),crest+Vector3(.8,.32,0),.14,.12,BRASS)
@@ -183,11 +172,11 @@ func build_porch() -> void:
 		block("PorchPost",Vector3(17.65,4.5,z),Vector3(.22,3,.22),TIMBER)
 		block("PorchPostFoot",Vector3(17.65,3.18,z),Vector3(.4,.36,.4),IRON,false)
 		beam("PorchDiagonalBrace",Vector3(17.65,5.3,z),Vector3(16.65,6.15,z),.13,.13,TRIM)
-	signboard("PorchShopSign","武器店",Vector3(18.03,6.44,door),3.8,.9,PI/2,.011)
+	signboard("PorchShopSign",Vector3(18.03,6.44,door),3.8,.9,PI/2)
 	# A hanging blade sign faces the approaching player, above the canopy line.
 	beam("HangingSignBracket",Vector3(13.4,8.4,door+3.0),Vector3(17.2,8.4,door+3.0),.12,.12,IRON)
 	for x in [15.3,16.7]: beam("SignChain",Vector3(x,8.4,door+3),Vector3(x,7.8,door+3),.035,.035,IRON)
-	signboard("HangingArmorySign","武器\n弹药",Vector3(16,7.2,door+3),2.0,1.5,PI,.007)
+	signboard("HangingArmorySign",Vector3(16,7.2,door+3),2.0,1.5,PI)
 	for z in [door-2.35,door+2.35]: lamp(Vector3(14.0,5.75,z),2.2)
 
 func build_stock() -> void:

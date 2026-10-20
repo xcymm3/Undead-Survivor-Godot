@@ -60,16 +60,6 @@ func _ready() -> void:
 		light.shadow_enabled = true
 		add_child(light)
 	build_owner()
-	var sign = Label3D.new()
-	sign.name = "ShopEntranceSign"
-	sign.text = "武器店"
-	sign.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
-	sign.font_size = 64
-	sign.pixel_size = .009
-	sign.modulate = Color("e3c58c")
-	sign.position = Vector3(13.4,6.6,Layout.SHOP_DOOR_Z)
-	sign.rotation.y = PI/2
-	add_child(sign)
 
 func build_owner() -> void:
 	var pos = Vector3(Layout.SHOP_OWNER.x,3,Layout.SHOP_OWNER.y)
