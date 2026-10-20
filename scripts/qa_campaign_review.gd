@@ -216,6 +216,9 @@ func stage_ultimate(scenario: String) -> void:
 		var command = {"ultimate":true}
 		preload("res://scripts/ultimate.gd").tick(game.sim,p,command,0)
 		p.ultimate_age = 1.2
+		if action_name == "sheathe":
+			p.ultimate_remaining = 17.0/30.0-.000001
+			p.ultimate_age = preload("res://scripts/ultimate.gd").DURATION-p.ultimate_remaining
 	game.camera.position = Vector3(0,4.65,8)
 	game.camera.rotation = Vector3.ZERO
 	game.camera.fov = 61
@@ -244,10 +247,9 @@ func draw_ultimate_frame(args: Array) -> void:
 	var dt: float = 1.0/action_fps
 	var p: Dictionary = game.local_pawn()
 	var activate: bool = action_name == "draw" and frame == 6
-	# Cancel in the middle of a real second swing, rather than from an idle pose.
-	var cancel: bool = action_name == "sheathe" and frame == 16
+	# The sheathe preview starts near natural expiration during a real second swing.
 	var attack: bool = (action_name == "attack" and time >= .2 and time < 1.7) or (action_name == "sheathe" and time >= .1 and frame < 16)
-	p.input = {"ultimate":activate or cancel,"fire":attack}
+	p.input = {"ultimate":activate,"fire":attack}
 	p.input_age = 0
 	game.sim.elapsed += dt
 	game.sim.equipment.before_movement(dt)

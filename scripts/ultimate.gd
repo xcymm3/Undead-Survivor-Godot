@@ -38,8 +38,7 @@ static func tick(sim, p: Dictionary, input: Dictionary, dt: float) -> bool:
 	p.ultimate_sheathe = maxf(0,float(p.get("ultimate_sheathe",0.0))-dt)
 	if was_active: p.ultimate_remaining = maxf(0,float(p.ultimate_remaining)-dt)
 	if input.get("ultimate",false):
-		if was_active: p.ultimate_remaining = 0.0
-		elif p.ultimate_sheathe <= 0 and p.hp > 0:
+		if not was_active and p.ultimate_sheathe <= 0 and p.hp > 0:
 			if not unlocked(p):
 				p.ultimate_notice = "终极技能未解锁"
 				p.ultimate_notice_until = sim.elapsed+1.5

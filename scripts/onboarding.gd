@@ -117,9 +117,11 @@ static func finish_attempt(sim) -> void:
 	sim.progression.dirty = true
 	sim.progression.save()
 
-static func unlock_ultimate(sim, zombie: Dictionary) -> void:
+static func unlock_ultimate(sim, zombie: Dictionary, damage_taken: int) -> void:
 	if sim.progression.data.get("ultimate_unlocked",false) or not sim.defense.get("started",false): return
-	if not zombie.has_all(["id","kind"]): return
+	if not zombie.has_all(["id","kind"]) or damage_taken <= 0: return
+	sim.defense["ultimate_crystal_damage"] = int(sim.defense.get("ultimate_crystal_damage",0))+damage_taken
+	if sim.defense.ultimate_crystal_damage < 500: return
 	sim.progression.data["ultimate_unlocked"] = true
 	sim.progression.dirty = true
 	sim.progression.save()

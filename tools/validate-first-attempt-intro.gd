@@ -109,8 +109,12 @@ static func validate(game, check: Callable) -> void:
 	sim.spawn(preload("res://scripts/defense_layout.gd").CRYSTAL+Vector2(0,-2),"normal")
 	var attacker: Dictionary = sim.zombies[-1]
 	sim.damage_crystal(attacker,1)
+	check.call(not p.ultimate_unlocked and not sim.progression.data.ultimate_unlocked,"One point of crystal damage no longer unlocks the skill")
+	sim.damage_crystal(attacker,498)
+	check.call(not p.ultimate_unlocked and not Store.new(path).data.ultimate_unlocked,"The skill stays locked through 499 crystal damage")
+	sim.damage_crystal(attacker,1)
 	game.ui.native_hud.sync()
-	check.call(p.ultimate_unlocked and p.ultimate_cd == 0 and game.ui.native_hud.ultimate_ring.caption == "100%" and Tutorial.hint_mode(sim.defense) == "ultimate","The first enemy crystal hit unlocks and fully charges the ultimate with a top hint")
+	check.call(p.ultimate_unlocked and p.ultimate_cd == 0 and game.ui.native_hud.ultimate_ring.caption == "100%" and Tutorial.hint_mode(sim.defense) == "ultimate","Exactly 500 cumulative enemy crystal damage unlocks and fully charges the ultimate with a top hint")
 	check.call(Store.new(path).data.ultimate_unlocked,"The ultimate unlock persists immediately in the save")
 	p.ultimate_cd = 37.0
 	sim.damage_crystal(attacker,1)

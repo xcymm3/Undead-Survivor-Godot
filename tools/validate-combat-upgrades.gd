@@ -74,7 +74,7 @@ func validate_blade_motion(game) -> void:
 	pawn.ultimate_sheathe = Ultimate.SHEATHE_TIME
 	pawn.fire_anim = 0.0
 	var after: Dictionary = motion.sample(pawn,0,.28)
-	check(before.is_equal_approx(after.blade),"Mid-slash cancellation starts sheathing at the last displayed blade pose without snapping")
+	check(before.is_equal_approx(after.blade),"Mid-slash expiration starts sheathing at the last displayed blade pose without snapping")
 	pawn.ultimate_sheathe -= .01
 	after = motion.sample(pawn,.01,.28)
 	check(before.origin.distance_to(after.blade.origin) < .02,"First sheathing step smoothly aligns from the interrupted swing")
@@ -236,9 +236,17 @@ func run() -> void:
 	check(p.sprinting,"Ultimate keeps sprint speed while attacking without Shift")
 	game.weapon.sync(p,0,sim.elapsed)
 	check(game.weapon.blade.visible and not game.weapon.models[6].visible,"Ultimate replaces axe with long blade")
+	var remaining_before: float = p.ultimate_remaining
 	p.input = {"ultimate":true}
 	Ultimate.tick(sim,p,p.input,.01)
-	check(not Ultimate.active(p) and p.ultimate_cd == 100 and p.ultimate_sheathe > 0,"Q early finish starts hundred-second cooldown and sheath animation")
+	check(Ultimate.active(p) and is_equal_approx(p.ultimate_remaining,remaining_before-.01) and p.ultimate_cd == 0 and p.ultimate_sheathe == 0,"Q during the ultimate neither cancels nor restarts its duration")
+	for index in 3:
+		p.input = {"ultimate":true}
+		Ultimate.tick(sim,p,p.input,.1)
+	check(Ultimate.active(p) and is_equal_approx(p.ultimate_remaining,remaining_before-.31),"Repeated Q presses leave the natural countdown intact")
+	p.input = {}
+	Ultimate.tick(sim,p,p.input,p.ultimate_remaining)
+	check(not Ultimate.active(p) and p.ultimate_cd == 100 and p.ultimate_sheathe > 0,"Natural expiration starts hundred-second cooldown and sheath animation")
 	p.input = {}
 	Ultimate.tick(sim,p,p.input,1)
 	check(not Ultimate.locked(p) and p.slot == 1,"Sheathing restores previous equipment slot")
