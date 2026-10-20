@@ -30,6 +30,7 @@ func stage(value: String) -> void:
 		pawn.yaw = game.camera.rotation.y
 		pawn.pitch = game.camera.rotation.x
 		Tutorial.begin_dialogue(game.sim,pawn)
+		game.camera.rotation = Vector3(pawn.pitch,pawn.yaw,0)
 	elif scenario == "tutorial_combat":
 		pawn.pos = Layout.CRYSTAL+Vector2(3.5,5)
 		game.sim.defense_director.begin_wave()

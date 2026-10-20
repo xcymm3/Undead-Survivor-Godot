@@ -66,6 +66,13 @@ static func begin_dialogue(sim, pawn: Dictionary) -> bool:
 	sim.defense["tutorial_dialogue"] = "defenses" if stage(sim.defense) == DEFENSE_PENDING else "shop"
 	sim.defense["tutorial_speaker"] = pawn.id
 	sim.defense["tutorial_dialogue_elapsed"] = 0.0
+	var owner = preload("res://scripts/defense_layout.gd").SHOP_OWNER
+	var eye = Vector3(pawn.pos.x,pawn.height+preload("res://scripts/player_body.gd").eye_height(pawn),pawn.pos.y)
+	var toward = Vector3(owner.x,4.7,owner.y)-eye
+	pawn.yaw = atan2(-toward.x,-toward.z)
+	pawn.pitch = atan2(toward.y,Vector2(toward.x,toward.z).length())
+	pawn.input = {}
+	pawn.aim = false
 	return true
 
 static func tick(sim, dt: float) -> void:

@@ -297,6 +297,7 @@ func _process(dt: float) -> void:
 	if Session.playing and not Session.is_host(): camera.position = camera.position.lerp(desired,1-exp(-dt*22))
 	else: camera.position = desired
 	var spectate: bool = p.id != Session.local_id
+	sync_dialogue_camera(p)
 	camera.rotation = Vector3(p.pitch,p.yaw,0) if spectate else Vector3(pitch,yaw,0)
 	var w: Dictionary = Data.weapons[int(p.weapon)]
 	var magnification: float = 6.0 if w.id == "sniper" else 1.0 if w.get("kind", "gun") in ["melee","flame"] else 1.25
@@ -363,6 +364,17 @@ func _process(dt: float) -> void:
 		update_finish_camera(dt)
 	ui.tick(dt)
 	qa_draw(dt)
+
+func sync_dialogue_camera(p: Dictionary) -> void:
+	if not preload("res://scripts/onboarding.gd").talking(sim.defense): return
+	yaw = p.yaw
+	pitch = p.pitch
+	camera.rotation = Vector3(pitch,yaw,0)
+	reset_mouse_buttons()
+	jump_pending = false
+	reload_pending = false
+	requested_slot = int(p.get("slot",1))
+	requested_weapon = int(p.weapon)
 
 var tutorial_voice_key = ""
 

@@ -17,6 +17,12 @@ static func validate(game, check: Callable) -> void:
 	var sim = game.sim
 	var p = game.local_pawn()
 	check.call(Intro.active(sim.defense) and Intro.LINES.size() == 5,"New save starts five cumulative narrative rows")
+	var story_font = preload("res://assets/fonts/ZCOOLQingKeHuangYou-Regular.ttf")
+	var all_glyphs = true
+	for line in Intro.LINES:
+		for character in line: all_glyphs = all_glyphs and story_font.has_char(character.unicode_at(0))
+	check.call(all_glyphs,"The licensed arcade typeface contains every opening-story character")
+
 	check.call(Intro.line_alpha(sim.defense,0) == 0,"Narrative caption starts transparent over black")
 	var origin: Vector2 = p.pos
 	var rounds: int = p.ammo[0]
@@ -74,6 +80,20 @@ static func validate(game, check: Callable) -> void:
 	check.call(Catalog.focus(sim,p).get("id","") == "shopkeeper","Normal gaze selection reaches merchant across counter")
 	Fixture.hold(sim,p,1.01)
 	check.call(Tutorial.talking(sim.defense) and not Catalog.available(sim,"rifle"),"Interaction starts first dialogue while commerce stays locked")
+	var owner = preload("res://scripts/defense_layout.gd").SHOP_OWNER
+	var toward = Vector3(owner.x,4.7,owner.y)-Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
+	var forward = Basis.from_euler(Vector3(p.pitch,p.yaw,0))*Vector3.FORWARD
+	check.call(forward.dot(toward.normalized()) > .9999,"Starting dialogue forces authority view toward the shopkeeper's face")
+	var dialogue_origin: Vector2 = p.pos
+	var dialogue_ammo: int = p.ammo[0]
+	game.yaw = 2.0
+	game.pitch = -1.0
+	game.sync_dialogue_camera(p)
+	sim.submit(p.id,{"x":1,"y":1,"yaw":2,"pitch":-1,"fire":true,"jump":true,"slot":2,"shove":true,"ultimate":true})
+	sim.equipment.before_movement(.1)
+	sim.update_pawn(p,.1)
+	check.call(p.pos == dialogue_origin and p.ammo[0] == dialogue_ammo and not p.aim and is_equal_approx(game.yaw,p.yaw) and is_equal_approx(game.pitch,p.pitch),"Dialogue locks movement, aiming, attacks and local camera while keeping the forced facing")
+
 	sim.defense_director.interactions(.07)
 	check.call(Tutorial.dialogue_frame(sim.defense).characters == 1,"Dialogue reveals characters individually")
 	var first_duration: float = Tutorial.SHOP_LINES[0].length()/Tutorial.CHARACTERS_PER_SECOND+2
@@ -83,6 +103,7 @@ static func validate(game, check: Callable) -> void:
 	check.call(Tutorial.dialogue_frame(sim.defense).line == 1,"Next line starts after pause")
 	sim.defense_director.interactions(Tutorial.duration(sim.defense))
 	check.call(Tutorial.shop_open(sim.defense) and not Tutorial.defenses_open(sim.defense) and Catalog.available(sim,"rifle"),"First dialogue opens commerce but no construction")
+	check.call(not Tutorial.blocked(sim.defense),"Controls unlock only after every dialogue line and its final pause finish")
 	check.call(not world.shop.owner_alert.visible and not world.shop.owner_dialogue.visible and not world.preparation.stations.rifle.broken.visible,"First conversation restores stations and clears exclamation")
 	sim.failed = true
 	sim.progression.data.coins = 100
