@@ -9,6 +9,10 @@ func _draw() -> void:
 	draw_set_transform((size-canvas*factor)*.5-Vector2(20 if item else 0,0)*factor,0,Vector2.ONE*factor)
 	var white = Color.WHITE
 	match kind:
+		"ultimate":
+			draw_colored_polygon(PackedVector2Array([Vector2(74,2),Vector2(76,16),Vector2(44,40),Vector2(35,32)]),white)
+			draw_line(Vector2(30,29),Vector2(48,45),white,5)
+			draw_line(Vector2(38,37),Vector2(24,49),white,6)
 		"grenade":
 			draw_rect(Rect2(39,4,21,7),white)
 			draw_line(Vector2(60,6),Vector2(70,24),white,5)

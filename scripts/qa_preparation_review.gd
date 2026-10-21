@@ -10,6 +10,12 @@ func _ready() -> void:
 
 func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('preparationReview')",true))
+	if scenario.begins_with("shop_review_"):
+		var capture = preload("res://scripts/qa_shop_hud_review.gd").new()
+		capture.game = game
+		game.add_child(capture)
+		await capture.stage(scenario)
+		return
 	if scenario.begins_with("tutorial_"):
 		var capture = preload("res://scripts/qa_tutorial_review.gd").new()
 		capture.game = game
@@ -162,7 +168,7 @@ func stage() -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	var ring_rect = game.ui.native_hud.ultimate_ring.get_global_rect()
-	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"ring_rect":{"x":ring_rect.position.x,"y":ring_rect.position.y,"width":ring_rect.size.x,"height":ring_rect.size.y},"ring_count":game.ui.native_hud.ultimate_ring.get_parent().get_child_count(),"charge":game.ui.native_hud.ultimate_ring.progress,"objective_text":game.ui.native_hud.wave_label.text,"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37,"announcement":game.ui.native_hud.tutorial_overlay.caption.text if scenario.begins_with("intro_") else game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.tutorial_overlay.caption.modulate.a if scenario.begins_with("intro_") else game.ui.native_hud.wave_announcement.modulate.a,"upgrade_details":game.ui.native_hud.upgrade_details.details,"details_visible":game.ui.native_hud.upgrade_details.visible,"currency_icon_visible":game.arena.scenery.preparation.price_icon.visible,"currency_is_diamond":game.arena.scenery.preparation.price_icon.texture == preload("res://scripts/currency_art.gd").diamond(),"key_progress":game.arena.scenery.preparation.interaction_ring.progress,"key_state":game.arena.scenery.preparation.interaction_ring.state,"focus_text":game.arena.scenery.preparation.focus_label.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible}),true)
+	JavaScriptBridge.eval("window.__preparationReviewReady="+JSON.stringify({"ring_rect":{"x":ring_rect.position.x,"y":ring_rect.position.y,"width":ring_rect.size.x,"height":ring_rect.size.y},"ring_count":int(game.ui.native_hud.ultimate_ring.visible)+int(game.ui.native_hud.grenade_ring.visible),"charge":game.ui.native_hud.ultimate_ring.progress,"objective_text":game.ui.native_hud.wave_label.text,"scenario":scenario,"stations":game.arena.scenery.preparation.stations.size(),"closed":game.sim.defense.started,"coins":12450,"diamonds":37,"announcement":game.ui.native_hud.tutorial_overlay.caption.text if scenario.begins_with("intro_") else game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.tutorial_overlay.caption.modulate.a if scenario.begins_with("intro_") else game.ui.native_hud.wave_announcement.modulate.a,"upgrade_details":game.ui.native_hud.upgrade_details.details,"details_visible":game.ui.native_hud.upgrade_details.visible,"currency_icon_visible":game.arena.scenery.preparation.price_icon.visible,"currency_is_diamond":game.arena.scenery.preparation.price_icon.texture == preload("res://scripts/currency_art.gd").diamond(),"key_progress":game.arena.scenery.preparation.interaction_ring.progress,"key_state":game.arena.scenery.preparation.interaction_ring.state,"focus_text":game.arena.scenery.preparation.focus_label.text,"focus_visible":game.arena.scenery.preparation.focus_label.visible}),true)
 
 func stage_redesign(scenario: String, p: Dictionary) -> void:
 	var layout = Data.Maps.Defense

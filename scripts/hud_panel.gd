@@ -25,7 +25,7 @@ var diamond_label: Label
 var wave_announcement: Label
 var boss_title: Label
 var boss_bar: ProgressBar
-var health_row: HBoxContainer
+var health_row: GridContainer
 var cards: Dictionary = {}
 var slots: Array[Label] = []
 var equipment_slots: Array[Dictionary] = []
@@ -98,14 +98,30 @@ func setup(owner_ui) -> void:
 		var note = text(detail,12)
 		equipment_slots.append({"panel":panel,"icon":icon,"title":title,"note":note,
 			"key":key,"selected":slot_style(true),"idle":slot_style(false)})
-	var cooldown_row = HBoxContainer.new()
-	column.add_child(cooldown_row)
+	# The ultimate itself stays on the exact screen centre line.
 	ultimate_ring = preload("res://scripts/cooldown_ring.gd").new()
-	cooldown_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	cooldown_row.add_child(ultimate_ring)
+	ultimate_ring.name = "UltimateCharge"
+	content.add_child(ultimate_ring)
+	ultimate_ring.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	ultimate_ring.offset_left = -47
+	ultimate_ring.offset_right = 47
+	ultimate_ring.offset_top = -150
+	ultimate_ring.offset_bottom = -38
 	grenade_ring = preload("res://scripts/cooldown_ring.gd").new()
-	cooldown_row.add_child(grenade_ring)
-	ultimate_notice = text(column,14)
+	grenade_ring.name = "GrenadeCharge"
+	grenade_ring.kind = "grenade"
+	content.add_child(grenade_ring)
+	grenade_ring.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	grenade_ring.offset_left = 68
+	grenade_ring.offset_right = 162
+	grenade_ring.offset_top = -150
+	grenade_ring.offset_bottom = -38
+	ultimate_notice = text(content,14)
+	ultimate_notice.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	ultimate_notice.offset_left = 520
+	ultimate_notice.offset_right = -520
+	ultimate_notice.offset_top = -180
+	ultimate_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	crystal_alert = text(content,28)
 	crystal_alert.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	crystal_alert.offset_top = 110
@@ -114,11 +130,13 @@ func setup(owner_ui) -> void:
 	crystal_alert.add_theme_color_override("font_color",Color("ff785b"))
 	crystal_alert.add_theme_constant_override("outline_size",4)
 	crystal_alert.add_theme_color_override("font_outline_color",Color("191c1c"))
-	health_row = HBoxContainer.new()
-	health_row.add_theme_constant_override("separation",12)
-	health_row.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	health_row = GridContainer.new()
+	health_row.columns = 2
+	health_row.add_theme_constant_override("h_separation",12)
+	health_row.add_theme_constant_override("v_separation",8)
+	health_row.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	health_row.offset_left = 28
-	health_row.offset_right = -210
+	health_row.offset_right = 512
 	health_row.offset_top = -146
 	health_row.offset_bottom = -52
 	content.add_child(health_row)
@@ -323,7 +341,7 @@ func sync() -> void:
 	grenade_ring.visible = sim.mode == "defense"
 	var grenade_capacity: int = p.get("grenade_capacity",0)
 	var grenade_charge = 0.0 if grenade_capacity == 0 else 1.0 if p.grenades >= grenade_capacity else clampf(1.0-float(p.get("grenade_replenish",15.0))/15.0,0,1)
-	grenade_ring.sync(grenade_charge,"未解锁" if grenade_capacity == 0 else "%d%%" % floori(grenade_charge*100),"手雷 %d/%d" % [p.get("grenades",0),grenade_capacity],grenade_capacity == 0)
+	grenade_ring.sync(grenade_charge,"","手雷 %d/%d" % [p.get("grenades",0),grenade_capacity],grenade_capacity == 0)
 	ultimate_notice.text = p.get("ultimate_notice","") if p.get("ultimate_notice_until",0.0) > sim.elapsed else ""
 	var w: Dictionary = sim.combat_weapon(p)
 	weapon_label.text = str(w.label)
@@ -353,6 +371,7 @@ func sync() -> void:
 			var item: Dictionary = equipment_slots[i]
 			var index: int = p.weapon1 if i == 0 else p.weapon2 if i == 1 else 6
 			var selected: bool = p.slot == i+1
+			item.panel.visible = i < 3
 			var available: bool = i < 3 or p.grenades > 0
 			item.panel.add_theme_stylebox_override("panel",item.selected if selected else item.idle)
 			item.key.text = Data.binding_label("weapon_%d" % i)
@@ -374,6 +393,7 @@ func sync() -> void:
 		if not sim.pawns.has(id):
 			cards[id].panel.queue_free()
 			cards.erase(id)
+	health_row.offset_top = -244 if ids.size() > 2 else -146
 	for i in ids.size():
 		var pawn: Dictionary = sim.pawns[ids[i]]
 		var item: Dictionary = cards[ids[i]] if cards.has(ids[i]) else health_card(ids[i])

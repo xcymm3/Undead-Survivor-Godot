@@ -1,0 +1,85 @@
+extends Node
+## Explicit, frozen production scene captures for the requested shop/HUD review.
+const Layout = preload("res://scripts/defense_layout.gd")
+const Catalog = preload("res://scripts/preparation_catalog.gd")
+const Tutorial = preload("res://scripts/onboarding.gd")
+var game
+
+func rectangle(rect: Rect2) -> Dictionary:
+	return {"x":rect.position.x,"y":rect.position.y,"width":rect.size.x,"height":rect.size.y}
+
+func stage(scenario: String) -> void:
+	var progress = game.get_node("/root/Progress")
+	progress.store = preload("res://scripts/progression_store.gd").new()
+	progress.store.data.merge({"intro_seen":true,"tutorial_stage":Tutorial.SHOP_PENDING if scenario in ["shop_review_front","shop_review_side"] else Tutorial.COMPLETE,"ultimate_unlocked":true,"coins":350.0},true)
+	progress.store.data.grenade_level = 3
+	game.start_solo("defense",491)
+	game.set_process(false)
+	game.set_physics_process(false)
+	await get_tree().physics_frame
+	game.ui.clear_menu()
+	var sim = game.sim
+	var p = game.local_pawn()
+	p.height = 3.0
+	p.grenade_capacity = 3
+	p.grenades = 1
+	p.grenade_replenish = 5.25
+	p.ultimate_cd = 35.0
+	game.weapon.hide()
+	var point = Vector3(Layout.SHOP_OWNER.x,4.7,Layout.SHOP_OWNER.y)
+	match scenario:
+		"shop_review_front":
+			p.pos = Layout.SHOP_OWNER+Vector2(-4.5,0)
+			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
+			game.camera.look_at(point)
+		"shop_review_side":
+			p.pos = Vector2(10.7,Layout.SHOP_COUNTER_FRONT_Z-2.2)
+			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
+			game.camera.look_at(point)
+		"shop_review_wall":
+			p.pos = Vector2(-2.7,Layout.SHOP_AREA.end.y-2.0)
+			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
+			game.camera.look_at(Vector3(-2.7,4.7,Layout.SHOP_AREA.end.y-.7))
+			game.weapon.show()
+		"shop_review_four", "shop_review_grenade":
+			p.pos = Layout.CRYSTAL+Vector2(0,6)
+			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
+			game.camera.look_at(Vector3(0,4.4,Layout.CRYSTAL.y-15))
+			if scenario == "shop_review_four":
+				for index in 3:
+					var guest = p.duplicate(true)
+					guest.id = "review_guest_"+str(index)
+					guest.name = ["队友·先锋","队友·守卫","队友·斥候"][index]
+					guest.hp = [74.5,42.0,100.0][index]
+					guest.pos = Layout.CRYSTAL+Vector2(-3+index*3,-3)
+					sim.pawns[guest.id] = guest
+			game.weapon.show()
+		_:
+			p.pos = Vector2(9,Layout.SHOP_FRONT_Z+1.5)
+			game.camera.position = Vector3(p.pos.x,6.2,p.pos.y)
+			game.camera.look_at(Vector3(-2,4.2,Layout.SHOP_FRONT_Z+10.5))
+	game.camera.fov = 72 if scenario == "shop_review_overview" else 65
+	p.yaw = game.camera.rotation.y
+	p.pitch = game.camera.rotation.x
+	game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-20))
+	game.arena.scenery.sync(sim.defense)
+	game.arena.scenery.sync_focus(sim,p)
+	game.running = true
+	game.ui.native_hud.sync()
+	game.running = false
+	game.ui.native_hud.upgrade_details.hide()
+	game.get_viewport().scaling_3d_scale = 1.0
+	RenderingServer.render_loop_enabled = false
+	for index in 6: await get_tree().process_frame
+	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+	RenderingServer.force_draw(true)
+	var hud = game.ui.native_hud
+	var ultimate_rect: Rect2 = hud.ultimate_ring.get_global_rect()
+	var grenade_rect: Rect2 = hud.grenade_ring.get_global_rect()
+	var health_rects: Array = []
+	var overlaps = false
+	for card in hud.cards.values():
+		var rect: Rect2 = card.panel.get_global_rect()
+		health_rects.append(rectangle(rect))
+		overlaps = overlaps or rect.intersects(ultimate_rect) or rect.intersects(grenade_rect)
+	JavaScriptBridge.eval("window.__shopHudReviewReady="+JSON.stringify({"scenario":scenario,"focus":Catalog.focus(sim,p).get("id",""),"owner_yaw":game.arena.scenery.shop.owner_model.rotation.y,"ultimate_rect":rectangle(ultimate_rect),"grenade_rect":rectangle(grenade_rect),"health_rects":health_rects,"overlaps":overlaps,"grenade_caption":hud.grenade_ring.caption,"grenade_progress":hud.grenade_ring.progress,"width":game.get_viewport().get_visible_rect().size.x,"stations":Catalog.stations().size()}),true)
