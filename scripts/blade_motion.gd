@@ -3,7 +3,7 @@ extends RefCounted
 const SIZE = .56
 const HORIZONTAL = 1.25
 const VERTICAL = .72
-const FORWARD_LEAN = .32
+const FORWARD_LEAN = .48
 const LENGTH = preload("res://scripts/long_blade.gd").TIP*SIZE
 const MOUTH = Vector3(.36,-.28,-1.42)
 const PULL = Vector3(-.82,.43,-.37)
