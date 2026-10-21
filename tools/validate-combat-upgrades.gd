@@ -37,6 +37,12 @@ func validate_blade_motion(game) -> void:
 	var original_head = original_axe.find_child("FireAxeHead",true,false)
 	var longer_head = longer_axe.find_child("FireAxeHead",true,false)
 	check(longer_head.basis.is_equal_approx(original_head.basis) and longer_head.position.y > original_head.position.y,"Axe head moves up the longer handle without scaling")
+	var head_lift: float = longer_head.position.y-original_head.position.y
+	var assembly_parts = ["NeckGuard","FireAxeHead","FireAxeBlade","FireAxePick","PickTip","HeadSocket","HandleWedge"]
+	for title in assembly_parts:
+		var original_part = original_axe.find_child(title,true,false)
+		var extended_part = longer_axe.find_child(title,true,false)
+		check((extended_part.position-original_part.position).is_equal_approx(Vector3(0,head_lift,0)) and extended_part.basis.is_equal_approx(original_part.basis),"Axe head assembly stays rigid after shaft extension: "+title)
 	var imported_player = game.weapon.find_animation(longer_axe)
 	root.add_child(longer_axe)
 	for clip in ["fire","reload"]:
@@ -44,6 +50,8 @@ func validate_blade_motion(game) -> void:
 		imported_player.pause()
 		imported_player.seek(imported_player.get_animation(clip).length*.5,true)
 		check(is_equal_approx(longer_shaft.scale.y/original_shaft.scale.y,1.10) and longer_head.position.y > original_head.position.y,"Imported "+clip+" cannot undo the longer shaft or head position")
+		for title in assembly_parts:
+			check(is_equal_approx(longer_axe.find_child(title,true,false).position.y-original_axe.find_child(title,true,false).position.y,head_lift),"Imported "+clip+" keeps the head connected: "+title)
 	original_axe.free()
 	longer_axe.free()
 	var sheath: Transform3D = motion_type.sheath_pose()

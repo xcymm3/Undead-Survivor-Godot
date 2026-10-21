@@ -1,5 +1,6 @@
 extends RefCounted
 ## One geometry and sight factory for first person, partners, displays and pickups.
+const AXE_HEAD_PARTS = ["NeckGuard","FireAxeHead","FireAxeBlade","FireAxePick","PickTip","HeadSocket","HandleWedge"]
 
 static func create(id: String, first_person := false) -> Node3D:
 	var model: Node3D
@@ -31,7 +32,7 @@ static func extend_axe_handle(model: Node3D) -> void:
 	shaft.scale.y *= LENGTH_SCALE
 	shaft.position.y += bounds.position.y*(1.0-LENGTH_SCALE)
 	var extension = bounds.size.y*(LENGTH_SCALE-1.0)
-	for title in ["NeckGuard","FireAxeHead","HandleWedge"]:
+	for title in AXE_HEAD_PARTS:
 		var part = model.find_child(title,true,false) as Node3D
 		part.position.y += extension
 	# Imported clips also key static child transforms. Keep their root choreography,
@@ -46,7 +47,7 @@ static func extend_axe_handle(model: Node3D) -> void:
 					if path.get_name_count() == 0: continue
 					var target = str(path.get_name(path.get_name_count()-1))
 					var type = animation.track_get_type(track)
-					if (target == "FiberglassHandle" and type in [Animation.TYPE_POSITION_3D,Animation.TYPE_SCALE_3D]) or (target in ["NeckGuard","FireAxeHead","HandleWedge"] and type == Animation.TYPE_POSITION_3D):
+					if (target == "FiberglassHandle" and type in [Animation.TYPE_POSITION_3D,Animation.TYPE_SCALE_3D]) or (target in AXE_HEAD_PARTS and type == Animation.TYPE_POSITION_3D):
 						animation.remove_track(track)
 			player.remove_animation_library(title)
 			player.add_animation_library(title,library)
