@@ -18,7 +18,7 @@ static func validate(game, check: Callable) -> void:
 	var p = game.local_pawn()
 	check.call(not p.ultimate_unlocked and p.grenades == 0 and p.grenade_capacity == 0,"A new save starts with locked ultimate and zero grenade capacity")
 	game.ui.native_hud.sync()
-	check.call(not game.ui.native_hud.ultimate_ring.visible and game.ui.native_hud.equipment_slots[3].title.text == "手雷  0 / 0","HUD shows the locked ultimate and 0/0 grenades together")
+	check.call(game.ui.native_hud.ultimate_ring.visible and game.ui.native_hud.ultimate_ring.locked and game.ui.native_hud.ultimate_ring.progress == 0 and game.ui.native_hud.ultimate_ring.caption == "0%" and game.ui.native_hud.ultimate_ring.detail == "未解锁" and game.ui.native_hud.equipment_slots[3].title.text == "手雷  0 / 0","HUD shows the locked ultimate and 0/0 grenades together")
 	var ultimate = preload("res://scripts/ultimate.gd")
 	sim.defense.started = true
 	ultimate.tick(sim,p,{"ultimate":true},0)
@@ -119,7 +119,7 @@ static func validate(game, check: Callable) -> void:
 	check.call(not p.ultimate_unlocked and not Store.new(path).data.ultimate_unlocked,"The skill stays locked through 499 crystal damage")
 	sim.damage_crystal(attacker,1)
 	game.ui.native_hud.sync()
-	check.call(p.ultimate_unlocked and p.ultimate_cd == 0 and game.ui.native_hud.ultimate_ring.caption == "100%" and Tutorial.hint_mode(sim.defense) == "ultimate","Exactly 500 cumulative enemy crystal damage unlocks and fully charges the ultimate with a top hint")
+	check.call(p.ultimate_unlocked and p.ultimate_cd == 0 and game.ui.native_hud.ultimate_ring.caption == "100%" and game.ui.native_hud.ultimate_ring.detail == game.get_node("/root/Data").binding_label("ultimate") and Tutorial.hint_mode(sim.defense) == "ultimate","Exactly 500 cumulative enemy crystal damage unlocks and fully charges the ultimate with a top hint")
 	check.call(Store.new(path).data.ultimate_unlocked,"The ultimate unlock persists immediately in the save")
 	p.ultimate_cd = 37.0
 	sim.damage_crystal(attacker,1)

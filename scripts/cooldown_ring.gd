@@ -21,6 +21,7 @@ const GLEAM_COLOR = Color("e8fcff")
 const TEXT_COLOR = Color("f2eedf")
 const MUTED_COLOR = Color("829084")
 const DETAIL_COLOR = Color("ddceb0")
+const DetailFont = preload("res://assets/fonts/ZCOOLQingKeHuangYou-Regular.ttf")
 
 func radius() -> float:
 	return 27.0 if compact else 36.0
@@ -92,4 +93,5 @@ func _draw() -> void:
 	if compact: return
 	var font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
 	draw_string(font,Vector2((size.x-font.get_string_size(caption,HORIZONTAL_ALIGNMENT_LEFT,-1,16).x)/2,104),caption,HORIZONTAL_ALIGNMENT_LEFT,-1,16,MUTED_COLOR if locked else TEXT_COLOR)
-	draw_string(font,Vector2((size.x-font.get_string_size(detail,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x)/2,126),detail,HORIZONTAL_ALIGNMENT_LEFT,-1,13,DETAIL_COLOR)
+	var detail_size = 24 if locked else 32
+	draw_string(DetailFont,Vector2((size.x-DetailFont.get_string_size(detail,HORIZONTAL_ALIGNMENT_LEFT,-1,detail_size).x)/2,136),detail,HORIZONTAL_ALIGNMENT_LEFT,-1,detail_size,DETAIL_COLOR)

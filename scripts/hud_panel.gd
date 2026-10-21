@@ -313,11 +313,11 @@ func sync() -> void:
 	status_panel.visible = sim.mode == "defense"
 	status_panel.sync(sim.wave,int(defense.get("crystal_hp",0)),int(defense.get("crystal_max_hp",1)),bool(defense.get("started",false)),float(defense.get("crystal_alert_until",-1)) > sim.elapsed)
 	crystal_alert.visible = float(defense.get("crystal_alert_until",-1)) > sim.elapsed
-	ultimate_ring.visible = sim.mode == "defense" and preload("res://scripts/ultimate.gd").unlocked(p)
+	ultimate_ring.visible = sim.mode == "defense"
 	var ultimate = preload("res://scripts/ultimate.gd")
 	var unlocked: bool = ultimate.unlocked(p)
 	var charge = 1.0-float(p.get("ultimate_cd",0.0))/ultimate.cooldown(sim.progression) if unlocked else 0.0
-	ultimate_ring.sync(charge,"未解锁" if not unlocked else "%d%%" % floori(charge*100) if not ultimate.active(p) else Data.binding_label("ultimate"),"终极技能" if not unlocked else "终极技能 %ds" % ceili(p.ultimate_remaining) if ultimate.active(p) else "终极技能 · "+Data.binding_label("ultimate"),not unlocked)
+	ultimate_ring.sync(charge,"%d%%" % floori(charge*100),"未解锁" if not unlocked else Data.binding_label("ultimate"),not unlocked)
 	grenade_ring.visible = sim.mode == "defense"
 	var grenade_capacity: int = p.get("grenade_capacity",0)
 	var grenade_charge = 0.0 if grenade_capacity == 0 else 1.0 if p.grenades >= grenade_capacity else clampf(1.0-float(p.get("grenade_replenish",15.0))/15.0,0,1)
