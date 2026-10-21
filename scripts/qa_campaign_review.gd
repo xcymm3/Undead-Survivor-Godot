@@ -14,6 +14,9 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
+	if scenario in ["bridgehead_boundary","merchant_counter","shop_pending","rifle_ads","interaction_repeat","shop_exterior"]:
+		await stage_refinements(scenario)
+		return
 	if scenario == "axe_comparison":
 		await stage_axe_comparison()
 		return
@@ -485,3 +488,106 @@ func stage_axe_comparison() -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":"axe_comparison","focus_visible":false,"head_lift":float(heads[1])-float(heads[0])}),true)
+
+
+func stage_refinements(scenario: String) -> void:
+	game.start_solo("defense",42)
+	await get_tree().physics_frame
+	game.running = false
+	game.ui.clear_menu()
+	game.sim.defense.erase("intro_elapsed")
+	game.sim.defense["tutorial_stage"] = 5
+	game.sim.progression.data["ultimate_unlocked"] = true
+	for pawn in game.sim.pawns.values(): pawn["ultimate_unlocked"] = true
+	game.sim.roster.clear()
+	game.sim.zombies.clear()
+	var layout = preload("res://scripts/defense_layout.gd")
+	var p: Dictionary = game.local_pawn()
+	var sim = game.sim
+	game.weapon.hide()
+	game.ui.root.hide()
+	if scenario == "bridgehead_boundary":
+		# Review overlay only; production colliders remain invisible.
+		for index in 3:
+			var barrier = game.arena.scenery.get_node("PlayerSpawnBoundary%d" % index)
+			var overlay = MeshInstance3D.new()
+			overlay.mesh = BoxMesh.new()
+			overlay.mesh.size = Vector3(12.4,.07,.12) if index == 0 else Vector3(.12,.07,6.4)
+			overlay.position = Vector3(barrier.position.x,.15,barrier.position.z)
+			var material = StandardMaterial3D.new()
+			material.albedo_color = Color("ffad52")
+			material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			overlay.material_override = material
+			game.add_child(overlay)
+			var curtain = MeshInstance3D.new()
+			curtain.mesh = BoxMesh.new()
+			curtain.mesh.size = overlay.mesh.size+Vector3(0,2.4,0)
+			curtain.position = overlay.position+Vector3(0,1.2,0)
+			var translucent = material.duplicate()
+			translucent.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			translucent.albedo_color.a = .20
+			curtain.material_override = translucent
+			game.add_child(curtain)
+		game.camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		game.camera.size = 29
+		game.camera.position = Vector3(-21,25,-46)
+		game.camera.look_at(Vector3(0,0,-64))
+		for entry in [["空气墙 · 桥头外 6 米",Vector3(0,3,-68)],["可活动区 · 宽 12 米",Vector3(0,.3,-64)],["僵尸通道保持畅通",Vector3(0,1,-73)]]:
+			var label = Label3D.new()
+			label.text = entry[0]
+			label.position = entry[1]
+			label.font = preload("res://assets/fonts/NotoSansCJKsc-Regular.otf")
+			label.font_size = 48
+			label.pixel_size = .01
+			label.outline_size = 8
+			label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			label.no_depth_test = true
+			game.add_child(label)
+	elif scenario == "shop_exterior":
+		game.camera.position = Vector3(25,9,layout.SHOP_FRONT_Z-19)
+		game.camera.look_at(Vector3(0,6.7,layout.SHOP_FRONT_Z+2))
+	elif scenario == "merchant_counter":
+		game.camera.position = Vector3(layout.SHOP_OWNER.x-2.4,5.0,layout.SHOP_COUNTER_FRONT_Z-4)
+		game.camera.look_at(Vector3(layout.SHOP_OWNER.x,4.7,layout.SHOP_OWNER.y))
+	elif scenario == "shop_pending":
+		sim.defense.tutorial_stage = 1
+		game.camera.position = Vector3(-8,5.5,layout.SHOP_FRONT_Z+14)
+		game.camera.look_at(Vector3(-2,4.2,layout.SHOP_FRONT_Z+6))
+	elif scenario == "rifle_ads":
+		p.pos = Vector2(0,-25)
+		p.height = layout.height(p.pos)
+		p.yaw = 0
+		p.pitch = 0
+		p.weapon = 0
+		p.slot = 1
+		p.aim = true
+		game.camera.position = Vector3(p.pos.x,p.height+1.7,p.pos.y)
+		game.camera.rotation = Vector3.ZERO
+		game.weapon.show()
+		for step in 60: game.weapon.sync(p,1.0/60,2.0,Vector3(0,0,-100))
+		game.ui.root.show()
+	else:
+		sim.progression.data.coins = 10000
+		sim.progression.data.weapons.rifle = 0
+		face(sim,p,"rifle")
+		p.input = {"interact":true}
+		p.input_age = 0
+		sim.defense_director.interactions(1.01)
+		p.input = {}
+		sim.defense_director.interactions(.01)
+		p.input = {"interact":true}
+		p.input_age = 0
+		sim.defense_director.interactions(.45)
+		game.camera.position = Vector3(p.pos.x,p.height+1.7,p.pos.y)
+		game.camera.rotation = Vector3(p.pitch,p.yaw,0)
+	sim.defense_director.sync_world()
+	game.arena.scenery.sync_focus(sim,p)
+	if scenario == "interaction_repeat": game.ui.root.show()
+	game.ui.tick(0)
+	if scenario in ["bridgehead_boundary","merchant_counter","shop_pending","shop_exterior"]: game.ui.root.hide()
+	game.get_viewport().scaling_3d_scale = 1.0
+	RenderingServer.render_loop_enabled = false
+	for i in 6: await get_tree().process_frame
+	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+	RenderingServer.force_draw(true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"focus_visible":game.arena.scenery.preparation.focus_label.visible,"progress":game.arena.scenery.preparation.interaction_ring.progress,"ring_state":game.arena.scenery.preparation.interaction_ring.state}),true)

@@ -861,6 +861,7 @@ func run() -> void:
 	session.playing = false
 	await load("res://tools/validate-first-attempt-intro.gd").validate(game,check)
 	await load("res://tools/validate-map-redesign.gd").validate(game,check)
+	await load("res://tools/validate-demo-refinements.gd").validate(game,check)
 	game.return_home()
 	check(not game.ui.native_hud.visible,"HUD hides on return to menu")
 	check(game.display_buffer.history.is_empty(),"Leaving clears interpolation history")
