@@ -82,11 +82,14 @@ func run() -> void:
 		var point: Vector2 = sim.defense_spawner.random_point()
 		if sim.defense_spawner.ground_clear(point): sim.spawn(point,"normal")
 		if sim.zombies.size() == 50: break
+	var never_crossed_cover = true
 	for tick in 1000:
 		sim.elapsed += .05
 		for enemy in sim.zombies:
 			sim.move_zombie(enemy,Vector2(0,-30),4.8,.05,enemy.pos.distance_to(Vector2(0,-30)),1.25,true)
+			never_crossed_cover = never_crossed_cover and sim.arena.clear(enemy.pos,enemy.pos)
 	var arrived = sim.zombies.filter(func(enemy): return enemy.pos.y > -35).size()
+	check(never_crossed_cover,"All woodland traversal frames remain outside trunk, branch, leaf and shrub navigation footprints")
 	check(arrived == 50,"All 50 far-bank births actually traverse woodland and bridge (%d/50)" % arrived)
 	sim = fresh()
 	await physics_frame
