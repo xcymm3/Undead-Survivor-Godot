@@ -2,7 +2,7 @@ extends RefCounted
 ## Authority owns duration, cooldown and inventory locking.
 const DURATION = 10.0
 const COOLDOWN = 100.0
-const DAMAGE = [200,400,600,900,1350]
+const DAMAGE = [200,400,800,1600,3200]
 const DRAW_TIME = 1.1
 const SHEATHE_TIME = .95
 

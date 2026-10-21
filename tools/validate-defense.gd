@@ -191,26 +191,11 @@ func run() -> void:
 	check(sim.zombies[0].pos.y <= data.Maps.Defense.CRYSTAL.y-1.9500000000000028 and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Crystal attacker stays outside the solid crystal")
 	sim.zombies.clear()
 	crystal_before = sim.defense.crystal_hp
-	sim.spawn(Vector2(0,data.Maps.Defense.CRYSTAL.y-6.0),"crawler")
-	for i in 35: sim.step(.1)
-	var crawler: Dictionary = sim.zombies[0]
-	check(crawler.pos.y <= data.Maps.Defense.CRYSTAL.y-1.9500000000000028 and game.arena.clear(crawler.pos,crawler.pos),"Crawler remains outside the solid crystal")
-	check(sim.defense.crystal_hp < crystal_before,"Crawler can strike the crystal without entering it")
-	var shot_origin := Vector3(0,4.6,data.Maps.Defense.CRYSTAL.y-7.0)
-	var crawler_hittable := false
-	for aim_step in 8:
-		var aim := Vector3(crawler.pos.x,3.2+aim_step*.1,crawler.pos.y)
-		var ray := (aim-shot_origin).normalized()
-		var hit: Dictionary = load("res://scripts/enemy_view.gd").hit(crawler,shot_origin,ray,8,sim.elapsed,false)
-		if not hit.is_empty() and game.arena.surface_hit(shot_origin,shot_origin+ray*hit.distance).is_empty(): crawler_hittable = true
-	check(crawler_hittable,"Approach-lane shots can hit a crawler beside the crystal")
-	sim.zombies.clear()
-	crystal_before = sim.defense.crystal_hp
 	sim.spawn(Vector2(4,data.Maps.Defense.CRYSTAL.y-4.0),"normal")
 	for i in 45: sim.step(.1)
 	check(sim.defense.crystal_hp < crystal_before and game.arena.clear(sim.zombies[0].pos,sim.zombies[0].pos),"Diagonal attackers surround and damage the crystal")
 	# Every enemy archetype must reach and damage the crystal from each open face.
-	for kind in ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football"]:
+	for kind in ["normal","cone","bucket","imp","shield","berserker","giant","football"]:
 		for entry in [data.Maps.Defense.CRYSTAL+Vector2(0,-6),data.Maps.Defense.CRYSTAL+Vector2(-5,0),data.Maps.Defense.CRYSTAL+Vector2(5,0),data.Maps.Defense.CRYSTAL+Vector2(0,4),data.Maps.Defense.CRYSTAL+Vector2(-4,-4),data.Maps.Defense.CRYSTAL+Vector2(4,-4),data.Maps.Defense.CRYSTAL+Vector2(-4,4),data.Maps.Defense.CRYSTAL+Vector2(4,4)]:
 			sim.zombies.clear()
 			sim.paths.clear()

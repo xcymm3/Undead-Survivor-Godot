@@ -143,7 +143,7 @@ func stage_case(count: int, scenario: String) -> Dictionary:
 			if positions.size() >= count: break
 	var begin = Time.get_ticks_usec()
 	for i in mini(count,positions.size()):
-		# Controlled ordinary population: crawlers are no longer generated in play.
+		# Controlled ordinary population uses the current normal type.
 		sim.spawn(positions[i],(["normal","normal","cone","bucket","imp","shield","berserker","giant","football"][i%9] if scenario == "mixed" else "dancer" if scenario == "boss" and i == 0 else "normal"))
 		var z: Dictionary = sim.zombies[-1]
 		# Preserve population while retaining real hit, damage and flinch work.

@@ -118,12 +118,12 @@ func run() -> void:
 		manager.step(.12)
 		check(turret.shots == outside,"%s does not fire beyond ten metres" % id)
 		sim.zombies.clear()
-		sim.spawn(turret.pos+Vector2(0,3),"crawler")
-		var crawler: Dictionary = sim.zombies[-1]
-		crawler.body = 10000.0
-		crawler.hp = 10000.0
+		sim.spawn(turret.pos+Vector2(0,3),"imp")
+		var small_target: Dictionary = sim.zombies[-1]
+		small_target.body = 10000.0
+		small_target.hp = 10000.0
 		manager.step(.12)
-		check(crawler.hp < 10000,"%s tracks the crawler's actual lowered torso pose" % id)
+		check(small_target.hp < 10000,"%s tracks the small target's actual torso pose" % id)
 		manager.find(mirror_id).cooldown = 0.0
 		turret.cooldown = 0.0
 		manager.damage(id,200)

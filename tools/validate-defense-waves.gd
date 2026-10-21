@@ -136,13 +136,13 @@ func run() -> void:
 		var scheduled = (index+1)*planner.interval
 		on_time = on_time and batches[index].count == planner.scheduled_count(scheduled)-planner.scheduled_count(index*planner.interval) and absf(batches[index].time-scheduled) <= .02
 	check(on_time,"Real releases follow the reduced population's evenly spaced ten-second plan")
-	check(counts(all_spawned) == counts(initial_roster),"Actual spawns match the complete ordinary composition with no crawlers")
+	check(counts(all_spawned) == counts(initial_roster),"Actual spawns match the complete ordinary composition using only current types")
 	check(safe,"Every newborn position is outside the 2D scenery clearance margin")
 	check(sim.pawns.solo.shots == 0 and sim.pawns.solo.shoves == 0,"The spawn observation performs no player firing or shoving")
 	# An occupied platform must retain its backlog and resume safely later.
 	planner.reset(5)
 	sim.spawned = 0
-	sim.roster = ["crawler","normal","normal","normal","normal"]
+	sim.roster = ["normal","normal","normal","normal","normal"]
 	sim.zombies.clear()
 	var saved_region: Rect2 = planner.spawn_region
 	var blocked_point = Vector2(-10,-105)
@@ -154,7 +154,7 @@ func run() -> void:
 	planner.spawn_region = saved_region
 	planner.step(.1,sim.pawns.values())
 	check(sim.spawned == 5 and sim.roster.is_empty(),"Blocked quota resumes after safe ground becomes available")
-	check(sim.zombies.all(func(z): return z.kind == "normal"),"Actual spawner replaces a legacy crawler entry with a normal zombie")
+	check(sim.zombies.all(func(z): return z.kind == "normal"),"Resumed spawner retains the authored ordinary type")
 	var output = {"seed":20260928,"mode":"solo","difficulty":"normal","budget":20,"spent":Population.points(initial_roster),"unspent":20-Population.points(initial_roster),"plan":first_plan,"counts":counts(all_spawned),"batches":batches,"spawn_safe":safe,"spawn_issues":spawn_issues,"checks":checks,"failures":failures,"scope":"actual authority physics; no browser, no full wave survival result"}
 	DirAccess.make_dir_recursive_absolute("res://artifacts")
 	var file = FileAccess.open("res://artifacts/first-wave-horde.json",FileAccess.WRITE)

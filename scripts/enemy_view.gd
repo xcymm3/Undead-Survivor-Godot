@@ -8,7 +8,7 @@ var toy_material: StandardMaterial3D
 var rage_eye_material: StandardMaterial3D
 var bucket_material: StandardMaterial3D
 var dancer_material: StandardMaterial3D
-var kinds = ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football","dancer"]
+var kinds = ["normal","cone","bucket","imp","shield","berserker","giant","football","dancer"]
 const Motion = preload("res://scripts/normal_zombie_motion.gd")
 const Toy = preload("res://scripts/normal_zombie_art.gd")
 const Wardrobe = preload("res://scripts/zombie_outfits.gd")
@@ -41,7 +41,7 @@ func _ready() -> void:
 
 func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1) -> ArrayMesh:
 	if kind in ["normal","cone","bucket"] and outfit < 0: outfit = 1
-	var dressed = outfit >= 0 and kind in ["normal","crawler","cone","bucket"]
+	var dressed = outfit >= 0 and kind in ["normal","cone","bucket"]
 	var key = kind+str(outfit if dressed else palette)+str(rage)+str(armor)+str(dressed)
 	if meshes.has(key): return meshes[key]
 	var styled = Toy.styled(kind)
@@ -179,7 +179,6 @@ static func bone_for(part: Dictionary) -> int:
 
 static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
 	if z.kind == "normal": return Motion.pose(z,elapsed,stationary)
-	if z.kind == "crawler": return crawl_pose(z,elapsed,stationary)
 	var attack_advancing: bool = z.attack_time > 0 and z.attack_time < Data.attack(z.kind,z.rage).x
 	var moving: bool = not stationary and z.get("move_speed",0.0) > .05 and z.hp > 0 and (z.attack_time <= 0 or attack_advancing) and z.state not in ["windup","stunned"] and z.rage_pause <= 0
 	var stride = sin(z.get("gait",(elapsed-z.born)*5+z.id*2)) if moving else 0.0
@@ -217,38 +216,6 @@ static func pose_state(z: Dictionary, elapsed: float, stationary: bool) -> Dicti
 			bones[index] = Transform3D(rotation,pivot-rotation*pivot)
 	var root = root_transform(z,elapsed,stationary,stride,toy_walk)
 	if Toy.styled(z.kind) and z.hp > 0 and z.get("emerge_remaining",0.0) <= 0 and z.get("dance_remaining",0.0) <= 0: root = Toy.plant_feet(root,bones,Data.parts,Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense")),z.kind)
-	return {"root":root,"bones":bones}
-
-static func crawl_pose(z: Dictionary, elapsed: float, stationary: bool) -> Dictionary:
-	var moving: bool = z.hp > 0 and not stationary and z.get("move_speed",0.0) > .05 and z.state != "stunned"
-	var phase: float = z.get("gait",elapsed*5+z.id)
-	var idle: bool = z.hp > 0 and not moving and z.attack_time <= 0 and z.state == "ready"
-	var stride = sin(phase) if moving else sin(elapsed*1.4+z.id*2.17)*.06 if idle else 0.0
-	var ground = Data.enemy_ground_height(z.pos,z.get("map_id","graypine_defense"))
-	var death: float = smoothstep(0.0,1.0,clampf((.85-float(z.get("down",.85)))/.6,0,1)) if z.hp <= 0 else 0.0
-	var root = Transform3D(Basis(Vector3.UP,z.heading),Vector3(z.pos.x,ground+lerpf(.36,.27,death)+absf(stride)*.015,z.pos.y))
-	if idle:
-		root.origin.y += sin(elapsed*1.4+z.id*2.17)*.012
-		root.basis *= Basis(Vector3.UP,sin(elapsed*.65+z.id)*.025)
-	var flat = Basis(Vector3.RIGHT,PI/2)
-	var bones: Array[Transform3D] = [Transform3D(flat,-(flat*Vector3(0,1.18,0)))]
-	for side in [1.0,-1.0]:
-		var rotation = Basis(Vector3.UP,stride*side*.12)*flat
-		var pivot = Vector3(-side*.19,.83,0)
-		bones.append(Transform3D(rotation,Vector3(-side*.19,0,-.35)-rotation*pivot))
-	for side in [1.0,-1.0]:
-		var pull = stride*side*(1.0-death)
-		var reach = sin(clampf(z.attack_time/Data.attack(z.kind).y,0,1)*PI) if z.hp > 0 and z.attack_time > 0 else 0.0
-		var rotation = Basis(Vector3.UP,pull*.2+side*death*.08)
-		var pivot = Vector3(-side*.43,1.3,.2)
-		var target = Vector3(-side*lerpf(.43,.46,death),lerpf(-.13,0,death)+maxf(0,pull)*.04,lerpf(.25,.48,death)+pull*.16+reach*.28)
-		bones.append(Transform3D(rotation,target-rotation*pivot))
-	bones.append(Transform3D.IDENTITY)
-	# The living crawler lifts its face; on death both hands lose support and
-	# extend forward while the head lowers face-first until it touches ground.
-	var head = Basis(Vector3.RIGHT,lerpf(-.12,PI/2,death))
-	var head_target = Vector3(0,lerpf(.17,.04,death),lerpf(.65,.53,death))
-	bones.append(Transform3D(head,head_target-head*Vector3(0,1.79,0)))
 	return {"root":root,"bones":bones}
 
 static func transforms(z: Dictionary, elapsed: float, stationary: bool) -> Array:

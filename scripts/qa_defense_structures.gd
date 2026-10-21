@@ -55,7 +55,7 @@ func stage() -> void:
 		next_support()
 	elif scenario == "kills":
 		game.sim.spawn(manager.find("turret_left").pos+Vector2(0,4),"normal")
-		game.sim.spawn(manager.find("turret_left").pos+Vector2(1,5),"crawler")
+		game.sim.spawn(manager.find("turret_left").pos+Vector2(1,5),"imp")
 	elif scenario == "destroy":
 		for i in 16:
 			var angle = float(i)/15*PI

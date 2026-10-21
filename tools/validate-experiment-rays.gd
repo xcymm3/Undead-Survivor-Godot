@@ -13,7 +13,7 @@ func run() -> void:
 	var rng = RandomNumberGenerator.new()
 	rng.seed = 712934
 	var data = root.get_node("Data")
-	var kinds = ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football","dancer"]
+	var kinds = ["normal","cone","bucket","imp","shield","berserker","giant","football","dancer"]
 	for i in 300:
 		sim.spawn(Vector2(rng.randf_range(-25,25),rng.randf_range(-90,35)),kinds[i%kinds.size()])
 	var reference = load("res://scripts/experiment_reference_enemy_view.gd")

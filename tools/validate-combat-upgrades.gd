@@ -199,12 +199,12 @@ func run() -> void:
 	var sim = game.sim
 	var p: Dictionary = sim.pawns.solo
 	var data = root.get_node("Data")
-	var expected_health = {"normal":200,"cone":400,"bucket":800,"imp":1000,"shield":2400,"berserker":9600,"giant":12000,"football":18000,"dancer":180000}
+	var expected_health = {"normal":200,"cone":400,"bucket":800,"imp":1000,"shield":2400,"berserker":10000,"giant":12000,"football":20000,"dancer":200000}
 	for kind in expected_health:
 		check(data.enemies[kind].health == expected_health[kind],"Current enemy health: "+kind)
-	for kind in {"cone":100,"bucket":300,"shield":1000,"giant":2000,"football":6000}:
-		var original = {"cone":100,"bucket":300,"shield":1000,"giant":2000,"football":6000}
-		check(data.enemies[kind].armor == original[kind]*2,"Doubled armor: "+kind)
+	var expected_armor = {"cone":200,"bucket":600,"shield":2000,"giant":4000,"football":14000}
+	for kind in expected_armor:
+		check(data.enemies[kind].armor == expected_armor[kind],"Current enemy armor: "+kind)
 	check(p.slot_ammo == [30,15] and p.slot_reserves == [180,90],"Full magazines with six current-capacity reserve magazines")
 	p.slot = 2
 	sim.equipment.select_weapon_slot(p,2)
@@ -245,7 +245,7 @@ func run() -> void:
 	check(Ultimate.tick(sim,initial_pawn,initial_pawn.input,.01) and Ultimate.active(initial_pawn),"Rank-zero ultimate activates without purchasing an unlock")
 	for rank in 5:
 		sim.progression.data.ultimate_level = rank
-		check(is_equal_approx(sim.combat_weapon(initial_pawn).damage,float([200,400,600,900,1350][rank])),"Ultimate authority damage at rank "+str(rank))
+		check(is_equal_approx(sim.combat_weapon(initial_pawn).damage,float([200,400,800,1600,3200][rank])),"Ultimate authority damage at rank "+str(rank))
 	sim.progression.data.ultimate_level = 0
 	sim.defense.started = false
 	check(sim.progression.cost("ultimate") == 250,"First ultimate upgrade costs 250 coins")
@@ -306,7 +306,7 @@ func run() -> void:
 	p.input = {"ultimate":true}
 	check(Ultimate.tick(sim,p,p.input,.01) and Ultimate.active(p),"Q activates learned ultimate")
 	var sword: Dictionary = sim.combat_weapon(p)
-	check(is_equal_approx(sword.damage,1350.0) and is_equal_approx(sword.fireDuration,data.weapons[6].fireDuration*.5),"Long blade damage scales and attack animation runs twice as fast")
+	check(is_equal_approx(sword.damage,3200.0) and is_equal_approx(sword.fireDuration,data.weapons[6].fireDuration*.5),"Long blade damage scales and attack animation runs twice as fast")
 	check(p.ultimate_cd == 0 and p.weapon == 6 and not p.reloading,"Active ultimate locks blade and has no cooldown yet")
 	p.input = {"slot":2,"weapon":2}
 	Ultimate.tick(sim,p,p.input,1)

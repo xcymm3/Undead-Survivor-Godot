@@ -49,7 +49,7 @@ static func validate(game, check: Callable) -> void:
 		var c: Vector3 = vertices[index+2].position
 		winding = winding and (b-a).cross(c-a).dot(vertices[index].normal) < 0
 	check.call(vertices.size() == 132 and winding,"Beveled primitive has forty-four outward clockwise triangles")
-	check.call(not Toy.part_visible(4,"normal") and not Toy.part_visible(4,"bucket") and Toy.part_visible(4,"crawler"),"Active toys remove the old hair cap while the legacy crawler stays unchanged")
+	check.call(not Toy.part_visible(4,"normal") and not Toy.part_visible(4,"bucket"),"Active toys remove the old hair cap for ordinary armored variants too")
 	var printed_face = Toy.face_vertices()
 	var print_in_head = true
 	for vertex in printed_face:

@@ -20,7 +20,7 @@ func run() -> void:
 	sim.zombies.clear()
 	var rng = RandomNumberGenerator.new()
 	rng.seed = 712934
-	var kinds = ["normal","crawler","cone","bucket","imp","shield","berserker","giant","football","dancer"]
+	var kinds = ["normal","cone","bucket","imp","shield","berserker","giant","football","dancer"]
 	for i in 300: sim.spawn(Vector2(rng.randf_range(-25,25),rng.randf_range(-90,35)),kinds[i%kinds.size()])
 	var index = load("res://scripts/enemy_ray_index.gd").new()
 	index.rebuild(sim.zombies)

@@ -40,13 +40,13 @@ for (const weapon of WEAPONS) {
   if (weapon.id === 'sniper') Object.assign(weapon, { capacity: 15, interval: .3, fireDuration: .28, damage: 200, headshotMultiplier: 2, piercing: true, penetrationTargets: 3, penetrationDamage: .8 });
 }
 const config = await import(pathToFileURL(path.join(cache, 'config.mjs')));
-config.ZOMBIE_TYPES.crawler = { ...config.ZOMBIE_TYPES.normal, label: '爬行僵尸' };
 config.ZOMBIE_TYPES.imp = { ...config.ZOMBIE_TYPES.imp, health: 400 };
 config.ZOMBIE_TYPES.shield = { ...config.ZOMBIE_TYPES.shield, health: 1200, armor: 1000 };
-config.ZOMBIE_TYPES.berserker = { ...config.ZOMBIE_TYPES.berserker, health: 3000 };
+config.ZOMBIE_TYPES.berserker = { ...config.ZOMBIE_TYPES.berserker, health: 10000 };
 config.ZOMBIE_TYPES.giant = { ...config.ZOMBIE_TYPES.giant, health: 6000, armor: 2000 };
-config.ZOMBIE_TYPES.football = { ...config.ZOMBIE_TYPES.football, health: 9000, armor: 6000 };
-config.ENEMY_RULES.berserker = { ...config.ENEMY_RULES.berserker, health: 3000, rageAt: 1500 };
+config.ZOMBIE_TYPES.football = { ...config.ZOMBIE_TYPES.football, health: 20000, armor: 14000 };
+config.ENEMY_RULES.berserker = { ...config.ENEMY_RULES.berserker, health: 10000, rageAt: 5000 };
+config.ZOMBIE_TYPES.dancer = { label: '舞王僵尸', health: 200000, armor: 0, tier: 5 };
 const { prepareWeapon, prepareProceduralWeapon } = await import(pathToFileURL(path.join(cache, 'weapon.mjs')));
 const audio = await import(pathToFileURL(path.join(cache, 'soundSynthesis.mjs')));
 const zombies = fs.readFileSync(path.join(source, 'src/game/zombies.ts'), 'utf8');

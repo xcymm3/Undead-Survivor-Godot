@@ -23,7 +23,7 @@ for (const scenario of ['gate', 'kills', 'destroy', 'mine', 'support']) {
       for (const sample of report.support) {
         expect(sample.attacking_gate, JSON.stringify(sample)).toBe(true);
         expect(sample.rays.some(ray => ray.distance <= 10), JSON.stringify(sample)).toBe(true);
-        if (['crawler', 'imp'].includes(sample.kind)) {
+        if (sample.kind === 'imp') {
           expect(sample.rays.every(ray => ray.blocker === 'BridgeGate/StructureCollision')).toBe(true);
           expect(sample.damage).toBe(0);
           expect(sample.shots).toBe(0);

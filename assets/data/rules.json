@@ -310,7 +310,7 @@
     },
     "berserker": {
       "label": "狂暴僵尸",
-      "health": 9600,
+      "health": 10000,
       "armor": 0,
       "tier": 3
     },
@@ -322,19 +322,13 @@
     },
     "football": {
       "label": "橄榄球僵尸",
-      "health": 18000,
-      "armor": 12000,
+      "health": 20000,
+      "armor": 14000,
       "tier": 4
-    },
-    "crawler": {
-      "label": "爬行僵尸",
-      "health": 200,
-      "armor": 0,
-      "tier": 1
     },
     "dancer": {
       "label": "舞王僵尸",
-      "health": 180000,
+      "health": 200000,
       "armor": 0,
       "tier": 5
     }
@@ -359,9 +353,9 @@
       "exposeDuration": 0.45
     },
     "berserker": {
-      "health": 3000,
+      "health": 10000,
       "speed": 1.35,
-      "rageAt": 1500,
+      "rageAt": 5000,
       "ragePause": 0.3,
       "rageSpeed": 2.6,
       "speedCap": 5.8,

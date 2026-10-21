@@ -154,10 +154,10 @@ func query(origin: Vector3, direction: Vector3, distance: float) -> Array:
 \t\tvar hz = 60 if not experiment_camera_enabled or distance < 15 else 30 if distance < 40 else 15
 \t\tvar tick = floori(elapsed*hz)
 \t\tif not visible:
-\t\t\tactor.body.transform = crawl_pose(z,elapsed,stationary).root if z.kind == "crawler" else root_transform(z,elapsed,stationary,sin(z.get("gait",0.0)))
+\t\t\tactor.body.transform = root_transform(z,elapsed,stationary,sin(z.get("gait",0.0)))
 \t\t\tcontinue
 \t\tif actor.get("experiment_tick",-1) == tick and actor.get("experiment_hz",0) == hz:
-\t\t\tactor.body.transform = crawl_pose(z,elapsed,stationary).root if z.kind == "crawler" else root_transform(z,elapsed,stationary,sin(z.get("gait",0.0)))
+\t\t\tactor.body.transform = root_transform(z,elapsed,stationary,sin(z.get("gait",0.0)))
 \t\t\tcontinue
 \t\tactor["experiment_tick"] = tick
 \t\tactor["experiment_hz"] = hz

@@ -172,9 +172,6 @@ func prepare_wave() -> void:
 	defense_spawner.reset(wave_total)
 	defense["spawn_plan"] = defense_spawner.describe()
 
-func defense_population_kind(kind: String) -> String:
-	return EnemyPopulation.population_kind(kind)
-
 func spawn(pos: Vector2, kind: String) -> void:
 	var def: Dictionary = Data.enemies[kind]
 	var armor: float = float(def.armor)
@@ -184,14 +181,13 @@ func spawn(pos: Vector2, kind: String) -> void:
 	locomotion.seed = int(random.seed) ^ (next_id*7919+104729)
 	ray_index_valid = false
 	zombies.append({"id":next_id,"map_id":map_id,"pos":pos,"kind":kind,"original":kind,"spawn_wave":wave,"hp":health,"body":body,"armor":armor,"down":0.0,"born":elapsed,"chase_speed":locomotion.randf_range(4.6,5.2),"move_speed":0.0,"gait":locomotion.randf_range(0,TAU),"shove_velocity":Vector2.ZERO,"shove_time":0.0,"heading":0.0,"attack_time":0.0,"target":"","rage":false,"rage_pause":0.0,"state":"ready","state_time":0.0,"charge_cooldown":0.0,"charge_direction":Vector2.ZERO,"charge_target":Vector2.ZERO})
-	if kind == "crawler": zombies[-1].chase_speed *= .85
 	if kind == "dancer":
 		zombies[-1].chase_speed *= .5
 		zombies[-1].max_hp = health
 		zombies[-1].summon_clock = preload("res://scripts/dancer_boss.gd").INTERVAL
 		zombies[-1].dance_remaining = 0.0
 		zombies[-1].summon_roster = []
-	if kind in ["normal","crawler","cone","bucket"]:
+	if kind in ["normal","cone","bucket"]:
 		# Cosmetic RNG never advances encounter, movement or combat randomness.
 		var wardrobe = RandomNumberGenerator.new()
 		wardrobe.seed = int(random.seed) ^ (next_id*15485863+32452843)
@@ -1190,7 +1186,7 @@ func hit_enemy(z: Dictionary, amount: float, armor_contact: bool, p: Dictionary,
 			for step in 4:
 				if arena.clear(z.pos,z.pos+push/4): z.pos += push/4
 			z["hit_push_at"] = elapsed+.04
-		if z.kind in ["normal","crawler"] and elapsed >= z.get("stagger_ready",-1.0):
+		if z.kind == "normal" and elapsed >= z.get("stagger_ready",-1.0):
 			stun(z,.18)
 			z["stagger_ready"] = elapsed+.8
 		events.append({"kind":"blood","player":p.id,"position":position})
@@ -1349,7 +1345,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	if shotgun and not shotgun_hits.is_empty():
 		for z in shotgun_hits.values():
 			# One flinch per shot, with a separate cooldown; never alter shove velocity.
-			if z.hp > 0 and z.kind in ["normal","crawler"] and z.pos.distance_to(p.pos) <= 8 and elapsed >= z.get("shotgun_stagger_ready",-1.0):
+			if z.hp > 0 and z.kind == "normal" and z.pos.distance_to(p.pos) <= 8 and elapsed >= z.get("shotgun_stagger_ready",-1.0):
 				stun(z,.4)
 				z["shotgun_stagger_ready"] = elapsed+1.0
 		events.append({"kind":"shotgun_impact","player":p.id,"position":impact_point,"hits":shotgun_hits.size()})

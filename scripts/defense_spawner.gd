@@ -146,7 +146,7 @@ func step(dt: float, living: Array) -> void:
 		if not Layout.enemy_spawn_allowed(point) or near_occupied(occupied,point): continue
 		if living.any(func(p): return p.pos.distance_squared_to(point) < 64): continue
 		if not ground_clear(point): continue
-		var kind: String = sim.defense_population_kind(sim.roster[0])
+		var kind: String = sim.roster[0]
 		if not hidden_from_players(point,kind,living): continue
 		sim.spawn(point,kind)
 		sim.roster.remove_at(0)

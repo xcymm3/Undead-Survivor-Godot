@@ -60,17 +60,17 @@ func validate_combat_revision() -> void:
 		sim.zombies.clear()
 		sim.spawn(Vector2(8,27),kind)
 		var z: Dictionary = sim.zombies[0]
-		check(z.hp == (18000 if kind == "football" else 9600),"Updated boss health "+kind)
+		check(z.hp == (20000 if kind == "football" else 10000),"Updated boss health "+kind)
 		if kind == "football":
-			check(z.body == 6000 and z.armor == 12000,"Football has twelve thousand armor and six thousand body health")
+			check(z.body == 6000 and z.armor == 14000,"Football has fourteen thousand armor and six thousand body health")
 			check(z.chase_speed >= 4.6 and z.chase_speed <= 5.2,"Football pursuit uses the ordinary random speed range")
 			z.state = "charging"
 		else:
-			sim.hit_enemy(z,4799,false,p,Vector3(0,1,27))
-			check(z.hp == 4801 and not z.rage,"Berserker stays calm above half health")
+			sim.hit_enemy(z,4999,false,p,Vector3(0,1,27))
+			check(z.hp == 5001 and not z.rage,"Berserker stays calm above half health")
 			z.pos = Vector2(8,27)
 			sim.hit_enemy(z,1,false,p,Vector3(0,1,27))
-			check(z.hp == 4800 and z.rage,"Berserker enters rage at exactly half of 9600 health")
+			check(z.hp == 5000 and z.rage,"Berserker enters rage at exactly half of 10000 health")
 		check(z.pos == Vector2(8,27),"Charge or half-health rage prevents hit displacement "+kind)
 		if kind == "berserker": check(z.rage,"Berserker retains rage at half health")
 	sim.zombies.clear()
@@ -452,91 +452,17 @@ func validate_pistol_and_equip() -> void:
 		check(game.weapon.transform.is_equal_approx(resting),"Completed switch restores the exact resting pose: "+str(index))
 	p.switch = 0.0
 
-func validate_crawler() -> void:
-	game.return_home()
-	game.start_solo("defense",71245)
-	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
-	await physics_frame
-	var sim = game.sim
+func validate_population() -> void:
+	var expected = ["normal","cone","bucket","imp","shield","berserker","giant","football","dancer"]
 	var data = root.get_node("Data")
-	for i in 20:
-		check(sim.defense_population_kind("normal") == "normal","Ordinary slot remains normal without crawler conversion "+str(i))
-	check(sim.defense_population_kind("crawler") == "normal" and sim.defense_population_kind("football") == "football","Legacy crawler slot becomes normal and boss retains its kind")
-	check(preload("res://scripts/enemy_population.gd").COST.crawler == 1,"Legacy crawler alias shares the ordinary one-point cost")
+	check(data.enemies.size() == expected.size() and expected.all(func(kind): return data.enemies.has(kind)),"Enemy resource contains exactly the nine current types")
+	check(game.enemies.kinds == expected and preload("res://scripts/progression_store.gd").COIN_REWARDS.size() == expected.size(),"Rendering and kill rewards use the same current type set")
 	var population = preload("res://scripts/enemy_population.gd")
 	var defense_population = preload("res://scripts/defense_population.gd")
 	check(population.COST.cone == 1 and population.COST.bucket == 1 and not population.ELITES.has("cone") and not population.ELITES.has("bucket"),"Armored common zombies cost one point")
 	for wave in [1,5,10,20]:
 		var common: Array = defense_population.roster(wave,1,RandomNumberGenerator.new()).filter(func(kind): return kind in population.ORDINARY)
 		check(common.all(func(kind): return kind in defense_population.kinds(wave)),"Common types follow the authored wave list: "+str(wave))
-	sim.zombies.clear()
-	sim.spawn(Vector2(8,36.0),"crawler")
-	var z: Dictionary = sim.zombies[-1]
-	check(z.hp == root.get_node("Data").enemies.normal.health and z.armor == 0,"Crawler matches normal health and armor")
-	check(z.chase_speed >= 4.6*.85 and z.chase_speed <= 5.2*.85,"Crawler chase speed is 85 percent of ordinary range")
-	var view = load("res://scripts/enemy_view.gd")
-	var ground = data.enemy_ground_height(z.pos)
-	for phase in [0.0,PI/2,PI,PI*1.5]:
-		z.gait = phase
-		z.move_speed = 4.0
-		for attack in [0.0,.25,.5,.8]:
-			z.attack_time = attack
-			var poses = view.transforms(z,sim.elapsed,false)
-			var low = INF
-			var high = -INF
-			for j in data.parts.size():
-				if data.parts[j].has("kind") or data.parts[j].get("armor",false): continue
-				for x in [-.5,.5]:
-					for y in [-.5,.5]:
-						for depth in [-.5,.5]:
-							var point: Vector3 = poses[j]*Vector3(x,y,depth)
-							low = minf(low,point.y-ground)
-							high = maxf(high,point.y-ground)
-			check(low >= -.05 and high < .95,"Crawl/attack pose stays low without sinking")
-	z.attack_time = 0
-	check(view.hit(z,Vector3(8,ground+1.7,40.0),Vector3.FORWARD,8,0,false).is_empty(),"Standing head line passes above crawler")
-	var head = view.hit(z,Vector3(8,ground+.53,40.0),Vector3.FORWARD,8,0,false)
-	check(not head.is_empty() and head.head,"Lowered aim hits crawler head")
-	var death_heads: Array = []
-	var death_hands: Array = []
-	z.hp = 0.0
-	z.move_speed = 0.0
-	for down in [.85,.55,.25]:
-		z.down = down
-		var death_poses: Array = view.transforms(z,sim.elapsed,false)
-		death_heads.append(death_poses[3].origin)
-		death_hands.append([death_poses[18].origin,death_poses[19].origin])
-		var death_low = INF
-		var death_high = -INF
-		for j in data.parts.size():
-			if data.parts[j].has("kind") or data.parts[j].get("armor",false): continue
-			for x in [-.5,.5]:
-				for y in [-.5,.5]:
-					for depth in [-.5,.5]:
-						var point: Vector3 = death_poses[j]*Vector3(x,y,depth)
-						death_low = minf(death_low,point.y-ground)
-						death_high = maxf(death_high,point.y-ground)
-		check(death_low >= -.05 and death_high < .95,"Crawler death stage stays above ground and prone %s low=%.3f high=%.3f" % [str(down),death_low,death_high])
-	check(death_heads[2].y < death_heads[0].y-.18 and death_heads[2].y-ground < .35,"Crawler death lowers the face to the ground")
-	check(death_hands[2][0].z > death_hands[0][0].z+.15 and death_hands[2][1].z > death_hands[0][1].z+.15,"Crawler death extends both hands into a collapsed pose")
-	z.hp = float(data.enemies.crawler.health)
-	z.down = 0.0
-	z.move_speed = 0.0
-	z.attack_time = 0.0
-	var idle_crawl_a: Dictionary = view.pose_state(z,0.0,false)
-	var idle_crawl_b: Dictionary = view.pose_state(z,1.0,false)
-	check(not idle_crawl_a.root.is_equal_approx(idle_crawl_b.root),"Awake crawler has a subtle idle sway")
-	sim.spawn(Vector2(10,36.0),"normal")
-	var upright: Dictionary = sim.zombies[-1]
-	upright.move_speed = 0.0
-	var idle_stand_a: Dictionary = view.pose_state(upright,0.0,false)
-	var idle_stand_b: Dictionary = view.pose_state(upright,1.0,false)
-	check(not idle_stand_a.root.is_equal_approx(idle_stand_b.root),"Awake upright zombie has a subtle idle sway")
-	sim.zombies.pop_back()
-	game.enemies.sync(sim.zombies,sim.elapsed,false)
-	var state = view.pose_state(z,sim.elapsed,false)
-	var actor: Dictionary = game.enemies.actors[z.id]
-	for bone in 7: check(actor.skeleton.get_bone_pose(bone).is_equal_approx(state.bones[bone]),"Crawler rendered and CPU bone match "+str(bone))
 
 func validate_outfits() -> void:
 	game.return_home()
@@ -547,7 +473,7 @@ func validate_outfits() -> void:
 	var counts = [0,0,0,0,0]
 	var rng_before: int = sim.random.state
 	sim.zombies.clear()
-	for kind in ["normal","crawler","cone","bucket"]:
+	for kind in ["normal","cone","bucket"]:
 		for i in 100:
 			sim.spawn(Vector2(8,36.0),kind)
 			var z: Dictionary = sim.zombies[-1]
@@ -555,7 +481,10 @@ func validate_outfits() -> void:
 			counts[z.outfit] += 1
 		check(sim.zombies.slice(-100).map(func(z): return z.outfit).any(func(style): return style != sim.zombies[-1].outfit),"Kind receives varied outfits "+kind)
 	check(sim.random.state == rng_before,"Clothing RNG never changes encounter random state")
-	check(counts.all(func(amount): return amount > 40 and amount < 120),"Five clothing variants all represented without deterministic cycling")
+	var upright: Dictionary = sim.zombies[0]
+	var view = load("res://scripts/enemy_view.gd")
+	check(not view.pose_state(upright,0.0,false).root.is_equal_approx(view.pose_state(upright,1.0,false).root),"Awake upright zombie has a subtle idle sway")
+	check(counts.all(func(amount): return amount > 30 and amount < 100),"Five clothing variants all represented without deterministic cycling")
 	var snapshot: Dictionary = bytes_to_var(var_to_bytes(sim.snapshot()))
 	check(snapshot.zombies.map(func(z): return z.outfit) == sim.zombies.map(func(z): return z.outfit),"Outfit survives network snapshot serialization")
 	var p: Dictionary = game.local_pawn()
@@ -570,7 +499,7 @@ func validate_outfits() -> void:
 	for kind in ["imp","shield","berserker","football"]:
 		sim.spawn(Vector2(8,36.0),kind)
 		check(not sim.zombies[-1].has("outfit"),"Special silhouette remains unchanged "+kind)
-	for kind in ["normal","crawler","cone","bucket"]:
+	for kind in ["normal","cone","bucket"]:
 		var variants: Array = []
 		for style in 5:
 			var mesh = game.enemies.mesh_for(kind,0,false,kind in ["cone","bucket"],style)
@@ -821,7 +750,7 @@ func run() -> void:
 	await validate_outfits()
 	load("res://tools/validate-normal-zombie.gd").validate(game,check)
 	await validate_interaction_motion()
-	await validate_crawler()
+	validate_population()
 	await validate_flame()
 	await validate_sniper_penetration()
 	await validate_shield_contacts()
@@ -1320,7 +1249,7 @@ func validate_enemy_overlap() -> void:
 	sim.paths = {}
 	sim.crowd_buckets = {}
 	for index in 300:
-		sim.spawn(Vector2(8,25),"crawler" if index%10 == 9 else "normal")
+		sim.spawn(Vector2(8,25),"normal")
 	check(sim.zombies.size() == 300 and sim.zombies.all(func(z): return z.pos == Vector2(8,25)),"Three hundred living enemies may occupy the same position")
 	for z in sim.zombies:
 		sim.move_zombie(z,Vector2(8,27),z.chase_speed,1.0/60,5.0,1.0)
