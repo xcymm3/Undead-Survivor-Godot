@@ -357,11 +357,11 @@ func sync() -> void:
 		if not defense.get("started",false) and not sim.can_manage(ui.game.local_pawn()): controls_hint.text = "等待房主整备并修复水晶开战"
 		if ui.game.local_pawn().get("hp",1) <= 0: controls_hint.text = "左键 切换观战队友 · ESC 菜单"
 		if intro_active: controls_hint.text = "ESC 暂停"
-		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id) if w.id == "ultimate" else sim.progression.level(w.id)+1]
+		weapon_label.text = "%s · %s" % [w.label,preload("res://scripts/preparation_catalog.gd").level_label(sim.progression,w.id)]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
 		ammo_note.text = "无需弹药" if infinite else "容量 %d · %s 换弹 · 第2波起开波 +2 备弹匣" % [sim.weapon_capacity(p.weapon),Data.binding_label("reload")]
 		if p.slot == 4:
-			weapon_label.text = "手雷"
+			weapon_label.text = "手雷 · "+preload("res://scripts/preparation_catalog.gd").level_label(sim.progression,"grenade")
 			ammo_label.text = "%d / %d" % [p.grenades,p.grenade_capacity]
 			ammo_note.text = "%s 投掷 · 每15秒补充1颗" % Data.binding_label("fire")
 

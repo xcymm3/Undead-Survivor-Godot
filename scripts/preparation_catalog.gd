@@ -81,6 +81,9 @@ static func available(sim, id: String) -> bool:
 		if item.get("owned",false) and item.hp <= 0: return false
 	return sim.progression.cost(id) >= 0
 
+static func level_label(profile, id: String) -> String:
+	return "LV MAX" if profile.cost(id) < 0 else "LV%d" % profile.level(id)
+
 static func description(sim, id: String) -> String:
 	var profile = sim.progression
 	if id == "unsupported_weapon": return "此装备无需升级"
@@ -89,9 +92,7 @@ static func description(sim, id: String) -> String:
 		return "水晶\n%d / %d" % [sim.defense.crystal_hp,sim.defense.crystal_max_hp]
 	var price: int = profile.cost(id)
 	var cost_text = "%d%s" % [price," 钻石" if id in profile.TALENTS else " 金币"] if price >= 0 else ""
-	var level_text = "LV%d" % (profile.level(id)+1) if id not in profile.TALENTS else "LV%d / 5" % profile.level(id)
-	if id in profile.MAGAZINES: level_text = "LV%d" % profile.level(id)
-	if price < 0: level_text = "LV MAX"
+	var level_text = level_label(profile,id)
 	var detail = ""
 	if id in profile.WEAPONS:
 		var index: int = {"rifle":0,"pistol":2,"axe":6}[id]
@@ -99,9 +100,8 @@ static func description(sim, id: String) -> String:
 	elif id in profile.MAGAZINES:
 		detail = "%s容量 %d" % [NAMES[id],sim.weapon_capacity(0 if id == "rifle_magazine" else 2)]
 	elif id == "ultimate":
-		level_text = "LV%d / 4" % profile.level(id) if price >= 0 else "LV MAX"
 		detail = "伤害 %s · 持续10秒" % number(preload("res://scripts/ultimate.gd").damage_for_level(profile.level(id))*profile.damage_multiplier())
-		var title = "终极技能  "+level_text.replace("LV MAX","已满级").replace("LV","等级 ")
+		var title = "终极技能  "+level_text
 		return (title+"\n"+detail+"\n"+cost_text).strip_edges()
 	elif id == "grenade": detail = "容量 %d / 4" % profile.grenade_capacity()
 	elif id in profile.MINES:
@@ -126,7 +126,7 @@ static func prompt_description(sim, id: String) -> String:
 	var profile = sim.progression
 	var title: String = NAMES.get(id,id)
 	var price: int = profile.cost(id)
-	var payment = str(price) if price >= 0 else "已满级"
+	var payment = str(price) if price >= 0 else "LV MAX"
 	return title+"\n"+payment
 
 static func upgrade_details(sim, id: String) -> Dictionary:
@@ -167,9 +167,9 @@ static func upgrade_details(sim, id: String) -> Dictionary:
 	elif id in profile.MINES:
 		rows.append(["最大伤害","1400","1400"])
 		note = "距离衰减 · 本局引爆一次"
-	if profile.cost(id) < 0: note = "已满级 · 无需继续升级"
+	if profile.cost(id) < 0: note = "LV MAX · 无需继续升级"
 	elif profile.data[profile.currency(id)] < profile.cost(id): note = "钻石不足" if id in profile.TALENTS else "金币不足"
-	return {"title":NAMES[id],"level":"等级 %d / %d" % [rank,maximum],"rows":rows,"note":note}
+	return {"title":NAMES[id],"level":level_label(profile,id),"rows":rows,"note":note}
 
 static func number(value: float) -> String:
 	return ("%.1f" % value).trim_suffix(".0")
