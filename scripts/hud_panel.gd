@@ -25,8 +25,8 @@ var diamond_label: Label
 var wave_announcement: Label
 var boss_title: Label
 var boss_bar: ProgressBar
-var health_row: VBoxContainer
-var health_right: VBoxContainer
+var health_row: HBoxContainer
+var health_right: HBoxContainer
 var cards: Dictionary = {}
 var slots: Array[Label] = []
 var equipment_slots: Array[Dictionary] = []
@@ -131,15 +131,15 @@ func setup(owner_ui) -> void:
 	crystal_alert.add_theme_color_override("font_color",Color("ff785b"))
 	crystal_alert.add_theme_constant_override("outline_size",4)
 	crystal_alert.add_theme_color_override("font_outline_color",Color("191c1c"))
-	health_row = VBoxContainer.new()
-	health_right = VBoxContainer.new()
+	health_row = HBoxContainer.new()
+	health_right = HBoxContainer.new()
 	for side in [health_row,health_right]:
 		content.add_child(side)
 		side.add_theme_constant_override("separation",8)
-		side.alignment = BoxContainer.ALIGNMENT_END
+		side.alignment = BoxContainer.ALIGNMENT_BEGIN if side == health_row else BoxContainer.ALIGNMENT_END
 		side.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT if side == health_row else Control.PRESET_BOTTOM_RIGHT)
-		side.offset_left = 28 if side == health_row else -264
-		side.offset_right = 264 if side == health_row else -28
+		side.offset_left = 28 if side == health_row else -512
+		side.offset_right = 512 if side == health_row else -28
 		side.offset_top = -146
 		side.offset_bottom = -52
 	rest_label = text(content,22)
@@ -396,8 +396,8 @@ func sync() -> void:
 		if not sim.pawns.has(id):
 			cards[id].panel.queue_free()
 			cards.erase(id)
-	health_row.offset_top = -248 if ids.size() > 1 else -146
-	health_right.offset_top = -248 if ids.size() > 3 else -146
+	health_row.offset_top = -146
+	health_right.offset_top = -146
 	for i in ids.size():
 		var pawn: Dictionary = sim.pawns[ids[i]]
 		var item: Dictionary = cards[ids[i]] if cards.has(ids[i]) else health_card(ids[i])

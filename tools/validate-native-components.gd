@@ -732,6 +732,8 @@ func run() -> void:
 	await process_frame
 	check(game.ui.native_hud.cards.size() == 4 and is_equal_approx(card.panel.size.x,single_width),"Each teammate gets a separate card without stretching the local card")
 	check(game.ui.native_hud.health_row.get_child_count() == 2 and game.ui.native_hud.health_right.get_child_count() == 2,"Four health cards split two on the left and two on the right")
+	var card_y: float = card.panel.get_global_rect().position.y
+	check(game.ui.native_hud.cards.values().all(func(entry): return is_equal_approx(entry.panel.get_global_rect().position.y,card_y)),"All four health cards share one horizontal row around the skill")
 	check(game.ui.native_hud.cards.values().all(func(card): return card.portrait.texture != null),"Every teammate receives the same model portrait pipeline as solo")
 	game.first_person_layer.sync_view()
 	var view_pass = game.first_person_layer

@@ -8,11 +8,11 @@ test('商店柜台、贴墙现状及四人底部技能布局', async ({ page }, 
   page.on('console', message => {
     if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text());
   });
-  for (const [scenario, width, height] of [
+  for (const [scenario, width, height] of (process.env.QA_HEALTH_ROW_ONLY ? [['four',1440,900],['four',960,540]] : [
     ['front', 1440, 900], ['side', 1440, 900], ['wall', 1440, 900],
     ['four', 1440, 900], ['four', 960, 540],
     ['locked', 1440, 900], ['ready', 1440, 900], ['flow', 1440, 900],
-  ]) {
+  ])) {
     await page.setViewportSize({ width, height });
     await page.goto(`/?preparationReview=shop_review_${scenario}`);
     await page.waitForFunction(() => Boolean(window.__shopHudReviewReady), null, { timeout: 90_000 });
@@ -25,6 +25,7 @@ test('商店柜台、贴墙现状及四人底部技能布局', async ({ page }, 
       expect(state.health_rects).toHaveLength(4);
       expect(state.left_count).toBe(2);
       expect(state.right_count).toBe(2);
+      expect(state.health_rects.every(rect => Math.abs(rect.y-state.health_rects[0].y)<.5)).toBe(true);
       expect(state.portraits).toBe(true);
       expect(state.overlaps).toBe(false);
       expect(state.ultimate_rect.x + state.ultimate_rect.width / 2).toBeCloseTo(state.width / 2, 0);
