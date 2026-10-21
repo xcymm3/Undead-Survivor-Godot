@@ -101,7 +101,8 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 			if w.id == "axe": progress = 0.0
 			weapon_animation.seek(progress*weapon_animation.get_animation(clip).length,true)
 	if axe_pivot:
-		axe_pivot.transform = axe_motion.sample(p,dt,w.fireDuration)
+		var duration: float = w.fireDuration*(.5 if preload("res://scripts/ultimate.gd").locked(p) else 1.0)
+		axe_pivot.transform = axe_motion.sample(p,dt,duration)
 	avatar.animate(p,moving,dt)
 	var item_slot: int = p.get("slot",1)
 	if item_slot != equipment_slot:

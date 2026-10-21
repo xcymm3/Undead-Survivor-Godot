@@ -81,27 +81,28 @@ func validate_blade_motion(game) -> void:
 	var p: Dictionary = game.local_pawn()
 	var restore = p.duplicate(true)
 	p.weapon = 6
+	p.requested = 6
+	p.switch = 0.0
+	p.reloading = false
 	p.ultimate_remaining = 5.0
 	p.ultimate_age = 2.0
 	p.ultimate_sheathe = 0.0
 	p.fire_anim = .14
 	game.weapon.reset_motion()
 	game.weapon.sync(p,.016,0)
-	check(game.weapon.blade.visible and not game.weapon.scabbard.visible,"Scabbard is hidden throughout active slashes")
+	check(game.weapon.models[6].visible and not game.weapon.blade.visible and not game.weapon.scabbard.visible,"Ultimate trial displays the fire axe without katana or scabbard")
+	check(game.weapon.axe_pivot.transform.is_equal_approx(preload("res://scripts/axe_motion.gd").pose(.5,int(p.get("axe_direction",1)))),"Ultimate uses the shared axe chopping pose")
 	p.fire_anim = 0
-	game.weapon.sync(p,.016,0)
-	check(not game.weapon.scabbard.visible,"Scabbard remains hidden while holding the blade idle")
 	p.ultimate_age = Ultimate.DRAW_TIME*.5
 	game.weapon.sync(p,.016,0)
-	check(game.weapon.scabbard.visible,"Scabbard is visible while the blade is being drawn")
+	var raised_y: float = game.weapon.position.y
+	p.ultimate_age = Ultimate.DRAW_TIME+1
+	game.weapon.sync(p,.016,0)
+	check(game.weapon.position.y > raised_y,"Axe raises into its unchanged holding position at activation")
 	p.ultimate_remaining = 0
-	p.ultimate_sheathe = Ultimate.SHEATHE_TIME
+	p.ultimate_sheathe = .001
 	game.weapon.sync(p,0,0)
-	check(game.weapon.scabbard.visible,"Scabbard returns for sheathing")
-	var root_inverse: Transform3D = game.weapon.transform.affine_inverse()
-	var raised: Transform3D = motion_type.sheath_pose()
-	raised.origin += Vector3(.10,-.65,.08)
-	check(game.weapon.scabbard.transform.is_equal_approx(root_inverse*raised),"Gun-root motion cannot move the independent entering scabbard")
+	check(game.weapon.position.y < raised_y and not game.weapon.scabbard.visible,"Expired ultimate lowers the axe without a sword sheathing animation")
 	p.clear()
 	p.merge(restore,true)
 	game.weapon.reset_motion()
@@ -235,7 +236,7 @@ func run() -> void:
 	sim.update_pawn(p,.01)
 	check(p.sprinting,"Ultimate keeps sprint speed while attacking without Shift")
 	game.weapon.sync(p,0,sim.elapsed)
-	check(game.weapon.blade.visible and not game.weapon.models[6].visible,"Ultimate replaces axe with long blade")
+	check(game.weapon.models[6].visible and not game.weapon.blade.visible,"Ultimate retains fire axe for the chopping trial")
 	var remaining_before: float = p.ultimate_remaining
 	p.input = {"ultimate":true}
 	Ultimate.tick(sim,p,p.input,.01)

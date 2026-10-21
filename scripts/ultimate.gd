@@ -25,7 +25,7 @@ static func weapon(p: Dictionary, progression, base: Dictionary) -> Dictionary:
 	if not locked(p): return base
 	var result = base.duplicate(true)
 	result.id = "ultimate"
-	result.label = "长刀"
+	result.label = "终极技能"
 	result.damage = damage_for_level(progression.level("ultimate"))
 	result.interval = base.interval*.5
 	result.fireDuration = base.fireDuration*.5

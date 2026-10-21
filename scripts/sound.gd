@@ -212,7 +212,7 @@ func sync_action(id: String, state: Dictionary, enabled: bool) -> void:
 		voice.stop()
 		voice.stream = streams[state.cue]
 		voice.volume_db = -13 if id == "reload" else -9 if id == "axe" else -11
-		voice.pitch_scale = 1.0
+		voice.pitch_scale = state.get("pitch",1.0)
 		track.offset = minf(state.age,maxf(0,voice.stream.get_length()-.001))
 		track.starts += 1
 		if playback_enabled(): voice.play(track.offset)

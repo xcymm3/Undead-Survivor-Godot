@@ -66,8 +66,8 @@ func build_station(entry: Dictionary) -> void:
 	prop.name = "DisplayObject"
 	root.add_child(prop)
 	prop.position.y = 1.25
-	if entry.id in ["rifle","pistol","axe"]:
-		var model = preload("res://scripts/weapon_view.gd").create_model(entry.id)
+	if entry.id in ["rifle","pistol","axe","ultimate"]:
+		var model = preload("res://scripts/weapon_view.gd").create_model("axe" if entry.id == "ultimate" else entry.id)
 		prop.add_child(model)
 		var bounds = preload("res://scripts/world_geometry.gd").posed_bounds(model)
 		var center = model.to_local(bounds.get_center())
@@ -93,11 +93,6 @@ func build_station(entry: Dictionary) -> void:
 			var model = preload("res://scripts/equipment_props.gd").model(4)
 			prop.add_child(model)
 			model.position.x = x
-	elif entry.id == "ultimate":
-		var model = preload("res://scripts/long_blade.gd").new()
-		prop.add_child(model)
-		model.rotation.z = PI/2
-		model.scale = Vector3.ONE*.8
 	else:
 		build_talent(prop,entry.id)
 	var cover = MeshInstance3D.new()
