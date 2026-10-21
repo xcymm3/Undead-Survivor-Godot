@@ -1,4 +1,5 @@
 extends Node3D
+var energy: Node3D
 const TIP = 1.85
 const SHEATH_LENGTH = 1.91
 const CURVE = .065
@@ -26,6 +27,10 @@ func _init() -> void:
 	steel.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	steel.vertex_color_use_as_albedo = true
 	attach(self,"Blade",surface,steel)
+	energy = preload("res://scripts/blade_energy.gd").new()
+	energy.name = "BladeEnergy"
+	add_child(energy)
+	energy.setup(get_node("Blade").mesh)
 	var guard = MeshInstance3D.new()
 	guard.name = "Guard"
 	var disc = CylinderMesh.new()
@@ -47,6 +52,9 @@ func _init() -> void:
 				wrap.rotation.z = diagonal*.64
 	piece("Fuchi",Vector3(0,-.028,0),Vector3(.078,.025,.080),Color("a78b51"))
 	piece("Pommel",Vector3(0,-.35,0),Vector3(.078,.032,.080),Color("a78b51"))
+
+func sync_energy(active: bool, clock: float) -> void:
+	energy.sync(active,clock)
 
 static func bend(y: float) -> float:
 	return CURVE*pow(clampf(y/TIP,0,1),2)

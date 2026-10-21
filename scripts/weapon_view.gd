@@ -9,6 +9,7 @@ var active = 0
 var muzzle: MeshInstance3D
 var scabbard: Node3D
 var blade: Node3D
+var blade_trail: MeshInstance3D
 var axe_pivot: Node3D
 var blade_motion = preload("res://scripts/blade_motion.gd").new()
 var axe_motion = preload("res://scripts/axe_motion.gd").new()
@@ -42,6 +43,8 @@ func _ready() -> void:
 	blade = preload("res://scripts/long_blade.gd").new()
 	add_child(blade)
 	blade.hide()
+	blade_trail = preload("res://scripts/blade_trail.gd").new()
+	add_child(blade_trail)
 	scabbard = preload("res://scripts/long_blade.gd").make_scabbard()
 	add_child(scabbard)
 	scabbard.hide()
@@ -71,6 +74,7 @@ func reset_motion() -> void:
 	sprint_blend = 0.0
 	sprint_phase = 0.0
 	blade_motion.reset()
+	if blade_trail: blade_trail.clear()
 	axe_motion.reset()
 	if models.size() > 3: models[3].reset_motion()
 
@@ -169,8 +173,12 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		var inverse = transform.affine_inverse()
 		blade.transform = inverse*motion.blade
 		scabbard.transform = inverse*motion.sheath
+		blade_trail.transform = inverse
+		blade_trail.sample(p,dt,motion.blade,w.fireDuration)
 	else:
 		blade_motion.reset()
+		blade_trail.clear()
+	blade.sync_energy(ultimate.active(p) and p.get("ultimate_age",0.0) >= ultimate.DRAW_TIME and p.hp > 0,float(p.get("ultimate_age",0.0)))
 	muzzle.global_position = muzzle_position()
 	muzzle.visible = not hide_scope and p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") == "gun"
 

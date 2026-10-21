@@ -28,6 +28,8 @@ const LEFT_SHAFTS = [
 	Vector3(.22,.77,-.60),Vector3(.48,.62,-.62),
 	Vector3(.57,.51,-.64),Vector3(.52,.58,-.62)]
 
+var horizontal_scale = 1.0
+var vertical_scale = 1.0
 var current = ready_pose()
 var start_pose = ready_pose()
 var serial = -1
@@ -35,30 +37,34 @@ var last_phase = 0.0
 var recovering = 0.0
 var recovery_from = ready_pose()
 
-static func ready_pose() -> Transform3D:
-	return Transform3D(Basis.from_euler(Vector3(-.12,-.65,-.24)),Vector3(.08,-.10,-.46))
+static func ready_pose(horizontal := 1.0, vertical := 1.0) -> Transform3D:
+	var result = Transform3D(Basis.from_euler(Vector3(-.12,-.65,-.24)),Vector3(.08,-.10,-.46))
+	var edge = result*EDGE_POINT
+	result.origin += Vector3(edge.x*(horizontal-1.0),edge.y*(vertical-1.0),0)
+	return result
 
-static func key_pose(index: int, direction: int) -> Transform3D:
-	if index == 0: return ready_pose()
+static func key_pose(index: int, direction: int, horizontal := 1.0, vertical := 1.0) -> Transform3D:
+	if index == 0: return ready_pose(horizontal,vertical)
 	var tips = RIGHT_TIPS if direction == 1 else LEFT_TIPS
 	var shafts = RIGHT_SHAFTS if direction == 1 else LEFT_SHAFTS
 	var tip: Vector3 = tips[index]
-	tip.x *= LATERAL_SCALE
+	tip.x *= LATERAL_SCALE*horizontal
+	tip.y *= vertical
 	var shaft: Vector3 = shafts[index]
-	shaft.x *= 1.20
+	shaft.x *= 1.20*horizontal
 	var y: Vector3 = shaft.normalized()
 	# Roll the reverse stroke so the sharpened edge leads, rather than the pick.
-	var edge = Vector3((-.82 if direction == 1 else .82)*LATERAL_SCALE,-.34,-.46)
+	var edge = Vector3((-.82 if direction == 1 else .82)*LATERAL_SCALE*horizontal,-.34*vertical,-.46)
 	var x = -(edge-y*edge.dot(y)).normalized()
 	var basis = Basis(x,y,x.cross(y).normalized())
 	return Transform3D(basis,tip-basis*EDGE_POINT)
 
-static func pose(progress: float, direction: int) -> Transform3D:
+static func pose(progress: float, direction: int, horizontal := 1.0, vertical := 1.0) -> Transform3D:
 	var t = clampf(progress,0,1)
 	var i = 0
 	while i < TIMES.size()-2 and t > TIMES[i+1]: i += 1
-	var a = key_pose(i,direction)
-	var b = key_pose(i+1,direction)
+	var a = key_pose(i,direction,horizontal,vertical)
+	var b = key_pose(i+1,direction,horizontal,vertical)
 	var blend: float = (t-TIMES[i])/(TIMES[i+1]-TIMES[i])
 	# Interpolate the cutting edge, then derive the grip, keeping the blade arc
 	# monotone through the damage sector. Smooth recovery never rewinds the cut.
@@ -66,14 +72,14 @@ static func pose(progress: float, direction: int) -> Transform3D:
 	var span: float = TIMES[i+1]-TIMES[i]
 	var u2 = blend*blend
 	var u3 = u2*blend
-	var edge = (a*EDGE_POINT)*(2*u3-3*u2+1)+edge_tangent(i,direction)*span*(u3-2*u2+blend)+(b*EDGE_POINT)*(-2*u3+3*u2)+edge_tangent(i+1,direction)*span*(u3-u2)
+	var edge = (a*EDGE_POINT)*(2*u3-3*u2+1)+edge_tangent(i,direction,horizontal,vertical)*span*(u3-2*u2+blend)+(b*EDGE_POINT)*(-2*u3+3*u2)+edge_tangent(i+1,direction,horizontal,vertical)*span*(u3-u2)
 	return Transform3D(basis,edge-basis*EDGE_POINT)
 
-static func edge_tangent(index: int, direction: int) -> Vector3:
+static func edge_tangent(index: int, direction: int, horizontal := 1.0, vertical := 1.0) -> Vector3:
 	if index == 0 or index == TIMES.size()-1: return Vector3.ZERO
-	var previous = key_pose(index-1,direction)*EDGE_POINT
-	var point = key_pose(index,direction)*EDGE_POINT
-	var next = key_pose(index+1,direction)*EDGE_POINT
+	var previous = key_pose(index-1,direction,horizontal,vertical)*EDGE_POINT
+	var point = key_pose(index,direction,horizontal,vertical)*EDGE_POINT
+	var next = key_pose(index+1,direction,horizontal,vertical)*EDGE_POINT
 	var before: float = TIMES[index]-TIMES[index-1]
 	var after: float = TIMES[index+1]-TIMES[index]
 	var a = (point-previous)/before
@@ -87,7 +93,7 @@ static func edge_tangent(index: int, direction: int) -> Vector3:
 	return result
 
 func reset() -> void:
-	current = ready_pose()
+	current = ready_pose(horizontal_scale,vertical_scale)
 	start_pose = current
 	recovery_from = current
 	serial = -1
@@ -104,7 +110,7 @@ func sample(p: Dictionary, dt: float, duration: float) -> Transform3D:
 		if serial != shot or phase < last_phase:
 			start_pose = current
 			serial = shot
-		var target = pose(phase,int(p.get("axe_direction",1)))
+		var target = pose(phase,int(p.get("axe_direction",1)),horizontal_scale,vertical_scale)
 		current = start_pose.interpolate_with(target,smoothstep(0,CUT_START,phase)) if phase < CUT_START else target
 		last_phase = phase
 		recovering = 0.0
@@ -113,5 +119,5 @@ func sample(p: Dictionary, dt: float, duration: float) -> Transform3D:
 		# Keep the follow-through across the 40ms combo gap. A fresh stroke
 		# starts from that displayed pose, even after a late buffered click.
 		recovering += maxf(0,dt)
-		current = recovery_from.interpolate_with(ready_pose(),smoothstep(.08,.26,recovering))
+		current = recovery_from.interpolate_with(ready_pose(horizontal_scale,vertical_scale),smoothstep(.08,.26,recovering))
 	return current

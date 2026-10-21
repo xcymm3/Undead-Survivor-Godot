@@ -58,6 +58,8 @@ func update_weapon(index: int, skill := false) -> void:
 	if weapon_index == index and ultimate_model == skill: return
 	weapon_index = index
 	ultimate_model = skill
+	axe_motion.horizontal_scale = preload("res://scripts/blade_motion.gd").HORIZONTAL if ultimate_model else 1.0
+	axe_motion.vertical_scale = preload("res://scripts/blade_motion.gd").VERTICAL if ultimate_model else 1.0
 	axe_motion.reset()
 	axe_pivot = null
 	for node in held.get_children():
@@ -84,6 +86,8 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	rotation.y = p.yaw
 	visible = true
 	update_weapon(int(p.weapon),preload("res://scripts/ultimate.gd").locked(p))
+	if ultimate_model:
+		gun_model.get_node("UltimateGrip/UltimateLongBlade").sync_energy(p.hp > 0 and p.get("ultimate_remaining",0.0) > 0 and p.get("ultimate_age",0.0) >= preload("res://scripts/ultimate.gd").DRAW_TIME,float(p.get("ultimate_age",0.0)))
 	held.visible = p.hp > 0
 	held.rotation.x = p.pitch
 	label.text = "%s\n%d HP" % [display_name(p.name),p.hp]

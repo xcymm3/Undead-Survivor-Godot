@@ -49,10 +49,28 @@ func validate_blade_motion(game) -> void:
 	for direction in [-1,1]:
 		for step in 61:
 			var phase = float(step)/60
-			var expected: Transform3D = motion_type.carry_frame()*axe.pose(phase,direction)*motion_type.model_alignment()
-			check(motion_type.swing_pose(phase,direction).is_equal_approx(expected),"Sword uses the exact axe grip and orientation without remapping or depth pulses: "+str(step)+" / "+str(direction))
+			var expected: Transform3D = motion_type.carry_frame()*axe.pose(phase,direction,motion_type.HORIZONTAL,motion_type.VERTICAL)*motion_type.model_alignment()
+			check(motion_type.swing_pose(phase,direction).is_equal_approx(expected),"Sword uses the horizontal axe profile without depth pulses: "+str(step)+" / "+str(direction))
+	for direction in [-1,1]:
+		var original_min = Vector3(INF,INF,INF)
+		var original_max = Vector3(-INF,-INF,-INF)
+		var blade_min = original_min
+		var blade_max = original_max
+		for step in 61:
+			var phase = float(step)/60
+			var a: Vector3 = axe.pose(phase,direction)*axe.EDGE_POINT
+			var b: Vector3 = axe.pose(phase,direction,motion_type.HORIZONTAL,motion_type.VERTICAL)*axe.EDGE_POINT
+			original_min = original_min.min(a)
+			original_max = original_max.max(a)
+			blade_min = blade_min.min(b)
+			blade_max = blade_max.max(b)
+		check(blade_max.x-blade_min.x > (original_max.x-original_min.x)*1.20,"Sword horizontal arc is larger than the axe")
+		check(blade_max.y-blade_min.y < (original_max.y-original_min.y)*.80,"Sword vertical arc is smaller than the axe")
 	# Compare actual stateful playback, including repeated direction, short gaps and recovery.
 	var reference = axe.new()
+	reference.horizontal_scale = motion_type.HORIZONTAL
+	reference.vertical_scale = motion_type.VERTICAL
+	reference.reset()
 	var sword = motion_type.new()
 	var shared = {"hp":100,"weapon":6,"requested":6,"switch":0.0,"reloading":false,"shots":0,"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":0.0,"axe_direction":1}
 	for frame in 180:
@@ -62,7 +80,7 @@ func validate_blade_motion(game) -> void:
 		shared.shots = segment
 		shared.axe_direction = -1 if segment%2 else 1
 		var expected: Transform3D = motion_type.carry_frame()*reference.sample(shared,1.0/60,.28)*motion_type.model_alignment()
-		check(sword.sample(shared,1.0/60,.28).blade.is_equal_approx(expected),"Stateful sword and axe share identical grip playback through attack, combo gaps and recovery: "+str(frame))
+		check(sword.sample(shared,1.0/60,.28).blade.is_equal_approx(expected),"Sword retains shared axe playback through attack, combo gaps and recovery: "+str(frame))
 	var motion = motion_type.new()
 	var combo = {"hp":100,"weapon":6,"shots":1,"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":.00001,"axe_direction":1}
 	var combo_end: Transform3D = motion.sample(combo,.016,.28).blade
@@ -94,20 +112,25 @@ func validate_blade_motion(game) -> void:
 	p.aim = false
 	p.reloading = false
 	p.switch = 0.0
-	p.ultimate_remaining = 0.0
-	p.fire_anim = root.get_node("Data").weapons[6].fireDuration*.5
+	p.fire_anim = root.get_node("Data").weapons[6].fireDuration*.25
 	game.weapon.reset_motion()
 	game.weapon.sync(p,.016,0)
-	var axe_camera_pose: Transform3D = game.weapon.transform*game.weapon.axe_pivot.transform*motion_type.model_alignment()
-	p.ultimate_remaining = 5.0
-	p.fire_anim *= .5
-	game.weapon.reset_motion()
-	game.weapon.sync(p,.016,0)
-	check((game.weapon.transform*game.weapon.blade.transform).is_equal_approx(axe_camera_pose),"Production weapon view attaches sword to the same camera-space grip as the axe at matched phase")
+	var expected_grip: Transform3D = game.weapon.blade_motion.chop.current*motion_type.model_alignment()
+	check(game.weapon.blade.transform.is_equal_approx(expected_grip),"Production sword preserves the profiled axe grip in weapon coordinates")
+	check(game.weapon.blade.energy.visible,"Active blade has a flowing blue shell")
 	p.fire_anim = .14
 	game.weapon.reset_motion()
 	game.weapon.sync(p,.016,0)
 	check(game.weapon.blade.visible and not game.weapon.scabbard.visible,"Scabbard is hidden throughout active slashes")
+	var trail = game.weapon.blade_trail
+	p.fire_anim = .10
+	game.weapon.sync(p,.016,0)
+	check(trail.visible and trail.mesh != null and trail.history.size() >= 2,"Actual moving blade builds a blue afterimage")
+	check(trail.layers == 2 and trail.history.size() <= trail.MAX_SAMPLES,"Sword trail stays bounded and confined to the first-person layer")
+	for i in 20:
+		p.fire_anim = 0.0
+		game.weapon.sync(p,.016,0)
+	check(not trail.visible and trail.history.is_empty(),"Blue afterimage expires after the swing without an idle blob")
 	p.fire_anim = 0
 	game.weapon.sync(p,.016,0)
 	check(not game.weapon.scabbard.visible,"Scabbard remains hidden while holding the blade idle")

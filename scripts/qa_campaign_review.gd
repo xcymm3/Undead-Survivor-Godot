@@ -260,7 +260,7 @@ func draw_ultimate_frame(args: Array) -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	await get_tree().process_frame
-	JavaScriptBridge.eval("window.__ultimateActionState="+JSON.stringify({"frame":frame,"active":preload("res://scripts/ultimate.gd").active(p),"axe":game.weapon.models[6].visible,"blade":game.weapon.blade.visible,"scabbard":game.weapon.scabbard.visible,"fire":p.fire_anim,"sheathe":p.get("ultimate_sheathe",0.0),"age":p.get("ultimate_age",0.0)}),true)
+	JavaScriptBridge.eval("window.__ultimateActionState="+JSON.stringify({"frame":frame,"active":preload("res://scripts/ultimate.gd").active(p),"axe":game.weapon.models[6].visible,"blade":game.weapon.blade.visible,"energy":game.weapon.blade.energy.visible,"trail":game.weapon.blade_trail.visible,"trail_samples":game.weapon.blade_trail.history.size(),"scabbard":game.weapon.scabbard.visible,"fire":p.fire_anim,"sheathe":p.get("ultimate_sheathe",0.0),"age":p.get("ultimate_age",0.0)}),true)
 	JavaScriptBridge.eval("window.__ultimateActionFrame="+str(frame),true)
 
 func face(sim, p: Dictionary, id: String) -> void:
