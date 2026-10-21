@@ -18,7 +18,7 @@ static func validate(game, check: Callable) -> void:
 	var p = game.local_pawn()
 	check.call(not p.ultimate_unlocked and p.grenades == 0 and p.grenade_capacity == 0,"A new save starts with locked ultimate and zero grenade capacity")
 	game.ui.native_hud.sync()
-	check.call(game.ui.native_hud.ultimate_ring.caption == "未解锁" and game.ui.native_hud.grenade_ring.detail == "手雷 0/0","HUD shows the locked ultimate and 0/0 grenades together")
+	check.call(not game.ui.native_hud.ultimate_ring.visible and game.ui.native_hud.equipment_slots[3].title.text == "手雷  0 / 0","HUD shows the locked ultimate and 0/0 grenades together")
 	var ultimate = preload("res://scripts/ultimate.gd")
 	sim.defense.started = true
 	ultimate.tick(sim,p,{"ultimate":true},0)

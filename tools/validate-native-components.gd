@@ -731,7 +731,24 @@ func run() -> void:
 	check(game.ui.native_hud.cards.size() == 4 and is_equal_approx(card.panel.size.x,single_width),"Each teammate gets a separate card without stretching the local card")
 	var hud = game.ui.native_hud
 	check(is_equal_approx(hud.ultimate_ring.get_global_rect().get_center().x,hud.content.get_global_rect().get_center().x),"Ultimate stays exactly on the bottom screen centre line")
-	check(hud.grenade_ring.kind == "grenade" and hud.grenade_ring.caption.is_empty() and not hud.equipment_slots[3].panel.visible,"Grenade charge uses a single icon ring without percent or duplicate panel")
+	check(hud.grenade_ring.kind == "grenade" and hud.grenade_ring.caption.is_empty() and hud.equipment_slots[3].panel.visible and hud.grenade_ring.get_parent() == hud.equipment_slots[3].icon.get_parent(),"Grenade charge stays in the sidebar equipment row without percent or duplicate icon")
+	var charge_ring = hud.ultimate_ring
+	charge_ring.set_process(false)
+	charge_ring.sync(.65,"65%","终极技能")
+	var flow_before: Color = charge_ring.charge_color(.2)
+	charge_ring.advance_visual(.25)
+	check(not charge_ring.charge_color(.2).is_equal_approx(flow_before) and charge_ring.radius() == 36,"Larger ultimate ring has moving charge highlights")
+	var flashes: int = charge_ring.ready_flash_count
+	charge_ring.sync(1.0,"100%","终极技能")
+	check(charge_ring.ready_flash > 0 and charge_ring.ready_flash_count == flashes+1,"A charge completion starts one readiness flash")
+	charge_ring.sync(1.0,"100%","终极技能")
+	check(charge_ring.ready_flash_count == flashes+1,"Repeated fully charged snapshots do not restart the flash")
+	charge_ring.advance_visual(1.0)
+	check(charge_ring.ready_flash == 0,"Ready flash ends automatically")
+	charge_ring.sync(.8,"80%","终极技能")
+	charge_ring.sync(1.0,"100%","终极技能")
+	check(charge_ring.ready_flash_count == flashes+2,"The next recharge can flash once again")
+	charge_ring.set_process(true)
 	for health in hud.cards.values():
 		check(not health.panel.get_global_rect().intersects(hud.ultimate_ring.get_global_rect()) and not health.panel.get_global_rect().intersects(hud.grenade_ring.get_global_rect()),"Four player health cards do not overlap either bottom charge icon")
 	for id in game.sim.pawns.keys():

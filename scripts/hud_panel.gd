@@ -103,24 +103,24 @@ func setup(owner_ui) -> void:
 	ultimate_ring.name = "UltimateCharge"
 	content.add_child(ultimate_ring)
 	ultimate_ring.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	ultimate_ring.offset_left = -47
-	ultimate_ring.offset_right = 47
-	ultimate_ring.offset_top = -150
+	ultimate_ring.offset_left = -60
+	ultimate_ring.offset_right = 60
+	ultimate_ring.offset_top = -174
 	ultimate_ring.offset_bottom = -38
 	grenade_ring = preload("res://scripts/cooldown_ring.gd").new()
 	grenade_ring.name = "GrenadeCharge"
 	grenade_ring.kind = "grenade"
-	content.add_child(grenade_ring)
-	grenade_ring.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	grenade_ring.offset_left = 68
-	grenade_ring.offset_right = 162
-	grenade_ring.offset_top = -150
-	grenade_ring.offset_bottom = -38
+	grenade_ring.compact = true
+	grenade_ring.custom_minimum_size = Vector2(68,68)
+	var grenade_row = equipment_slots[3].icon.get_parent()
+	equipment_slots[3].icon.hide()
+	grenade_row.add_child(grenade_ring)
+	grenade_row.move_child(grenade_ring,1)
 	ultimate_notice = text(content,14)
 	ultimate_notice.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	ultimate_notice.offset_left = 520
 	ultimate_notice.offset_right = -520
-	ultimate_notice.offset_top = -180
+	ultimate_notice.offset_top = -204
 	ultimate_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	crystal_alert = text(content,28)
 	crystal_alert.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -332,7 +332,7 @@ func sync() -> void:
 		crystal_bar.value = defense.get("crystal_hp",0)
 		crystal_bar.modulate = Color("7fe7ef") if crystal_bar.value > crystal_bar.max_value*.3 else Color("ee6658")
 	crystal_alert.visible = float(defense.get("crystal_alert_until",-1)) > sim.elapsed
-	ultimate_ring.visible = sim.mode == "defense"
+	ultimate_ring.visible = sim.mode == "defense" and preload("res://scripts/ultimate.gd").unlocked(p)
 	var ultimate = preload("res://scripts/ultimate.gd")
 	var unlocked: bool = ultimate.unlocked(p)
 	var charge = 1.0-float(p.get("ultimate_cd",0.0))/ultimate.cooldown(sim.progression) if unlocked else 0.0
@@ -341,7 +341,7 @@ func sync() -> void:
 	grenade_ring.visible = sim.mode == "defense"
 	var grenade_capacity: int = p.get("grenade_capacity",0)
 	var grenade_charge = 0.0 if grenade_capacity == 0 else 1.0 if p.grenades >= grenade_capacity else clampf(1.0-float(p.get("grenade_replenish",15.0))/15.0,0,1)
-	grenade_ring.sync(grenade_charge,"","手雷 %d/%d" % [p.get("grenades",0),grenade_capacity],grenade_capacity == 0)
+	grenade_ring.sync(grenade_charge,"","",grenade_capacity == 0)
 	ultimate_notice.text = p.get("ultimate_notice","") if p.get("ultimate_notice_until",0.0) > sim.elapsed else ""
 	var w: Dictionary = sim.combat_weapon(p)
 	weapon_label.text = str(w.label)
@@ -371,7 +371,7 @@ func sync() -> void:
 			var item: Dictionary = equipment_slots[i]
 			var index: int = p.weapon1 if i == 0 else p.weapon2 if i == 1 else 6
 			var selected: bool = p.slot == i+1
-			item.panel.visible = i < 3
+			item.panel.visible = true
 			var available: bool = i < 3 or p.grenades > 0
 			item.panel.add_theme_stylebox_override("panel",item.selected if selected else item.idle)
 			item.key.text = Data.binding_label("weapon_%d" % i)

@@ -4,6 +4,8 @@ const Layout = preload("res://scripts/defense_layout.gd")
 const Catalog = preload("res://scripts/preparation_catalog.gd")
 const Tutorial = preload("res://scripts/onboarding.gd")
 var game
+var visual_callback: JavaScriptObject
+var visual_time = 0.0
 
 func rectangle(rect: Rect2) -> Dictionary:
 	return {"x":rect.position.x,"y":rect.position.y,"width":rect.size.x,"height":rect.size.y}
@@ -29,11 +31,11 @@ func stage(scenario: String) -> void:
 	var point = Vector3(Layout.SHOP_OWNER.x,4.7,Layout.SHOP_OWNER.y)
 	match scenario:
 		"shop_review_front":
-			p.pos = Layout.SHOP_OWNER+Vector2(-4.5,0)
+			p.pos = Layout.SHOP_OWNER+Vector2(-2.7,0)
 			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
 			game.camera.look_at(point)
 		"shop_review_side":
-			p.pos = Vector2(10.7,Layout.SHOP_COUNTER_FRONT_Z-2.2)
+			p.pos = Vector2(Layout.SHOP_OWNER.x,Layout.SHOP_COUNTER_FRONT_Z-2.2)
 			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
 			game.camera.look_at(point)
 		"shop_review_wall":
@@ -41,7 +43,7 @@ func stage(scenario: String) -> void:
 			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
 			game.camera.look_at(Vector3(-2.7,4.7,Layout.SHOP_AREA.end.y-.7))
 			game.weapon.show()
-		"shop_review_four", "shop_review_grenade":
+		"shop_review_four", "shop_review_grenade", "shop_review_locked", "shop_review_ready", "shop_review_flow":
 			p.pos = Layout.CRYSTAL+Vector2(0,6)
 			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
 			game.camera.look_at(Vector3(0,4.4,Layout.CRYSTAL.y-15))
@@ -64,11 +66,26 @@ func stage(scenario: String) -> void:
 	game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-20))
 	game.arena.scenery.sync(sim.defense)
 	game.arena.scenery.sync_focus(sim,p)
+	if scenario == "shop_review_locked":
+		p.ultimate_unlocked = false
+		sim.progression.data.ultimate_unlocked = false
 	game.running = true
 	game.ui.native_hud.sync()
 	game.running = false
 	game.ui.native_hud.upgrade_details.hide()
 	game.get_viewport().scaling_3d_scale = 1.0
+	var ring = game.ui.native_hud.ultimate_ring
+	ring.set_process(false)
+	game.ui.native_hud.grenade_ring.set_process(false)
+	ring.animation_clock = 0.0
+	if scenario == "shop_review_ready":
+		p.ultimate_cd = 0.0
+		ring.sync(.99,"99%","终极技能 · Q")
+		ring.sync(1.0,"100%","终极技能 · Q")
+		ring.advance_visual(.24)
+	visual_callback = JavaScriptBridge.create_callback(request_visual)
+	JavaScriptBridge.get_interface("window").__skillVisualCallback = visual_callback
+	JavaScriptBridge.eval("window.__skillVisualSeek = t => { window.__skillVisualTime = -1; window.__skillVisualCallback(t); }",true)
 	RenderingServer.render_loop_enabled = false
 	for index in 6: await get_tree().process_frame
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
@@ -82,4 +99,14 @@ func stage(scenario: String) -> void:
 		var rect: Rect2 = card.panel.get_global_rect()
 		health_rects.append(rectangle(rect))
 		overlaps = overlaps or rect.intersects(ultimate_rect) or rect.intersects(grenade_rect)
-	JavaScriptBridge.eval("window.__shopHudReviewReady="+JSON.stringify({"scenario":scenario,"focus":Catalog.focus(sim,p).get("id",""),"owner_yaw":game.arena.scenery.shop.owner_model.rotation.y,"ultimate_rect":rectangle(ultimate_rect),"grenade_rect":rectangle(grenade_rect),"health_rects":health_rects,"overlaps":overlaps,"grenade_caption":hud.grenade_ring.caption,"grenade_progress":hud.grenade_ring.progress,"width":game.get_viewport().get_visible_rect().size.x,"stations":Catalog.stations().size()}),true)
+	JavaScriptBridge.eval("window.__shopHudReviewReady="+JSON.stringify({"scenario":scenario,"focus":Catalog.focus(sim,p).get("id",""),"owner_yaw":game.arena.scenery.shop.owner_model.rotation.y,"ultimate_rect":rectangle(ultimate_rect),"grenade_rect":rectangle(grenade_rect),"health_rects":health_rects,"overlaps":overlaps,"ultimate_visible":hud.ultimate_ring.visible,"ready_flash":hud.ultimate_ring.ready_flash,"ready_flash_count":hud.ultimate_ring.ready_flash_count,"grenade_caption":hud.grenade_ring.caption,"grenade_progress":hud.grenade_ring.progress,"width":game.get_viewport().get_visible_rect().size.x,"stations":Catalog.stations().size()}),true)
+
+func request_visual(args: Array) -> void:
+	if not args.is_empty(): call_deferred("seek_visual",float(args[0]))
+
+func seek_visual(time: float) -> void:
+	game.ui.native_hud.ultimate_ring.advance_visual(maxf(0,time-visual_time))
+	visual_time = time
+	for index in 2: await get_tree().process_frame
+	RenderingServer.force_draw(true)
+	JavaScriptBridge.eval("window.__skillVisualTime="+str(time),true)
