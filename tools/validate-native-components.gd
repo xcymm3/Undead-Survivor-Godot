@@ -1495,8 +1495,21 @@ func validate_settings_controls() -> void:
 	check(shake.step(.016,1) == Vector2.ZERO,"Distant explosions do not shake")
 	shake.trigger(0,1)
 	for i in 100: shake.trigger(0,1)
-	check(shake.amplitude <= deg_to_rad(.3),"Simultaneous explosions have a bounded shake amplitude")
-	check(shake.step(.3,1) == Vector2.ZERO,"Shake settles completely after a short impulse")
+	check(shake.amplitude <= deg_to_rad(.75),"Simultaneous explosions have a bounded shake amplitude")
+	var turns = 0
+	var previous_horizontal = 0.0
+	var first_peak = 0.0
+	var last_peak = 0.0
+	for frame in 72:
+		var offset: Vector2 = shake.step(.01,2)
+		if absf(offset.y) > .00001:
+			if offset.y*previous_horizontal < 0: turns += 1
+			previous_horizontal = offset.y
+		if frame < 20: first_peak = maxf(first_peak,absf(offset.y))
+		if frame > 45: last_peak = maxf(last_peak,absf(offset.y))
+	check(turns >= 5 and turns <= 7,"Blast produces several distinct low-frequency horizontal return swings")
+	check(first_peak > deg_to_rad(.8) and last_peak < first_peak*.4,"Standard blast is visible initially and progressively settles")
+	check(shake.step(.01,2) == Vector2.ZERO,"Shake settles to exactly zero after its extended impulse")
 	shake.trigger(0,1)
 	check(shake.step(.016,0) == Vector2.ZERO and shake.remaining == 0,"Disabled shake clears active impulses immediately")
 	game.resume_game()

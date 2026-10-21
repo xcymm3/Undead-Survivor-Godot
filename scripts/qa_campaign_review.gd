@@ -14,6 +14,9 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
+	if scenario.begins_with("shake_"):
+		await stage_shake(scenario)
+		return
 	if scenario in ["bridgehead_boundary","merchant_counter","shop_pending","rifle_ads","interaction_repeat","shop_exterior"]:
 		await stage_refinements(scenario)
 		return
@@ -584,6 +587,9 @@ func stage_refinements(scenario: String) -> void:
 	game.arena.scenery.sync_focus(sim,p)
 	if scenario == "interaction_repeat": game.ui.root.show()
 	game.ui.tick(0)
+	if scenario.begins_with("shake_"):
+		await stage_shake(scenario)
+		return
 	if scenario in ["bridgehead_boundary","merchant_counter","shop_pending","shop_exterior"]: game.ui.root.hide()
 	game.get_viewport().scaling_3d_scale = 1.0
 	RenderingServer.render_loop_enabled = false
@@ -591,3 +597,64 @@ func stage_refinements(scenario: String) -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"focus_visible":game.arena.scenery.preparation.focus_label.visible,"progress":game.arena.scenery.preparation.interaction_ring.progress,"ring_state":game.arena.scenery.preparation.interaction_ring.state}),true)
+
+
+var shake_distance = 3.0
+var shake_frame = -1
+var shake_base = Transform3D.IDENTITY
+func stage_shake(scenario: String) -> void:
+	game.start_solo("defense",42)
+	game.sim.defense.erase("intro_elapsed")
+	game.sim.defense.tutorial_stage = 5
+	game.sim.defense.started = true
+	game.sim.roster.clear()
+	await get_tree().physics_frame
+	game.ui.clear_menu()
+	game.running = true
+	Data.settings.screen_shake = 2
+	shake_distance = 3.0 if scenario == "shake_near" else 10.0
+	var p: Dictionary = game.local_pawn()
+	p.pos = Vector2(0,3)
+	p.height = 3
+	p.pitch = 0
+	p.yaw = 0
+	p.slot = 1
+	p.weapon = 0
+	game.camera.position = Vector3(0,4.7,3)
+	game.camera.rotation = Vector3.ZERO
+	game.camera.fov = 61
+	shake_base = game.camera.global_transform
+	game.screen_shake.clear()
+	game.weapon.show()
+	game.weapon.sync(p,0,0,Vector3(0,0,-180))
+	game.arena.scenery.sync(game.sim.defense)
+	game.ui.tick(0)
+	game.get_viewport().scaling_3d_scale = 1.0
+	RenderingServer.render_loop_enabled = false
+	for i in 5: await get_tree().process_frame
+	RenderingServer.force_draw(true)
+	action_callback = JavaScriptBridge.create_callback(draw_shake_frame)
+	JavaScriptBridge.get_interface("window").__drawShakeFrame = action_callback
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"frames":60,"fps":25,"distance":shake_distance,"focus_visible":false}),true)
+
+func draw_shake_frame(args: Array) -> void:
+	var frame = int(args[0])
+	if frame != shake_frame+1: return
+	shake_frame = frame
+	var dt = 1.0/25.0
+	if frame == 12:
+		var p: Dictionary = game.local_pawn()
+		# Dispatch the real local blast event; gameplay and authority aim stay frozen.
+		game.handle_effects([{"kind":"explosion","position":Vector3(p.pos.x,3.25,p.pos.y-shake_distance)}])
+	var offset: Vector2 = game.screen_shake.step(dt,2)
+	game.camera.global_transform = shake_base
+	game.camera.rotation.x += offset.x
+	game.camera.rotation.y += offset.y
+	game.effects.step(dt)
+	game.ui.tick(dt)
+	for i in 2: await get_tree().process_frame
+	game.camera.force_update_transform()
+	RenderingServer.force_draw(true)
+	await get_tree().process_frame
+	JavaScriptBridge.eval("window.__shakeState="+JSON.stringify({"pitch":offset.x,"yaw":offset.y,"authority_yaw":game.yaw,"authority_pitch":game.pitch,"remaining":game.screen_shake.remaining}),true)
+	JavaScriptBridge.eval("window.__shakeFrame="+str(frame),true)
