@@ -131,6 +131,14 @@ static func unlock_ultimate(sim, zombie: Dictionary, damage_taken: int) -> void:
 	if not zombie.has_all(["id","kind"]) or damage_taken <= 0: return
 	sim.defense["ultimate_crystal_damage"] = int(sim.defense.get("ultimate_crystal_damage",0))+damage_taken
 	if sim.defense.ultimate_crystal_damage < 500: return
+	grant_ultimate(sim)
+
+static func unlock_from_health(sim, pawn: Dictionary) -> void:
+	if sim.mode == "defense" and float(pawn.get("hp",100)) < 50.0:
+		grant_ultimate(sim)
+
+static func grant_ultimate(sim) -> void:
+	if sim.progression.data.get("ultimate_unlocked",false): return
 	sim.progression.data["ultimate_unlocked"] = true
 	sim.progression.dirty = true
 	sim.progression.save()

@@ -6,6 +6,7 @@ const Fixture = preload("res://tools/preparation-fixture.gd")
 const Catalog = preload("res://scripts/preparation_catalog.gd")
 
 static func validate(game, check: Callable) -> void:
+	await validate_health_unlock(game,check)
 	var progress = game.get_node("/root/Progress")
 	var saved = progress.store
 	var path = OS.get_cache_dir().path_join("intro-qa-"+str(Time.get_ticks_usec())+".json")
@@ -249,4 +250,59 @@ static func validate(game, check: Callable) -> void:
 	check.call(game.sound.streams.has("typewriter") and not game.sound.streams.typewriter.data.is_empty(),"Typewriter audio is registered and nonempty")
 	for suffix in ["",".bak",".tmp"]:
 		if FileAccess.file_exists(path+suffix): DirAccess.remove_absolute(path+suffix)
+	progress.store = saved
+
+
+static func validate_health_unlock(game, check: Callable) -> void:
+	var progress = game.get_node("/root/Progress")
+	var saved = progress.store
+	var base_path = OS.get_cache_dir().path_join("ultimate-health-qa-"+str(Time.get_ticks_usec()))
+	var files: Array = []
+	for scenario in ["threshold","fatal","fall"]:
+		var path = base_path+"-"+scenario+".json"
+		files.append(path)
+		var profile = Store.new()
+		profile.path = path
+		progress.store = profile
+		game.start_solo("defense",501)
+		Fixture.skip_tutorial(game.sim)
+		await game.get_tree().physics_frame
+		var sim = game.sim
+		var p: Dictionary = game.local_pawn()
+		# The generic combat fixture unlocks skills; this suite explicitly starts locked.
+		profile.data.ultimate_unlocked = false
+		p.ultimate_unlocked = false
+		if scenario == "fall":
+			p.hp = 55
+			sim.recover_defense_fall(p,sim.player_body(p))
+			check.call(p.hp == 45 and p.ultimate_unlocked and Store.new(path).data.ultimate_unlocked,"Falling below fifty unlocks and persists the ultimate without crystal damage")
+			continue
+		sim.defense_director.begin_wave()
+		p.pos = Vector2(8,25)
+		p.height = game.get_node("/root/Data").enemy_ground_height(p.pos)
+		p.protection = 0.0
+		sim.spawn(p.pos+Vector2(0,-1),"normal")
+		var attacker: Dictionary = sim.zombies[-1]
+		if scenario == "fatal":
+			sim.damage_pawn(p,attacker,100)
+			check.call(p.hp == 0 and p.ultimate_unlocked and Store.new(path).data.ultimate_unlocked,"A lethal hit also persists the low-health unlock for the next attempt")
+			continue
+		sim.add_pawn("health_peer","测试队友",1)
+		sim.defense_director.equipment.initialize_pawn(sim.pawns.health_peer)
+		sim.damage_pawn(p,attacker,50)
+		check.call(p.hp == 50 and not p.ultimate_unlocked and not profile.data.ultimate_unlocked,"Exactly fifty health does not unlock the ultimate")
+		p.protection = 0.0
+		sim.damage_pawn(p,attacker,1)
+		check.call(p.hp == 49 and p.ultimate_unlocked and sim.pawns.health_peer.ultimate_unlocked and sim.defense.get("ultimate_crystal_damage",0) == 0,"Below fifty unlocks for the shared team without any crystal damage")
+		check.call(Store.new(path).data.ultimate_unlocked and p.ultimate_cd == 0,"Low-health unlock persists and starts fully charged")
+		p.ultimate_cd = 37.0
+		p.protection = 0.0
+		sim.damage_pawn(p,attacker,1)
+		check.call(p.ultimate_cd == 37 and sim.events.filter(func(event): return event.kind == "ultimate_unlocked").size() == 1,"Repeated low-health hits do not refill cooldown or duplicate the teaching event")
+		progress.store = Store.new(path)
+		game.start_solo("defense",502)
+		check.call(game.local_pawn().ultimate_unlocked,"Restart keeps the low-health unlock")
+	for path in files:
+		for suffix in ["",".bak",".tmp"]:
+			if FileAccess.file_exists(path+suffix): DirAccess.remove_absolute(path+suffix)
 	progress.store = saved

@@ -573,6 +573,7 @@ func recover_defense_fall(p: Dictionary, body) -> void:
 	body.velocity = Vector3.ZERO
 	body.grounded = false
 	p.hp = maxf(0,p.hp-DEFENSE_FALL_DAMAGE)
+	preload("res://scripts/onboarding.gd").unlock_from_health(self,p)
 	enter_combat(p)
 	p.protection = .65
 	p.damage_dir = Vector2.ZERO
@@ -778,6 +779,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
 	if won or not p.get("connected",true) or p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
 	p.hp = maxf(0,p.hp-amount)
+	preload("res://scripts/onboarding.gd").unlock_from_health(self,p)
 	enter_combat(p)
 	# Give the rear-hit cue time to be actionable under overlapping melee attacks.
 	p.protection = .65
