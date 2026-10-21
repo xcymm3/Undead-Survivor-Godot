@@ -178,7 +178,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	else:
 		blade_motion.reset()
 		blade_trail.clear()
-	blade.sync_energy(ultimate.active(p) and p.get("ultimate_age",0.0) >= ultimate.DRAW_TIME and p.hp > 0,float(p.get("ultimate_age",0.0)))
+	blade.sync_energy(blade.visible and p.hp > 0,elapsed)
 	muzzle.global_position = muzzle_position()
 	muzzle.visible = not hide_scope and p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") == "gun"
 

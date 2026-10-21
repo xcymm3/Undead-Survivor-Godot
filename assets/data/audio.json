@@ -1582,9 +1582,9 @@
   "motion_sources": {
     "scripts/ak_rifle.gd": "7507395b68f64eda48075683a2e0344382338f7eadfdfe4f4352bb676e19ca67",
     "scripts/revolver_model.gd": "5c532e2a0cc4b7c974aba32a114eeb1b68d59f2812bdf2ca49a2bab39e283887",
-    "scripts/blade_motion.gd": "9b940e726d672adae5ba3386991486d7006df2d905afeed20626f547b1bfc2d4",
+    "scripts/blade_motion.gd": "8cf15c7145f49740631bcbe94bd0b4bd43ede0c78d40e2eb33eba188815a3c18",
     "scripts/ultimate.gd": "ad1847d622adda4f00a1383332a9f9c1eb1d8f9f9698846e15ecd6a44767deb8",
-    "scripts/axe_motion.gd": "d72173f31fa841fa962c664d84a0277d79261b5476de957d7766ef4f1146da6d",
+    "scripts/axe_motion.gd": "6750b841f53c19e7921559bba0bc2b6f8c460c12fce3fcb41a50f1259139451e",
     "assets/models/p90.glb": "6ce9113c9fd7b8c93b01ffff7d270930ab21a0c0d33c4d364c2ca855c2eee117",
     "assets/models/pistol.glb": "2e1482a59da73e81262eb68153a3e261ab716848bd4987a9a8e2ace0382bdfb7",
     "assets/models/shotgun.glb": "4c5a3b9d0a98e234c4fa347b7bef447ce4a510923c04b2d4b057a22bb61ec033",

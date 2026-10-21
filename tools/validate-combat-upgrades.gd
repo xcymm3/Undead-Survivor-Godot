@@ -49,7 +49,7 @@ func validate_blade_motion(game) -> void:
 	for direction in [-1,1]:
 		for step in 61:
 			var phase = float(step)/60
-			var expected: Transform3D = motion_type.carry_frame()*axe.pose(phase,direction,motion_type.HORIZONTAL,motion_type.VERTICAL)*motion_type.model_alignment()
+			var expected: Transform3D = motion_type.carry_frame()*axe.pose(phase,direction,motion_type.HORIZONTAL,motion_type.VERTICAL,motion_type.FORWARD_LEAN)*motion_type.model_alignment()
 			check(motion_type.swing_pose(phase,direction).is_equal_approx(expected),"Sword uses the horizontal axe profile without depth pulses: "+str(step)+" / "+str(direction))
 	for direction in [-1,1]:
 		var original_min = Vector3(INF,INF,INF)
@@ -59,17 +59,23 @@ func validate_blade_motion(game) -> void:
 		for step in 61:
 			var phase = float(step)/60
 			var a: Vector3 = axe.pose(phase,direction)*axe.EDGE_POINT
-			var b: Vector3 = axe.pose(phase,direction,motion_type.HORIZONTAL,motion_type.VERTICAL)*axe.EDGE_POINT
+			var b: Vector3 = axe.pose(phase,direction,motion_type.HORIZONTAL,motion_type.VERTICAL,motion_type.FORWARD_LEAN)*axe.EDGE_POINT
 			original_min = original_min.min(a)
 			original_max = original_max.max(a)
 			blade_min = blade_min.min(b)
 			blade_max = blade_max.max(b)
 		check(blade_max.x-blade_min.x > (original_max.x-original_min.x)*1.20,"Sword horizontal arc is larger than the axe")
 		check(blade_max.y-blade_min.y < (original_max.y-original_min.y)*.80,"Sword vertical arc is smaller than the axe")
+	for direction in [-1,1]:
+		for phase in [0.0,.12,.22,.46,.78,1.0]:
+			var neutral: Transform3D = axe.pose(phase,direction,motion_type.HORIZONTAL,motion_type.VERTICAL)
+			var leaning: Transform3D = axe.pose(phase,direction,motion_type.HORIZONTAL,motion_type.VERTICAL,motion_type.FORWARD_LEAN)
+			check(leaning.basis.y.z < neutral.basis.y.z-.05,"Both sword strokes point farther forward at phase "+str(phase))
 	# Compare actual stateful playback, including repeated direction, short gaps and recovery.
 	var reference = axe.new()
 	reference.horizontal_scale = motion_type.HORIZONTAL
 	reference.vertical_scale = motion_type.VERTICAL
+	reference.forward_lean = motion_type.FORWARD_LEAN
 	reference.reset()
 	var sword = motion_type.new()
 	var shared = {"hp":100,"weapon":6,"requested":6,"switch":0.0,"reloading":false,"shots":0,"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":0.0,"axe_direction":1}
@@ -137,10 +143,14 @@ func validate_blade_motion(game) -> void:
 	p.ultimate_age = Ultimate.DRAW_TIME*.5
 	game.weapon.sync(p,.016,0)
 	check(game.weapon.scabbard.visible,"Scabbard is visible while the blade is being drawn")
+	check(game.weapon.blade.energy.visible,"Blade remains luminous throughout drawing")
 	p.ultimate_remaining = 0
 	p.ultimate_sheathe = Ultimate.SHEATHE_TIME
 	game.weapon.sync(p,0,0)
 	check(game.weapon.scabbard.visible,"Scabbard returns for sheathing")
+	check(game.weapon.blade.energy.visible,"Blade remains luminous throughout sheathing")
+	game.weapon.sync(p,.016,1.0)
+	check(game.weapon.blade.energy.finish.get_shader_parameter("flow_clock") == 1.0,"Blue energy continues flowing after the active skill ends")
 	var root_inverse: Transform3D = game.weapon.transform.affine_inverse()
 	var raised: Transform3D = motion_type.sheath_pose()
 	raised.origin += Vector3(.10,-.65,.08)

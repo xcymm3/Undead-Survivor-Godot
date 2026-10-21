@@ -3,6 +3,7 @@ extends RefCounted
 const SIZE = .56
 const HORIZONTAL = 1.25
 const VERTICAL = .72
+const FORWARD_LEAN = .32
 const LENGTH = preload("res://scripts/long_blade.gd").TIP*SIZE
 const MOUTH = Vector3(.36,-.28,-1.42)
 const PULL = Vector3(-.82,.43,-.37)
@@ -14,6 +15,7 @@ var chop = preload("res://scripts/axe_motion.gd").new()
 func _init() -> void:
 	chop.horizontal_scale = HORIZONTAL
 	chop.vertical_scale = VERTICAL
+	chop.forward_lean = FORWARD_LEAN
 	chop.reset()
 
 static func pose(grip: Vector3, axis: Vector3) -> Transform3D:
@@ -30,7 +32,7 @@ static func model_alignment() -> Transform3D:
 	return Transform3D(Basis().scaled(Vector3.ONE*(SIZE/.5)),Vector3.ZERO)
 
 static func ready_pose() -> Transform3D:
-	return carry_frame()*preload("res://scripts/axe_motion.gd").ready_pose(HORIZONTAL,VERTICAL)*model_alignment()
+	return carry_frame()*preload("res://scripts/axe_motion.gd").ready_pose(HORIZONTAL,VERTICAL,FORWARD_LEAN)*model_alignment()
 
 static func sheath_pose() -> Transform3D:
 	return pose(MOUTH,PULL)
@@ -48,7 +50,7 @@ static func draw_pose(progress: float, held := ready_pose()) -> Transform3D:
 	return extracted_pose().interpolate_with(held,smoothstep(.74,1.0,progress))
 
 static func swing_pose(progress: float, direction: int) -> Transform3D:
-	return carry_frame()*preload("res://scripts/axe_motion.gd").pose(progress,direction,HORIZONTAL,VERTICAL)*model_alignment()
+	return carry_frame()*preload("res://scripts/axe_motion.gd").pose(progress,direction,HORIZONTAL,VERTICAL,FORWARD_LEAN)*model_alignment()
 
 func reset() -> void:
 	current = ready_pose()
@@ -75,7 +77,7 @@ func sample(p: Dictionary, dt: float, fire_duration: float, carry := carry_frame
 		sheath.origin += Vector3(.10,-.65,.08)*(1.0-smoothstep(0,.30,t))
 	elif drawing:
 		var t = clampf(float(p.ultimate_age)/ultimate.DRAW_TIME,0,1)
-		current = draw_pose(t,carry*chop.ready_pose(HORIZONTAL,VERTICAL)*model_alignment())
+		current = draw_pose(t,carry*chop.ready_pose(HORIZONTAL,VERTICAL,FORWARD_LEAN)*model_alignment())
 		var lift = Vector3(.10,-.48,.08)*(1.0-smoothstep(0,.16,t))
 		current.origin += lift
 		sheath.origin += lift
