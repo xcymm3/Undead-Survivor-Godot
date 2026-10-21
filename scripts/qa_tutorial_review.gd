@@ -24,7 +24,7 @@ func stage(value: String) -> void:
 	game.get_viewport().scaling_3d_scale = 1.0
 	var pawn = game.local_pawn()
 	if scenario in ["tutorial_dialogue","tutorial_payment","tutorial_owner_idle","tutorial_owner_motion"]:
-		pawn.pos = Layout.SHOP_OWNER+Vector2(-4.5,-.7)
+		pawn.pos = Layout.SHOP_OWNER+Vector2(-2.7,-.7)
 		game.camera.position = Vector3(pawn.pos.x,4.65,pawn.pos.y)
 		game.camera.look_at(Vector3(Layout.SHOP_OWNER.x,4.85,Layout.SHOP_OWNER.y))
 		pawn.yaw = game.camera.rotation.y
@@ -51,7 +51,7 @@ func stage(value: String) -> void:
 			game.camera.position = Vector3(-3,4.8,Layout.SHOP_WALL_Z-5.5)
 			game.camera.look_at(Vector3(-3,3.85,Layout.SHOP_WALL_Z-2.3))
 	if scenario == "tutorial_owner_motion":
-		pawn.pos = Layout.SHOP_OWNER+Vector2(-4.5,.7)
+		pawn.pos = Layout.SHOP_OWNER+Vector2(-2.7,.7)
 		game.camera.position = Vector3(pawn.pos.x,4.7,pawn.pos.y)
 		game.camera.look_at(Vector3(Layout.SHOP_OWNER.x,4.7,Layout.SHOP_OWNER.y))
 		pawn.yaw = game.camera.rotation.y

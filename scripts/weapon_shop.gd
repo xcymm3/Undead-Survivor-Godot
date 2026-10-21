@@ -70,21 +70,21 @@ func _ready() -> void:
 
 func build_owner() -> void:
 	var pos = Vector3(Layout.SHOP_OWNER.x,3,Layout.SHOP_OWNER.y)
-	# Wide north/south counter, sealed to the back partition and east wall.
+	# Narrow service stall; long ends keep both side approaches out of reach.
 	var front: float = Layout.SHOP_COUNTER_FRONT_Z
 	var back: float = Layout.SHOP_COUNTER_BACK_Z
 	var middle: float = (front+back)/2
 	var length: float = back-front
-	block("OwnerCounter",Vector3(Layout.SHOP_COUNTER_X,3.58,middle),Vector3(.9,1.16,length),"624c33")
-	block("OwnerCounterTop",Vector3(Layout.SHOP_COUNTER_X,4.2,middle),Vector3(1.05,.12,length+.1),"b2a079",false)
-	block("CounterReturnCabinet",Vector3(10.7,3.66,front+.3),Vector3(4.6,1.32,.65),"624c33")
-	block("CounterReturnTop",Vector3(10.7,4.36,front+.3),Vector3(4.7,.12,.8),"b2a079",false)
+	block("OwnerCounter",Vector3(Layout.SHOP_COUNTER_X,3.58,middle),Vector3(Layout.SHOP_COUNTER_DEPTH,1.16,length),"624c33")
+	block("OwnerCounterTop",Vector3(Layout.SHOP_COUNTER_X,4.2,middle),Vector3(Layout.SHOP_COUNTER_DEPTH+.15,.12,length+.1),"b2a079",false)
+	block("CounterReturnCabinet",Vector3(Layout.SHOP_COUNTER_RETURN_X,3.66,front+.3),Vector3(Layout.SHOP_COUNTER_WIDTH,1.32,.65),"624c33")
+	block("CounterReturnTop",Vector3(Layout.SHOP_COUNTER_RETURN_X,4.36,front+.3),Vector3(Layout.SHOP_COUNTER_WIDTH+.1,.12,.8),"b2a079",false)
 	for index in 5:
 		var z: float = front+.55+index*1.1
-		block("CounterCabinetDoor",Vector3(Layout.SHOP_COUNTER_X-.465,3.57,z),Vector3(.06,.96,.92),"80613f",false)
-		block("CounterDoorInset",Vector3(Layout.SHOP_COUNTER_X-.505,3.57,z),Vector3(.03,.71,.72),"6d5034",false)
-		block("CounterHandle",Vector3(Layout.SHOP_COUNTER_X-.55,3.77,z+.25),Vector3(.06,.17,.05),"c2a16b",false)
-	for barrier in [["CounterFrontBarrier",Vector3(Layout.SHOP_COUNTER_X,5.25,middle),Vector3(.9,4.5,length)],["CounterSideBarrier",Vector3(10.7,5.25,front+.3),Vector3(4.6,4.5,.65)]]:
+		block("CounterCabinetDoor",Vector3(Layout.SHOP_COUNTER_X-Layout.SHOP_COUNTER_DEPTH/2-.015,3.57,z),Vector3(.06,.96,.92),"80613f",false)
+		block("CounterDoorInset",Vector3(Layout.SHOP_COUNTER_X-Layout.SHOP_COUNTER_DEPTH/2-.055,3.57,z),Vector3(.03,.71,.72),"6d5034",false)
+		block("CounterHandle",Vector3(Layout.SHOP_COUNTER_X-Layout.SHOP_COUNTER_DEPTH/2-.10,3.77,z+.25),Vector3(.06,.17,.05),"c2a16b",false)
+	for barrier in [["CounterFrontBarrier",Vector3(Layout.SHOP_COUNTER_X,5.25,middle),Vector3(Layout.SHOP_COUNTER_DEPTH,4.5,length)],["CounterSideBarrier",Vector3(Layout.SHOP_COUNTER_RETURN_X,5.25,front+.3),Vector3(Layout.SHOP_COUNTER_WIDTH,4.5,.65)]]:
 		var wall = block(barrier[0],barrier[1],barrier[2],"624c33",true,false)
 		wall.collision_layer = preload("res://scripts/player_body.gd").MOVEMENT_BARRIER_LAYER
 		wall.get_child(0).hide()

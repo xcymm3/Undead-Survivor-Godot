@@ -91,7 +91,7 @@ static func validate(game, check: Callable) -> void:
 			body.position = Vector3(owner_pos.x if side else owner_pos.x-4,elevation,layout.SHOP_COUNTER_FRONT_Z-2 if side else owner_pos.y)
 			body.velocity = Vector3.ZERO
 			for tick in 60: body.advance(Vector2(0,6) if side else Vector2(6,0),1.0/60)
-			check.call(body.position.z < layout.SHOP_COUNTER_FRONT_Z-.3 if side else body.position.x < layout.SHOP_COUNTER_X-.7,"Counter movement barrier stops front/side entry at height "+str(elevation)+" side="+str(side))
+			check.call(body.position.z < layout.SHOP_COUNTER_FRONT_Z-.3 if side else body.position.x < layout.SHOP_COUNTER_X-.6,"Counter movement barrier stops front/side entry at height "+str(elevation)+" side="+str(side))
 	body.free()
 	check.call(world.shop.has_node("Bedroom/BedFrame") and world.shop.has_node("Bedroom/Wardrobe") and world.shop.has_node("Bedroom/BedsideLight"),"Spawn room contains a bed, wardrobe and working lamp")
 
@@ -150,6 +150,11 @@ static func validate(game, check: Callable) -> void:
 	check.call(not Tutorial.begin_dialogue(sim,{"id":"guest"}) and not Tutorial.talking(sim.defense),"A guest cannot advance the host tutorial")
 	sim.coop_host = ""
 	var layout_rules = preload("res://scripts/defense_layout.gd")
+	var inner_width: float = 12.75-(layout_rules.SHOP_COUNTER_X+layout_rules.SHOP_COUNTER_DEPTH/2)
+	check.call(inner_width > .9 and inner_width < 1.2,"Cashier stall leaves only a little clearance around the merchant")
+	for end_z in [layout_rules.SHOP_COUNTER_FRONT_Z-.65,layout_rules.SHOP_COUNTER_BACK_Z+.65]:
+		var end_point = Vector2(layout_rules.SHOP_OWNER.x,end_z)
+		check.call(end_point.distance_to(Vector2(layout_rules.SHOP_COUNTER_X,layout_rules.SHOP_OWNER.y)) > 2.7,"Both counter ends are beyond the merchant interaction range")
 	check.call(is_equal_approx(world.shop.owner_model.rotation.y,PI/2),"Merchant rests facing left by ninety degrees")
 	check.call(Catalog.stations().all(func(entry): return layout_rules.SHOP_AREA.grow(-1.1).has_point(Vector2(entry.position.x,entry.position.z)) and entry.position.x < layout_rules.SHOP_COUNTER_X-1.3),"Every stand stays inside the showroom and outside the cashier lane")
 	var side_point = layout_rules.SHOP_OWNER+Vector2(0,-5)

@@ -16,9 +16,12 @@ const SHOP_DOOR_Z = SHOP_FRONT_Z+8.5
 const SHOP_DOOR_WIDTH = 4.0
 const SHOP_CEILING_Y = 7.5
 const SHOP_APPROACH = Rect2(10,SHOP_FRONT_Z-4,9,20)
-const SHOP_OWNER = Vector2(10.7,SHOP_PARTITION_Z-2.9)
+const SHOP_OWNER = Vector2(12.2,SHOP_PARTITION_Z-2.9)
 const SHOP_OWNER_YAW = PI/2.0
-const SHOP_COUNTER_X = 8.4
+const SHOP_COUNTER_X = 11.35
+const SHOP_COUNTER_DEPTH = .65
+const SHOP_COUNTER_RETURN_X = (SHOP_COUNTER_X+13.0)/2.0
+const SHOP_COUNTER_WIDTH = 13.0-SHOP_COUNTER_X
 const SHOP_COUNTER_FRONT_Z = SHOP_PARTITION_Z-5.6
 const SHOP_COUNTER_BACK_Z = SHOP_PARTITION_Z
 
@@ -38,7 +41,7 @@ const ARMORY_ROWS := [5.65]
 
 static func owner_front(p: Vector2) -> bool:
 	# A bounded service lane rejects approaches around either counter end.
-	return p.x < SHOP_COUNTER_X-.6 and p.x >= SHOP_COUNTER_X-4.5 and absf(p.y-SHOP_OWNER.y) <= 1.4
+	return p.x < SHOP_COUNTER_X-.6 and p.x >= SHOP_COUNTER_X-2.6 and absf(p.y-SHOP_OWNER.y) <= 1.1 and p.distance_to(Vector2(SHOP_COUNTER_X,SHOP_OWNER.y)) <= 2.7
 
 static func weapon_mount(display_index: int) -> Vector3:
 	return armory_transform()*Vector3(ARMORY_COLUMNS[display_index],ARMORY_ROWS[0],67.28)
