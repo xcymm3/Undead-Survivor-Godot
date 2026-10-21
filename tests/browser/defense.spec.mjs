@@ -44,7 +44,8 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   for (const [key, axis, threshold, increasing] of [
     ['w', 'z', 40.0, false],
     ['d', 'x', 15.0, true],
-    ['w', 'z', 31.0, false],
+    // Clear the front wall (z=30.67) before turning; match the native route's 3 m margin.
+    ['w', 'z', 27.5, false],
     ['a', 'x', 2.5, false],
     ['w', 'z', 21.3, false],
   ]) {
