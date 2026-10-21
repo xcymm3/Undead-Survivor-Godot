@@ -729,6 +729,19 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	check(game.ui.native_hud.cards.size() == 4 and is_equal_approx(card.panel.size.x,single_width),"Each teammate gets a separate card without stretching the local card")
+	game.first_person_layer.sync_view()
+	var view_pass = game.first_person_layer
+	check(game.camera.cull_mask & 2 == 0 and view_pass.camera.cull_mask == 2 and view_pass.viewport.world_3d == game.camera.get_world_3d(),"World and first person share transforms and lighting while rendering separate depth targets")
+	var saved_view: Transform3D = game.camera.transform
+	var saved_fov: float = game.camera.fov
+	var saved_weapon: Transform3D = game.weapon.transform
+	game.camera.position += Vector3(0,.3,0)
+	game.camera.fov = 37
+	view_pass.sync_view()
+	check(view_pass.camera.global_transform.is_equal_approx(game.camera.global_transform) and view_pass.camera.fov == 37 and game.weapon.transform == saved_weapon,"Weapon pass follows jump and ADS projection without retracting the gun")
+	game.camera.transform = saved_view
+	game.camera.fov = saved_fov
+	view_pass.sync_view()
 	var hud = game.ui.native_hud
 	check(is_equal_approx(hud.ultimate_ring.get_global_rect().get_center().x,hud.content.get_global_rect().get_center().x),"Ultimate stays exactly on the bottom screen centre line")
 	check(hud.grenade_ring.kind == "grenade" and hud.grenade_ring.caption.is_empty() and hud.equipment_slots[3].panel.visible and hud.grenade_ring.get_parent() == hud.equipment_slots[3].icon.get_parent(),"Grenade charge stays in the sidebar equipment row without percent or duplicate icon")

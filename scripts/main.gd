@@ -10,6 +10,7 @@ var enemies
 var sim
 var camera: Camera3D
 var weapon
+var first_person_layer
 var sound
 var effects
 var ui
@@ -64,6 +65,9 @@ func _ready() -> void:
 	weapon = preload("res://scripts/weapon_view.gd").new()
 	camera.add_child(weapon)
 	weapon.visible = false
+	first_person_layer = preload("res://scripts/first_person_layer.gd").new()
+	add_child(first_person_layer)
+	first_person_layer.setup(self)
 	sound = preload("res://scripts/sound.gd").new()
 	add_child(sound)
 	effects = preload("res://scripts/effects.gd").new()
@@ -337,6 +341,7 @@ func _process(dt: float) -> void:
 		if equipment_slot == 4:
 			equipment_prop = preload("res://scripts/equipment_props.gd").model(equipment_slot)
 			camera.add_child(equipment_prop)
+			for mesh in equipment_prop.find_children("*","MeshInstance3D",true,false): mesh.layers = 2
 			equipment_prop.position = Vector3(.24,-.20,-.55)
 	if equipment_prop: equipment_prop.visible = not finished
 	enemies.sync(visible_zombies,visual_time,false)
