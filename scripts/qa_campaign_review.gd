@@ -14,6 +14,9 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
+	if scenario in ["forest_overview","forest_detail","bedroom_furniture"]:
+		await stage_woodland(scenario)
+		return
 	if scenario.begins_with("shake_"):
 		await stage_shake(scenario)
 		return
@@ -658,3 +661,30 @@ func draw_shake_frame(args: Array) -> void:
 	await get_tree().process_frame
 	JavaScriptBridge.eval("window.__shakeState="+JSON.stringify({"pitch":offset.x,"yaw":offset.y,"authority_yaw":game.yaw,"authority_pitch":game.pitch,"remaining":game.screen_shake.remaining}),true)
 	JavaScriptBridge.eval("window.__shakeFrame="+str(frame),true)
+
+
+func stage_woodland(scenario: String) -> void:
+	game.start_solo("defense",42)
+	await get_tree().physics_frame
+	game.running = false
+	game.ui.clear_menu()
+	game.ui.root.hide()
+	game.weapon.hide()
+	game.sim.roster.clear()
+	game.camera.fov = 60
+	if scenario == "forest_overview":
+		game.camera.position = Vector3(28,18,-64)
+		game.camera.look_at(Vector3(-2,4,-108))
+	elif scenario == "forest_detail":
+		game.camera.position = Vector3(-2,4.0,-78)
+		game.camera.look_at(Vector3(-14,4.2,-89))
+	else:
+		var rear = preload("res://scripts/defense_layout.gd").SHOP_AREA.end.y
+		game.camera.position = Vector3(-8,5.2,rear-7.7)
+		game.camera.look_at(Vector3(-2.6,4.2,rear-3.3))
+	game.get_viewport().scaling_3d_scale = 1.0
+	RenderingServer.render_loop_enabled = false
+	for i in 5: await get_tree().process_frame
+	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+	RenderingServer.force_draw(true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"focus_visible":false}),true)
