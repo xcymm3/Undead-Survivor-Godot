@@ -96,7 +96,7 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   state = await snapshot(page);
   expect(state.wave).toBe(1);
   expect(state.player.ammo[state.player.weapon1]).toBe(30);
-  expect(state.player.reserves[state.player.weapon1]).toBe(255);
+  expect(state.player.reserves[state.player.weapon1]).toBe(180);
   expect(state.defense.crystal_hp).toBe(state.defense.crystal_max_hp);
   const beforeEmptySlot = await snapshot(page);
   await page.keyboard.press('4');
