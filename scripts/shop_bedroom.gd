@@ -21,7 +21,7 @@ func _ready() -> void:
 	block("BedFrame",bed+Vector3(0,.42,0),Vector3(1.95,.32,3.9),"795636")
 	block("BedHeadboard",bed+Vector3(0,.93,1.86),Vector3(2.08,1.45,.15),"795636")
 	for x in [-.64,0,.64]: block("HeadboardInset",bed+Vector3(x,1.03,1.765),Vector3(.52,.83,.035),"5b432f",false)
-	block("Mattress",bed+Vector3(0,.69,0),Vector3(1.85,.30,3.65),"c7bd9c",false)
+	block("Mattress",bed+Vector3(0,.69,0),Vector3(1.85,.30,3.65),"c7bd9c")
 	block("OliveBlanket",bed+Vector3(0,.86,-.55),Vector3(1.9,.11,2.45),"57644d",false)
 	block("FoldedBlanketEdge",bed+Vector3(0,.94,.55),Vector3(1.91,.10,.25),"748064",false)
 	block("BedPillow",bed+Vector3(0,.93,1.2),Vector3(1.22,.24,.65),"e0d1aa",false)
@@ -35,7 +35,7 @@ func _ready() -> void:
 	block("BedsideBook",table+Vector3(.23,.92,-.2),Vector3(.25,.06,.33),"8c6043",false)
 	# Wardrobe and a small writing desk occupy the east edge, away from spawns.
 	block("Wardrobe",Vector3(-2.7,4.24,rear-1.0),Vector3(1.9,2.48,1.15),"5a432f")
-	block("WardrobeCornice",Vector3(-2.7,5.52,rear-1.0),Vector3(2.06,.15,1.25),"93734b",false)
+	block("WardrobeCornice",Vector3(-2.7,5.52,rear-1.0),Vector3(2.06,.15,1.25),"93734b",true,false)
 	for x in [-3.15,-2.25]:
 		block("WardrobeDoor",Vector3(x,4.25,rear-1.61),Vector3(.81,2.22,.07),"80613f",false)
 		block("WardrobePanel",Vector3(x,4.25,rear-1.66),Vector3(.59,1.83,.03),"6d5037",false)
@@ -44,17 +44,21 @@ func _ready() -> void:
 	block("WritingDesk",desk+Vector3(0,.97,0),Vector3(1.8,.16,1.15),"a08254")
 	for x in [-.73,.73]:
 		for z in [-.4,.4]: block("DeskLeg",desk+Vector3(x,.46,z),Vector3(.12,.92,.12),"61472f",false)
+	solid_core("WritingDeskCore",desk+Vector3(0,.50,0),Vector3(1.8,1.0,1.15))
 	block("PaperSheet",desk+Vector3(-.16,1.061,0),Vector3(.47,.015,.57),"d4c7a4",false)
 	block("Notebook",desk+Vector3(.47,1.09,.15),Vector3(.38,.07,.45),"3e594f",false)
 	var mug = cylinder(desk+Vector3(-.6,1.17,.27),.095,.22,"ad9870")
 	mug.name = "DeskMug"
 	block("StoolSeat",desk+Vector3(-1.0,.57,-.1),Vector3(.55,.13,.55),"8e6b46")
+	solid_core("StoolCore",desk+Vector3(-1.0,.30,-.1),Vector3(.55,.60,.55))
+	for x in [-.20,.20]:
+		for z in [-.20,.20]: block("StoolLeg",desk+Vector3(-1.0+x,.27,-.1+z),Vector3(.08,.54,.08),"61472f",false)
 	# Personal items and shelves imply a firefighter sleeping here between nights.
-	block("WallShelf",Vector3(-12.45,4.85,rear-6.5),Vector3(.7,.12,2.0),"99774e",false)
+	block("WallShelf",Vector3(-12.45,4.85,rear-6.5),Vector3(.7,.12,2.0),"99774e",true,false)
 	for i in 4:
 		block("SupplyBook",Vector3(-12.45,5.10,rear-7.1+i*.25),Vector3(.40,.4,.16),["66583d","47584b","805641","b0a17a"][i],false)
 	block("CoatPeg",Vector3(-1.72,5.14,rear-4.1),Vector3(.18,.14,.14),"b0945c",false)
-	block("HangingWorkCoat",Vector3(-1.87,4.70,rear-4.1),Vector3(.20,.85,.62),"674c35",false)
+	block("HangingWorkCoat",Vector3(-1.87,4.70,rear-4.1),Vector3(.20,.85,.62),"674c35",true,false)
 	block("CoatReflectiveStripe",Vector3(-1.98,4.55,rear-4.1),Vector3(.025,.10,.64),"c1ac64",false)
 	# A warm ceiling fixture supports navigation even when facing away from the bed.
 	var ceiling = OmniLight3D.new()
@@ -66,11 +70,16 @@ func _ready() -> void:
 	ceiling.shadow_enabled = true
 	add_child(ceiling)
 
+func solid_core(title: String, center: Vector3, size: Vector3) -> void:
+	var body = block(title,center,size,"61472f")
+	body.get_child(0).hide()
+
 func lamp(base: Vector3) -> void:
 	cylinder(base+Vector3(0,.04,0),.20,.07,"635038")
 	cylinder(base+Vector3(0,.27,0),.035,.45,"ad8b50")
 	var shade = cylinder(base+Vector3(0,.57,0),.31,.37,"e6bf79")
 	shade.name = "BedsideLampshade"
+	solid_core("BedsideLampCore",base+Vector3(0,.57,0),Vector3(.58,.37,.58))
 	shade.mesh.top_radius = .17
 	var glow = material("e6bf79").duplicate()
 	glow.emission_enabled = true
