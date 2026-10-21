@@ -177,8 +177,8 @@ static func pellet(w: Dictionary, index: int, shot: int, aiming := false) -> Vec
 func binding_label(action: String) -> String:
 	return controls.label_for(action)
 
-func rebind(action: String, event: InputEvent) -> String:
-	var result: String = controls.rebind(action,event)
+func rebind(action: String, event: InputEvent, allow_swap := false) -> String:
+	var result: String = controls.rebind(action,event,allow_swap)
 	if result.is_empty():
 		settings.bindings = controls.export_bindings()
 		save()

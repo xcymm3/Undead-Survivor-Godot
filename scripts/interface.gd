@@ -19,6 +19,8 @@ var victory_caption: Label
 var native_hud
 var binding_action = ""
 var binding_button: Button
+var binding_confirmation: Control
+var pending_binding: Dictionary = {}
 var settings_tab = 0
 var overlay_state: Array = []
 const INK = Color("eee4c9")
@@ -184,6 +186,8 @@ func button(parent: Node, text: String, callback: Callable, primary := false) ->
 	return node
 
 func clear_menu() -> void:
+	cancel_binding_swap(false)
+	binding_action = ""
 	if game: game.request_draw()
 	if is_instance_valid(menu):
 		root.remove_child(menu)
@@ -520,7 +524,7 @@ func show_settings() -> void:
 			Data.settings.screen_shake = v
 			game.screen_shake.clear()
 			Data.save())
-		paragraph(column,"点击按键后输入新按键或鼠标键，Esc 取消；重复绑定自动交换。开镜为切换模式。",16,SETTINGS_MUTED)
+		paragraph(column,"点击按键后输入新按键或鼠标键，Esc 取消；重复绑定需确认后互换。开镜为切换模式。",16,SETTINGS_MUTED)
 		for spec in Data.Bindings.ACTIONS:
 			var row = HBoxContainer.new()
 			column.add_child(row)
@@ -833,6 +837,11 @@ func delete_confirmed_slot(index: int) -> void:
 		button(column,"返回",show_save_slots)
 
 func capture_binding(event: InputEvent) -> bool:
+	if is_instance_valid(binding_confirmation):
+		if event is InputEventKey and event.is_pressed() and event.physical_keycode == KEY_ESCAPE:
+			cancel_binding_swap()
+			return true
+		return false
 	if current != "settings" or binding_action.is_empty(): return false
 	if event is InputEventMouseMotion: return false
 	if not event.is_pressed() or event.is_echo(): return true
@@ -840,11 +849,90 @@ func capture_binding(event: InputEvent) -> bool:
 		binding_button.text = Data.binding_label(binding_action)
 		binding_action = ""
 		return true
+	var error = Data.controls.binding_error(binding_action,event)
+	if not error.is_empty():
+		binding_button.text = error+" · 重试"
+		return true
+	var conflict = Data.controls.conflict_for(binding_action,event)
+	if not conflict.is_empty():
+		show_binding_conflict(event,conflict)
+		return true
 	var result = Data.rebind(binding_action,event)
-	if result.is_empty():
-		var scroll_position: int = menu.find_child("FieldSettings",true,false).scroll_vertical
-		show_settings()
-		menu.find_child("FieldSettings",true,false).set_deferred("scroll_vertical",scroll_position)
-	else:
-		binding_button.text = result+" · 重试"
+	if result.is_empty(): refresh_binding_settings()
+	else: binding_button.text = result+" · 重试"
 	return true
+
+func refresh_binding_settings() -> void:
+	var scroll_position: int = menu.find_child("FieldSettings",true,false).scroll_vertical
+	show_settings()
+	menu.find_child("FieldSettings",true,false).set_deferred("scroll_vertical",scroll_position)
+
+func show_binding_conflict(event: InputEvent, conflict: String) -> void:
+	pending_binding = {"action":binding_action,"event":Data.controls.encode(event),"conflict":conflict,
+		"old":Data.controls.encode(InputMap.action_get_events(binding_action)[0])}
+	binding_button.text = Data.binding_label(binding_action)
+	binding_action = ""
+	binding_confirmation = Control.new()
+	binding_confirmation.name = "BindingConflict"
+	binding_confirmation.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	binding_confirmation.mouse_filter = Control.MOUSE_FILTER_STOP
+	menu.add_child(binding_confirmation)
+	var shade = ColorRect.new()
+	shade.color = Color(0,0,0,.76)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	binding_confirmation.add_child(shade)
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	binding_confirmation.add_child(center)
+	var card = PanelContainer.new()
+	card.theme = green_settings_theme()
+	card.custom_minimum_size.x = minf(600,root.size.x-48)
+	card.add_theme_stylebox_override("panel",settings_box(SETTINGS_PAPER,SETTINGS_BRASS,24))
+	center.add_child(card)
+	var column = VBoxContainer.new()
+	column.add_theme_constant_override("separation",20)
+	card.add_child(column)
+	column.add_child(label("按键冲突",28,SETTINGS_INK))
+	var question = paragraph(column,"检测到按键冲突：%s %s，是否确认互换按键？" % [Data.controls.action_name(conflict),Data.binding_label(conflict)],21,SETTINGS_INK)
+	question.name = "ConflictQuestion"
+	question.custom_minimum_size.x = minf(552,root.size.x-96)
+	var actions = HBoxContainer.new()
+	actions.add_theme_constant_override("separation",16)
+	column.add_child(actions)
+	var cancel = home_button(actions,"取消",cancel_binding_swap)
+	cancel.name = "CancelSwap"
+	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var confirm = home_button(actions,"确认互换",confirm_binding_swap,true)
+	confirm.name = "ConfirmSwap"
+	confirm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for item in [cancel,confirm]:
+		var other: Button = confirm if item == cancel else cancel
+		item.focus_next = item.get_path_to(other)
+		item.focus_previous = item.get_path_to(other)
+		item.focus_neighbor_left = item.get_path_to(other)
+		item.focus_neighbor_right = item.get_path_to(other)
+		item.focus_neighbor_top = item.get_path_to(other)
+		item.focus_neighbor_bottom = item.get_path_to(other)
+	cancel.grab_focus()
+
+func cancel_binding_swap(restore_focus := true) -> void:
+	if is_instance_valid(binding_confirmation):
+		binding_confirmation.hide()
+		binding_confirmation.queue_free()
+	binding_confirmation = null
+	pending_binding = {}
+	if restore_focus and is_instance_valid(binding_button): binding_button.grab_focus()
+
+func confirm_binding_swap() -> void:
+	if current != "settings" or pending_binding.is_empty(): return
+	var request = pending_binding.duplicate()
+	var event = Data.controls.decode(request.event)
+	# A stale dialog cannot approve a different mapping changed in the meantime.
+	var unchanged: bool = Data.controls.encode(InputMap.action_get_events(request.action)[0]) == request.old and Data.controls.conflict_for(request.action,event) == request.conflict
+	cancel_binding_swap(false)
+	if not unchanged:
+		refresh_binding_settings()
+		return
+	var result = Data.rebind(request.action,event,true)
+	if result.is_empty(): refresh_binding_settings()
+	elif is_instance_valid(binding_button): binding_button.text = result+" · 重试"

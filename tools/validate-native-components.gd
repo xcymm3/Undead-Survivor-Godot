@@ -1384,7 +1384,8 @@ func validate_settings_controls() -> void:
 	game._unhandled_input(key)
 	check(game.input_state().ultimate,"Rebound ultimate reaches authoritative command")
 	key.physical_keycode = KEY_S
-	check(data.rebind("forward",key).is_empty() and key.is_action_pressed("forward"),"Movement key actually follows the rebound action")
+	check(not data.rebind("forward",key).is_empty() and data.binding_label("forward") == "W" and data.binding_label("back") == "S","Unconfirmed conflict cannot change either movement key")
+	check(data.rebind("forward",key,true).is_empty() and key.is_action_pressed("forward"),"Confirmed swap updates the movement action")
 	key.physical_keycode = KEY_W
 	check(key.is_action_pressed("back"),"Duplicate bindings swap instead of driving two movement actions")
 	key.physical_keycode = KEY_F11
@@ -1392,7 +1393,7 @@ func validate_settings_controls() -> void:
 	var mouse = InputEventMouseButton.new()
 	mouse.button_index = MOUSE_BUTTON_RIGHT
 	mouse.pressed = true
-	check(data.rebind("fire",mouse).is_empty(),"Gunfire can bind to a mouse button")
+	check(data.rebind("fire",mouse,true).is_empty(),"Confirmed gunfire swap can bind to a mouse button")
 	game._input(mouse)
 	check(game.input_state().fire,"Rebound mouse button reaches gunfire command")
 	mouse.pressed = false
@@ -1414,6 +1415,32 @@ func validate_settings_controls() -> void:
 	check(game.ui.capture_binding(key) and data.binding_label("interact") == "K" and game.ui.binding_action.is_empty(),"Escape cancels capture without changing the binding")
 	data.reset_bindings()
 	check(data.binding_label("interact") == "E" and data.binding_label("ultimate") == "Q" and data.binding_label("forward") == "W","Restore defaults removes all custom bindings")
+	game.ui.show_settings()
+	var before: Dictionary = data.settings.bindings.duplicate(true)
+	game.ui.menu.find_child("Binding_forward",true,false).pressed.emit()
+	key.physical_keycode = KEY_S
+	check(game.ui.capture_binding(key) and is_instance_valid(game.ui.binding_confirmation),"A conflicting settings key opens an in-game confirmation")
+	check(data.binding_label("forward") == "W" and data.binding_label("back") == "S" and data.settings.bindings == before,"Pending confirmation changes neither bindings nor saved settings")
+	check(game.ui.binding_confirmation.find_child("ConflictQuestion",true,false).text == "检测到按键冲突：后退 S，是否确认互换按键？","Conflict question identifies the affected action and key")
+	game.ui.binding_confirmation.find_child("CancelSwap",true,false).pressed.emit()
+	check(game.ui.pending_binding.is_empty() and data.binding_label("forward") == "W" and data.settings.bindings == before,"Cancel preserves the original mappings and saved settings")
+	game.ui.menu.find_child("Binding_forward",true,false).pressed.emit()
+	game.ui.capture_binding(key)
+	key.physical_keycode = KEY_ESCAPE
+	check(game.ui.capture_binding(key) and game.ui.current == "settings" and game.ui.pending_binding.is_empty(),"Escape closes only the confirmation and does not leave settings")
+	game.ui.menu.find_child("Binding_forward",true,false).pressed.emit()
+	key.physical_keycode = KEY_S
+	game.ui.capture_binding(key)
+	game.ui.binding_confirmation.find_child("ConfirmSwap",true,false).pressed.emit()
+	check(data.binding_label("forward") == "S" and data.binding_label("back") == "W" and data.settings.bindings.forward == "k:83" and data.settings.bindings.back == "k:87","Confirm applies and saves both sides of the swap")
+	game.ui.menu.find_child("Binding_forward",true,false).pressed.emit()
+	key.physical_keycode = KEY_W
+	game.ui.capture_binding(key)
+	game.ui.show_home()
+	game.ui.confirm_binding_swap()
+	check(game.ui.pending_binding.is_empty() and data.binding_label("forward") == "S","Leaving settings cancels the pending request so stale confirmation cannot apply")
+	data.reset_bindings()
+
 	var shake = preload("res://scripts/screen_shake.gd").new()
 	shake.trigger(0,1)
 	var near: float = shake.step(.016,1).length()

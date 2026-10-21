@@ -14,7 +14,7 @@ func initialize(saved: Dictionary) -> void:
 		var value = saved.get(spec[0],"")
 		if value is String:
 			var event = decode(value)
-			if event: rebind(spec[0],event)
+			if event: rebind(spec[0],event,true)
 
 func restore() -> void:
 	for action in defaults:
@@ -53,20 +53,37 @@ func assign(action: String, events: Array) -> void:
 	InputMap.action_erase_events(action)
 	for event in events: InputMap.action_add_event(action,event)
 
-func rebind(action: String, event: InputEvent) -> String:
+func binding_error(action: String, event: InputEvent) -> String:
 	if not defaults.has(action): return "不可修改"
 	var code = encode(event)
 	if code.is_empty(): return "请使用键盘或鼠标键"
-	# Preserve pause/fullscreen and unused weapon slots without duplicate actions.
 	for other in ["pause","fullscreen","weapon_previous","weapon_next","weapon_4","weapon_5","weapon_6","weapon_7","weapon_8","weapon_9"]:
 		for existing in InputMap.action_get_events(other):
 			if encode(existing) == code: return "该按键已保留"
-	var old = InputMap.action_get_events(action)
+	return ""
+
+func conflict_for(action: String, event: InputEvent) -> String:
+	var code = encode(event)
+	if code.is_empty(): return ""
 	for spec in ACTIONS:
 		if spec[0] == action: continue
 		for existing in InputMap.action_get_events(spec[0]):
-			if encode(existing) == code: assign(spec[0],old)
-	assign(action,[decode(code)])
+			if encode(existing) == code: return spec[0]
+	return ""
+
+static func action_name(action: String) -> String:
+	for spec in ACTIONS:
+		if spec[0] == action: return spec[1]
+	return action
+
+func rebind(action: String, event: InputEvent, allow_swap := false) -> String:
+	var error = binding_error(action,event)
+	if not error.is_empty(): return error
+	var conflict = conflict_for(action,event)
+	if not conflict.is_empty():
+		if not allow_swap: return "检测到按键冲突"
+		assign(conflict,InputMap.action_get_events(action))
+	assign(action,[decode(encode(event))])
 	return ""
 
 func label_for(action: String) -> String:
