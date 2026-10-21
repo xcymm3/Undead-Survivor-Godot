@@ -5,6 +5,7 @@ var action_name = ""
 var action_frames = 48
 var action_fps = 20.0
 var ultimate_frame = -1
+var axe_review = false
 func _ready() -> void:
 	if not Data.automation or not OS.has_feature("web"): queue_free(); return
 	call_deferred("stage")
@@ -16,7 +17,7 @@ func stage() -> void:
 	if scenario == "axe_comparison":
 		await stage_axe_comparison()
 		return
-	if scenario.begins_with("ultimate_"):
+	if scenario.begins_with("ultimate_") or scenario == "axe_attack":
 		await stage_ultimate(scenario)
 		return
 	if scenario.begins_with("normal_") or scenario.begins_with("toy_"):
@@ -211,11 +212,20 @@ func stage_ultimate(scenario: String) -> void:
 	p.cooldown = 0.0
 	p.input = {}
 	p.input_age = 0
-	action_name = scenario.trim_prefix("ultimate_")
+	axe_review = scenario == "axe_attack"
+	action_name = scenario.trim_prefix("axe_" if axe_review else "ultimate_")
 	action_frames = 156 if action_name == "attack" else 66 if action_name == "sheathe" else 54
 	action_fps = 60.0 if action_name == "attack" else 30.0
+	if axe_review: action_frames = 216
+	if action_name == "flow":
+		action_fps = 10.0
+		action_frames = int(preload("res://scripts/blade_energy.gd").FLOW_PERIOD*action_fps)
 	ultimate_frame = -1
-	if action_name != "draw":
+	if axe_review:
+		p.slot = 3
+		p.weapon = 6
+		p.requested = 6
+	elif action_name != "draw":
 		var command = {"ultimate":true}
 		preload("res://scripts/ultimate.gd").tick(game.sim,p,command,0)
 		p.ultimate_age = 1.2
@@ -251,14 +261,21 @@ func draw_ultimate_frame(args: Array) -> void:
 	var p: Dictionary = game.local_pawn()
 	var activate: bool = action_name == "draw" and frame == 6
 	# The sheathe preview starts near natural expiration during a real second swing.
-	var attack: bool = (action_name == "attack" and time >= .2 and time < 1.7) or (action_name == "sheathe" and time >= .1 and frame < 16)
+	var attack: bool = (action_name == "attack" and time >= .2 and time < (2.3 if axe_review else 1.7)) or (action_name == "sheathe" and time >= .1 and frame < 16)
 	p.input = {"ultimate":activate,"fire":attack}
 	p.input_age = 0
 	game.sim.elapsed += dt
-	game.sim.equipment.before_movement(dt)
-	game.sim.update_pawn(p,dt)
-	game.weapon.sync(p,dt,game.sim.elapsed,Vector3(0,0,-50))
-	game.ui.tick(dt)
+	if action_name == "flow":
+		# A steady-pose material study spans a complete seamless cycle. Gameplay timers
+		# are frozen; production material synchronization receives a continuous clock.
+		game.weapon.sync(p,dt,0.0,Vector3(0,0,-50))
+		game.weapon.blade.sync_energy(true,time)
+		game.ui.root.hide()
+	else:
+		game.sim.equipment.before_movement(dt)
+		game.sim.update_pawn(p,dt)
+		game.weapon.sync(p,dt,game.sim.elapsed,Vector3(0,0,-50))
+		game.ui.tick(dt)
 	for i in 2: await get_tree().process_frame
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
@@ -437,6 +454,7 @@ func stage_axe_comparison() -> void:
 	var heads: Array = []
 	for index in 2:
 		var model = load("res://assets/models/axe.glb").instantiate() if index == 0 else game.weapon.create_model("axe")
+		if index == 0: load("res://scripts/weapon_models.gd").extend_axe_handle(model,1.10)
 		game.add_child(model)
 		model.position = Vector3(-.72 if index == 0 else .72,.6,0)
 		var pivot = model.find_child("FireAxeHead",true,false).get_parent() as Node3D
@@ -454,7 +472,7 @@ func stage_axe_comparison() -> void:
 	for index in 2:
 		var label = Label.new()
 		root.add_child(label)
-		label.text = "修改前" if index == 0 else "斧柄加长 10%"
+		label.text = "此前长度" if index == 0 else "在此前基础上再加长 20%"
 		label.add_theme_font_override("font",game.ui.font)
 		label.add_theme_font_size_override("font_size",28)
 		label.anchor_left = float(index)*.5

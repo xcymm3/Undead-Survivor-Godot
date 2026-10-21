@@ -1,5 +1,6 @@
 extends RefCounted
 ## One geometry and sight factory for first person, partners, displays and pickups.
+const AXE_HANDLE_SCALE = 1.10*1.20
 const AXE_HEAD_PARTS = ["NeckGuard","FireAxeHead","FireAxeBlade","FireAxePick","PickTip","HeadSocket","HandleWedge"]
 
 static func create(id: String, first_person := false) -> Node3D:
@@ -24,14 +25,13 @@ static func create(id: String, first_person := false) -> Node3D:
 	if id in ["p90","pistol","heavy-machine-gun"]: attach_sight(id,model)
 	return model
 
-static func extend_axe_handle(model: Node3D) -> void:
+static func extend_axe_handle(model: Node3D, length_scale := AXE_HANDLE_SCALE) -> void:
 	# Lengthen only the shaft above the fixed lower grip; keep head geometry full size.
 	var shaft = model.find_child("FiberglassHandle",true,false) as MeshInstance3D
 	var bounds = shaft.mesh.get_aabb()
-	const LENGTH_SCALE = 1.10
-	shaft.scale.y *= LENGTH_SCALE
-	shaft.position.y += bounds.position.y*(1.0-LENGTH_SCALE)
-	var extension = bounds.size.y*(LENGTH_SCALE-1.0)
+	shaft.scale.y *= length_scale
+	shaft.position.y += bounds.position.y*(1.0-length_scale)
+	var extension = bounds.size.y*(length_scale-1.0)
 	for title in AXE_HEAD_PARTS:
 		var part = model.find_child(title,true,false) as Node3D
 		part.position.y += extension

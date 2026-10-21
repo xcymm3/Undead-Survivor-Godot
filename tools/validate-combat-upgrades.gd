@@ -31,7 +31,7 @@ func validate_blade_motion(game) -> void:
 	var original_shaft = original_axe.find_child("FiberglassHandle",true,false)
 	var longer_shaft = longer_axe.find_child("FiberglassHandle",true,false)
 	var bounds: AABB = original_shaft.mesh.get_aabb()
-	check(is_equal_approx(longer_shaft.scale.y/original_shaft.scale.y,1.10),"Fire-axe shaft is ten percent longer")
+	check(is_equal_approx(longer_shaft.scale.y/original_shaft.scale.y,1.32),"Fire-axe shaft is twenty percent longer than its previous 1.10 scale")
 	check(is_equal_approx((longer_shaft.transform*bounds.position).y,(original_shaft.transform*bounds.position).y),"Extended shaft preserves its lower grip endpoint")
 	check(longer_axe.find_child("RubberGrip",true,false).transform.is_equal_approx(original_axe.find_child("RubberGrip",true,false).transform),"Axe hand grip does not move or stretch")
 	var original_head = original_axe.find_child("FireAxeHead",true,false)
@@ -49,7 +49,7 @@ func validate_blade_motion(game) -> void:
 		imported_player.play(clip)
 		imported_player.pause()
 		imported_player.seek(imported_player.get_animation(clip).length*.5,true)
-		check(is_equal_approx(longer_shaft.scale.y/original_shaft.scale.y,1.10) and longer_head.position.y > original_head.position.y,"Imported "+clip+" cannot undo the longer shaft or head position")
+		check(is_equal_approx(longer_shaft.scale.y/original_shaft.scale.y,1.32) and longer_head.position.y > original_head.position.y,"Imported "+clip+" cannot undo the longer shaft or head position")
 		for title in assembly_parts:
 			check(is_equal_approx(longer_axe.find_child(title,true,false).position.y-original_axe.find_child(title,true,false).position.y,head_lift),"Imported "+clip+" keeps the head connected: "+title)
 	original_axe.free()
