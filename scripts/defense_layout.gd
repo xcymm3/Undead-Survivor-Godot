@@ -8,17 +8,22 @@ const CRYSTAL = Vector2(0,-10+COMBAT_DEPTH/2)
 const CRYSTAL_RADIUS = 1.05
 const CRYSTAL_CONTACT_RADIUS = 2.3 # Crystal body plus enemy navigation clearance.
 const FALL_RETURN = CRYSTAL+Vector2(-6,3)
-const SHOP_AREA = Rect2(-13,-10+COMBAT_DEPTH-10,26,20)
+const SHOP_AREA = Rect2(-13,-10+COMBAT_DEPTH-14,26,24)
 const SHOP_FRONT_Z = SHOP_AREA.position.y
-const SHOP_PARTITION_Z = SHOP_FRONT_Z+11.3
+const SHOP_PARTITION_Z = SHOP_FRONT_Z+15.3
 const SHOP_PASSAGE_X = -6.5
-const SHOP_DOOR_Z = SHOP_FRONT_Z+4.5
+const SHOP_DOOR_Z = SHOP_FRONT_Z+8.5
 const SHOP_DOOR_WIDTH = 4.0
 const SHOP_CEILING_Y = 7.5
-const SHOP_APPROACH = Rect2(10,SHOP_FRONT_Z-8,7,15)
-const SHOP_OWNER = Vector2(10.0,SHOP_FRONT_Z+10.1)
+const SHOP_APPROACH = Rect2(10,SHOP_FRONT_Z-4,9,20)
+const SHOP_OWNER = Vector2(10.7,SHOP_PARTITION_Z-2.9)
+const SHOP_OWNER_YAW = PI/2.0
+const SHOP_COUNTER_X = 8.4
+const SHOP_COUNTER_FRONT_Z = SHOP_PARTITION_Z-5.6
+const SHOP_COUNTER_BACK_Z = SHOP_PARTITION_Z
+
 const SPAWN = Vector2(SHOP_PASSAGE_X,SHOP_AREA.end.y-5)
-const SHOP_WALL_Z = SHOP_FRONT_Z+10-.325
+const SHOP_WALL_Z = SHOP_PARTITION_Z-.325
 const SHOP_POINT = Vector2(0,SHOP_WALL_Z-2.35)
 const BRIDGE = Rect2(-4,-62,8,34)
 const ENEMY_SPAWN_REGION = Rect2(-48,BRIDGE.position.y-96,96,96)
@@ -30,6 +35,10 @@ const CRYSTAL_MAX_HP = 3000
 const ARMORY_WEAPONS := [0,8,7,5]
 const ARMORY_COLUMNS := [-7.2,-2.4,2.4,7.2]
 const ARMORY_ROWS := [5.65]
+
+static func owner_front(p: Vector2) -> bool:
+	# A bounded service lane rejects approaches around either counter end.
+	return p.x < SHOP_COUNTER_X-.6 and p.x >= SHOP_COUNTER_X-4.5 and absf(p.y-SHOP_OWNER.y) <= 1.4
 
 static func weapon_mount(display_index: int) -> Vector3:
 	return armory_transform()*Vector3(ARMORY_COLUMNS[display_index],ARMORY_ROWS[0],67.28)

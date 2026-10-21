@@ -58,13 +58,13 @@ func build_roof() -> void:
 	var slope = atan2(3.4,13.3)
 	var length = Vector2(13.8,3.53).length()
 	for side in [-1.0,1.0]:
-		var panel = block("SlopedShopRoof",Vector3(side*6.9,9.13,middle),Vector3(length,.24,22.0),ROOF,true,false)
+		var panel = block("SlopedShopRoof",Vector3(side*6.9,9.13,middle),Vector3(length,.24,Layout.SHOP_AREA.size.y+2.0),ROOF,true,false)
 		panel.rotation.z = -side*slope
-		block("EaveFascia",Vector3(side*13.8,7.37,middle),Vector3(.18,.4,22.2),TIMBER,false)
-		for offset in range(-10,11,2):
+		block("EaveFascia",Vector3(side*13.8,7.37,middle),Vector3(.18,.4,Layout.SHOP_AREA.size.y+2.2),TIMBER,false)
+		for offset in range(-12,13,2):
 			var seam = block("RoofStandingSeam",Vector3(side*6.9,9.28,middle+offset),Vector3(length,.055,.07),"ac8061",false)
 			seam.rotation.z = -side*slope
-	block("RoofRidgeCap",Vector3(0,10.99,middle),Vector3(.4,.2,22.3),IRON,false)
+	block("RoofRidgeCap",Vector3(0,10.99,middle),Vector3(.4,.2,Layout.SHOP_AREA.size.y+2.3),IRON,false)
 	gable(front-.08,true)
 	gable(Layout.SHOP_AREA.end.y+.08,false)
 	# A brick chimney breaks the long roof ridge and reads at battlefield distance.
@@ -147,10 +147,10 @@ func build_facade() -> void:
 		for z in [front+.5,front+8.5,front+15,rear-.5]:
 			block("SideTimberPost",Vector3(x,5.2,z),Vector3(.24,4.4,.22),TIMBER,false)
 		# Rear side trim never bridges across the open doorway.
-		block("SideTimberRail",Vector3(x,4.05,front+14),Vector3(.24,.18,11.5),TIMBER,false)
+		block("SideTimberRail",Vector3(x,4.05,front+18),Vector3(.24,.18,11.5),TIMBER,false)
 	window_display(Vector3(-8,5.42,front-.45),PI,true)
 	window_display(Vector3(8,5.42,front-.45),PI,true)
-	window_display(Vector3(13.4,5.35,front+14),PI/2,false)
+	window_display(Vector3(13.4,5.35,front+18),PI/2,false)
 	signboard("BattlefieldShopSign",Vector3(0,8.92,front-.48),10.4,1.65,PI)
 	signboard("ServicesSign",Vector3(0,5.45,front-.46),6.6,.84,PI)
 	# A crossed weapon crest can be recognized before the Chinese letters resolve.

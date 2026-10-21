@@ -206,6 +206,9 @@ func sync_focus(sim, p: Dictionary) -> void:
 			model.scale *= factor
 			model.position -= center*factor
 	var choice: Dictionary = Catalog.focus(sim,p)
+	var shop = get_parent().shop
+	if shop and shop.owner_model:
+		shop.owner_model.get_node("OwnerName").visible = choice.get("id","") != "shopkeeper" and not preload("res://scripts/onboarding.gd").talking(sim.defense)
 	interaction_ring.visible = not choice.is_empty()
 	var drops: Array = []
 	if interaction_ring.visible:
@@ -232,7 +235,7 @@ func sync_focus(sim, p: Dictionary) -> void:
 	var payment_age: float = sim.defense.prop_clock-float(sim.defense.get("tutorial_payment_at",-100))
 	if payment_age >= 0 and payment_age < 2.2:
 		var source: Vector3 = sim.defense.get("tutorial_payment_from",Vector3.ZERO)
-		var destination = Vector3(Layout.SHOP_OWNER.x,4.2,Layout.SHOP_OWNER.y-.5)
+		var destination = Vector3(Layout.SHOP_OWNER.x,4.2,Layout.SHOP_OWNER.y)
 		for index in 12:
 			var age = payment_age-index*.07
 			if age < 0 or age > 1.2: continue

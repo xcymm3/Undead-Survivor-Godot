@@ -8,8 +8,8 @@ static func stations() -> Array:
 	var result: Array = []
 	var ids = ["rifle","rifle_magazine","ultimate","grenade","strong","precise","swift","supply","greed"]
 	for i in ids.size():
-		var x: float = [-9.0,-3.0,3.0,9.0][i] if i < 4 else [-10.0,-5.0,0.0,5.0,10.0][i-4]
-		result.append({"id":ids[i],"position":Vector3(x,4.15,Layout.SHOP_WALL_Z-2.3 if i < 4 else Layout.SHOP_WALL_Z-7.5),"radius":.85,"range":3.2})
+		var x: float = [-10.0,-3.0,1.0,5.0][i] if i < 4 else [-10.0,-6.0,-2.0,2.0,6.0][i-4]
+		result.append({"id":ids[i],"position":Vector3(x,4.15,Layout.SHOP_FRONT_Z+10.5 if i < 4 else Layout.SHOP_FRONT_Z+4.5),"radius":.85,"range":3.2})
 
 	return result
 
@@ -17,7 +17,7 @@ static func targets(sim) -> Array:
 	var tutorial = preload("res://scripts/onboarding.gd")
 	var result: Array = stations() if tutorial.shop_open(sim.defense) else []
 	if tutorial.pending(sim.defense) and not tutorial.talking(sim.defense):
-		result.append({"id":"shopkeeper","position":Vector3(Layout.SHOP_OWNER.x,4.6,Layout.SHOP_OWNER.y-1.6),"radius":1.0,"range":5.0})
+		result.append({"id":"shopkeeper","position":Vector3(Layout.SHOP_COUNTER_X,4.6,Layout.SHOP_OWNER.y),"radius":1.0,"range":5.0})
 	for item in sim.defense.get("structures",[]):
 		if not tutorial.defenses_open(sim.defense): continue
 		if not item.get("owned",false) and sim.defense.started: continue
@@ -39,6 +39,7 @@ static func focus(sim, p: Dictionary) -> Dictionary:
 	var selected: Dictionary = {}
 	var nearest = INF
 	for entry in targets(sim):
+		if entry.id == "shopkeeper" and not Layout.owner_front(p.pos): continue
 		if entry.get("gate_body",false):
 			var gate = sim.defense_director.structures.find(entry.id)
 			var structures = sim.defense_director.structures

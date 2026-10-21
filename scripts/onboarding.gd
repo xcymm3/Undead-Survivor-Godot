@@ -63,6 +63,7 @@ static func dialogue_frame(state: Dictionary) -> Dictionary:
 
 static func begin_dialogue(sim, pawn: Dictionary) -> bool:
 	if not sim.can_manage(pawn) or sim.defense.started or not pending(sim.defense) or talking(sim.defense): return false
+	if not preload("res://scripts/defense_layout.gd").owner_front(pawn.get("pos",Vector2.ZERO)): return false
 	sim.defense["tutorial_dialogue"] = "defenses" if stage(sim.defense) == DEFENSE_PENDING else "shop"
 	sim.defense["tutorial_speaker"] = pawn.id
 	sim.defense["tutorial_dialogue_elapsed"] = 0.0

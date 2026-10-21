@@ -55,7 +55,7 @@ func run() -> void:
 	check(not game.arena.clear(Vector2(12,-70),Vector2(12,0)),"Chasm prevents routes that bypass the bridge")
 	check(not game.arena.clear(Vector2(12,-20),Vector2(12,0)),"Ramp-side shelves cannot bypass the central climb")
 	# Five talent stands now include a centre stand; the walkways lie between stands.
-	for aisle_x in [-2.5,2.5]:
+	for aisle_x in [-8.0,-4.0,0.0,4.0]:
 		check(game.arena.clear(Vector2(aisle_x,layout.SHOP_FRONT_Z+1.5),Vector2(aisle_x,layout.SHOP_DOOR_Z)),"Showroom aisles remain clear between talent stands: "+str(aisle_x))
 	check(not game.arena.clear(Vector2(0,layout.SHOP_AREA.position.y-2),layout.SHOP_AREA.get_center()),"The centre talent stand remains solid for enemy navigation")
 	check(game.arena.clear(Vector2(0,-70),Vector2(0,data.Maps.Defense.CRYSTAL.y-3.299999999999997)),"Bridge and ramp form one open approach lane")

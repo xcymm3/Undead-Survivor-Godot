@@ -62,7 +62,9 @@ static func validate(game, check: Callable) -> void:
 	var shop = world.shop
 	var pose = sim.defense.duplicate(true)
 	pose.tutorial_dialogue = "shop"
-	pose.tutorial_speaker_eye = Vector3(preload("res://scripts/defense_layout.gd").SHOP_OWNER.x+2,4.7,preload("res://scripts/defense_layout.gd").SHOP_OWNER.y-3)
+	var layout = preload("res://scripts/defense_layout.gd")
+	var speaker_offset = Basis(Vector3.UP,layout.SHOP_OWNER_YAW)*Vector3(2,0,-3)
+	pose.tutorial_speaker_eye = Vector3(layout.SHOP_OWNER.x,4.7,layout.SHOP_OWNER.y)+speaker_offset
 	pose.prop_clock = 0.0
 	shop.sync(pose)
 	pose.prop_clock = .1
@@ -86,10 +88,10 @@ static func validate(game, check: Callable) -> void:
 	var owner_pos: Vector2 = preload("res://scripts/defense_layout.gd").SHOP_OWNER
 	for elevation in [3.1,4.4,5.5]:
 		for side in [false,true]:
-			body.position = Vector3(owner_pos.x-3.5 if side else owner_pos.x,elevation,owner_pos.y if side else owner_pos.y-3)
+			body.position = Vector3(owner_pos.x if side else owner_pos.x-4,elevation,layout.SHOP_COUNTER_FRONT_Z-2 if side else owner_pos.y)
 			body.velocity = Vector3.ZERO
-			for tick in 60: body.advance(Vector2(6,0) if side else Vector2(0,6),1.0/60)
-			check.call(body.position.x < owner_pos.x-2.7 if side else body.position.z < owner_pos.y-1.7,"Counter movement barrier stops front/side entry at height "+str(elevation)+" side="+str(side))
+			for tick in 60: body.advance(Vector2(0,6) if side else Vector2(6,0),1.0/60)
+			check.call(body.position.z < layout.SHOP_COUNTER_FRONT_Z-.3 if side else body.position.x < layout.SHOP_COUNTER_X-.7,"Counter movement barrier stops front/side entry at height "+str(elevation)+" side="+str(side))
 	body.free()
 	check.call(world.shop.has_node("Bedroom/BedFrame") and world.shop.has_node("Bedroom/Wardrobe") and world.shop.has_node("Bedroom/BedsideLight"),"Spawn room contains a bed, wardrobe and working lamp")
 
@@ -147,6 +149,18 @@ static func validate(game, check: Callable) -> void:
 	sim.coop_host = p.id
 	check.call(not Tutorial.begin_dialogue(sim,{"id":"guest"}) and not Tutorial.talking(sim.defense),"A guest cannot advance the host tutorial")
 	sim.coop_host = ""
+	var layout_rules = preload("res://scripts/defense_layout.gd")
+	check.call(is_equal_approx(world.shop.owner_model.rotation.y,PI/2),"Merchant rests facing left by ninety degrees")
+	check.call(Catalog.stations().all(func(entry): return layout_rules.SHOP_AREA.grow(-1.1).has_point(Vector2(entry.position.x,entry.position.z)) and entry.position.x < layout_rules.SHOP_COUNTER_X-1.3),"Every stand stays inside the showroom and outside the cashier lane")
+	var side_point = layout_rules.SHOP_OWNER+Vector2(0,-5)
+	p.pos = side_point
+	p.height = 3
+	check.call(not Tutorial.begin_dialogue(sim,p),"Direct dialogue request from the side is rejected by authority")
+	var anchor = Vector3(layout_rules.SHOP_COUNTER_X,4.6,layout_rules.SHOP_OWNER.y)
+	var side_direction = (anchor-Vector3(p.pos.x,4.7,p.pos.y)).normalized()
+	p.yaw = atan2(-side_direction.x,-side_direction.z)
+	p.pitch = asin(side_direction.y)
+	check.call(Catalog.focus(sim,p).get("id","") != "shopkeeper","Side approaches do not display a merchant interaction")
 	Fixture.face(sim,p,"shopkeeper")
 	check.call(Catalog.focus(sim,p).get("id","") == "shopkeeper","Normal gaze selection reaches merchant across counter")
 	Fixture.hold(sim,p,1.01)

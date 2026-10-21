@@ -21,7 +21,7 @@ func _ready() -> void:
 	var y: float = 3.0+height*.5
 	block("ShopFrontWall",Vector3(0,y,front),Vector3(26.6,height,.5),"8b8970")
 	block("ShopRearWall",Vector3(0,y,rear),Vector3(26.6,height,.5),"8b8970")
-	block("ShopWestWall",Vector3(-13,y,middle),Vector3(.5,height,20),"8b8970")
+	block("ShopWestWall",Vector3(-13,y,middle),Vector3(.5,height,area.size.y),"8b8970")
 	# A side-facing door keeps the crystal hidden behind the opaque front wall.
 	var a: float = Layout.SHOP_DOOR_Z-Layout.SHOP_DOOR_WIDTH/2
 	var b: float = Layout.SHOP_DOOR_Z+Layout.SHOP_DOOR_WIDTH/2
@@ -29,7 +29,7 @@ func _ready() -> void:
 	block("ShopEastWallRear",Vector3(13,y,(rear+b)/2),Vector3(.5,height,rear-b),"8b8970")
 	block("ShopDoorLintel",Vector3(13,6.95,Layout.SHOP_DOOR_Z),Vector3(.65,1.1,Layout.SHOP_DOOR_WIDTH),"554735",true,false)
 	# Roof and overhead beams collide in 3D but never mark the floor as unwalkable.
-	block("ShopRoof",Vector3(0,Layout.SHOP_CEILING_Y+.08,middle),Vector3(26.4,.16,20.4),"6b705b",true,false)
+	block("ShopRoof",Vector3(0,Layout.SHOP_CEILING_Y+.08,middle),Vector3(26.4,.16,area.size.y+.4),"6b705b",true,false)
 	for z in [front+2,front+8,front+14,front+19]:
 		block("CeilingBeam",Vector3(0,7.3,z),Vector3(26,.25,.2),"625239",true,false)
 	var exterior = preload("res://scripts/weapon_shop_exterior.gd").new()
@@ -70,22 +70,24 @@ func _ready() -> void:
 
 func build_owner() -> void:
 	var pos = Vector3(Layout.SHOP_OWNER.x,3,Layout.SHOP_OWNER.y)
-	# Join the east wall and rear partition: no gap beside the counter.
-	block("OwnerCounter",pos+Vector3(.3,.58,-1.05),Vector3(5.4,1.16,.9),"624c33")
-	block("CounterReturnCabinet",pos+Vector3(-2.2,.66,.1),Vector3(.6,1.32,2.5),"624c33")
-	block("CounterReturnTop",pos+Vector3(-2.2,1.36,.1),Vector3(.75,.12,2.65),"b2a079",false)
-	for x in [-1.5,-.45,.6,1.65,2.55]:
-		block("CounterCabinetDoor",pos+Vector3(x,.57,-1.515),Vector3(.88,.96,.06),"80613f",false)
-		block("CounterDoorInset",pos+Vector3(x,.57,-1.555),Vector3(.68,.71,.03),"6d5034",false)
-		block("CounterHandle",pos+Vector3(x+.25,.77,-1.60),Vector3(.05,.17,.06),"c2a16b",false)
-	# Movement-only collision reaches the ceiling without blocking dialogue rays.
-	for barrier in [["CounterFrontBarrier",Vector3(.3,2.25,-1.05),Vector3(5.4,4.5,.9)],["CounterSideBarrier",Vector3(-2.2,2.25,.1),Vector3(.6,4.5,2.5)]]:
-		var wall = block(barrier[0],pos+barrier[1],barrier[2],"624c33",true,false)
+	# Wide north/south counter, sealed to the back partition and east wall.
+	var front: float = Layout.SHOP_COUNTER_FRONT_Z
+	var back: float = Layout.SHOP_COUNTER_BACK_Z
+	var middle: float = (front+back)/2
+	var length: float = back-front
+	block("OwnerCounter",Vector3(Layout.SHOP_COUNTER_X,3.58,middle),Vector3(.9,1.16,length),"624c33")
+	block("OwnerCounterTop",Vector3(Layout.SHOP_COUNTER_X,4.2,middle),Vector3(1.05,.12,length+.1),"b2a079",false)
+	block("CounterReturnCabinet",Vector3(10.7,3.66,front+.3),Vector3(4.6,1.32,.65),"624c33")
+	block("CounterReturnTop",Vector3(10.7,4.36,front+.3),Vector3(4.7,.12,.8),"b2a079",false)
+	for index in 5:
+		var z: float = front+.55+index*1.1
+		block("CounterCabinetDoor",Vector3(Layout.SHOP_COUNTER_X-.465,3.57,z),Vector3(.06,.96,.92),"80613f",false)
+		block("CounterDoorInset",Vector3(Layout.SHOP_COUNTER_X-.505,3.57,z),Vector3(.03,.71,.72),"6d5034",false)
+		block("CounterHandle",Vector3(Layout.SHOP_COUNTER_X-.55,3.77,z+.25),Vector3(.06,.17,.05),"c2a16b",false)
+	for barrier in [["CounterFrontBarrier",Vector3(Layout.SHOP_COUNTER_X,5.25,middle),Vector3(.9,4.5,length)],["CounterSideBarrier",Vector3(10.7,5.25,front+.3),Vector3(4.6,4.5,.65)]]:
+		var wall = block(barrier[0],barrier[1],barrier[2],"624c33",true,false)
 		wall.collision_layer = preload("res://scripts/player_body.gd").MOVEMENT_BARRIER_LAYER
 		wall.get_child(0).hide()
-	block("OwnerCounterTop",pos+Vector3(.3,1.2,-1.05),Vector3(5.55,.12,1.05),"b2a079",false)
-	for x in [-1.45,0,1.45]:
-		block("CounterBrassTrim",pos+Vector3(x,.65,-1.51),Vector3(.07,.8,.03),"b39359",false)
 	owner_model = Node3D.new()
 	owner_model.name = "WeaponShopOwner"
 	owner_model.position = pos
@@ -122,6 +124,7 @@ func build_owner() -> void:
 			if child == hood or child.name in ["OpaqueFaceWrap","HoodBrow"]: child.reparent(owner_head)
 			elif child.name.begins_with("OwnerBoot"): child.reparent(owner_model)
 			else: child.reparent(owner_chest)
+	owner_model.rotation.y = Layout.SHOP_OWNER_YAW
 	# The static NPC is not a combat pawn; the counter and body share nav cover.
 	block("OwnerCollision",pos+Vector3(0,.9,0),Vector3(.8,1.8,.65),"333b32").get_child(0).hide()
 	var title = Label3D.new()
@@ -163,7 +166,7 @@ func sync(state: Dictionary) -> void:
 	if not owner_model: return
 	var tutorial = preload("res://scripts/onboarding.gd")
 	owner_talking = tutorial.talking(state)
-	owner_target = state.get("tutorial_speaker_eye",Vector3(Layout.SHOP_OWNER.x,4.7,Layout.SHOP_OWNER.y-3))
+	owner_target = state.get("tutorial_speaker_eye",Vector3(Layout.SHOP_OWNER.x-3,4.7,Layout.SHOP_OWNER.y))
 	var clock: float = state.get("prop_clock",0.0)
 	var dt = maxf(0,clock-owner_clock) if owner_clock_ready else 0.0
 	owner_clock = clock
@@ -185,7 +188,7 @@ func pose_owner(dt: float, clock: float) -> void:
 	owner_chest.scale = Vector3(1.0+breath*.006,1.0,1.0+breath*.008)
 	var target_yaw = 0.0
 	if owner_talking:
-		var toward = owner_target-Vector3(Layout.SHOP_OWNER.x,4.65,Layout.SHOP_OWNER.y)
+		var toward = Basis(Vector3.UP,-Layout.SHOP_OWNER_YAW)*(owner_target-Vector3(Layout.SHOP_OWNER.x,4.65,Layout.SHOP_OWNER.y))
 		target_yaw = clampf(atan2(-toward.x,-toward.z),-1.22,1.22)
 	owner_head_yaw = move_toward(owner_head_yaw,target_yaw,dt*2.4)
 	owner_head.rotation.y = owner_head_yaw

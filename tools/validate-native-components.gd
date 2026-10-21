@@ -1162,33 +1162,33 @@ func validate_close_combat() -> void:
 		wall_checked = true
 		break
 	check(wall_checked,"Close-combat obstruction fixture found a native wall")
-	p.pos = Vector2(0,30)
+	p.pos = Vector2(0,26)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.height = 3.0
 	p.yaw = 0.0
 	sim.zombies.clear()
-	for i in 24: sim.spawn(Vector2(i*.02,26),"normal")
+	for i in 24: sim.spawn(Vector2(i*.02,22),"normal")
 	var speeds = sim.zombies.map(func(z): return z.chase_speed)
 	check(speeds.min() >= 4.6 and speeds.max() <= 5.2 and speeds.max()-speeds.min() > .3,"Spawned normal speeds vary within the faster-than-player range")
 	var goals = sim.zombies.map(func(z): return sim.approach_goal(z,p))
 	check(goals[0].distance_to(goals[1]) > 1 and goals[1].distance_to(goals[2]) > 1,"Nearby enemies choose distributed approach slots")
 	sim.zombies.clear()
-	sim.spawn(Vector2(0,28.8),"normal")
+	sim.spawn(Vector2(0,24.8),"normal")
 	var attacker: Dictionary = sim.zombies[0]
-	p.pos = Vector2(0,30)
+	p.pos = Vector2(0,26)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.protection = 0.0
 	sim.events.clear()
 	sim.update_zombie(attacker,p,.1)
 	check(p.hp == 100 and attacker.attack_time > 0 and sim.events.any(func(e): return e.kind == "enemy_windup"),"Attack announces a windup before dealing damage")
-	p.pos = Vector2(4,30)
+	p.pos = Vector2(4,26)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	sim.update_zombie(attacker,p,.45)
 	check(p.hp == 100 and sim.events.any(func(e): return e.kind == "enemy_miss"),"Lateral movement can evade the limited-turn attack advance")
 	attacker.attack_time = 0.0
-	p.pos = Vector2(0,30)
+	p.pos = Vector2(0,26)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
-	attacker.pos = Vector2(0,28.8)
+	attacker.pos = Vector2(0,24.8)
 	attacker.chase_speed = 4.8
 	sim.events.clear()
 	sim.update_zombie(attacker,p,.01)
@@ -1278,7 +1278,7 @@ func validate_enemy_overlap() -> void:
 		sim.spawn(Vector2(8,25),"crawler" if index%10 == 9 else "normal")
 	check(sim.zombies.size() == 300 and sim.zombies.all(func(z): return z.pos == Vector2(8,25)),"Three hundred living enemies may occupy the same position")
 	for z in sim.zombies:
-		sim.move_zombie(z,Vector2(8,30),z.chase_speed,1.0/60,5.0,1.0)
+		sim.move_zombie(z,Vector2(8,27),z.chase_speed,1.0/60,5.0,1.0)
 	check(sim.zombies.all(func(z): return z.pos.y > 25 and z.pos.distance_to(sim.zombies[0].pos) < .03),"Overlapping enemies all advance without hard mutual collision")
 	var query = PhysicsRayQueryParameters3D.create(Vector3(8,4,23),Vector3(8,4,28),8)
 	check(game.arena.get_world_3d().direct_space_state.intersect_ray(query).is_empty(),"Enemies create no native collision actors or proxies")
@@ -1332,7 +1332,7 @@ func validate_inventory() -> void:
 	game.requested_slot = 3
 	game.cycle_equipment(1)
 	check(game.requested_slot == 1,"Wheel skips the empty grenade slot")
-	p.pos = Vector2(0,32.0)
+	p.pos = Vector2(0,26.0)
 	p.height = preload("res://scripts/defense_layout.gd").height(p.pos)
 	p.yaw = 0.0
 	p.pitch = 0.0
