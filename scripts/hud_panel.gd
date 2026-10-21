@@ -125,9 +125,9 @@ func setup(owner_ui) -> void:
 	ultimate_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	crystal_alert = text(content,28)
 	crystal_alert.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	crystal_alert.offset_top = 150
+	crystal_alert.offset_top = 72
 	crystal_alert.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	crystal_alert.text = "水晶正在被攻击！"
+	crystal_alert.text = "水晶正在被攻击！保护水晶"
 	crystal_alert.add_theme_color_override("font_color",Color("ff785b"))
 	crystal_alert.add_theme_constant_override("outline_size",4)
 	crystal_alert.add_theme_color_override("font_outline_color",Color("191c1c"))
@@ -312,7 +312,12 @@ func sync() -> void:
 	wave_announcement.add_theme_color_override("font_color",Color("ffab62") if sim.wave == 10 and not intro_active else Color("ffe8ae"))
 	status_panel.visible = sim.mode == "defense"
 	status_panel.sync(sim.wave,int(defense.get("crystal_hp",0)),int(defense.get("crystal_max_hp",1)),bool(defense.get("started",false)),float(defense.get("crystal_alert_until",-1)) > sim.elapsed)
-	crystal_alert.visible = float(defense.get("crystal_alert_until",-1)) > sim.elapsed
+	var alert_remaining = maxf(0.0,float(defense.get("crystal_alert_until",-1))-sim.elapsed)
+	crystal_alert.visible = alert_remaining > 0
+	crystal_alert.pivot_offset = Vector2(content.size.x*.5,crystal_alert.size.y*.5)
+	crystal_alert.scale = Vector2.ONE*(1.0+.08*clampf((alert_remaining-1.42)/.18,0,1))
+	crystal_alert.modulate.a = clampf(alert_remaining/.25,0,1)
+	boss_title.get_parent().offset_top = 122 if crystal_alert.visible else 82
 	ultimate_ring.visible = sim.mode == "defense"
 	var ultimate = preload("res://scripts/ultimate.gd")
 	var unlocked: bool = ultimate.unlocked(p)
