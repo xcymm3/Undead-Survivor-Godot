@@ -106,7 +106,10 @@ static func validate(game, check: Callable) -> void:
 	sim.defense.wave = 2
 	check.call(Tutorial.hint_mode(sim.defense) == "combat","Mouse tips last through wave two")
 	sim.defense.wave = 3
-	check.call(Tutorial.hint_mode(sim.defense).is_empty(),"Mouse tips disappear at wave three")
+	check.call(Tutorial.hint_mode(sim.defense) == "combat","Mouse tips persist past wave three")
+	sim.defense.wave = 10
+	check.call(Tutorial.hint_mode(sim.defense) == "combat","Mouse tips persist through the final wave")
+	check.call(Tutorial.hint_mode(sim.defense,false).is_empty(),"Mouse tips disappear for the dead local player")
 	check.call(game.ui.native_hud.tutorial_overlay.aim_icon.action == "aim" and game.ui.native_hud.tutorial_overlay.shove_icon.action == "shove","Combat guidance uses mouse icon controls")
 	sim.spawn(preload("res://scripts/defense_layout.gd").CRYSTAL+Vector2(0,-2),"normal")
 	var attacker: Dictionary = sim.zombies[-1]
@@ -124,6 +127,7 @@ static func validate(game, check: Callable) -> void:
 	p.ultimate_cd = 0.0
 	ultimate.tick(sim,p,{"ultimate":true},0)
 	check.call(ultimate.active(p) and not sim.defense.get("ultimate_tutorial_hint",false),"First successful ultimate use clears its teaching hint")
+	check.call(Tutorial.hint_mode(sim.defense).is_empty(),"Replaced mouse guidance does not return after the ultimate hint is dismissed")
 	p.ultimate_remaining = 0.0
 	p.ultimate_sheathe = 0.0
 	p.weapon = p.weapon1

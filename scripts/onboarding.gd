@@ -137,12 +137,13 @@ static func unlock_ultimate(sim, zombie: Dictionary, damage_taken: int) -> void:
 	for pawn in sim.pawns.values():
 		pawn["ultimate_unlocked"] = true
 		pawn["ultimate_cd"] = 0.0
+	sim.defense["combat_hint_overridden"] = true
 	sim.defense["ultimate_tutorial_hint"] = true
 	sim.events.append({"kind":"ultimate_unlocked"})
 
-static func hint_mode(state: Dictionary) -> String:
-	if blocked(state): return ""
+static func hint_mode(state: Dictionary, alive := true) -> String:
+	if not alive or blocked(state): return ""
 	if state.get("ultimate_tutorial_hint",false): return "ultimate"
-	if stage(state) == COMPLETE: return ""
+	if stage(state) == COMPLETE or state.get("combat_hint_overridden",false): return ""
 	if not state.get("started",false): return "movement"
-	return "combat" if int(state.get("wave",1)) < 3 else ""
+	return "combat"

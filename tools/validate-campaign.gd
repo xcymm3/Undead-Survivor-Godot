@@ -129,7 +129,7 @@ func run() -> void:
 	sim.step(.001)
 	check(sim.wave == 1 and sim.alive_count() == 10,"Exactly ten living enemies still block the next wave")
 	game.ui.native_hud.sync()
-	check(game.ui.native_hud.time_label.text.contains("清理至剩余9只"),"HUD explains the population gate instead of displaying a zero-second countdown")
+	check(game.ui.native_hud.wave_label.text == "01 / 10" and game.ui.native_hud.crystal_label.text.contains(str(sim.defense.crystal_hp)),"Minimal status HUD retains wave and crystal health while the population gate waits")
 	var before_wave_ammo = p.reserves.duplicate()
 	sim.zombies[9].hp = 0
 	sim.step(.001)

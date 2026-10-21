@@ -6,15 +6,11 @@ var crystal_alert: Label
 var grenade_ring: Control
 var ultimate_ring: Control
 var ultimate_notice: Label
-var controls_hint: Label
+var status_panel: Control
 var wave_label: Label
-var count_label: Label
-var time_label: Label
 var crystal_label: Label
-var crystal_bar: ProgressBar
 var weapon_label: Label
 var ammo_label: Label
-var ammo_note: Label
 var rest_label: Label
 var spectator_label: Label
 var network_label: Label
@@ -49,17 +45,17 @@ func setup(owner_ui) -> void:
 	theme_resource.set_stylebox("background","ProgressBar",style(Color("27352b"),0))
 	theme_resource.set_stylebox("fill","ProgressBar",style(Color("afd778"),0))
 	theme = theme_resource
-	var status = card(content,Vector2(248,0))
-	status.position = Vector2(28,28)
-	var column = column_in(status)
-	wave_label = text(column,24)
-	count_label = text(column)
-	time_label = text(column,14)
-	crystal_label = text(column,15)
-	crystal_bar = ProgressBar.new()
-	crystal_bar.show_percentage = false
-	crystal_bar.custom_minimum_size.y = 9
-	column.add_child(crystal_bar)
+	status_panel = preload("res://scripts/hud_defense_status.gd").new()
+	status_panel.name = "DefenseStatus"
+	content.add_child(status_panel)
+	status_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	status_panel.offset_left = -328
+	status_panel.offset_right = -28
+	status_panel.offset_top = 28
+	status_panel.offset_bottom = 174
+	wave_label = status_panel.wave_label
+	crystal_label = status_panel.crystal_label
+	var column: VBoxContainer
 	upgrade_details = preload("res://scripts/upgrade_details.gd").new()
 	upgrade_details.position = Vector2(28,235)
 	content.add_child(upgrade_details)
@@ -72,7 +68,6 @@ func setup(owner_ui) -> void:
 	weapon_label = text(column,17)
 	weapon_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	ammo_label = text(column,36)
-	ammo_note = text(column,12)
 	arsenal = VBoxContainer.new()
 	column.add_child(arsenal)
 	for i in 10: slots.append(text(arsenal,13))
@@ -152,24 +147,18 @@ func setup(owner_ui) -> void:
 	spectator_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	spectator_label.offset_left = 28
 	spectator_label.offset_top = -185
-	var hint = text(content,14)
-	controls_hint = hint
-	hint.text = "ESC 暂停 · %s 换弹 · %s 交互" % [Data.binding_label("reload"),Data.binding_label("interact")]
-	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	hint.offset_left = 28
-	hint.offset_top = -36
 	network_card = card(content,Vector2(210,0))
-	network_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	network_card.offset_left = -238
-	network_card.offset_top = 28
+	network_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	network_card.offset_left = 28
+	network_card.offset_top = 152
 	column = column_in(network_card)
 	network_label = text(column,14)
 	network_detail = text(column,12)
 	var wallet = card(content,Vector2(210,0))
 	wallet.name = "PermanentWallet"
-	wallet.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	wallet.offset_left = -238
-	wallet.offset_right = -28
+	wallet.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	wallet.offset_left = 28
+	wallet.offset_right = 238
 	wallet.offset_top = 28
 	var wallet_column = column_in(wallet)
 	for currency in ["coins","diamonds"]:
@@ -292,7 +281,7 @@ func sync() -> void:
 		var boss: Dictionary = bosses[0]
 		boss_bar.max_value = boss.get("max_hp",Data.enemies.dancer.health)
 		boss_bar.value = boss.hp
-		boss_title.text = "舞王  /  DISCO KING    %d / %d" % [boss.hp,boss_bar.max_value]
+		boss_title.text = "Disco King    %d / %d" % [boss.hp,boss_bar.max_value]
 	currency_label.text = str(floori(sim.progression.data.coins))
 	diamond_label.text = str(sim.progression.data.diamonds)
 	var p: Dictionary = ui.game.view_pawn()
@@ -302,44 +291,26 @@ func sync() -> void:
 	var catalog = preload("res://scripts/preparation_catalog.gd")
 	var focus = catalog.focus(sim,p)
 	upgrade_details.sync(catalog.upgrade_details(sim,focus.id) if not focus.is_empty() else {})
-	wave_label.text = "第 %02d 波" % sim.wave
-	var living_count: int = sim.alive_count()
-	count_label.text = "击杀 %d  ·  场上 %d" % [sim.kills,living_count]
-	time_label.text = ui.time_text(sim.elapsed)
 	var defense: Dictionary = sim.defense_state()
-	if float(defense.get("next_wave_at",-1)) >= 0:
-		var gap_left: int = ceili(maxf(0,float(defense.next_wave_at)-sim.elapsed))
-		if gap_left == 0 and living_count >= 10:
-			time_label.text += " · 清理至剩余9只后接波"
-		else:
-			time_label.text += " · 下一波最早 %d 秒" % gap_left
 	var age: float = sim.elapsed-float(defense.get("wave_started_at",-100))
 	var announcement_opacity: float = announcement_alpha(age) if defense.get("started",false) and not sim.failed and not sim.won else 0.0
 	var intro = preload("res://scripts/first_attempt_intro.gd")
 	var intro_active: bool = intro.active(defense)
 	if intro_active: announcement_opacity = 0.0
-	tutorial_overlay.sync(defense)
+	var local_pawn: Dictionary = ui.game.local_pawn()
+	tutorial_overlay.sync(defense,not local_pawn.is_empty() and local_pawn.hp > 0 and not sim.failed,not bosses.is_empty())
 	wave_announcement.visible = announcement_opacity > 0
 	wave_announcement.modulate = Color(1,1,1,announcement_opacity)
 	wave_announcement.text = "第10波-最后一波！" if sim.wave == 10 else "第%d波" % sim.wave
 	if intro_active: wave_announcement.text = intro.caption(defense)
 	wave_announcement.add_theme_color_override("font_color",Color("ffab62") if sim.wave == 10 and not intro_active else Color("ffe8ae"))
-	crystal_label.visible = sim.mode == "defense"
-	crystal_bar.visible = sim.mode == "defense"
-	if sim.mode == "defense":
-		var defense_wave: int = int(defense.get("wave",sim.wave))
-		wave_label.text = "修复水晶" if not defense.get("started",false) else "第 %02d / 10 波" % sim.wave
-		count_label.text = "击杀 %d · 场上 %d" % [sim.kills,sim.alive_count()]
-		crystal_label.text = "水晶  %d / %d" % [defense.get("crystal_hp",0),defense.get("crystal_max_hp",0)]
-		crystal_bar.max_value = defense.get("crystal_max_hp",1)
-		crystal_bar.value = defense.get("crystal_hp",0)
-		crystal_bar.modulate = Color("7fe7ef") if crystal_bar.value > crystal_bar.max_value*.3 else Color("ee6658")
+	status_panel.visible = sim.mode == "defense"
+	status_panel.sync(sim.wave,int(defense.get("crystal_hp",0)),int(defense.get("crystal_max_hp",1)),bool(defense.get("started",false)),float(defense.get("crystal_alert_until",-1)) > sim.elapsed)
 	crystal_alert.visible = float(defense.get("crystal_alert_until",-1)) > sim.elapsed
 	ultimate_ring.visible = sim.mode == "defense" and preload("res://scripts/ultimate.gd").unlocked(p)
 	var ultimate = preload("res://scripts/ultimate.gd")
 	var unlocked: bool = ultimate.unlocked(p)
 	var charge = 1.0-float(p.get("ultimate_cd",0.0))/ultimate.cooldown(sim.progression) if unlocked else 0.0
-	controls_hint.text = "ESC 暂停 · %s 换弹 · %s 交互" % [Data.binding_label("reload"),Data.binding_label("interact")]
 	ultimate_ring.sync(charge,"未解锁" if not unlocked else "%d%%" % floori(charge*100) if not ultimate.active(p) else Data.binding_label("ultimate"),"终极技能" if not unlocked else "终极技能 %ds" % ceili(p.ultimate_remaining) if ultimate.active(p) else "终极技能 · "+Data.binding_label("ultimate"),not unlocked)
 	grenade_ring.visible = sim.mode == "defense"
 	var grenade_capacity: int = p.get("grenade_capacity",0)
@@ -350,20 +321,12 @@ func sync() -> void:
 	weapon_label.text = str(w.label)
 	var infinite: bool = w.get("infiniteAmmo",false)
 	ammo_label.text = "∞  近战" if infinite else "%02d / ∞" % p.ammo[int(p.weapon)]
-	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
-	controls_hint.text = "ESC 暂停 · %s 换弹 · %s 交互" % [Data.binding_label("reload"),Data.binding_label("interact")]
 	if sim.mode == "defense":
-		controls_hint.text = (("%s 步枪 · %s 手枪 · %s 消防斧 · %s 手雷" % [Data.binding_label("weapon_0"),Data.binding_label("weapon_1"),Data.binding_label("weapon_2"),Data.binding_label("weapon_3")])+(" · "+Data.binding_label("ultimate")+" 终极技能" if unlocked else "")+" · %s 换弹 · ESC 暂停" % Data.binding_label("reload")) if defense.get("started",false) else "修复水晶"
-		if not defense.get("started",false) and not sim.can_manage(ui.game.local_pawn()): controls_hint.text = "等待房主整备并修复水晶开战"
-		if ui.game.local_pawn().get("hp",1) <= 0: controls_hint.text = "左键 切换观战队友 · ESC 菜单"
-		if intro_active: controls_hint.text = "ESC 暂停"
 		weapon_label.text = "%s · %s" % [w.label,preload("res://scripts/preparation_catalog.gd").level_label(sim.progression,w.id)]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
-		ammo_note.text = "无需弹药" if infinite else "容量 %d · %s 换弹 · 第2波起开波 +2 备弹匣" % [sim.weapon_capacity(p.weapon),Data.binding_label("reload")]
 		if p.slot == 4:
 			weapon_label.text = "手雷 · "+preload("res://scripts/preparation_catalog.gd").level_label(sim.progression,"grenade")
 			ammo_label.text = "%d / %d" % [p.grenades,p.grenade_capacity]
-			ammo_note.text = "%s 投掷 · 每15秒补充1颗" % Data.binding_label("fire")
 
 	arsenal.visible = not (int(p.weapon) == 5 and p.get("slot",1) < 4 and ui.game.weapon.ads > .8)
 	var shared_loadout: bool = sim.mode == "defense"
@@ -381,7 +344,7 @@ func sync() -> void:
 			item.icon.kind = str(Data.weapons[index].id) if i < 3 else "grenade"
 			item.icon.modulate = Color("c7ef8a") if selected and available else Color("f2eedf") if available else Color("647064")
 			item.title.text = Data.weapons[index].label if i < 3 else "手雷  %d / %d" % [p.grenades,p.grenade_capacity]
-			item.note.visible = true
+			item.note.visible = i < 2
 			item.note.text = "%d / %d" % [p.slot_ammo[i],p.slot_reserves[i]] if i < 2 else "无需弹药" if i == 2 else "商店购买解锁" if grenade_capacity == 0 else "每15秒补充1颗"
 			if i < 2 and Data.weapons[index].get("infiniteAmmo",false): item.note.text = "无需弹药"
 			item.icon.queue_redraw()
