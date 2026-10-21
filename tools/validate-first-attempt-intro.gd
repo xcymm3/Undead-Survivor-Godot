@@ -146,6 +146,7 @@ static func validate(game, check: Callable) -> void:
 	world = game.arena.scenery
 	await game.get_tree().physics_frame
 	check.call(not Intro.active(sim.defense) and p.ultimate_unlocked and world.shop.owner_model.visible and world.shop.owner_alert.visible,"Reload shows merchant exclamation without replaying intro")
+	check.call(world.preparation.stations.rifle.prop.visible and not world.preparation.stations.rifle.cover.visible and not world.preparation.stations.rifle.broken.visible and not Catalog.targets(sim).any(func(item): return item.id == "rifle"),"Pending shop shows merchandise with no upgrade interaction")
 	sim.coop_host = p.id
 	check.call(not Tutorial.begin_dialogue(sim,{"id":"guest"}) and not Tutorial.talking(sim.defense),"A guest cannot advance the host tutorial")
 	sim.coop_host = ""
@@ -210,11 +211,14 @@ static func validate(game, check: Callable) -> void:
 	check.call(Tutorial.pending(sim.defense) and not Catalog.available(sim,"rifle") and not Catalog.available(sim,"bridge_gate"),"Second stage locks commerce and construction until dialogue finishes")
 	Fixture.face(sim,p,"shopkeeper")
 	Fixture.hold(sim,p,1.01)
-	var payment_at: float = Tutorial.DEFENSE_LINES[0].length()/Tutorial.CHARACTERS_PER_SECOND+2
-	sim.defense_director.interactions(payment_at+.01)
+	var payment_at: float = Tutorial.payment_time()
+	sim.defense_director.interactions(payment_at-.01)
+	check.call(is_equal_approx(sim.progression.data.coins,100.5) and not sim.defense.has("tutorial_payment_at"),"No charge until the money sentence finishes and waits one second")
+	sim.defense_director.interactions(.02)
 	check.call(is_equal_approx(sim.progression.data.coins,50.5) and Store.new(path).data.tutorial_blueprint_paid,"Blueprint line charges and persists exactly fifty coins")
 	check.call(sim.defense.has("tutorial_payment_from") and sim.defense.has("tutorial_payment_at"),"Payment records coin flight endpoints")
 	sim.defense_director.interactions(.2)
+	check.call(Tutorial.dialogue_frame(sim.defense).line == 1,"Money sentence remains visible during the two-second coin flight")
 	game.arena.scenery.sync_focus(sim,p)
 	check.call(game.arena.scenery.preparation.money_flights.multimesh.visible_instance_count > 0,"Payment animates coins from player to merchant")
 	progress.store = Store.new(path)

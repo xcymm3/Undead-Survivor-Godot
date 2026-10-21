@@ -135,6 +135,7 @@ func interactions(dt: float) -> void:
 		if p.interaction != choice.id:
 			p.interaction = choice.id
 			p.interact_time = 0.0
+			p["work_feedback_until"] = 0.0
 		p.interact_time += dt
 		if p.interact_time < preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS: continue
 		p.pickup_latched = true

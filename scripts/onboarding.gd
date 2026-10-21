@@ -44,9 +44,17 @@ static func initialize(sim) -> void:
 static func lines(state: Dictionary) -> Array:
 	return DEFENSE_LINES if state.get("tutorial_dialogue","") == "defenses" else SHOP_LINES
 
+static func line_duration(state: Dictionary, index: int) -> float:
+	# Hold the money sentence 1s before payment, then 2s for the flight.
+	var pause = 3.0 if state.get("tutorial_dialogue","") == "defenses" and index == 1 else LINE_PAUSE
+	return lines(state)[index].length()/CHARACTERS_PER_SECOND+pause
+
+static func payment_time() -> float:
+	return DEFENSE_LINES[0].length()/CHARACTERS_PER_SECOND+LINE_PAUSE+DEFENSE_LINES[1].length()/CHARACTERS_PER_SECOND+1.0
+
 static func duration(state: Dictionary) -> float:
 	var seconds = 0.0
-	for value in lines(state): seconds += value.length()/CHARACTERS_PER_SECOND+LINE_PAUSE
+	for index in lines(state).size(): seconds += line_duration(state,index)
 	return seconds
 
 static func dialogue_frame(state: Dictionary) -> Dictionary:
@@ -54,7 +62,7 @@ static func dialogue_frame(state: Dictionary) -> Dictionary:
 	var remaining: float = state.get("tutorial_dialogue_elapsed",0.0)
 	var values = lines(state)
 	for index in values.size():
-		var seconds: float = values[index].length()/CHARACTERS_PER_SECOND+LINE_PAUSE
+		var seconds: float = line_duration(state,index)
 		if remaining < seconds:
 			var count = mini(values[index].length(),floori(remaining*CHARACTERS_PER_SECOND))
 			return {"line":index,"characters":count,"text":values[index].left(count)}
@@ -82,7 +90,7 @@ static func tick(sim, dt: float) -> void:
 	if not talking(state): return
 	state.tutorial_dialogue_elapsed += dt
 	if state.tutorial_dialogue == "defenses":
-		var payment_at: float = DEFENSE_LINES[0].length()/CHARACTERS_PER_SECOND+LINE_PAUSE
+		var payment_at: float = payment_time()
 		if state.tutorial_dialogue_elapsed >= payment_at and not sim.progression.data.get("tutorial_blueprint_paid",false):
 			# Persist payment separately so quitting during the last lines cannot charge twice.
 			if sim.progression.data.coins < 50: return

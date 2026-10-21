@@ -170,9 +170,9 @@ func build_talent(parent: Node3D, id: String) -> void:
 		if child not in before: child.reparent(parent)
 
 func sync(state: Dictionary) -> void:
-	var locked = not preload("res://scripts/onboarding.gd").shop_open(state)
-	var broken = preload("res://scripts/onboarding.gd").stage(state) < preload("res://scripts/onboarding.gd").SHOP_OPEN
-	var closed: bool = state.get("started",false) or locked
+	var broken = preload("res://scripts/onboarding.gd").stage(state) == preload("res://scripts/onboarding.gd").FIRST_RUN
+	# Narrative gates do not shutter visible merchandise.
+	var closed: bool = state.get("started",false) or broken
 	for id in stations:
 		var station: Dictionary = stations[id]
 		station.broken.visible = broken
@@ -213,7 +213,7 @@ func sync_focus(sim, p: Dictionary) -> void:
 		var time: float = p.interact_time if p.get("interaction","") == choice.id else 0.0
 		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 		var status = "ready" if enabled else "maxed" if price < 0 else "error"
-		if p.get("work_feedback_id","") == choice.id and p.get("work_feedback_until",0.0) > sim.defense.prop_clock and p.get("work_feedback","") == "完成": status = "complete"
+		if time <= 0.0 and p.get("work_feedback_id","") == choice.id and p.get("work_feedback_until",0.0) > sim.defense.prop_clock and p.get("work_feedback","") == "完成": status = "complete"
 		interaction_ring.sync(time/Catalog.HOLD_SECONDS,eye,enabled,status)
 		if enabled and price > 0:
 			var from = Vector3(p.pos.x,p.height+.8,p.pos.y)
