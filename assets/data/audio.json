@@ -1582,7 +1582,7 @@
   "motion_sources": {
     "scripts/ak_rifle.gd": "7507395b68f64eda48075683a2e0344382338f7eadfdfe4f4352bb676e19ca67",
     "scripts/revolver_model.gd": "5c532e2a0cc4b7c974aba32a114eeb1b68d59f2812bdf2ca49a2bab39e283887",
-    "scripts/blade_motion.gd": "0c20441a533c39d34b0a973047cf4ad835b95d411cf79797f2d63e6a37b5d09f",
+    "scripts/blade_motion.gd": "a19bd73ec408fedefc5af9dcc24f8fb7e8d7d10138cd4709e3d43338b08a672e",
     "scripts/ultimate.gd": "ad1847d622adda4f00a1383332a9f9c1eb1d8f9f9698846e15ecd6a44767deb8",
     "scripts/axe_motion.gd": "4fa8abc4fd93fa12b23ca10751a2fc20d147a2bb4064d18eb973b9bedf83d296",
     "assets/models/p90.glb": "6ce9113c9fd7b8c93b01ffff7d270930ab21a0c0d33c4d364c2ca855c2eee117",

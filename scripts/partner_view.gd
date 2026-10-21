@@ -5,6 +5,7 @@ var previous_position = Vector3.ZERO
 var label: Label3D
 var held: Node3D
 var weapon_index = -1
+var ultimate_model = false
 var equipment_prop: Node3D
 var equipment_slot = -1
 var weapon_animation: AnimationPlayer
@@ -53,19 +54,22 @@ func setup(p: Dictionary) -> void:
 	previous_position = position
 	update_weapon(p.weapon)
 
-func update_weapon(index: int) -> void:
-	if weapon_index == index: return
+func update_weapon(index: int, skill := false) -> void:
+	if weapon_index == index and ultimate_model == skill: return
 	weapon_index = index
+	ultimate_model = skill
 	axe_motion.reset()
 	axe_pivot = null
 	for node in held.get_children():
 		held.remove_child(node)
 		node.queue_free()
-	var model = preload("res://scripts/weapon_view.gd").create_model(Data.weapons[index].id)
+	var model = preload("res://scripts/weapon_view.gd").create_model("ultimate" if skill else Data.weapons[index].id)
 	gun_model = model
 	model.scale = Vector3.ONE*.75
 	held.add_child(model)
-	if Data.weapons[index].id == "axe":
+	if skill:
+		axe_pivot = model.get_node("UltimateGrip")
+	elif Data.weapons[index].id == "axe":
 		var head = model.find_child("FireAxeHead",true,false)
 		if head: axe_pivot = head.get_parent() as Node3D
 	var finder = preload("res://scripts/weapon_view.gd").new()
@@ -79,7 +83,7 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 	position = destination if buffered or position.distance_squared_to(destination) > 16 else position.lerp(destination,1-exp(-dt*18))
 	rotation.y = p.yaw
 	visible = true
-	update_weapon(int(p.weapon))
+	update_weapon(int(p.weapon),preload("res://scripts/ultimate.gd").locked(p))
 	held.visible = p.hp > 0
 	held.rotation.x = p.pitch
 	label.text = "%s\n%d HP" % [display_name(p.name),p.hp]

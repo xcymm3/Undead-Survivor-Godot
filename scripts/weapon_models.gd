@@ -4,6 +4,15 @@ extends RefCounted
 static func create(id: String, first_person := false) -> Node3D:
 	var model: Node3D
 	match id:
+		"ultimate":
+			model = Node3D.new()
+			var grip = Node3D.new()
+			grip.name = "UltimateGrip"
+			model.add_child(grip)
+			var blade = preload("res://scripts/long_blade.gd").new()
+			blade.scale = Vector3.ONE*.8
+			grip.add_child(blade)
+			for mesh in blade.find_children("*","MeshInstance3D",true,false): mesh.layers = 1
 		"rifle": model = preload("res://scripts/ak_rifle.gd").new()
 		"revolver":
 			model = preload("res://scripts/revolver_view.gd").new() if first_person else preload("res://scripts/revolver_model.gd").new()

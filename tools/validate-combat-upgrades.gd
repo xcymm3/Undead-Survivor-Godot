@@ -56,16 +56,20 @@ func validate_blade_motion(game) -> void:
 					var half_height = -point.z*tan(deg_to_rad(61.0)*.5)
 					bounds_valid = bounds_valid and point.z < -.04 and absf(point.x) < half_height*aspect*.95 and absf(point.y) < half_height*.95
 					if is_equal_approx(aspect,1.6): bounds_valid = bounds_valid and point.x < half_height*aspect*.62
-			check(bounds_valid,"Wide slash keeps blade tip and grip within desktop camera bounds: "+str(step)+" / "+str(direction))
-	check(motion_type.slash_data.clips.size() == 2 and motion_type.slash_data.clips[0].name.ends_with("Sword_Slash1") and motion_type.slash_data.clips[1].name.ends_with("Sword_Slash2"),"Both distinct authored CC0 slash clips are present")
-	check(motion_type.slash_data.clips.all(func(clip): return clip.samples.size() == 121 and is_equal_approx(clip.source_seconds,5.0/6.0)),"Reference animations preserve their source timing and dense baked wrist samples")
+			check(bounds_valid,"Retargeted axe chop keeps blade tip and grip within desktop camera bounds: "+str(step)+" / "+str(direction))
+	var axe = load("res://scripts/axe_motion.gd")
+	for direction in [-1,1]:
+		for phase in [0.0,.12,.22,.46,.66,.78,1.0]:
+			var expected: Transform3D = motion_type.ready_pose()*axe.ready_pose().affine_inverse()*axe.pose(phase,direction)
+			var actual: Transform3D = motion_type.swing_pose(phase,direction)
+			check(actual.basis.is_equal_approx(expected.basis) and is_equal_approx(actual.origin.x,expected.origin.x) and is_equal_approx(actual.origin.y,expected.origin.y),"Long blade retains the fire-axe rotation, lateral motion and timing: "+str(phase)+" / "+str(direction))
 	var motion = motion_type.new()
 	var combo = {"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":.00001,"axe_direction":1}
 	var combo_end: Transform3D = motion.sample(combo,.016,.28).blade
 	combo.fire_anim = .28
 	combo.axe_direction = -1
 	var combo_start: Transform3D = motion.sample(combo,0,.28).blade
-	check(combo_end.is_equal_approx(combo_start),"Opposite authored clip starts from the previous displayed follow-through without an idle snap")
+	check(combo_end.is_equal_approx(combo_start),"Opposite axe stroke starts from the previous displayed follow-through without an idle snap")
 	motion.reset()
 	var pawn = {"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":.14,"axe_direction":1}
 	motion.sample(pawn,1.0/60,.28)
@@ -81,28 +85,27 @@ func validate_blade_motion(game) -> void:
 	var p: Dictionary = game.local_pawn()
 	var restore = p.duplicate(true)
 	p.weapon = 6
-	p.requested = 6
-	p.switch = 0.0
-	p.reloading = false
 	p.ultimate_remaining = 5.0
 	p.ultimate_age = 2.0
 	p.ultimate_sheathe = 0.0
 	p.fire_anim = .14
 	game.weapon.reset_motion()
 	game.weapon.sync(p,.016,0)
-	check(game.weapon.models[6].visible and not game.weapon.blade.visible and not game.weapon.scabbard.visible,"Ultimate trial displays the fire axe without katana or scabbard")
-	check(game.weapon.axe_pivot.transform.is_equal_approx(preload("res://scripts/axe_motion.gd").pose(.5,int(p.get("axe_direction",1)))),"Ultimate uses the shared axe chopping pose")
+	check(game.weapon.blade.visible and not game.weapon.scabbard.visible,"Scabbard is hidden throughout active slashes")
 	p.fire_anim = 0
+	game.weapon.sync(p,.016,0)
+	check(not game.weapon.scabbard.visible,"Scabbard remains hidden while holding the blade idle")
 	p.ultimate_age = Ultimate.DRAW_TIME*.5
 	game.weapon.sync(p,.016,0)
-	var raised_y: float = game.weapon.position.y
-	p.ultimate_age = Ultimate.DRAW_TIME+1
-	game.weapon.sync(p,.016,0)
-	check(game.weapon.position.y > raised_y,"Axe raises into its unchanged holding position at activation")
+	check(game.weapon.scabbard.visible,"Scabbard is visible while the blade is being drawn")
 	p.ultimate_remaining = 0
-	p.ultimate_sheathe = .001
+	p.ultimate_sheathe = Ultimate.SHEATHE_TIME
 	game.weapon.sync(p,0,0)
-	check(game.weapon.position.y < raised_y and not game.weapon.scabbard.visible,"Expired ultimate lowers the axe without a sword sheathing animation")
+	check(game.weapon.scabbard.visible,"Scabbard returns for sheathing")
+	var root_inverse: Transform3D = game.weapon.transform.affine_inverse()
+	var raised: Transform3D = motion_type.sheath_pose()
+	raised.origin += Vector3(.10,-.65,.08)
+	check(game.weapon.scabbard.transform.is_equal_approx(root_inverse*raised),"Gun-root motion cannot move the independent entering scabbard")
 	p.clear()
 	p.merge(restore,true)
 	game.weapon.reset_motion()
@@ -236,7 +239,7 @@ func run() -> void:
 	sim.update_pawn(p,.01)
 	check(p.sprinting,"Ultimate keeps sprint speed while attacking without Shift")
 	game.weapon.sync(p,0,sim.elapsed)
-	check(game.weapon.models[6].visible and not game.weapon.blade.visible,"Ultimate retains fire axe for the chopping trial")
+	check(game.weapon.blade.visible and not game.weapon.models[6].visible,"Ultimate replaces axe with long blade")
 	var remaining_before: float = p.ultimate_remaining
 	p.input = {"ultimate":true}
 	Ultimate.tick(sim,p,p.input,.01)

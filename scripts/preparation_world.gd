@@ -67,7 +67,7 @@ func build_station(entry: Dictionary) -> void:
 	root.add_child(prop)
 	prop.position.y = 1.25
 	if entry.id in ["rifle","pistol","axe","ultimate"]:
-		var model = preload("res://scripts/weapon_view.gd").create_model("axe" if entry.id == "ultimate" else entry.id)
+		var model = preload("res://scripts/weapon_view.gd").create_model(entry.id)
 		prop.add_child(model)
 		var bounds = preload("res://scripts/world_geometry.gd").posed_bounds(model)
 		var center = model.to_local(bounds.get_center())

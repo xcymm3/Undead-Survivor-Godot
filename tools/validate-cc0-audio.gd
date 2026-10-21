@@ -56,16 +56,16 @@ static func validate(game, check: Callable) -> void:
 	pawn.requested = 6
 	pawn.fire_anim = 0.0
 	sound.sync_weapon_actions(pawn,true)
-	check.call(sound.actions.blade.voice.stream == null,"Raising the ultimate axe does not play a sword draw cue")
+	check.call(sound.actions.blade.voice.stream == sound.streams["blade-draw"] and is_equal_approx(sound.actions.blade.offset,.55),"Drawing selects the dedicated unsheathing recording at its current time")
 	pawn.ultimate_age = 2.0
 	pawn.fire_anim = .20
 	pawn.shots = 3
 	sound.sync_weapon_actions(pawn,true)
-	check.call(sound.actions.blade.voice.stream == sound.streams["weapon-axe"] and sound.actions.blade.voice.pitch_scale == 2.0,"Ultimate chopping reuses the axe audio at the doubled motion speed")
+	check.call(sound.actions.blade.voice.stream == sound.streams["blade-swing"],"A slash selects swish audio rather than unsheathing audio")
 	pawn.ultimate_remaining = 0.0
 	pawn.ultimate_sheathe = .5
 	sound.sync_weapon_actions(pawn,true)
-	check.call(sound.actions.blade.voice.stream == null,"Lowering the ultimate axe stops the action voice without sword sheathing audio")
+	check.call(sound.actions.blade.voice.stream == sound.streams["blade-sheathe"],"Sheathing replaces an interrupted slash/draw voice with its own recording")
 	pawn.ultimate_sheathe = 0.0
 	sound.sync_weapon_actions(pawn,true)
 	check.call(sound.actions.blade.key.is_empty(),"Finished sheathing stops the action voice")

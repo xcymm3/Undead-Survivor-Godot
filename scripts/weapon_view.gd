@@ -84,7 +84,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	sprint_blend = move_toward(sprint_blend,1.0 if sprinting else 0.0,dt*9)
 	sprint_phase += dt*12.0
 	var hide_scope: bool = w.id == "sniper" and ads > .8
-	for i in models.size(): models[i].visible = i == active and not hide_scope and p.get("pickup_remaining",0.0) <= .08
+	for i in models.size(): models[i].visible = i == active and not ultimate_locked and not hide_scope and p.get("pickup_remaining",0.0) <= .08
 	for i in sights.size(): sights[i].visible = i == active and p.get("pickup_remaining",0.0) <= .08
 	if active != 3: models[3].reset_motion()
 	var hip = Vector3(.19,-.085 if w.length < .6 else -.10,-.46)
@@ -137,9 +137,9 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 			if player.current_animation != clip: player.play(clip)
 			player.pause()
 			# The imported axe clip swings in the screen plane; replace its pose below.
-			if w.id in ["axe","ultimate"]: progress = 0.0
+			if w.id == "axe": progress = 0.0
 			player.seek(progress*player.get_animation(clip).length,true)
-	if w.id in ["axe","ultimate"] and axe_pivot:
+	if w.id == "axe" and axe_pivot:
 		axe_pivot.transform = axe_motion.sample(p,dt,w.fireDuration)
 	else:
 		axe_motion.reset()
@@ -162,14 +162,15 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 		var bob = Vector3(sin(sprint_phase)*.018,absf(cos(sprint_phase))*.022,sin(sprint_phase*2)*.009)
 		position += (Vector3(.045,-.13,.08)+bob)*sprint_blend
 		quaternion *= Quaternion.from_euler(Vector3(-.38,.42,-.24+sin(sprint_phase)*.04)*sprint_blend)
-	# Trial ultimate uses the same fire-axe model and motion at its authoritative speed.
-	blade.hide()
-	scabbard.hide()
-	blade_motion.reset()
+	scabbard.visible = p.get("ultimate_sheathe",0.0) > 0 or (ultimate.active(p) and p.get("ultimate_age",0.0) < ultimate.DRAW_TIME)
+	blade.visible = ultimate_locked
 	if ultimate_locked:
-		var lift = smoothstep(0,ultimate.DRAW_TIME,float(p.get("ultimate_age",0.0)))
-		var lower = smoothstep(0,1,1.0-float(p.get("ultimate_sheathe",0.0))/ultimate.SHEATHE_TIME) if not ultimate.active(p) else 0.0
-		position.y -= .45*maxf(1.0-lift,lower)
+		var motion = blade_motion.sample(p,dt,w.fireDuration)
+		var inverse = transform.affine_inverse()
+		blade.transform = inverse*motion.blade
+		scabbard.transform = inverse*motion.sheath
+	else:
+		blade_motion.reset()
 	muzzle.global_position = muzzle_position()
 	muzzle.visible = not hide_scope and p.hp > 0 and not p.reloading and p.fire_anim > w.fireDuration-.035 and w.get("kind","gun") == "gun"
 

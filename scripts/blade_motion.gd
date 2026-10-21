@@ -4,7 +4,6 @@ const SIZE = .56
 const LENGTH = preload("res://scripts/long_blade.gd").TIP*SIZE
 const MOUTH = Vector3(.36,-.28,-1.42)
 const PULL = Vector3(-.82,.43,-.37)
-static var slash_data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/animations/blade-slashes.json"))
 var current = ready_pose()
 var sheath_from = ready_pose()
 var swing_from = ready_pose()
@@ -37,18 +36,12 @@ static func draw_pose(progress: float) -> Transform3D:
 	return extracted_pose().interpolate_with(ready_pose(),smoothstep(.74,1.0,progress))
 
 static func swing_pose(progress: float, direction: int) -> Transform3D:
-	var keys: Array = slash_data.clips[0 if direction == 1 else 1].samples
-	var cursor = clampf(progress,0,1)*(keys.size()-1)
-	var index = mini(int(cursor),keys.size()-2)
-	var a: Array = keys[index]
-	var b: Array = keys[index+1]
-	var blend = cursor-index
-	var position = Vector3(a[0],a[1],a[2]).lerp(Vector3(b[0],b[1],b[2]),blend)
-	# Expand the authored side-to-side wrist travel while clearing the right HUD.
-	position.x = (position.x-.20)*1.35+.12
-	position.z -= .22
-	var rotation = Quaternion(a[3],a[4],a[5],a[6]).slerp(Quaternion(b[3],b[4],b[5],b[6]),blend)
-	return Transform3D(Basis(rotation).scaled(Vector3.ONE*SIZE),position)
+	# Retarget the exact fire-axe chop to the existing sword grip, scale and idle pose.
+	var axe = preload("res://scripts/axe_motion.gd")
+	var result = ready_pose()*axe.ready_pose().affine_inverse()*axe.pose(progress,direction)
+	# The longer blade needs a deeper swing plane; retain the axe rotation and rhythm.
+	result.origin.z -= 1.10*smoothstep(0,.12,progress)*(1.0-smoothstep(.88,1.0,progress))
+	return result
 
 func reset() -> void:
 	current = ready_pose()
