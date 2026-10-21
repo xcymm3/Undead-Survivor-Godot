@@ -165,7 +165,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	scabbard.visible = p.get("ultimate_sheathe",0.0) > 0 or (ultimate.active(p) and p.get("ultimate_age",0.0) < ultimate.DRAW_TIME)
 	blade.visible = ultimate_locked
 	if ultimate_locked:
-		var motion = blade_motion.sample(p,dt,w.fireDuration)
+		var motion = blade_motion.sample(p,dt,w.fireDuration,transform)
 		var inverse = transform.affine_inverse()
 		blade.transform = inverse*motion.blade
 		scabbard.transform = inverse*motion.sheath

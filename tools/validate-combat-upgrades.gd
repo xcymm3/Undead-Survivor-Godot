@@ -45,33 +45,33 @@ func validate_blade_motion(game) -> void:
 			var radial = Vector2((local.x+blade_type.bend(-local.y))/blade_type.SHEATH_INNER_WIDTH,local.z/blade_type.SHEATH_INNER_DEPTH)
 			contained = contained and local.y >= -blade_type.SHEATH_LENGTH and radial.length_squared() <= 1.001
 		check(contained,"Curved blade clears the actual oval sheath cavity without wall penetration: "+str(step))
-	for step in 31:
-		var t = float(step)/30
-		for direction in [-1,1]:
-			var pose: Transform3D = motion_type.swing_pose(t,direction)
-			var bounds_valid = true
-			for vertex in [Vector3(-.105,0,-.105),Vector3(.105,tip,.105),blade_type.TIP_POINT,Vector3(0,-.38,0)]:
-				var point: Vector3 = pose*vertex
-				for aspect in [4.0/3.0,1.6,16.0/9.0]:
-					var half_height = -point.z*tan(deg_to_rad(61.0)*.5)
-					bounds_valid = bounds_valid and point.z < -.04 and absf(point.x) < half_height*aspect*.95 and absf(point.y) < half_height*.95
-					if is_equal_approx(aspect,1.6): bounds_valid = bounds_valid and point.x < half_height*aspect*.62
-			check(bounds_valid,"Retargeted axe chop keeps blade tip and grip within desktop camera bounds: "+str(step)+" / "+str(direction))
 	var axe = load("res://scripts/axe_motion.gd")
 	for direction in [-1,1]:
-		for phase in [0.0,.12,.22,.46,.66,.78,1.0]:
-			var expected: Transform3D = motion_type.ready_pose()*axe.ready_pose().affine_inverse()*axe.pose(phase,direction)
-			var actual: Transform3D = motion_type.swing_pose(phase,direction)
-			check(actual.basis.is_equal_approx(expected.basis) and is_equal_approx(actual.origin.x,expected.origin.x) and is_equal_approx(actual.origin.y,expected.origin.y),"Long blade retains the fire-axe rotation, lateral motion and timing: "+str(phase)+" / "+str(direction))
+		for step in 61:
+			var phase = float(step)/60
+			var expected: Transform3D = motion_type.carry_frame()*axe.pose(phase,direction)*motion_type.model_alignment()
+			check(motion_type.swing_pose(phase,direction).is_equal_approx(expected),"Sword uses the exact axe grip and orientation without remapping or depth pulses: "+str(step)+" / "+str(direction))
+	# Compare actual stateful playback, including repeated direction, short gaps and recovery.
+	var reference = axe.new()
+	var sword = motion_type.new()
+	var shared = {"hp":100,"weapon":6,"requested":6,"switch":0.0,"reloading":false,"shots":0,"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":0.0,"axe_direction":1}
+	for frame in 180:
+		var segment = frame/30
+		var within = frame%30
+		shared.fire_anim = .28*(1.0-float(within)/26) if segment < 4 and within < 26 else 0.0
+		shared.shots = segment
+		shared.axe_direction = -1 if segment%2 else 1
+		var expected: Transform3D = motion_type.carry_frame()*reference.sample(shared,1.0/60,.28)*motion_type.model_alignment()
+		check(sword.sample(shared,1.0/60,.28).blade.is_equal_approx(expected),"Stateful sword and axe share identical grip playback through attack, combo gaps and recovery: "+str(frame))
 	var motion = motion_type.new()
-	var combo = {"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":.00001,"axe_direction":1}
+	var combo = {"hp":100,"weapon":6,"shots":1,"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":.00001,"axe_direction":1}
 	var combo_end: Transform3D = motion.sample(combo,.016,.28).blade
 	combo.fire_anim = .28
 	combo.axe_direction = -1
 	var combo_start: Transform3D = motion.sample(combo,0,.28).blade
 	check(combo_end.is_equal_approx(combo_start),"Opposite axe stroke starts from the previous displayed follow-through without an idle snap")
 	motion.reset()
-	var pawn = {"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":.14,"axe_direction":1}
+	var pawn = {"hp":100,"weapon":6,"shots":1,"ultimate_remaining":5.0,"ultimate_age":2.0,"ultimate_sheathe":0.0,"fire_anim":.14,"axe_direction":1}
 	motion.sample(pawn,1.0/60,.28)
 	var before: Transform3D = motion.current
 	pawn.ultimate_remaining = 0.0
@@ -88,6 +88,22 @@ func validate_blade_motion(game) -> void:
 	p.ultimate_remaining = 5.0
 	p.ultimate_age = 2.0
 	p.ultimate_sheathe = 0.0
+	p.requested = 6
+	p.shove_anim = 0.0
+	p.sprinting = false
+	p.aim = false
+	p.reloading = false
+	p.switch = 0.0
+	p.ultimate_remaining = 0.0
+	p.fire_anim = root.get_node("Data").weapons[6].fireDuration*.5
+	game.weapon.reset_motion()
+	game.weapon.sync(p,.016,0)
+	var axe_camera_pose: Transform3D = game.weapon.transform*game.weapon.axe_pivot.transform*motion_type.model_alignment()
+	p.ultimate_remaining = 5.0
+	p.fire_anim *= .5
+	game.weapon.reset_motion()
+	game.weapon.sync(p,.016,0)
+	check((game.weapon.transform*game.weapon.blade.transform).is_equal_approx(axe_camera_pose),"Production weapon view attaches sword to the same camera-space grip as the axe at matched phase")
 	p.fire_anim = .14
 	game.weapon.reset_motion()
 	game.weapon.sync(p,.016,0)
