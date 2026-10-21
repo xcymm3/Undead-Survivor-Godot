@@ -30,7 +30,7 @@ func run() -> void:
 	check(not layout.enemy_spawn_allowed(Vector2(0,-60)) and not layout.enemy_spawn_allowed(Vector2(0,20)),"Bridge deck and crystal bank cannot be spawn ground")
 	check(arena.scenery.find_children("FarForestTrunk*","StaticBody3D",true,false).size() >= 70 and arena.scenery.find_children("FarForestBoulder*","StaticBody3D",true,false).size() >= 20,"Spawn bank contains distributed woodland and boulders")
 	check(arena.scenery.get_node("FarForestLeaves").multimesh.instance_count >= 200 and arena.scenery.get_node("FarForestUndergrowth").multimesh.instance_count >= 70,"Foliage and undergrowth are batched rather than individually drawn")
-	check(arena.scenery.get_node_or_null("FarBridgePlayerBarrier") == null,"Bridge mouth has no player-only barrier")
+	check(arena.scenery.find_children("PlayerSpawnBoundary*","StaticBody3D",true,false).size() == 3 and arena.scenery.get_node("PlayerSpawnBoundary0").collision_layer == 2,"Bridgehead has three player-only boundaries without altering enemy navigation")
 	check(arena.surface_hit(Vector3(0,10,-72),Vector3(0,5,-72)).is_empty(),"Spawn platform remains open above")
 	var goal = Vector2(0,-59.5)
 	game.start_solo("defense",20260929)

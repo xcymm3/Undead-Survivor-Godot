@@ -13,12 +13,12 @@ func _init(owner: Node3D) -> void:
 	world = owner
 	random.seed = 20260930
 
-func foliage(point: Vector3, radius: float, buffer: Array[Transform3D]) -> void:
+func foliage(point: Vector3, radius: float, buffer: Array[Transform3D], ground_cover := false) -> void:
 	buffer.append(Transform3D(Basis.from_scale(Vector3.ONE*radius),point))
 	var body = StaticBody3D.new()
 	body.name = "FarForestSightCover"
 	body.position = point
-	body.collision_layer = SIGHT_LAYER
+	body.collision_layer = SIGHT_LAYER | 1 if ground_cover else SIGHT_LAYER
 	body.collision_mask = 0
 	body.set_meta("environment_feature","spawn_sight_cover")
 	var collision = CollisionShape3D.new()
@@ -27,6 +27,8 @@ func foliage(point: Vector3, radius: float, buffer: Array[Transform3D]) -> void:
 	collision.shape = sphere
 	body.add_child(collision)
 	world.add_child(body,true)
+	if ground_cover:
+		world.obstacles.append({"minX":point.x-radius,"maxX":point.x+radius,"minZ":point.z-radius,"maxZ":point.z+radius})
 
 func tree(point: Vector2) -> void:
 	var height = random.randf_range(6.8,10.0)
@@ -48,7 +50,7 @@ func tree(point: Vector2) -> void:
 	for side in [-1.0,1.0]:
 		foliage(Vector3(point.x+side*1.3,height*.5,point.y+.2),1.9,leaves)
 	# Dense low undergrowth hides the feet and torso behind the woodland edge.
-	foliage(Vector3(point.x+random.randf_range(-.5,.5),1.35,point.y+1.3),1.7,shrubs)
+	foliage(Vector3(point.x+random.randf_range(-.5,.5),1.35,point.y+1.3),1.7,shrubs,true)
 
 func batch(title: String, mesh: Mesh, poses: Array[Transform3D], color: String) -> void:
 	var view = MultiMeshInstance3D.new()

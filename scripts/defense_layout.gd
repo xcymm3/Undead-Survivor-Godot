@@ -30,6 +30,7 @@ const SHOP_POINT = Vector2(0,SHOP_WALL_Z-2.35)
 const BRIDGE = Rect2(-4,-62,8,34)
 const ENEMY_SPAWN_REGION = Rect2(-48,BRIDGE.position.y-96,96,96)
 const BOUNDS = Rect2(ENEMY_SPAWN_REGION.position,Vector2(96,PLATEAU.end.y-ENEMY_SPAWN_REGION.position.y))
+const PLAYER_BRIDGEHEAD = Rect2(-6,BRIDGE.position.y-6,12,6)
 const ENEMY_BRIDGE_START = Vector2(0,BRIDGE.position.y)
 const ENEMY_BRIDGE_SPAWN_DISTANCE = 32.0
 const RAMP = Rect2(-5,-28,10,18)

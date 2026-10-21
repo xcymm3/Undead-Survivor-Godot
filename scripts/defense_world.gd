@@ -83,6 +83,19 @@ func make_bridge() -> void:
 			previous = point
 		beam_between("Handrail",Vector3(x,1.15,-62),Vector3(x,1.15,-28),.07,"70634f")
 
+func make_player_boundary() -> void:
+	# Player-only layer: never occludes bullets or enemy paths. Side walls join rails.
+	var area = DefenseLayout.PLAYER_BRIDGEHEAD
+	var limits = [[Vector3(0,10,area.position.y),Vector3(DefenseLayout.BOUNDS.size.x,24,.4)],
+		[Vector3(area.position.x,10,area.get_center().y),Vector3(.4,24,area.size.y+2)],
+		[Vector3(area.end.x,10,area.get_center().y),Vector3(.4,24,area.size.y+2)]]
+	for index in limits.size():
+		var barrier = block("PlayerSpawnBoundary%d" % index,limits[index][0],limits[index][1],"ffffff",true,false)
+		barrier.collision_layer = preload("res://scripts/player_body.gd").MOVEMENT_BARRIER_LAYER
+		barrier.collision_mask = 0
+		barrier.get_child(0).hide()
+		barrier.set_meta("player_boundary",true)
+
 func make_ramp() -> void:
 	# Low shelves catch a sideways step at the ramp. Their upper edge remains
 	# three metres below the plateau, leaving the central ramp as the only route.
@@ -127,6 +140,7 @@ func _ready() -> void:
 	obstacles.append({"minX":DefenseLayout.PLATEAU.position.x,"maxX":-5.5,"minZ":-28.0,"maxZ":-10.0})
 	obstacles.append({"minX":5.5,"maxX":DefenseLayout.PLATEAU.end.x,"minZ":-28.0,"maxZ":-10.0})
 	make_bridge()
+	make_player_boundary()
 	make_ramp()
 	make_safe_zone()
 	make_crystal()
@@ -137,7 +151,7 @@ func _ready() -> void:
 	# 有碰撞的自然掩体避开中央进攻通道；峡谷段保留无围墙的断崖轮廓。
 	DefenseEnvironment.decorate(self)
 	for p in [DefenseLayout.CRYSTAL+Vector2(-12,-3),DefenseLayout.CRYSTAL+Vector2(13,-4)]:
-		block("CrystalGuard",Vector3(p.x,4.0,p.y),Vector3(3.5,2,1.2),"46534a")
+		DefenseEnvironment.make_rock(self,"CrystalGuardRock",Vector3(p.x,3.85,p.y),Vector3(3.5,2.3,2.3),p.x*3.0,true,true)
 	for p in [Vector3(-4.2,5.5,-62),Vector3(4.2,5.5,-62),Vector3(-4.2,5.5,-28),Vector3(4.2,5.5,-28),Vector3(-11,6,DefenseLayout.CRYSTAL.y+2),Vector3(11,6,DefenseLayout.CRYSTAL.y+2)]:
 		var light = OmniLight3D.new()
 		light.position = p

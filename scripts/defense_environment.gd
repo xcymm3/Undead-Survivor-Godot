@@ -86,13 +86,16 @@ static func make_rock(world: Node3D, title: String, pos: Vector3, size: Vector3,
 	rock.add_child(view)
 	if solid:
 		var collision = CollisionShape3D.new()
-		var shape = BoxShape3D.new()
-		shape.size = size*Vector3(.72,.72,.72)
+		var shape = ConvexPolygonShape3D.new()
+		var points = PackedVector3Array()
+		for vertex in mesh.get_mesh_arrays()[Mesh.ARRAY_VERTEX]: points.append(vertex*view.scale)
+		shape.points = points
 		collision.shape = shape
 		rock.add_child(collision)
 	world.add_child(rock)
 	if solid and nav:
-		world.obstacles.append({"minX":pos.x-size.x*.43,"maxX":pos.x+size.x*.43,"minZ":pos.z-size.z*.43,"maxZ":pos.z+size.z*.43})
+		var hull_bounds: AABB = rock.transform*(view.transform*mesh.get_aabb())
+		world.obstacles.append({"minX":hull_bounds.position.x,"maxX":hull_bounds.end.x,"minZ":hull_bounds.position.z,"maxZ":hull_bounds.end.z})
 	return rock
 
 static func make_grass_tuft(world: Node3D, point: Vector2, height: float, tint: String) -> void:

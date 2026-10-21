@@ -103,7 +103,17 @@ func run() -> void:
 			sim = fresh(true)
 			await physics_frame
 			var gate: Dictionary = sim.defense_director.structures.find("bridge_entry_gate")
-			sim.spawn(Vector2(side*12,-110),kind)
+			var birth = Vector2(side*12,-110)
+			# Forest undergrowth is now solid; place through the real spawn predicate.
+			for ring in 12:
+				if sim.defense_spawner.ground_clear(birth): break
+				for offset in 16:
+					var candidate = Vector2(side*12,-110)+Vector2.from_angle(offset*TAU/16)*(ring+1)*.65
+					if sim.defense_spawner.ground_clear(candidate):
+						birth = candidate
+						break
+			check(sim.defense_spawner.ground_clear(birth),"Gate pursuit begins outside solid forest cover")
+			sim.spawn(birth,kind)
 			z = sim.zombies[-1]
 			for tick in 900:
 				sim.elapsed += .05
