@@ -724,11 +724,15 @@ func run() -> void:
 		var peer: Dictionary = pawn.duplicate(true)
 		peer.id = "hud_fixture_"+str(i)
 		peer.name = "队友长名字布局验证"
+		peer.appearance = pawn.appearance.duplicate()
+		peer.appearance[0] = (int(pawn.appearance[0])+i+1)%4
 		game.sim.pawns[peer.id] = peer
 	game.ui.tick(.016)
 	await process_frame
 	await process_frame
 	check(game.ui.native_hud.cards.size() == 4 and is_equal_approx(card.panel.size.x,single_width),"Each teammate gets a separate card without stretching the local card")
+	check(game.ui.native_hud.health_row.get_child_count() == 2 and game.ui.native_hud.health_right.get_child_count() == 2,"Four health cards split two on the left and two on the right")
+	check(game.ui.native_hud.cards.values().all(func(card): return card.portrait.texture != null),"Every teammate receives the same model portrait pipeline as solo")
 	game.first_person_layer.sync_view()
 	var view_pass = game.first_person_layer
 	check(game.camera.cull_mask & 2 == 0 and view_pass.camera.cull_mask == 2 and view_pass.viewport.world_3d == game.camera.get_world_3d(),"World and first person share transforms and lighting while rendering separate depth targets")
@@ -762,7 +766,9 @@ func run() -> void:
 	charge_ring.sync(1.0,"100%","终极技能")
 	check(charge_ring.ready_flash_count == flashes+2,"The next recharge can flash once again")
 	charge_ring.set_process(true)
+	var arsenal_rect: Rect2 = hud.weapon_label.get_parent().get_parent().get_global_rect()
 	for health in hud.cards.values():
+		check(not health.panel.get_global_rect().intersects(arsenal_rect),"Right health cards stay below the equipment sidebar")
 		check(not health.panel.get_global_rect().intersects(hud.ultimate_ring.get_global_rect()) and not health.panel.get_global_rect().intersects(hud.grenade_ring.get_global_rect()),"Four player health cards do not overlap either bottom charge icon")
 	for id in game.sim.pawns.keys():
 		if str(id).begins_with("hud_fixture_"): game.sim.pawns.erase(id)

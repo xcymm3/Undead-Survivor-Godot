@@ -25,7 +25,8 @@ var diamond_label: Label
 var wave_announcement: Label
 var boss_title: Label
 var boss_bar: ProgressBar
-var health_row: GridContainer
+var health_row: VBoxContainer
+var health_right: VBoxContainer
 var cards: Dictionary = {}
 var slots: Array[Label] = []
 var equipment_slots: Array[Dictionary] = []
@@ -130,16 +131,17 @@ func setup(owner_ui) -> void:
 	crystal_alert.add_theme_color_override("font_color",Color("ff785b"))
 	crystal_alert.add_theme_constant_override("outline_size",4)
 	crystal_alert.add_theme_color_override("font_outline_color",Color("191c1c"))
-	health_row = GridContainer.new()
-	health_row.columns = 2
-	health_row.add_theme_constant_override("h_separation",12)
-	health_row.add_theme_constant_override("v_separation",8)
-	health_row.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	health_row.offset_left = 28
-	health_row.offset_right = 512
-	health_row.offset_top = -146
-	health_row.offset_bottom = -52
-	content.add_child(health_row)
+	health_row = VBoxContainer.new()
+	health_right = VBoxContainer.new()
+	for side in [health_row,health_right]:
+		content.add_child(side)
+		side.add_theme_constant_override("separation",8)
+		side.alignment = BoxContainer.ALIGNMENT_END
+		side.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT if side == health_row else Control.PRESET_BOTTOM_RIGHT)
+		side.offset_left = 28 if side == health_row else -264
+		side.offset_right = 264 if side == health_row else -28
+		side.offset_top = -146
+		side.offset_bottom = -52
 	rest_label = text(content,22)
 	rest_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	rest_label.offset_left = 290
@@ -282,6 +284,7 @@ func health_card(id: String) -> Dictionary:
 func sync() -> void:
 	visible = ui.game.running and ui.game.sim != null and not ui.game.finished
 	if not visible: return
+	ui.sync_portraits()
 	var sim = ui.game.sim
 	var bosses = sim.zombies.filter(func(z): return z.kind == "dancer" and z.hp > 0)
 	boss_title.get_parent().visible = not bosses.is_empty()
@@ -393,11 +396,14 @@ func sync() -> void:
 		if not sim.pawns.has(id):
 			cards[id].panel.queue_free()
 			cards.erase(id)
-	health_row.offset_top = -244 if ids.size() > 2 else -146
+	health_row.offset_top = -248 if ids.size() > 1 else -146
+	health_right.offset_top = -248 if ids.size() > 3 else -146
 	for i in ids.size():
 		var pawn: Dictionary = sim.pawns[ids[i]]
 		var item: Dictionary = cards[ids[i]] if cards.has(ids[i]) else health_card(ids[i])
-		health_row.move_child(item.panel,i)
+		var side = health_row if i < 2 else health_right
+		if item.panel.get_parent() != side: item.panel.reparent(side)
+		side.move_child(item.panel,i%2)
 		item.name.text = "我" if ids[i] == Session.local_id and not Session.playing else str(pawn.get("name",ids[i]))
 		item.hp.text = "已断线" if not pawn.get("connected",true) else "+%d" % pawn.hp if pawn.hp > 0 else "阵亡"
 		item.bar.max_value = pawn.get("max_hp",100)

@@ -686,7 +686,6 @@ static func time_text(value: float) -> String:
 	return "%02d:%02d" % [floori(value/60),floori(value)%60]
 
 func tick(dt: float) -> void:
-	sync_portraits()
 	hit_flash = maxf(0,hit_flash-dt)
 	hurt_flash = maxf(0,hurt_flash-dt)
 	native_hud.sync()

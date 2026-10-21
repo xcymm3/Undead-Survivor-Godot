@@ -9,7 +9,7 @@ test('商店柜台、贴墙现状及四人底部技能布局', async ({ page }, 
     if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text());
   });
   for (const [scenario, width, height] of [
-    ['front', 1440, 900], ['side', 1440, 900],
+    ['front', 1440, 900], ['side', 1440, 900], ['wall', 1440, 900],
     ['four', 1440, 900], ['four', 960, 540],
     ['locked', 1440, 900], ['ready', 1440, 900], ['flow', 1440, 900],
   ]) {
@@ -17,12 +17,15 @@ test('商店柜台、贴墙现状及四人底部技能布局', async ({ page }, 
     await page.goto(`/?preparationReview=shop_review_${scenario}`);
     await page.waitForFunction(() => Boolean(window.__shopHudReviewReady), null, { timeout: 90_000 });
     const state = await page.evaluate(() => window.__shopHudReviewReady);
-    expect(state.owner_yaw).toBeCloseTo(Math.PI / 2, 4);
+    expect(state.owner_yaw).toBeCloseTo(0, 4);
     expect(state.stations).toBe(9);
     if (scenario === 'front') expect(state.focus).toBe('shopkeeper');
     if (scenario === 'side') expect(state.focus).not.toBe('shopkeeper');
     if (scenario === 'four') {
       expect(state.health_rects).toHaveLength(4);
+      expect(state.left_count).toBe(2);
+      expect(state.right_count).toBe(2);
+      expect(state.portraits).toBe(true);
       expect(state.overlaps).toBe(false);
       expect(state.ultimate_rect.x + state.ultimate_rect.width / 2).toBeCloseTo(state.width / 2, 0);
     }
@@ -33,6 +36,7 @@ test('商店柜台、贴墙现状及四人底部技能布局', async ({ page }, 
       expect(state.ready_flash_count).toBeGreaterThan(0);
     }
     expect(state.grenade_rect.x).toBeGreaterThan(state.width * .75);
+    expect(state.first_person).toBe(true);
     expect(state.grenade_caption).toBe('');
     expect(state.grenade_progress).toBeCloseTo(.65, 3);
     const file = info.outputPath(`${scenario}-${width}.png`);

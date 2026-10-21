@@ -53,6 +53,8 @@ func stage(scenario: String) -> void:
 					guest.id = "review_guest_"+str(index)
 					guest.name = ["队友·先锋","队友·守卫","队友·斥候"][index]
 					guest.hp = [74.5,42.0,100.0][index]
+					guest.appearance = p.appearance.duplicate()
+					guest.appearance[0] = (int(p.appearance[0])+index+1)%4
 					guest.pos = Layout.CRYSTAL+Vector2(-3+index*3,-3)
 					sim.pawns[guest.id] = guest
 			game.weapon.show()
@@ -99,7 +101,7 @@ func stage(scenario: String) -> void:
 		var rect: Rect2 = card.panel.get_global_rect()
 		health_rects.append(rectangle(rect))
 		overlaps = overlaps or rect.intersects(ultimate_rect) or rect.intersects(grenade_rect)
-	JavaScriptBridge.eval("window.__shopHudReviewReady="+JSON.stringify({"scenario":scenario,"focus":Catalog.focus(sim,p).get("id",""),"owner_yaw":game.arena.scenery.shop.owner_model.rotation.y,"ultimate_rect":rectangle(ultimate_rect),"grenade_rect":rectangle(grenade_rect),"health_rects":health_rects,"overlaps":overlaps,"ultimate_visible":hud.ultimate_ring.visible,"ready_flash":hud.ultimate_ring.ready_flash,"ready_flash_count":hud.ultimate_ring.ready_flash_count,"grenade_caption":hud.grenade_ring.caption,"grenade_progress":hud.grenade_ring.progress,"width":game.get_viewport().get_visible_rect().size.x,"stations":Catalog.stations().size()}),true)
+	JavaScriptBridge.eval("window.__shopHudReviewReady="+JSON.stringify({"scenario":scenario,"focus":Catalog.focus(sim,p).get("id",""),"owner_yaw":game.arena.scenery.shop.owner_model.rotation.y,"ultimate_rect":rectangle(ultimate_rect),"grenade_rect":rectangle(grenade_rect),"health_rects":health_rects,"overlaps":overlaps,"ultimate_visible":hud.ultimate_ring.visible,"ready_flash":hud.ultimate_ring.ready_flash,"ready_flash_count":hud.ultimate_ring.ready_flash_count,"grenade_caption":hud.grenade_ring.caption,"grenade_progress":hud.grenade_ring.progress,"width":game.get_viewport().get_visible_rect().size.x,"portraits":hud.cards.values().all(func(card): return card.portrait.texture != null),"left_count":hud.health_row.get_child_count(),"right_count":hud.health_right.get_child_count(),"first_person":game.first_person_layer.camera.cull_mask == 2 and game.camera.cull_mask & 2 == 0,"stations":Catalog.stations().size()}),true)
 
 func request_visual(args: Array) -> void:
 	if not args.is_empty(): call_deferred("seek_visual",float(args[0]))
