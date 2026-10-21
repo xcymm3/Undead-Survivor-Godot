@@ -84,6 +84,17 @@ func signboard(title: String, pos: Vector3, width: float, height: float, yaw: fl
 	part(root,"CarvedSignBacking",Vector3.ZERO,Vector3(width,height,.2),TIMBER)
 	for y in [-height*.5,height*.5]: part(root,"SignBrassEdge",Vector3(0,y,.12),Vector3(width+.12,.09,.05),BRASS)
 	for x in [-width*.5,width*.5]: part(root,"SignBrassEdge",Vector3(x,0,.12),Vector3(.09,height,.05),BRASS)
+	if title in ["BattlefieldShopSign","PorchShopSign"]:
+		var lettering = Label3D.new()
+		lettering.name = "ShopLettering"
+		lettering.text = "SHOP"
+		lettering.font = preload("res://assets/fonts/ZCOOLQingKeHuangYou-Regular.ttf")
+		lettering.font_size = 160
+		lettering.pixel_size = minf(width/430.0,height/190.0)
+		lettering.position.z = .14
+		lettering.modulate = Color("f6d99b")
+		lettering.outline_size = 10
+		root.add_child(lettering)
 	return root
 
 func window_display(center: Vector3, yaw: float, weapon := false) -> void:

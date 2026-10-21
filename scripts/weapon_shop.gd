@@ -69,6 +69,20 @@ func _ready() -> void:
 	build_owner()
 
 func build_owner() -> void:
+	var counter_light = OmniLight3D.new()
+	counter_light.name = "CounterWarmLight"
+	counter_light.position = Vector3(Layout.SHOP_OWNER.x,6.4,Layout.SHOP_COUNTER_FRONT_Z-.4)
+	counter_light.light_color = Color("ffd49a")
+	counter_light.light_energy = 2.0
+	counter_light.omni_range = 5.0
+	counter_light.shadow_enabled = true
+	add_child(counter_light)
+	var lantern = block("CounterLantern",counter_light.position,Vector3(.3,.42,.3),"ffe0a1",false)
+	var glow = material("ffe0a1").duplicate()
+	glow.emission_enabled = true
+	glow.emission = Color("ffd49a")
+	lantern.get_child(0).material_override = glow
+	block("CounterLampStem",counter_light.position+Vector3(0,.45,0),Vector3(.055,.55,.055),"35453e",false)
 	var pos = Vector3(Layout.SHOP_OWNER.x,3,Layout.SHOP_OWNER.y)
 	# Same long narrow stall, rotated with its owner to face the showroom.
 	var left: float = Layout.SHOP_COUNTER_X
