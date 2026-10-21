@@ -31,11 +31,11 @@ func stage(scenario: String) -> void:
 	var point = Vector3(Layout.SHOP_OWNER.x,4.7,Layout.SHOP_OWNER.y)
 	match scenario:
 		"shop_review_front":
-			p.pos = Layout.SHOP_OWNER+Vector2(-2.7,0)
+			p.pos = Layout.SHOP_OWNER+Vector2(0,-2.7)
 			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
 			game.camera.look_at(point)
 		"shop_review_side":
-			p.pos = Vector2(Layout.SHOP_OWNER.x,Layout.SHOP_COUNTER_FRONT_Z-2.2)
+			p.pos = Vector2(Layout.SHOP_COUNTER_X-2.2,Layout.SHOP_OWNER.y)
 			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
 			game.camera.look_at(point)
 		"shop_review_wall":

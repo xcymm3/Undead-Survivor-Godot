@@ -17,7 +17,7 @@ static func targets(sim) -> Array:
 	var tutorial = preload("res://scripts/onboarding.gd")
 	var result: Array = stations() if tutorial.shop_open(sim.defense) else []
 	if tutorial.pending(sim.defense) and not tutorial.talking(sim.defense):
-		result.append({"id":"shopkeeper","position":Vector3(Layout.SHOP_COUNTER_X,4.6,Layout.SHOP_OWNER.y),"radius":1.0,"range":2.7})
+		result.append({"id":"shopkeeper","position":Vector3(Layout.SHOP_OWNER.x,4.6,Layout.SHOP_COUNTER_FRONT_Z),"radius":1.0,"range":2.7})
 	for item in sim.defense.get("structures",[]):
 		if not tutorial.defenses_open(sim.defense): continue
 		if not item.get("owned",false) and sim.defense.started: continue

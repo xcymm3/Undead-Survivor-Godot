@@ -70,21 +70,22 @@ func _ready() -> void:
 
 func build_owner() -> void:
 	var pos = Vector3(Layout.SHOP_OWNER.x,3,Layout.SHOP_OWNER.y)
-	# Narrow service stall; long ends keep both side approaches out of reach.
+	# Same long narrow stall, rotated with its owner to face the showroom.
+	var left: float = Layout.SHOP_COUNTER_X
 	var front: float = Layout.SHOP_COUNTER_FRONT_Z
-	var back: float = Layout.SHOP_COUNTER_BACK_Z
-	var middle: float = (front+back)/2
-	var length: float = back-front
-	block("OwnerCounter",Vector3(Layout.SHOP_COUNTER_X,3.58,middle),Vector3(Layout.SHOP_COUNTER_DEPTH,1.16,length),"624c33")
-	block("OwnerCounterTop",Vector3(Layout.SHOP_COUNTER_X,4.2,middle),Vector3(Layout.SHOP_COUNTER_DEPTH+.15,.12,length+.1),"b2a079",false)
-	block("CounterReturnCabinet",Vector3(Layout.SHOP_COUNTER_RETURN_X,3.66,front+.3),Vector3(Layout.SHOP_COUNTER_WIDTH,1.32,.65),"624c33")
-	block("CounterReturnTop",Vector3(Layout.SHOP_COUNTER_RETURN_X,4.36,front+.3),Vector3(Layout.SHOP_COUNTER_WIDTH+.1,.12,.8),"b2a079",false)
+	var middle_x: float = (left+13.0)/2
+	var middle_z: float = (front+Layout.SHOP_COUNTER_BACK_Z)/2
+	var length: float = 13.0-left
+	block("OwnerCounter",Vector3(middle_x,3.58,front),Vector3(length,1.16,Layout.SHOP_COUNTER_DEPTH),"624c33")
+	block("OwnerCounterTop",Vector3(middle_x,4.2,front),Vector3(length+.1,.12,Layout.SHOP_COUNTER_DEPTH+.15),"b2a079",false)
+	block("CounterReturnCabinet",Vector3(left+.3,3.66,middle_z),Vector3(.65,1.32,Layout.SHOP_COUNTER_WIDTH),"624c33")
+	block("CounterReturnTop",Vector3(left+.3,4.36,middle_z),Vector3(.8,.12,Layout.SHOP_COUNTER_WIDTH+.1),"b2a079",false)
 	for index in 5:
-		var z: float = front+.55+index*1.1
-		block("CounterCabinetDoor",Vector3(Layout.SHOP_COUNTER_X-Layout.SHOP_COUNTER_DEPTH/2-.015,3.57,z),Vector3(.06,.96,.92),"80613f",false)
-		block("CounterDoorInset",Vector3(Layout.SHOP_COUNTER_X-Layout.SHOP_COUNTER_DEPTH/2-.055,3.57,z),Vector3(.03,.71,.72),"6d5034",false)
-		block("CounterHandle",Vector3(Layout.SHOP_COUNTER_X-Layout.SHOP_COUNTER_DEPTH/2-.10,3.77,z+.25),Vector3(.06,.17,.05),"c2a16b",false)
-	for barrier in [["CounterFrontBarrier",Vector3(Layout.SHOP_COUNTER_X,5.25,middle),Vector3(Layout.SHOP_COUNTER_DEPTH,4.5,length)],["CounterSideBarrier",Vector3(Layout.SHOP_COUNTER_RETURN_X,5.25,front+.3),Vector3(Layout.SHOP_COUNTER_WIDTH,4.5,.65)]]:
+		var x: float = left+.55+index*1.1
+		block("CounterCabinetDoor",Vector3(x,3.57,front-Layout.SHOP_COUNTER_DEPTH/2-.015),Vector3(.92,.96,.06),"80613f",false)
+		block("CounterDoorInset",Vector3(x,3.57,front-Layout.SHOP_COUNTER_DEPTH/2-.055),Vector3(.72,.71,.03),"6d5034",false)
+		block("CounterHandle",Vector3(x+.25,3.77,front-Layout.SHOP_COUNTER_DEPTH/2-.10),Vector3(.05,.17,.06),"c2a16b",false)
+	for barrier in [["CounterFrontBarrier",Vector3(middle_x,5.25,front),Vector3(length,4.5,Layout.SHOP_COUNTER_DEPTH)],["CounterSideBarrier",Vector3(left+.3,5.25,middle_z),Vector3(.65,4.5,Layout.SHOP_COUNTER_WIDTH)]]:
 		var wall = block(barrier[0],barrier[1],barrier[2],"624c33",true,false)
 		wall.collision_layer = preload("res://scripts/player_body.gd").MOVEMENT_BARRIER_LAYER
 		wall.get_child(0).hide()
@@ -166,7 +167,7 @@ func sync(state: Dictionary) -> void:
 	if not owner_model: return
 	var tutorial = preload("res://scripts/onboarding.gd")
 	owner_talking = tutorial.talking(state)
-	owner_target = state.get("tutorial_speaker_eye",Vector3(Layout.SHOP_OWNER.x-3,4.7,Layout.SHOP_OWNER.y))
+	owner_target = state.get("tutorial_speaker_eye",Vector3(Layout.SHOP_OWNER.x,4.7,Layout.SHOP_OWNER.y-3))
 	var clock: float = state.get("prop_clock",0.0)
 	var dt = maxf(0,clock-owner_clock) if owner_clock_ready else 0.0
 	owner_clock = clock
