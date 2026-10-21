@@ -515,15 +515,18 @@ func finish_run() -> void:
 	finish_camera_start = camera.global_transform
 	finish_focus = Vector3(Data.Maps.Defense.CRYSTAL.x,4.1,Data.Maps.Defense.CRYSTAL.y)
 	var pawn = local_pawn()
-	if not pawn.is_empty() and pawn.hp <= 0 and sim.cause != "crystal":
+	if not pawn.is_empty():
 		var corpse = preload("res://scripts/partner_view.gd").new()
 		add_child(corpse)
 		corpse.setup(pawn)
 		corpse.name = "FallenGuard"
-		corpse.position.y = pawn.height+.18
-		corpse.rotation.x = -PI/2
+		if pawn.hp <= 0:
+			corpse.position.y = pawn.height+.18
+			corpse.rotation.x = -PI/2
+		else:
+			corpse.sync(pawn,0.0,false)
 		corpse.label.hide()
-		corpse.held.hide()
+		if pawn.hp <= 0: corpse.held.hide()
 		corpse.force_update_transform()
 		finish_focus = preload("res://scripts/world_geometry.gd").posed_bounds(corpse.avatar).get_center()
 		partners["fallen_guard"] = corpse
