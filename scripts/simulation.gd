@@ -1300,6 +1300,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	var flame: bool = weapon_kind == "flame"
 	for pellet in (13 if flame else int(w.pellets)):
 		var offset = Data.pellet(w,pellet,p.gun_shots[p.weapon]+1,p.aim)
+		if weapon_kind == "gun": offset *= lerpf(1.0,.85,clampf(float(p.get("crouch",0.0)),0,1))
 		if flame:
 			var angle = TAU*float((pellet-1)%6)/6.0
 			var radius = .028 if pellet <= 6 else .055

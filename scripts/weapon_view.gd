@@ -96,7 +96,7 @@ func sync(p: Dictionary, dt: float, elapsed: float, aim_target := Vector3(0,0,-1
 	if w.id == "revolver": hip = Vector3(.18,-.10,-.58)
 	if w.id == "heavy-machine-gun": hip = Vector3(.16,-.095,-.74)
 	var aim = Data.v3(w.ads)
-	if w.id == "rifle": aim = Vector3(0,-.103,-.48)
+	if w.id == "rifle": aim = Vector3(0,-.115,-.48)
 	if w.id == "revolver": aim = Vector3(0,-.115,-.58)
 	# The bulky procedural receivers need clearance below the center sight line.
 	if w.id in ["auto-shotgun","heavy-machine-gun"]: aim = Vector3(0,-.20,-.62)

@@ -151,6 +151,7 @@ static func rgb(hex: int) -> Color:
 	return Color.hex((hex << 8) | 255)
 
 static func pellet(w: Dictionary, index: int, shot: int, aiming := false) -> Vector2:
+	if aiming and w.get("kind","gun") == "gun": return Vector2.ZERO
 	if w.id in ["shotgun", "auto-shotgun"]:
 		# Stratified disk, rotated and jittered per shot; no fixed center pellet or rows.
 		# A local seed keeps spread reproducible without consuming spawn/enemy randomness.

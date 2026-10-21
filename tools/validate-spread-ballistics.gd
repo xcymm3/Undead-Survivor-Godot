@@ -38,6 +38,24 @@ func run() -> void:
 				var actual = forward.cross(ray).length()/forward.dot(ray)
 				var expected: float = data.pellet(w,0,shot+1,aiming).length()
 				if absf(actual-expected) > .0001: failed.append(w.id+" authority ray does not match ADS/hip cone")
+		# Compare actual authority rays against a straight shot from the same crouched eye.
+		pawn.crouch = 1.0
+		pawn.aim = false
+		game.sim.events.clear()
+		game.sim.fire(pawn,straight)
+		var crouch_center: Dictionary = game.sim.events.filter(func(e): return e.kind == "shot")[-1]
+		var crouch_forward: Vector3 = (crouch_center.to-crouch_center.from).normalized()
+		for aiming in [false,true]:
+			pawn.aim = aiming
+			pawn.gun_shots[index] = 7
+			game.sim.events.clear()
+			game.sim.fire(pawn,w)
+			var event: Dictionary = game.sim.events.filter(func(e): return e.kind == "shot")[-1]
+			var ray: Vector3 = (event.to-event.from).normalized()
+			var cone = crouch_forward.cross(ray).length()/crouch_forward.dot(ray)
+			if absf(cone-data.pellet(w,0,8,aiming).length()*.85) > .0001:
+				failed.append(w.id+" crouch must contract authority cone by fifteen percent and preserve perfect ADS")
+		pawn.crouch = 0.0
 		var hip_max = 0.0
 		var ads_max = 0.0
 		var hip_energy = 0.0
