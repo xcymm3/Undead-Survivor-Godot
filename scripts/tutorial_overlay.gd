@@ -56,7 +56,7 @@ func _ready() -> void:
 		story_lines.append(row)
 	hint_frame = CenterContainer.new()
 	hint_frame.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	hint_frame.offset_top = 18
+	hint_frame.offset_top = 200
 	add_child(hint_frame)
 	var panel = PanelContainer.new()
 	var enamel = StyleBoxFlat.new()

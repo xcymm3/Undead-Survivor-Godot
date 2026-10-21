@@ -48,13 +48,18 @@ func setup(owner_ui) -> void:
 	status_panel = preload("res://scripts/hud_defense_status.gd").new()
 	status_panel.name = "DefenseStatus"
 	content.add_child(status_panel)
-	status_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	status_panel.offset_left = -328
-	status_panel.offset_right = -28
+	status_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	status_panel.offset_left = 28
+	status_panel.offset_right = 328
 	status_panel.offset_top = 28
-	status_panel.offset_bottom = 174
+	status_panel.offset_bottom = 78
 	wave_label = status_panel.wave_label
 	crystal_label = status_panel.crystal_label
+	status_panel.crystal_panel.reparent(content)
+	status_panel.crystal_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	status_panel.crystal_panel.offset_left = 380
+	status_panel.crystal_panel.offset_right = -380
+	status_panel.crystal_panel.offset_top = 12
 	var column: VBoxContainer
 	upgrade_details = preload("res://scripts/upgrade_details.gd").new()
 	upgrade_details.position = Vector2(28,235)
@@ -120,7 +125,7 @@ func setup(owner_ui) -> void:
 	ultimate_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	crystal_alert = text(content,28)
 	crystal_alert.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	crystal_alert.offset_top = 110
+	crystal_alert.offset_top = 150
 	crystal_alert.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	crystal_alert.text = "水晶正在被攻击！"
 	crystal_alert.add_theme_color_override("font_color",Color("ff785b"))
@@ -156,9 +161,9 @@ func setup(owner_ui) -> void:
 	network_detail = text(column,12)
 	var wallet = card(content,Vector2(210,0))
 	wallet.name = "PermanentWallet"
-	wallet.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	wallet.offset_left = 28
-	wallet.offset_right = 238
+	wallet.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	wallet.offset_left = -238
+	wallet.offset_right = -28
 	wallet.offset_top = 28
 	var wallet_column = column_in(wallet)
 	for currency in ["coins","diamonds"]:
@@ -181,7 +186,7 @@ func setup(owner_ui) -> void:
 	boss_column.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	boss_column.offset_left = 380
 	boss_column.offset_right = -380
-	boss_column.offset_top = 32
+	boss_column.offset_top = 82
 	content.add_child(boss_column)
 	boss_title = text(boss_column,22)
 	boss_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -299,6 +304,7 @@ func sync() -> void:
 	if intro_active: announcement_opacity = 0.0
 	var local_pawn: Dictionary = ui.game.local_pawn()
 	tutorial_overlay.sync(defense,not local_pawn.is_empty() and local_pawn.hp > 0 and not sim.failed,not bosses.is_empty())
+	wave_announcement.offset_top = 280 if tutorial_overlay.hint_frame.visible else 200
 	wave_announcement.visible = announcement_opacity > 0
 	wave_announcement.modulate = Color(1,1,1,announcement_opacity)
 	wave_announcement.text = "第10波-最后一波！" if sim.wave == 10 else "第%d波" % sim.wave

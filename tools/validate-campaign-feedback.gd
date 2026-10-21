@@ -160,6 +160,9 @@ func run() -> void:
 	sim.roster.clear()
 	sim.spawn(Vector2(0,3),"dancer")
 	var boss: Dictionary = sim.zombies[-1]
+	var status_type = preload("res://scripts/hud_defense_status.gd")
+	for sample in [[1.0,status_type.GREEN],[.5,status_type.GREEN],[.499,status_type.YELLOW],[.25,status_type.YELLOW],[.249,status_type.RED],[0.0,status_type.RED]]:
+		check(status_type.health_color(sample[0]) == sample[1],"Crystal health band boundary: "+str(sample[0]))
 	check(boss.chase_speed >= 2.3 and boss.chase_speed <= 2.6,"Boss speed is half the ordinary sampled speed")
 	sim.spawn(Vector2(2,3),"bucket")
 	game.ui.native_hud.sync()
