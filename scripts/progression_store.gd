@@ -220,18 +220,19 @@ func purchase(id: String) -> bool:
 	return true
 
 func weapon_multiplier(id: String) -> float:
-	return pow(1.2,level(id)) if id in WEAPONS else 1.0
+	return pow(1.25 if id in ["rifle","pistol"] else 1.2,level(id)) if id in WEAPONS else 1.0
 
 func building_multiplier(id: String) -> float:
-	return pow(1.2,level(id))
+	return pow(1.25,level(id))
 
 func max_health() -> int: return 100+10*level("strong")
 func regen_rate() -> float: return .5*level("strong")
-func damage_multiplier() -> float: return 1.0+.05*level("precise")
+func damage_multiplier() -> float: return 1.0+.1*level("precise")
 func ultimate_cooldown_multiplier() -> float: return 1.0-.1*level("swift")
-func reserve_multiplier() -> float: return 1.0+.1*level("supply")
-func coin_multiplier() -> float: return 1.0+.1*level("greed")
+func reserve_magazines() -> int: return 6+2*level("supply")
+func coin_multiplier() -> float: return 1.0+.2*level("greed")
 func grenade_capacity() -> int: return level("grenade")
 
-func magazine_multiplier(weapon: String) -> float:
-	return pow(1.2,level(weapon+"_magazine")) if weapon in ["rifle","pistol"] else 1.0
+func magazine_capacity(weapon: String, base: int, rank := -1) -> int:
+	var upgrade_rank = level(weapon+"_magazine") if rank < 0 else rank
+	return base+int({"rifle":5,"pistol":3}.get(weapon,0))*upgrade_rank

@@ -571,8 +571,8 @@ func show_settings() -> void:
 func show_guide() -> void:
 	var column = panel("武器与操作", "水晶防线 · 十波连续进攻",1000)
 	current = "guide"
-	paragraph(column,"战前靠近并瞄准展台或施工点，长按 %s 升级或建造。整备完毕，长按 %s 修复破损水晶后立即启动进攻，随后，展台关闭；每波投放完至少等待10秒，且场上存活僵尸少于10只时自动接下一波。每清完所属波次的敌人获得 1 颗钻石、两把枪各 2 个备弹夹。第十波击败舞王后立即清除全部残敌并通关。" % [Data.binding_label("interact"),Data.binding_label("interact")],17)
-	paragraph(column,"%s/%s/%s/%s 移动 / %s 疾跑 / 鼠标瞄准 / %s 攻击 / %s 推击 / %s 开镜\n%s 跳跃 / %s 蹲下 / %s 换弹 / 滚轮切换装备 / Esc 暂停\n%s 步枪 / %s 手枪 / %s 消防斧 / %s 手雷 / %s 长按交互\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。每次清波两把枪各获得 2 个备弹夹，备弹可超上限，使用消防斧节省弹药。" % [Data.binding_label("forward"),Data.binding_label("back"),Data.binding_label("left"),Data.binding_label("right"),Data.binding_label("sprint"),Data.binding_label("fire"),Data.binding_label("shove"),Data.binding_label("aim"),Data.binding_label("jump"),Data.binding_label("crouch"),Data.binding_label("reload"),Data.binding_label("weapon_0"),Data.binding_label("weapon_1"),Data.binding_label("weapon_2"),Data.binding_label("weapon_3"),Data.binding_label("interact")],17)
+	paragraph(column,"战前靠近并瞄准展台或施工点，长按 %s 升级或建造。整备完毕，长按 %s 修复破损水晶后立即启动进攻，随后，展台关闭；每波投放完至少等待10秒，且场上存活僵尸少于10只时自动接下一波。每清完所属波次的敌人获得 1 颗钻石；第2波起，每波开始两把枪各补充2个当前容量的备弹匣。第十波击败舞王后立即清除全部残敌并通关。" % [Data.binding_label("interact"),Data.binding_label("interact")],17)
+	paragraph(column,"%s/%s/%s/%s 移动 / %s 疾跑 / 鼠标瞄准 / %s 攻击 / %s 推击 / %s 开镜\n%s 跳跃 / %s 蹲下 / %s 换弹 / 滚轮切换装备 / Esc 暂停\n%s 步枪 / %s 手枪 / %s 消防斧 / %s 手雷 / %s 长按交互\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。第2波起每波开始两把枪各获得 2 个当前容量的备弹匣，备弹可超上限，使用消防斧节省弹药。" % [Data.binding_label("forward"),Data.binding_label("back"),Data.binding_label("left"),Data.binding_label("right"),Data.binding_label("sprint"),Data.binding_label("fire"),Data.binding_label("shove"),Data.binding_label("aim"),Data.binding_label("jump"),Data.binding_label("crouch"),Data.binding_label("reload"),Data.binding_label("weapon_0"),Data.binding_label("weapon_1"),Data.binding_label("weapon_2"),Data.binding_label("weapon_3"),Data.binding_label("interact")],17)
 	var grid = GridContainer.new()
 	grid.columns = 4
 	grid.add_theme_constant_override("h_separation",24)
@@ -593,20 +593,20 @@ func show_multiplayer(qa_preview := false) -> void:
 func shop_description(profile, id: String) -> String:
 	if id in profile.WEAPONS:
 		var index: int = {"rifle":0,"pistol":2,"axe":6}[id]
-		return "伤害 %.1f → %.1f · 每次 +20%%，最高10级，采用固定价格表" % [Data.weapons[index].damage*profile.weapon_multiplier(id)*profile.damage_multiplier(),Data.weapons[index].damage*profile.weapon_multiplier(id)*profile.damage_multiplier()*1.2]
+		return "伤害 %.1f → %.1f · 每次 +%d%%，最高10级，采用固定价格表" % [Data.weapons[index].damage*profile.weapon_multiplier(id)*profile.damage_multiplier(),Data.weapons[index].damage*profile.weapon_multiplier(id)*profile.damage_multiplier()*(1.2 if id == "axe" else 1.25),20 if id == "axe" else 25]
 	if id in profile.MAGAZINES:
 		var base: int = int(Data.weapons[0 if id == "rifle_magazine" else 2].capacity)
-		return "弹匣 %d → %d · 每级 +20%% · 上限10级，采用固定价格表" % [roundi(base*profile.magazine_multiplier(id.trim_suffix("_magazine"))),roundi(base*profile.magazine_multiplier(id.trim_suffix("_magazine"))*1.2)]
+		return "弹匣 %d → %d · 每级 +%d 发 · 上限10级，采用固定价格表" % [profile.magazine_capacity(id.trim_suffix("_magazine"),int(base)),profile.magazine_capacity(id.trim_suffix("_magazine"),int(base),profile.level(id)+1),5 if id == "rifle_magazine" else 3]
 	if id == "grenade": return "持有上限 %d / 4 · 每次 +1 · 每15秒补充1颗" % profile.grenade_capacity()
 	if id in profile.MINES: return "永久购买 · 无升级 · 每波恢复 · 僵尸触发后 1.5 秒爆炸"
-	if id in profile.GATES: return "耐久 %d · 就地升级 +20%% · 价格与枪械相同，最高10级 · 战斗中不复活" % roundi(profile.GATE_BASE_HEALTH*profile.building_multiplier(id))
-	if id in profile.BUILDINGS: return "每发伤害 %.1f · 就地升级伤害 +20%% · 价格与枪械相同，最高10级 · 战斗中不复活" % (60*profile.building_multiplier(id))
+	if id in profile.GATES: return "耐久 %d · 就地升级 +25%% · 价格与枪械相同，最高10级 · 战斗中不复活" % roundi(profile.GATE_BASE_HEALTH*profile.building_multiplier(id))
+	if id in profile.BUILDINGS: return "每发伤害 %.1f · 就地升级伤害 +25%% · 价格与枪械相同，最高10级 · 战斗中不复活" % (60*profile.building_multiplier(id))
 	match id:
 		"strong": return "最大生命 %d · 脱战 5 秒后每秒回复 %.1f 生命 · 每级 +10 生命、+0.5 回复" % [profile.max_health(),profile.regen_rate()]
-		"precise": return "本能 · 伤害 +%d%% · 每级 +5%%" % (profile.level(id)*5)
+		"precise": return "本能 · 伤害 +%d%% · 每级 +10%%" % (profile.level(id)*10)
 		"swift": return "极速 · 终极技能冷却 %.0f 秒 · 每级减少10%%" % preload("res://scripts/ultimate.gd").cooldown(profile)
-		"supply": return "开局备弹 +%d%% · 每级 +10%% · 清波固定补 2 备弹夹" % (profile.level(id)*10)
-		"greed": return "贪婪 · 金币获取 +%d%% · 每级 +10%%" % (profile.level(id)*10)
+		"supply": return "初始备弹匣 %d 个 · 每级增加2个初始备弹匣 · 第2波起开波补2弹匣" % profile.reserve_magazines()
+		"greed": return "贪婪 · 金币获取 +%d%% · 每级 +20%%" % (profile.level(id)*20)
 	return ""
 
 # Hallmark · component: result modal · atmospheric · existing field palette

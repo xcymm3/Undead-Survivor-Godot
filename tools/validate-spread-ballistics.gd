@@ -53,8 +53,8 @@ func run() -> void:
 			var event: Dictionary = game.sim.events.filter(func(e): return e.kind == "shot")[-1]
 			var ray: Vector3 = (event.to-event.from).normalized()
 			var cone = crouch_forward.cross(ray).length()/crouch_forward.dot(ray)
-			if absf(cone-data.pellet(w,0,8,aiming).length()*.85) > .0001:
-				failed.append(w.id+" crouch must contract authority cone by fifteen percent and preserve perfect ADS")
+			if absf(cone-data.pellet(w,0,8,aiming).length()*.7) > .0001:
+				failed.append(w.id+" crouch must contract authority cone by thirty percent and preserve perfect ADS")
 		pawn.crouch = 0.0
 		var hip_max = 0.0
 		var ads_max = 0.0

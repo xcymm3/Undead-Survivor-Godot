@@ -205,7 +205,7 @@ func run() -> void:
 	for kind in {"cone":100,"bucket":300,"shield":1000,"giant":2000,"football":6000}:
 		var original = {"cone":100,"bucket":300,"shield":1000,"giant":2000,"football":6000}
 		check(data.enemies[kind].armor == original[kind]*2,"Doubled armor: "+kind)
-	check(p.slot_ammo == [30,15] and p.slot_reserves == [255,128],"Full magazines with halved initial reserve")
+	check(p.slot_ammo == [30,15] and p.slot_reserves == [180,90],"Full magazines with six current-capacity reserve magazines")
 	p.slot = 2
 	sim.equipment.select_weapon_slot(p,2)
 	check(is_equal_approx(p.switch,.4),"Fixed-loadout pistol restores the short switch duration")

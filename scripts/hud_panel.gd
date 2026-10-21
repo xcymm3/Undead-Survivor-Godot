@@ -359,7 +359,7 @@ func sync() -> void:
 		if intro_active: controls_hint.text = "ESC 暂停"
 		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id) if w.id == "ultimate" else sim.progression.level(w.id)+1]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
-		ammo_note.text = "无需弹药" if infinite else "容量 %d · %s 换弹 · 清波 +2 备弹夹" % [sim.weapon_capacity(p.weapon),Data.binding_label("reload")]
+		ammo_note.text = "无需弹药" if infinite else "容量 %d · %s 换弹 · 第2波起开波 +2 备弹匣" % [sim.weapon_capacity(p.weapon),Data.binding_label("reload")]
 		if p.slot == 4:
 			weapon_label.text = "手雷"
 			ammo_label.text = "%d / %d" % [p.grenades,p.grenade_capacity]

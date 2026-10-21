@@ -651,7 +651,7 @@ func valid_world(value) -> bool:
 				if not p[field] is Array or p[field].size() != 2: return false
 				for index in 2:
 					var weapon: int = p.weapon1 if index == 0 else p.weapon2
-					var limit: int = roundi(float(Data.weapons[weapon].capacity)*profile.magazine_multiplier(str(Data.weapons[weapon].id))) if field == "slot_ammo" else 1000000000
+					var limit: int = profile.magazine_capacity(str(Data.weapons[weapon].id),int(Data.weapons[weapon].capacity)) if field == "slot_ammo" else 1000000000
 					if not p[field][index] is int or p[field][index] < 0 or p[field][index] > limit: return false
 			if p.reserve > 1000000000: return false
 			if not p.hint is String or p.hint.length() > 160: return false

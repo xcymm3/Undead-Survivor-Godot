@@ -90,6 +90,7 @@ static func description(sim, id: String) -> String:
 	var price: int = profile.cost(id)
 	var cost_text = "%d%s" % [price," 钻石" if id in profile.TALENTS else " 金币"] if price >= 0 else ""
 	var level_text = "LV%d" % (profile.level(id)+1) if id not in profile.TALENTS else "LV%d / 5" % profile.level(id)
+	if id in profile.MAGAZINES: level_text = "LV%d" % profile.level(id)
 	if price < 0: level_text = "LV MAX"
 	var detail = ""
 	if id in profile.WEAPONS:
@@ -113,10 +114,10 @@ static func description(sim, id: String) -> String:
 	else:
 		match id:
 			"strong": detail = "强壮 · 生命 %d · 回复 %s/s" % [profile.max_health(),number(profile.regen_rate())]
-			"precise": detail = "本能 · 伤害 +%d%%" % (profile.level(id)*5)
+			"precise": detail = "本能 · 伤害 +%d%%" % (profile.level(id)*10)
 			"swift": detail = "极速 · 终极技能冷却 -%d%%" % (profile.level(id)*10)
-			"supply": detail = "补给 · 备弹 +%d%%" % (profile.level(id)*10)
-			"greed": detail = "贪婪 · 金币 +%d%%" % (profile.level(id)*10)
+			"supply": detail = "补给 · 初始备弹匣 %d 个" % profile.reserve_magazines()
+			"greed": detail = "贪婪 · 金币 +%d%%" % (profile.level(id)*20)
 	return (level_text+"\n"+detail+"\n"+("整备已结束" if sim.defense.started else cost_text)).strip_edges()
 
 static func prompt_description(sim, id: String) -> String:
@@ -138,10 +139,10 @@ static func upgrade_details(sim, id: String) -> Dictionary:
 	var note = ""
 	if id in profile.WEAPONS:
 		var base: float = sim.arena.get_node("/root/Data").weapons[{"rifle":0,"pistol":2,"axe":6}[id]].damage*profile.damage_multiplier()
-		rows.append(["伤害",number(base*pow(1.2,rank)),number(base*pow(1.2,next_rank))])
+		rows.append(["伤害",number(base*pow(1.2 if id == "axe" else 1.25,rank)),number(base*pow(1.2 if id == "axe" else 1.25,next_rank))])
 	elif id in profile.MAGAZINES:
 		var base: float = sim.arena.get_node("/root/Data").weapons[0 if id == "rifle_magazine" else 2].capacity
-		rows.append(["弹匣容量",str(roundi(base*pow(1.2,rank))),str(roundi(base*pow(1.2,next_rank)))])
+		rows.append(["弹匣容量",str(profile.magazine_capacity(id.trim_suffix("_magazine"),int(base),rank)),str(profile.magazine_capacity(id.trim_suffix("_magazine"),int(base),next_rank))])
 	elif id == "ultimate":
 		rows.append(["伤害",number(preload("res://scripts/ultimate.gd").damage_for_level(rank)*profile.damage_multiplier()),number(preload("res://scripts/ultimate.gd").damage_for_level(next_rank)*profile.damage_multiplier())])
 		rows.append(["持续时间","10秒","10秒"])
@@ -153,13 +154,16 @@ static func upgrade_details(sim, id: String) -> Dictionary:
 		rows.append(["每秒回复",number(.5*rank),number(.5*next_rank)])
 		note = "连续5秒未受伤后回复"
 	elif id == "swift": rows.append(["技能冷却",str(100-10*rank)+"秒",str(100-10*next_rank)+"秒"])
-	elif id in ["precise","supply","greed"]:
-		var rate = 5 if id == "precise" else 10
-		rows.append([{"precise":"伤害加成","supply":"备弹加成","greed":"金币加成"}[id],"+%d%%" % (rank*rate),"+%d%%" % (next_rank*rate)])
+	elif id == "supply":
+		rows.append(["初始备弹匣",str(6+2*rank)+"个",str(6+2*next_rank)+"个"])
+		note = "仅提升初始备弹匣数量；备弹按当前弹匣容量计算"
+	elif id in ["precise","greed"]:
+		var rate = 10 if id == "precise" else 20
+		rows.append([{"precise":"伤害加成","greed":"金币加成"}[id],"+%d%%" % (rank*rate),"+%d%%" % (next_rank*rate)])
 	elif id in profile.BUILDINGS:
 		var owned: bool = profile.owned(id)
 		var base = float(profile.GATE_BASE_HEALTH) if id in profile.GATES else 60.0
-		rows.append(["耐久" if id in profile.GATES else "伤害",number(base*pow(1.2,rank)) if owned else "未建造",number(base*pow(1.2,next_rank if owned else rank))])
+		rows.append(["耐久" if id in profile.GATES else "伤害",number(base*pow(1.25,rank)) if owned else "未建造",number(base*pow(1.25,next_rank if owned else rank))])
 	elif id in profile.MINES:
 		rows.append(["最大伤害","1400","1400"])
 		note = "距离衰减 · 本局引爆一次"

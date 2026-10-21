@@ -40,7 +40,7 @@ func run() -> void:
 	profile.data.coins = 100000
 	for id in Store.WEAPONS:
 		check(profile.cost(id) == 50 and profile.purchase(id) and profile.cost(id) == 100,"First weapon upgrade uses the next fixed price: "+id)
-		check(profile.purchase(id) and is_equal_approx(profile.weapon_multiplier(id),1.44),"Weapon damage compounds by twenty percent: "+id)
+		check(profile.purchase(id) and is_equal_approx(profile.weapon_multiplier(id),1.44 if id == "axe" else 1.5625),"Gun damage compounds by twenty-five percent; axe keeps twenty percent: "+id)
 	for count in range(1,5):
 		check(profile.cost("grenade") == [300,450,650,1000][count-1] and profile.purchase("grenade") and profile.grenade_capacity() == count,"Grenade capacity increases to "+str(count))
 	check(not profile.purchase("grenade") and profile.cost("grenade") == -1,"Grenade capacity cannot exceed four")
@@ -48,7 +48,7 @@ func run() -> void:
 		check(profile.cost(id) == 100,"Each building uses its confirmed manufacturing price: "+id)
 		check(not profile.owned(id) and profile.purchase(id) and profile.owned(id),"Manufacturing grants persistent ownership: "+id)
 		var first: int = profile.cost(id)
-		check(profile.purchase(id) and profile.cost(id) == first*2 and is_equal_approx(profile.building_multiplier(id),1.2),"Building upgrade compounds and uses fixed prices: "+id)
+		check(profile.purchase(id) and profile.cost(id) == first*2 and is_equal_approx(profile.building_multiplier(id),1.25),"Building upgrade compounds and uses fixed prices: "+id)
 	for id in Store.MINES:
 		var coins: int = profile.data.coins
 		check(not profile.owned(id) and profile.cost(id) == Store.MINE_PRICES[id] and profile.purchase(id) and profile.data.coins == coins-Store.MINE_PRICES[id],"Mine uses its distance-tier purchase price: "+id)
@@ -58,7 +58,9 @@ func run() -> void:
 		for rank in range(1,6):
 			check(profile.cost(id) == [1,2,3,4,5][rank-1] and profile.purchase(id),"Talent rank costs its rank: "+id+str(rank))
 		check(profile.data.diamonds == 0 and profile.level(id) == 5 and not profile.purchase(id),"Five ranks consume exactly fifteen diamonds: "+id)
-	check(profile.max_health() == 150 and profile.regen_rate() == 2.5 and is_equal_approx(profile.damage_multiplier(),1.25) and is_equal_approx(profile.ultimate_cooldown_multiplier(),.5) and is_equal_approx(profile.reserve_multiplier(),1.5) and is_equal_approx(profile.coin_multiplier(),1.5),"Max talents apply the confirmed values")
+	check(profile.max_health() == 150 and profile.regen_rate() == 2.5 and is_equal_approx(profile.damage_multiplier(),1.5) and is_equal_approx(profile.ultimate_cooldown_multiplier(),.5) and profile.reserve_magazines() == 16 and is_equal_approx(profile.coin_multiplier(),2.0),"Max talents apply the confirmed values")
+	for rank in range(11):
+		check(profile.magazine_capacity("rifle",30,rank) == 30+5*rank and profile.magazine_capacity("pistol",15,rank) == 15+3*rank,"Fixed magazine capacities at rank "+str(rank))
 	var capped = Store.new()
 	capped.data.coins = Store.MAX_CURRENCY
 	for id in Store.WEAPONS+Store.MAGAZINES+Store.BUILDINGS:
@@ -66,7 +68,7 @@ func run() -> void:
 		for rank in range(1,11): check(capped.cost(id) == [50,100,150,200,300,450,650,1000,1500,2000][rank-1] and capped.purchase(id) and capped.level(id) == rank,"Upgrade purchases through rank ten: "+id+str(rank))
 		var wallet: int = capped.data.coins
 		check(capped.cost(id) == -1 and not capped.purchase(id) and capped.data.coins == wallet,"Rank eleven is blocked without payment: "+id)
-	check(is_equal_approx(capped.magazine_multiplier("rifle"),pow(1.2,10)) and is_equal_approx(capped.magazine_multiplier("pistol"),pow(1.2,10)),"Magazine capacity compounds independently to rank ten")
+	check(capped.magazine_capacity("rifle",30) == 80 and capped.magazine_capacity("pistol",15) == 45,"Magazine capacity adds fixed rounds independently to rank ten")
 	# Unique temporary files exercise actual JSON writes without touching player saves.
 	var path = OS.get_cache_dir().path_join("undead-progress-qa-"+str(Time.get_ticks_usec())+".json")
 	var saved = Store.new(path)
@@ -180,10 +182,10 @@ func run() -> void:
 	check(game.arena.scenery.preparation.stations.has("strong"),"Strong has a physical station")
 	check(Fixture.buy(sim,p,"strong") and sim.progression.level("strong") == 1 and p.max_hp == 110 and p.hp == 60,"Medical station raises maximum and current health")
 	check(Fixture.buy(sim,p,"precise") and Fixture.buy(sim,p,"swift") and Fixture.buy(sim,p,"supply"),"Each talent upgrades at its own station")
-	check(p.reserves[0] == 281 and p.reserves[2] == 141,"Supply increases both finite reserves")
+	check(p.reserves[0] == 240 and p.reserves[2] == 120,"Supply increases both finite reserves")
 	for rank in range(2,6): check(Fixture.buy(sim,p,"supply"),"Additional Supply purchase "+str(rank))
-	check(p.reserves[0] == 383 and p.reserves[2] == 192,"Repeated Supply purchases retain exact reserve rounding")
-	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),151.2) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),302.4),"Instinct increases both body and head damage without changing base headshot ratio")
+	check(p.reserves[0] == 480 and p.reserves[2] == 240,"Repeated Supply purchases retain exact reserve rounding")
+	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),165.0) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),330.0),"Instinct increases both body and head damage without changing base headshot ratio")
 	check(Fixture.buy(sim,p,"grenade") and p.grenades == 1 and p.grenade_capacity == 1,"Capacity purchase immediately grants its extra grenade")
 	check(Fixture.buy(sim,p,"bridge_entry_gate"),"New bridge-end gate can be bought")
 	var shop_position: Vector2 = p.pos
@@ -204,8 +206,8 @@ func run() -> void:
 		p.pos = shop_position
 		p.height = shop_height
 	var manager = sim.defense_director.structures
-	check(manager.find("bridge_gate").max_hp == 600 and is_equal_approx(manager.find("turret_left").damage_multiplier,1.2) and manager.find("turret_right").hp == 0,"Purchased building upgrades affect only their owned targets")
-	check(manager.find("bridge_entry_gate").max_hp == 600 and sim.progression.cost("bridge_entry_gate") == 100,"Bridge-end gate uses the weapon upgrade price and uses the next fixed price")
+	check(manager.find("bridge_gate").max_hp == 625 and is_equal_approx(manager.find("turret_left").damage_multiplier,1.25) and manager.find("turret_right").hp == 0,"Purchased building upgrades affect only their owned targets")
+	check(manager.find("bridge_entry_gate").max_hp == 625 and sim.progression.cost("bridge_entry_gate") == 100,"Bridge-end gate uses the weapon upgrade price and uses the next fixed price")
 	check(view.actors.turret_left.root.visible and view.actors.turret_left.body.collision_layer == 1 and view.actors.bridge_gate.root.visible,"Manufacturing creates visible native building collision")
 	var turret: Dictionary = manager.find("turret_left")
 	sim.spawn(turret.pos+Vector2(0,4),"normal")
@@ -213,7 +215,7 @@ func run() -> void:
 	target.body = 10000.0
 	target.hp = 10000.0
 	manager.step_turret(turret,.01)
-	check(is_equal_approx(target.hp,9928),"Upgraded turret actually deals seventy-two damage independently of player weapon and headshot upgrades")
+	check(is_equal_approx(target.hp,9925),"Upgraded turret actually deals seventy-five damage independently of player weapon and headshot upgrades")
 	sim.zombies.clear()
 	sim.enter_combat(p)
 	sim.update_defense_regen(p,5)
@@ -270,9 +272,9 @@ func run() -> void:
 	sim.spawn(Vector2(12,25),"normal")
 	var greedy_enemy: Dictionary = sim.zombies[-1]
 	sim.hit_enemy(greedy_enemy,10000,false,p,Vector3(12,4,25))
-	check(is_equal_approx(sim.progression.data.coins,greedy_coins+1.1) and is_equal_approx(sim.earned_coins,1.1),"Authority retains fractional Greed wallet and session rewards")
+	check(is_equal_approx(sim.progression.data.coins,greedy_coins+1.2) and is_equal_approx(sim.earned_coins,1.2),"Authority retains fractional Greed wallet and session rewards")
 	game.ui.native_hud.sync()
-	check(game.ui.native_hud.currency_label.text == str(floori(greedy_coins+1.1)),"Top-right coin HUD displays only the integer part")
+	check(game.ui.native_hud.currency_label.text == str(floori(greedy_coins+1.2)),"Top-right coin HUD displays only the integer part")
 	sim.progression.data.talents.greed = 0
 	sim.progression.data.coins = greedy_coins
 	sim.earned_coins = 0.0
@@ -300,6 +302,7 @@ func run() -> void:
 	p.ammo[0] = 7
 	p.reserves[0] = 23
 	p.reserves[2] = 510
+	p.slot_reserves = [23,510]
 	sim.equipment.save_weapon_slot(p)
 	p.hp = 63
 	p.grenades = 0
@@ -314,12 +317,15 @@ func run() -> void:
 	sim.step(.02)
 	sim.defense_director.finish_wave()
 	check(sim.progression.data.diamonds == diamonds+1 and sim.cleared == 1,"Successful wave rewards exactly one diamond, even if completion is repeated")
-	check(p.ammo[0] == 7 and p.reserves[0] == 83 and p.reserves[2] == 540 and p.slot_reserves == [83,540] and p.reserve == 83,"Clear rewards two reserve magazines once for both guns, above capacity without filling the magazine")
+	check(p.ammo[0] == 7 and p.reserves[0] == 23 and p.reserves[2] == 510 and p.slot_reserves == [23,510] and p.reserve == 23,"Clearing a wave awards no ammunition and preserves loaded rounds")
 	sim.equipment.select_weapon_slot(p,2)
-	check(p.reserves[2] == 540 and p.reserve == 540,"Switching guns preserves above-capacity wave ammunition")
+	check(p.reserves[2] == 510 and p.reserve == 510,"Switching guns preserves above-capacity wave ammunition")
 	check(not sim.purchase_upgrade("rifle",p),"Shop stays closed after clearing a wave")
+	sim.defense.wave = 2
 	sim.defense_director.begin_wave()
-	check(manager.find("bridge_gate").hp == 0 and p.grenades == 0 and p.reserves[0] == 83 and p.reserves[2] == 540,"Next wave preserves destroyed buildings and spent grenades without extra ammunition")
+	check(manager.find("bridge_gate").hp == 0 and p.grenades == 0 and p.reserves[0] == 83 and p.reserves[2] == 540,"Second wave start adds two magazines while preserving destroyed buildings and spent grenades")
+	sim.defense_director.begin_wave()
+	check(p.reserves[0] == 83 and p.reserves[2] == 540,"Repeated launch of the same wave cannot grant ammunition twice")
 	var permanent = sim.progression.data.duplicate(true)
 	game.start_solo("defense",42)
 	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
@@ -327,18 +333,19 @@ func run() -> void:
 	sim = game.sim
 	p = game.local_pawn()
 	check(sim.wave == 1 and sim.progression.data == permanent and not sim.defense.started and sim.defense.crystal_repair_required,"Restart resets combat and reopens shop while preserving permanent progress")
-	check(p.hp == 110 and p.ammo[0] == 30 and p.reserves[0] == 383 and p.reserves[2] == 192,"Restart restores ammunition using upgraded Supply")
+	check(p.hp == 110 and p.ammo[0] == 30 and p.reserves[0] == 480 and p.reserves[2] == 240,"Restart restores ammunition using upgraded Supply")
 	sim.defense_director.begin_wave()
 	sim.roster.clear()
 	sim.step(.02)
 	check(sim.progression.data.diamonds == diamonds+2,"Replaying wave one earns another diamond")
-	check(p.reserves[0] == 443 and p.reserves[2] == 222,"A new match can earn the same first-wave ammo reward again")
+	check(p.reserves[0] == 480 and p.reserves[2] == 240,"Replayed first wave grants no extra ammunition")
+	sim.defense.wave = 2
 	sim.defense_director.begin_wave()
 	sim.roster.clear()
 	sim.defense.crystal_hp = 0
 	sim.step(.02)
 	check(sim.failed and sim.progression.data.diamonds == diamonds+2,"A failed wave awards no diamond")
-	check(p.reserves[0] == 443 and p.reserves[2] == 222,"A failed wave awards no ammunition")
+	check(p.reserves[0] == 540 and p.reserves[2] == 270,"Failure grants no additional ammunition after the second-wave start grant")
 	game.ui.native_hud.sync()
 	check(game.ui.native_hud.currency_label.text == str(floori(sim.progression.data.coins)),"Top-right HUD shows permanent currency")
 	root.get_node("Progress").store = Store.new()
@@ -353,12 +360,15 @@ func run() -> void:
 	Fixture.hold(sim,p,.99)
 	check(sim.progression.level("rifle_magazine") == 0,"A hold shorter than one second cannot buy")
 	Fixture.hold(sim,p,.011)
-	check(sim.progression.level("rifle_magazine") == 1 and sim.weapon_capacity(0) == 36 and p.ammo[0] == 30,"One-second hold buys rifle capacity without manufacturing extra loaded ammunition")
+	check(sim.progression.level("rifle_magazine") == 1 and sim.weapon_capacity(0) == 35 and p.ammo[0] == 30 and p.reserves[0] == 210,"One-second hold buys rifle capacity without manufacturing extra loaded ammunition")
 	Fixture.hold(sim,p,1.1)
 	check(sim.progression.level("rifle_magazine") == 1,"Continued hold cannot repeatedly purchase")
 	p.input = {}
 	sim.defense_director.interactions(.01)
-	check(Fixture.buy(sim,p,"pistol_magazine") and sim.weapon_capacity(2) == 18 and p.ammo[2] == 15,"Pistol magazine has an independent eighteen-round first upgrade")
+	check(Fixture.buy(sim,p,"pistol_magazine") and sim.weapon_capacity(2) == 18 and p.ammo[2] == 15 and p.reserves[2] == 108,"Pistol magazine has an independent eighteen-round first upgrade")
+	sim.progression.data.diamonds = 100
+	check(Fixture.buy(sim,p,"supply") and p.reserves[0] == 280 and p.reserves[2] == 144,"Supply after capacity uses eight upgraded magazines")
+	check(Fixture.buy(sim,p,"rifle_magazine") and p.reserves[0] == 320 and p.ammo[0] == 30,"Capacity after Supply adds eight times the five-round increment without filling loaded ammo")
 	for index in [0,2]:
 		p.weapon = index
 		p.slot = 1 if index == 0 else 2
@@ -371,14 +381,14 @@ func run() -> void:
 		sim.advance_arsenal(p,{},.02)
 		check(p.ammo[index] == sim.weapon_capacity(index) and p.reserves[index] == 100-sim.weapon_capacity(index),"Reload consumes finite reserve up to the upgraded capacity: "+str(index))
 	sim.defense_director.equipment.award_wave_ammo(p)
-	check(p.reserves[0] == 136 and p.reserves[2] == 118,"Clear rewards use two upgraded reserve magazines per gun")
+	check(p.reserves[0] == 140 and p.reserves[2] == 118,"Wave-start grant uses two upgraded reserve magazines per gun")
 	var capacity_state = sim.progression.data.duplicate(true)
 	game.start_solo("defense",913)
 	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	await physics_frame
 	sim = game.sim
 	p = game.local_pawn()
-	check(sim.progression.data == capacity_state and p.ammo[0] == 36 and p.ammo[2] == 18 and p.slot_ammo == [36,18],"Restart restores upgraded capacities for both equipped guns")
+	check(sim.progression.data == capacity_state and p.ammo[0] == 40 and p.ammo[2] == 18 and p.slot_ammo == [40,18] and p.reserves[0] == 320 and p.reserves[2] == 144,"Restart restores upgraded capacities for both equipped guns")
 	sim.progression.data.magazines.rifle_magazine = 10
 	check(preload("res://scripts/preparation_catalog.gd").description(sim,"rifle_magazine").begins_with("LV MAX") and not preload("res://scripts/preparation_catalog.gd").available(sim,"rifle_magazine"),"Maximum magazine level displays LV MAX and disables the interaction")
 	validate_instinct(sim,p)
@@ -414,14 +424,14 @@ func validate_talent_economy() -> void:
 	file.store_string(JSON.stringify(v7))
 	file.close()
 	check(Store.new(path).data.ultimate_unlocked,"A veteran version-seven save keeps access to the formerly available skill")
-	check(is_equal_approx(migrated.damage_multiplier(),1.15) and is_equal_approx(preload("res://scripts/ultimate.gd").cooldown(migrated),60),"Inherited levels use Instinct and ultimate cooldown effects")
+	check(is_equal_approx(migrated.damage_multiplier(),1.3) and is_equal_approx(preload("res://scripts/ultimate.gd").cooldown(migrated),60),"Inherited levels use Instinct and ultimate cooldown effects")
 	for rank in range(6):
 		for id in Store.TALENTS: profile.data.talents[id] = rank
-		check(is_equal_approx(profile.regen_rate(),.5*rank) and is_equal_approx(profile.damage_multiplier(),1+.05*rank) and is_equal_approx(profile.reserve_multiplier(),1+.1*rank) and is_equal_approx(preload("res://scripts/ultimate.gd").cooldown(profile),100-10*rank) and is_equal_approx(profile.coin_multiplier(),1+.1*rank),"All talent curves at rank "+str(rank))
+		check(is_equal_approx(profile.regen_rate(),.5*rank) and is_equal_approx(profile.damage_multiplier(),1+.1*rank) and profile.reserve_magazines() == 6+2*rank and is_equal_approx(preload("res://scripts/ultimate.gd").cooldown(profile),100-10*rank) and is_equal_approx(profile.coin_multiplier(),1+.2*rank),"All talent curves at rank "+str(rank))
 	profile.data.talents.greed = 1
 	profile.data.coins = 0
 	for i in 10: profile.award_kill("normal")
-	check(is_equal_approx(profile.data.coins,11),"Ten 1.1 rewards accumulate to exactly eleven displayable coins")
+	check(is_equal_approx(profile.data.coins,12),"Ten 1.2 rewards accumulate to exactly twelve displayable coins")
 	profile.path = path
 	profile.data.coins = 50.5
 	check(profile.save() and Store.new(path).data.coins == 50.5,"Fractional coins survive JSON save and reload")
@@ -442,17 +452,17 @@ func validate_instinct(sim, p: Dictionary) -> void:
 	for index in [0,2,6]:
 		var w: Dictionary = data.weapons[index]
 		var base: float = float(w.damage)*sim.progression.weapon_multiplier(w.id)
-		check(is_equal_approx(sim.weapon_damage(w,false),base*1.25),"Maximum Instinct increases weapon body damage: "+w.id)
+		check(is_equal_approx(sim.weapon_damage(w,false),base*1.5),"Maximum Instinct increases weapon body damage: "+w.id)
 	var blade: Dictionary = data.weapons[6].duplicate(true)
 	blade.id = "ultimate"
 	blade.damage = 300
-	check(is_equal_approx(sim.weapon_damage(blade,false),375),"Instinct increases long blade damage")
+	check(is_equal_approx(sim.weapon_damage(blade,false),450),"Instinct increases long blade damage")
 	sim.zombies.clear()
 	sim.spawn(Vector2(24,0),"giant")
 	var z: Dictionary = sim.zombies[-1]
 	var hp: float = z.hp
 	sim.equipment.explode({"owner":p.id,"pos":Vector3(24,4,0)})
-	check(is_equal_approx(hp-z.hp,1750),"Instinct increases player grenade damage by twenty-five percent")
+	check(is_equal_approx(hp-z.hp,2100),"Instinct increases player grenade damage by fifty percent")
 	hp = z.hp
 	sim.equipment.explode({"owner":"crystal_mine","pos":Vector3(24,4,0)})
 	check(is_equal_approx(hp-z.hp,1400),"Mine damage remains independent of Instinct")

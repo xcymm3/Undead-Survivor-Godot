@@ -80,12 +80,12 @@ func run() -> void:
 	check(sim.events.any(func(event): return event.kind == "world_upgrade" and event.id == "turret_left"),"Onsite E hold generates workshop feedback")
 	game.handle_effects(sim.events)
 	check(game.ui.current.is_empty() and not game.paused,"Onsite upgrade keeps the player in the world")
-	check(sim.progression.cost("turret_left") == 100 and is_equal_approx(turret.damage_multiplier,1.2),"Onsite upgrade adds twenty percent and uses fixed prices")
+	check(sim.progression.cost("turret_left") == 100 and is_equal_approx(turret.damage_multiplier,1.25),"Onsite upgrade adds twenty-five percent and uses fixed prices")
 	p.pos = data.Maps.Defense.SHOP_AREA.get_center()
 	check(Fixture.buy(sim,p,"bridge_gate"),"Shop can manufacture a gate")
 	var gate: Dictionary = sim.defense_director.structures.find("bridge_gate")
 	p.pos = gate.pos+Vector2(0,2)
-	check(Fixture.buy(sim,p,"bridge_gate") and gate.max_hp == 600 and sim.progression.cost("bridge_gate") == 100,"Gate onsite upgrades increase durability and use the next gun-equivalent fixed price")
+	check(Fixture.buy(sim,p,"bridge_gate") and gate.max_hp == 625 and sim.progression.cost("bridge_gate") == 100,"Gate onsite upgrades increase durability and use the next gun-equivalent fixed price")
 	check(not sim.building_available("turret_right",p),"Unbuilt structures cannot expose upgrades")
 	p.pos = data.Maps.Defense.SHOP_AREA.get_center()
 	p.height = 3
@@ -130,10 +130,12 @@ func run() -> void:
 	check(sim.wave == 1 and sim.alive_count() == 10,"Exactly ten living enemies still block the next wave")
 	game.ui.native_hud.sync()
 	check(game.ui.native_hud.time_label.text.contains("清理至剩余9只"),"HUD explains the population gate instead of displaying a zero-second countdown")
+	var before_wave_ammo = p.reserves.duplicate()
 	sim.zombies[9].hp = 0
 	sim.step(.001)
 	check(sim.wave == 2 and sim.alive_count() == 9 and not sim.roster.is_empty(),"Nine remaining enemies permit the next wave after the existing gap")
 	check(sim.events.count({"kind":"wave_start","position":Vector3(data.Maps.Defense.CRYSTAL.x,5.0,data.Maps.Defense.CRYSTAL.y)}) == 1,"The transition emits one wave announcement event")
+	check(p.reserves[0] == before_wave_ammo[0]+60 and p.reserves[2] == before_wave_ammo[2]+30,"Automatic wave-two launch grants two magazines even while old enemies remain")
 	var hud = game.ui.native_hud
 	check(hud.announcement_alpha(0) == 0 and is_equal_approx(hud.announcement_alpha(.225),.5) and hud.announcement_alpha(1.2) == 1 and is_equal_approx(hud.announcement_alpha(2.675),.5) and hud.announcement_alpha(3) == 0,"Announcement fades in, holds and fades out over three seconds")
 	sim.elapsed += 1.2
@@ -145,7 +147,7 @@ func run() -> void:
 	for enemy in sim.zombies: enemy.hp = 0
 	sim.defense_director.reward_finished_waves()
 	sim.defense_director.reward_finished_waves()
-	check(sim.progression.data.diamonds == diamonds+1 and p.reserves[0] == reserve+60,"Overlapping waves reward their cleared generation exactly once")
+	check(sim.progression.data.diamonds == diamonds+1 and p.reserves[0] == reserve,"Overlapping waves award a diamond once and no ammo on clear")
 	for generation in range(2,10):
 		sim.roster.clear()
 		sim.step(.02)

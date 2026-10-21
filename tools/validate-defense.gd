@@ -116,7 +116,7 @@ func run() -> void:
 	check(sim.defense.difficulty == "normal" and is_equal_approx(sim.defense.difficulty_multiplier,1.0),"Defense always uses Normal difficulty despite a legacy Easy setting")
 	check(pawn.weapon1 == 0 and pawn.weapon2 == 2 and pawn.slot == 1,"Defense starts with fixed rifle, pistol and axe slots")
 	check(not pawn.has("medkits") and pawn.grenades == 0 and pawn.grenade_capacity == 0,"Medical inventory is absent and new players have no grenades")
-	check(pawn.reserves[pawn.weapon1] == data.defense_full_reserve(pawn.weapon1) and pawn.reserves[pawn.weapon2] == data.defense_full_reserve(pawn.weapon2),"Defense firearms start with seventeen reserve magazines")
+	check(pawn.reserves[pawn.weapon1] == data.defense_full_reserve(pawn.weapon1) and pawn.reserves[pawn.weapon2] == data.defense_full_reserve(pawn.weapon2),"Defense firearms start with six reserve magazines")
 	var prestart_shoves: int = pawn.shoves
 	var shove_command: Dictionary = command()
 	shove_command.shove = true

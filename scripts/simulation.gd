@@ -646,14 +646,17 @@ func shop_available(p: Dictionary) -> bool:
 
 func weapon_capacity(index: int) -> int:
 	var definition: Dictionary = Data.weapons[index]
-	return roundi(float(definition.capacity)*progression.magazine_multiplier(str(definition.id))) if mode == "defense" else int(definition.capacity)
+	return progression.magazine_capacity(str(definition.id),int(definition.capacity)) if mode == "defense" else int(definition.capacity)
+
+func initial_reserve(index: int) -> int:
+	return weapon_capacity(index)*progression.reserve_magazines()
 
 func purchase_upgrade(id: String, p: Dictionary) -> bool:
 	if not can_manage(p): return false
 	var focus: Dictionary = preload("res://scripts/preparation_catalog.gd").focus(self,p)
 	if focus.is_empty() or focus.id != id or not preload("res://scripts/preparation_catalog.gd").available(self,id): return false
 	var old_health = progression.max_health()
-	var old_reserve = progression.reserve_multiplier()
+	var old_reserves = [initial_reserve(0),initial_reserve(2)]
 	var old_grenades = progression.grenade_capacity()
 	if not progression.purchase(id): return false
 	for pawn in pawns.values():
@@ -662,7 +665,7 @@ func purchase_upgrade(id: String, p: Dictionary) -> bool:
 		pawn.grenade_capacity = progression.grenade_capacity()
 		pawn.grenades += pawn.grenade_capacity-old_grenades
 		for index in [0,2]:
-			pawn.reserves[index] += roundi(Data.defense_full_reserve(index)*progression.reserve_multiplier())-roundi(Data.defense_full_reserve(index)*old_reserve)
+			pawn.reserves[index] += initial_reserve(index)-int(old_reserves[0 if index == 0 else 1])
 		equipment.save_weapon_slot(pawn)
 		pawn.slot_reserves = [pawn.reserves[0],pawn.reserves[2]]
 	defense_director.structures.refresh_purchase(id)
@@ -1300,7 +1303,7 @@ func fire(p: Dictionary, w: Dictionary) -> void:
 	var flame: bool = weapon_kind == "flame"
 	for pellet in (13 if flame else int(w.pellets)):
 		var offset = Data.pellet(w,pellet,p.gun_shots[p.weapon]+1,p.aim)
-		if weapon_kind == "gun": offset *= lerpf(1.0,.85,clampf(float(p.get("crouch",0.0)),0,1))
+		if weapon_kind == "gun": offset *= lerpf(1.0,.7,clampf(float(p.get("crouch",0.0)),0,1))
 		if flame:
 			var angle = TAU*float((pellet-1)%6)/6.0
 			var radius = .028 if pellet <= 6 else .055

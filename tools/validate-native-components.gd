@@ -346,7 +346,7 @@ func validate_rifle_penetration() -> void:
 	sim.progression.data.weapons.rifle = 1
 	for z in sim.zombies: z.hp = 2000; z.body = 2000
 	sim.fire(p,w)
-	check(is_equal_approx(2000-sim.zombies[-1].hp,144) and is_equal_approx(2000-sim.zombies[-2].hp,96),"Permanent rifle upgrades scale penetration damage without changing attenuation")
+	check(is_equal_approx(2000-sim.zombies[-1].hp,150) and is_equal_approx(2000-sim.zombies[-2].hp,100),"Permanent rifle upgrades scale penetration damage without changing attenuation")
 	sim.progression.data.weapons.rifle = 0
 	w.headshotMultiplier = 2
 	for z in sim.zombies: z.hp = 2000; z.body = 2000

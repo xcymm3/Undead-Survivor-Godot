@@ -55,6 +55,9 @@ func begin_wave() -> void:
 		sim.spawn(point,"dancer")
 		sim.roster.erase("dancer")
 		sim.spawned = 1
+	if sim.wave > 1 and not launched_waves.has(sim.wave):
+		for p in sim.pawns.values():
+			if p.hp > 0 and p.get("connected",true): equipment.award_wave_ammo(p)
 	launched_waves[sim.wave] = true
 	state.started = true
 	state["wave_started_at"] = sim.elapsed
@@ -77,8 +80,6 @@ func reward_finished_waves() -> void:
 		rewarded_waves[generation] = true
 		sim.progression.award_wave(generation)
 		sim.earned_diamonds += 1
-		for p in sim.pawns.values():
-			if p.hp > 0 and p.get("connected",true): equipment.award_wave_ammo(p)
 		sim.cleared = rewarded_waves.size()
 
 func choose_weapon(p: Dictionary, _requested: int) -> int:
