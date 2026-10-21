@@ -13,6 +13,9 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
+	if scenario == "axe_comparison":
+		await stage_axe_comparison()
+		return
 	if scenario.begins_with("ultimate_"):
 		await stage_ultimate(scenario)
 		return
@@ -408,3 +411,59 @@ func draw_action_frame(args: Array) -> void:
 	RenderingServer.force_draw(true)
 	await get_tree().process_frame
 	JavaScriptBridge.eval("window.__normalActionFrame="+str(frame),true)
+
+
+func stage_axe_comparison() -> void:
+	# Explicit automation URL only: original source asset beside the production factory.
+	game.start_solo("defense",42)
+	await get_tree().physics_frame
+	game.running = false
+	game.ui.root.hide()
+	game.weapon.hide()
+	game.arena.hide()
+	game.enemies.hide()
+	if is_instance_valid(game.equipment_prop): game.equipment_prop.hide()
+	var environment: Environment = game.arena.find_children("*","WorldEnvironment",true,false)[0].environment
+	environment.background_mode = Environment.BG_COLOR
+	environment.background_color = Color("24353e")
+	environment.fog_enabled = false
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color("d5e6eb")
+	environment.ambient_light_energy = .7
+	var light = DirectionalLight3D.new()
+	game.add_child(light)
+	light.rotation_degrees = Vector3(-30,-35,0)
+	light.light_energy = .9
+	var heads: Array = []
+	for index in 2:
+		var model = load("res://assets/models/axe.glb").instantiate() if index == 0 else game.weapon.create_model("axe")
+		game.add_child(model)
+		model.position = Vector3(-.72 if index == 0 else .72,.6,0)
+		var pivot = model.find_child("FireAxeHead",true,false).get_parent() as Node3D
+		pivot.transform = Transform3D.IDENTITY
+		heads.append(model.find_child("FireAxeHead",true,false).position.y)
+	game.camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	game.camera.size = 1.9
+	game.camera.position = Vector3(0,.9,4)
+	game.camera.look_at(Vector3(0,.9,0))
+	var canvas = CanvasLayer.new()
+	game.add_child(canvas)
+	var root = Control.new()
+	canvas.add_child(root)
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for index in 2:
+		var label = Label.new()
+		root.add_child(label)
+		label.text = "修改前" if index == 0 else "斧柄加长 10%"
+		label.add_theme_font_override("font",game.ui.font)
+		label.add_theme_font_size_override("font_size",28)
+		label.anchor_left = float(index)*.5
+		label.anchor_right = float(index+1)*.5
+		label.offset_top = 30
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	game.get_viewport().scaling_3d_scale = 1.0
+	RenderingServer.render_loop_enabled = false
+	for i in 5: await get_tree().process_frame
+	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+	RenderingServer.force_draw(true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":"axe_comparison","focus_visible":false,"head_lift":float(heads[1])-float(heads[0])}),true)
