@@ -13,12 +13,43 @@ static func create(id: String, first_person := false) -> Node3D:
 			blade.scale = Vector3.ONE*.8
 			grip.add_child(blade)
 			for mesh in blade.find_children("*","MeshInstance3D",true,false): mesh.layers = 1
+		"axe":
+			model = load("res://assets/models/axe.glb").instantiate()
+			extend_axe_handle(model)
 		"rifle": model = preload("res://scripts/ak_rifle.gd").new()
 		"revolver":
 			model = preload("res://scripts/revolver_view.gd").new() if first_person else preload("res://scripts/revolver_model.gd").new()
 		_: model = load("res://assets/models/%s.glb" % id).instantiate()
 	if id in ["p90","pistol","heavy-machine-gun"]: attach_sight(id,model)
 	return model
+
+static func extend_axe_handle(model: Node3D) -> void:
+	# Lengthen only the shaft above the fixed lower grip; keep head geometry full size.
+	var shaft = model.find_child("FiberglassHandle",true,false) as MeshInstance3D
+	var bounds = shaft.mesh.get_aabb()
+	const LENGTH_SCALE = 1.10
+	shaft.scale.y *= LENGTH_SCALE
+	shaft.position.y += bounds.position.y*(1.0-LENGTH_SCALE)
+	var extension = bounds.size.y*(LENGTH_SCALE-1.0)
+	for title in ["NeckGuard","FireAxeHead","HandleWedge"]:
+		var part = model.find_child(title,true,false) as Node3D
+		part.position.y += extension
+	# Imported clips also key static child transforms. Keep their root choreography,
+	# but prevent them from undoing the shaft extension on the first frame.
+	for player in model.find_children("*","AnimationPlayer",true,false):
+		for title in player.get_animation_library_list():
+			var library = player.get_animation_library(title).duplicate(true) as AnimationLibrary
+			for clip in library.get_animation_list():
+				var animation = library.get_animation(clip)
+				for track in range(animation.get_track_count()-1,-1,-1):
+					var path = animation.track_get_path(track)
+					if path.get_name_count() == 0: continue
+					var target = str(path.get_name(path.get_name_count()-1))
+					var type = animation.track_get_type(track)
+					if (target == "FiberglassHandle" and type in [Animation.TYPE_POSITION_3D,Animation.TYPE_SCALE_3D]) or (target in ["NeckGuard","FireAxeHead","HandleWedge"] and type == Animation.TYPE_POSITION_3D):
+						animation.remove_track(track)
+			player.remove_animation_library(title)
+			player.add_animation_library(title,library)
 
 static func attach_sight(id: String, model: Node3D) -> void:
 	var sight = preload("res://scripts/iron_sight.gd").new(id)
