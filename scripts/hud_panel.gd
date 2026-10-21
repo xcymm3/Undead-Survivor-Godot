@@ -154,7 +154,7 @@ func setup(owner_ui) -> void:
 	spectator_label.offset_top = -185
 	var hint = text(content,14)
 	controls_hint = hint
-	hint.text = "ESC 暂停 · R 换弹 · E 交互/救援"
+	hint.text = "ESC 暂停 · %s 换弹 · %s 交互" % [Data.binding_label("reload"),Data.binding_label("interact")]
 	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_left = 28
 	hint.offset_top = -36
@@ -351,19 +351,19 @@ func sync() -> void:
 	var infinite: bool = w.get("infiniteAmmo",false)
 	ammo_label.text = "∞  近战" if infinite else "%02d / ∞" % p.ammo[int(p.weapon)]
 	ammo_note.text = "无需装填" if infinite else "容量 %d · 备用 ∞" % w.capacity
-	controls_hint.text = "ESC 暂停 · R 换弹 · 1—0 武器"
+	controls_hint.text = "ESC 暂停 · %s 换弹 · %s 交互" % [Data.binding_label("reload"),Data.binding_label("interact")]
 	if sim.mode == "defense":
-		controls_hint.text = ("1 步枪 · 2 手枪 · 3 消防斧 · 4 手雷"+(" · "+Data.binding_label("ultimate")+" 终极技能" if unlocked else "")+" · R 换弹 · ESC 暂停") if defense.get("started",false) else "修复水晶"
+		controls_hint.text = (("%s 步枪 · %s 手枪 · %s 消防斧 · %s 手雷" % [Data.binding_label("weapon_0"),Data.binding_label("weapon_1"),Data.binding_label("weapon_2"),Data.binding_label("weapon_3")])+(" · "+Data.binding_label("ultimate")+" 终极技能" if unlocked else "")+" · %s 换弹 · ESC 暂停" % Data.binding_label("reload")) if defense.get("started",false) else "修复水晶"
 		if not defense.get("started",false) and not sim.can_manage(ui.game.local_pawn()): controls_hint.text = "等待房主整备并修复水晶开战"
 		if ui.game.local_pawn().get("hp",1) <= 0: controls_hint.text = "左键 切换观战队友 · ESC 菜单"
 		if intro_active: controls_hint.text = "ESC 暂停"
 		weapon_label.text = "%s · LV%d" % [w.label,sim.progression.level(w.id) if w.id == "ultimate" else sim.progression.level(w.id)+1]
 		if not infinite and not w.get("infiniteReserve",false): ammo_label.text = "%02d / %d" % [p.ammo[int(p.weapon)],p.reserves[int(p.weapon)]]
-		ammo_note.text = "无需弹药" if infinite else "容量 %d · R 换弹 · 清波 +2 备弹夹" % sim.weapon_capacity(p.weapon)
+		ammo_note.text = "无需弹药" if infinite else "容量 %d · %s 换弹 · 清波 +2 备弹夹" % [sim.weapon_capacity(p.weapon),Data.binding_label("reload")]
 		if p.slot == 4:
 			weapon_label.text = "手雷"
 			ammo_label.text = "%d / %d" % [p.grenades,p.grenade_capacity]
-			ammo_note.text = "左键投掷 · 每15秒补充1颗"
+			ammo_note.text = "%s 投掷 · 每15秒补充1颗" % Data.binding_label("fire")
 
 	arsenal.visible = not (int(p.weapon) == 5 and p.get("slot",1) < 4 and ui.game.weapon.ads > .8)
 	var shared_loadout: bool = sim.mode == "defense"
@@ -387,7 +387,7 @@ func sync() -> void:
 			item.icon.queue_redraw()
 	else:
 		for i in slots.size():
-			slots[i].text = "%s %d  %s  %s" % ["›" if int(p.weapon) == i else " ",(i+1)%10,Data.weapons[i].label,"∞" if Data.weapons[i].get("infiniteAmmo",false) else str(p.ammo[i])]
+			slots[i].text = "%s %s  %s  %s" % ["›" if int(p.weapon) == i else " ",Data.binding_label("weapon_%d" % i),Data.weapons[i].label,"∞" if Data.weapons[i].get("infiniteAmmo",false) else str(p.ammo[i])]
 
 	var ids: Array = sim.pawns.keys()
 	ids.erase(Session.local_id)

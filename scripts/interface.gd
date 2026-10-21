@@ -571,8 +571,8 @@ func show_settings() -> void:
 func show_guide() -> void:
 	var column = panel("武器与操作", "水晶防线 · 十波连续进攻",1000)
 	current = "guide"
-	paragraph(column,"战前靠近并瞄准展台或施工点，长按 E 升级或建造。整备完毕，长按 E 修复破损水晶后立即启动进攻，随后，展台关闭；每波投放完至少等待10秒，且场上存活僵尸少于10只时自动接下一波。每清完所属波次的敌人获得 1 颗钻石、两把枪各 2 个备弹夹。第十波击败舞王后立即清除全部残敌并通关。",17)
-	paragraph(column,"WASD 移动 / Shift 疾跑 / 鼠标瞄准 / 左键攻击 / 右键推击 / 中键开镜\n空格跳跃 / Ctrl 蹲下 / R 换弹 / 1—4 或滚轮切换装备 / Esc 暂停\n1 步枪 / 2 手枪 / 3 消防斧 / 4 手雷 / E 长按交互\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。每次清波两把枪各获得 2 个备弹夹，备弹可超上限，使用消防斧节省弹药。",17)
+	paragraph(column,"战前靠近并瞄准展台或施工点，长按 %s 升级或建造。整备完毕，长按 %s 修复破损水晶后立即启动进攻，随后，展台关闭；每波投放完至少等待10秒，且场上存活僵尸少于10只时自动接下一波。每清完所属波次的敌人获得 1 颗钻石、两把枪各 2 个备弹夹。第十波击败舞王后立即清除全部残敌并通关。" % [Data.binding_label("interact"),Data.binding_label("interact")],17)
+	paragraph(column,"%s/%s/%s/%s 移动 / %s 疾跑 / 鼠标瞄准 / %s 攻击 / %s 推击 / %s 开镜\n%s 跳跃 / %s 蹲下 / %s 换弹 / 滚轮切换装备 / Esc 暂停\n%s 步枪 / %s 手枪 / %s 消防斧 / %s 手雷 / %s 长按交互\n疾跑速度 ×1.6，无耐力限制；射击、开镜、换弹和蹲下取消疾跑。\n连续推击第 3 次后冷却 3.5 秒。每次清波两把枪各获得 2 个备弹夹，备弹可超上限，使用消防斧节省弹药。" % [Data.binding_label("forward"),Data.binding_label("back"),Data.binding_label("left"),Data.binding_label("right"),Data.binding_label("sprint"),Data.binding_label("fire"),Data.binding_label("shove"),Data.binding_label("aim"),Data.binding_label("jump"),Data.binding_label("crouch"),Data.binding_label("reload"),Data.binding_label("weapon_0"),Data.binding_label("weapon_1"),Data.binding_label("weapon_2"),Data.binding_label("weapon_3"),Data.binding_label("interact")],17)
 	var grid = GridContainer.new()
 	grid.columns = 4
 	grid.add_theme_constant_override("h_separation",24)
