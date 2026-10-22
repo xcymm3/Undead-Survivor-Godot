@@ -250,19 +250,24 @@ func text(parent: Node, font_size := 16) -> Label:
 	return result
 
 func health_card(id: String) -> Dictionary:
-	var panel = card(health_row,Vector2(236,40))
+	var panel = card(health_row,Vector2(236,86))
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	panel.size_flags_vertical = Control.SIZE_SHRINK_END
+	var row = HBoxContainer.new()
+	panel.add_child(row)
+	var column = column_in(row)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var title = text(column,15)
+	title.text = "我"
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.custom_minimum_size.x = 90
+	var hp = text(column,21)
 	var bar = ProgressBar.new()
 	bar.show_percentage = false
-	bar.custom_minimum_size.y = 22
-	panel.add_child(bar)
-	var hp = text(bar,18)
-	hp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	bar.custom_minimum_size.y = 7
+	column.add_child(bar)
 	ignore_mouse(panel)
-	var result = {"panel":panel,"hp":hp,"bar":bar}
+	var result = {"panel":panel,"name":title,"hp":hp,"bar":bar}
 	cards[id] = result
 	return result
 
@@ -359,6 +364,7 @@ func sync() -> void:
 			cards[id].panel.queue_free()
 			cards.erase(id)
 	var item: Dictionary = cards[p.id] if cards.has(p.id) else health_card(p.id)
+	item.name.text = "我"
 	item.hp.text = "%d / %d" % [p.hp,p.get("max_hp",100)]
 	item.bar.max_value = p.get("max_hp",100)
 	item.bar.value = p.hp
