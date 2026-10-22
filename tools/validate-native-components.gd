@@ -639,7 +639,7 @@ func run() -> void:
 	check(game.ui.native_hud.visible,"Native HUD appears on game start")
 	check(game.ui.native_hud.cards.has("solo"),"Player card is a retained control")
 	var card: Dictionary = game.ui.native_hud.cards.solo
-	check(card.bar is ProgressBar and card.hp is Label and not card.has("portrait"),"Health uses a native bar without an avatar")
+	check(card.bar is ProgressBar and card.hp is Label and not card.has("portrait") and not card.has("name"),"Health uses a native bar without a player model or label")
 	var pawn: Dictionary = game.local_pawn()
 	pawn.hp = 42
 	game.ui.tick(.016)
