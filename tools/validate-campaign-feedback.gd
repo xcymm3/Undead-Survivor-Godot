@@ -184,7 +184,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	var actions = game.ui.menu.get_node("HomeStage/HomeActions")
-	check(absf(actions.get_global_rect().get_center().x-game.ui.root.size.x*.5) < 1 and actions.get_children().size() == 4,"All four Demo home buttons form one centered row")
+	check(absf(actions.get_global_rect().get_center().x-game.ui.root.size.x*.5) < 1 and actions.get_children().size() == 5,"Save selection and four main home buttons form one centered row")
 	check(game.ui.menu.find_child("InfiniteCoins",true,false) == null,"Demo has no test-money controls")
 	check(game.ui.menu.has_node("HomeStage/GameTitle"),"Home uses the central game title and bottom action layout")
 	check(game.ui.menu.get_node("HomeStage/CrystalSigil").size == Vector2(80,80),"Home crystal emblem stays inside its title-free reserved space")

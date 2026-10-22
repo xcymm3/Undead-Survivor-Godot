@@ -312,11 +312,17 @@ func show_home() -> void:
 	actions.resized.connect(func(): actions.position.x = (stage.size.x-actions.size.x)*.5)
 	actions.add_theme_constant_override("separation",14)
 	stage.add_child(actions)
-	for item in [["单人游戏",func(): game.start_solo("defense")],["设置",show_settings],["退出游戏",func(): game.quit_game()]]:
+	for item in [["单人游戏",func(): game.start_solo("defense")],["设置",show_settings],["问题反馈",func(): pass],["退出",func(): game.quit_game()]]:
 		var option = home_button(actions,item[0],item[1],item[0] == "单人游戏")
 		option.custom_minimum_size = Vector2(188,76)
 		option.add_theme_font_size_override("font_size",25)
+		if item[0] == "问题反馈":
+			# Form and delivery service are still being discussed; never imply a report was sent.
+			option.name = "FeedbackEntry"
+			option.disabled = true
+			option.tooltip_text = "反馈渠道尚未接入，暂未开放"
 	var save = home_button(actions,"存档 %d" % (Progress.active_slot+1),show_save_slots)
+	save.name = "HomeSaveSlot"
 	actions.move_child(save,0)
 	save.custom_minimum_size = Vector2(168,76)
 	var profile = label("金币 %d   ◆ 钻石 %d   最佳第 %d 波" % [Progress.store.data.coins,Progress.store.data.diamonds,Progress.store.data.best_wave],17,Color("b6c3a5"))
