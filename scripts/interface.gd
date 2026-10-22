@@ -238,7 +238,6 @@ func panel(title: String, subtitle: String, width := 700, warm := false) -> VBox
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation",14)
 	scroll.add_child(column)
-	column.add_child(label("断崖防线  /  FIELD CONTROL",13,SETTINGS_BRASS))
 	column.add_child(HSeparator.new())
 	column.add_child(label(title,34,SETTINGS_INK))
 	paragraph(column,subtitle,16,SETTINGS_MUTED if warm else Color("797b6f"))
@@ -279,9 +278,6 @@ func show_home() -> void:
 		stage.position = (root.size-stage.size*factor)*.5
 	menu.resized.connect(fit)
 	fit.call()
-	var edition = label("断崖防线  /  TEN WAVES • ONE LAST STAND",17,Color("adba9c"))
-	edition.position = Vector2(58,42)
-	stage.add_child(edition)
 	var version = label("v"+str(ProjectSettings.get_setting("application/config/version","2.2.0")),16,Color("adba9c"))
 	version.position = Vector2(1290,42)
 	stage.add_child(version)
@@ -368,7 +364,6 @@ func field_shell(title: String, subtitle: String, dimensions := Vector2(1040,840
 	var column = VBoxContainer.new()
 	column.add_theme_constant_override("separation",12)
 	frame.add_child(column)
-	column.add_child(label("断崖防线   /   生存行动",15,SETTINGS_BRASS))
 	column.add_child(label(title,38,SETTINGS_INK))
 	paragraph(column,subtitle,16,SETTINGS_MUTED)
 	column.add_child(HSeparator.new())

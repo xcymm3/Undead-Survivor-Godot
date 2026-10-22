@@ -35,7 +35,6 @@ func show_page(qa_preview: bool) -> void:
 		stage.position = (ui.root.size-stage.size*factor)*.5
 	ui.menu.resized.connect(fit)
 	fit.call()
-	put_label("断崖防线  /  合作行动",Vector2(72,28),Vector2(1000,25),16,ui.SETTINGS_BRASS)
 	var heading = put_label("多人合作",Vector2(72,54),Vector2(1000,64),46,ui.SETTINGS_INK)
 	var display_font = FontVariation.new()
 	display_font.base_font = ui.font
