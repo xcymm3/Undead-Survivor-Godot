@@ -30,7 +30,7 @@ func run() -> void:
 	check(manager.select_slot(2) and manager.store.data.coins == 0,"Third slot also starts at zero")
 	var reopened = load("res://scripts/progression.gd").new()
 	reopened.configure(directory)
-	check(reopened.active_slot == 2 and reopened.slots[0].data.coins == 50 and reopened.slots[0].level("rifle") == 1 and reopened.slots[1].data.coins == 45,"Restart restores the selected slot and separate progress files")
+	check(reopened.active_slot == 2 and reopened.slots[0].data.coins == 75 and reopened.slots[0].level("rifle") == 1 and reopened.slots[1].data.coins == 45,"Restart restores the selected slot and separate progress files")
 	check(not reopened.select_slot(-1) and not reopened.select_slot(3) and reopened.active_slot == 2,"Invalid slots cannot change active progress")
 	reopened.selection_path = directory.path_join("absent/selection.json")
 	check(not reopened.select_slot(0) and reopened.active_slot == 2,"Failed slot selection write leaves the active slot intact")

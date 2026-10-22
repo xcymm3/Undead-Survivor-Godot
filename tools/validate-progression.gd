@@ -36,19 +36,18 @@ func run() -> void:
 		for kind in defense_population.roster(wave,1,RandomNumberGenerator.new()): income += Store.COIN_REWARDS[kind]
 		wave_income_total += income
 		check(income == expected_wave_rewards[wave-1],"Staircase reward total for wave "+str(wave))
-	check(wave_income_total == 7744 and Store.UPGRADE_PRICES.reduce(func(total,value): return total+value,0) == 6400,"One complete campaign funds all ten rifle upgrades with 1344 coins to spare")
+	check(wave_income_total == 7744 and Store.UPGRADE_PRICES.reduce(func(total,value): return total+value,0) == 6375,"One complete campaign funds all ten rifle upgrades with 1369 coins to spare")
 	profile.data.coins = 100000
 	for id in Store.WEAPONS:
-		check(profile.cost(id) == 50 and profile.purchase(id) and profile.cost(id) == 100,"First weapon upgrade uses the next fixed price: "+id)
+		check(profile.cost(id) == 25 and profile.purchase(id) and profile.cost(id) == 100,"First weapon upgrade uses the next fixed price: "+id)
 		check(profile.purchase(id) and is_equal_approx(profile.weapon_multiplier(id),1.44 if id == "axe" else 1.5625),"Gun damage compounds by twenty-five percent; axe keeps twenty percent: "+id)
 	for count in range(1,5):
 		check(profile.cost("grenade") == [300,450,650,1000][count-1] and profile.purchase("grenade") and profile.grenade_capacity() == count,"Grenade capacity increases to "+str(count))
 	check(not profile.purchase("grenade") and profile.cost("grenade") == -1,"Grenade capacity cannot exceed four")
 	for id in Store.BUILDINGS:
-		check(profile.cost(id) == 100,"Each building uses its confirmed manufacturing price: "+id)
+		check(profile.cost(id) == 25,"Each building uses its confirmed manufacturing price: "+id)
 		check(not profile.owned(id) and profile.purchase(id) and profile.owned(id),"Manufacturing grants persistent ownership: "+id)
-		var first: int = profile.cost(id)
-		check(profile.purchase(id) and profile.cost(id) == first*2 and is_equal_approx(profile.building_multiplier(id),1.25),"Building upgrade compounds and uses fixed prices: "+id)
+		check(profile.purchase(id) and profile.cost(id) == 100 and is_equal_approx(profile.building_multiplier(id),1.25),"Building upgrade compounds and uses fixed prices: "+id)
 	for id in Store.MINES:
 		var coins: int = profile.data.coins
 		check(not profile.owned(id) and profile.cost(id) == Store.MINE_PRICES[id] and profile.purchase(id) and profile.data.coins == coins-Store.MINE_PRICES[id],"Mine uses its distance-tier purchase price: "+id)
@@ -65,7 +64,7 @@ func run() -> void:
 	capped.data.coins = Store.MAX_CURRENCY
 	for id in Store.WEAPONS+Store.MAGAZINES+Store.BUILDINGS:
 		if id in Store.BUILDINGS: check(capped.purchase(id),"Cap fixture manufactures "+id)
-		for rank in range(1,11): check(capped.cost(id) == [50,100,150,200,300,450,650,1000,1500,2000][rank-1] and capped.purchase(id) and capped.level(id) == rank,"Upgrade purchases through rank ten: "+id+str(rank))
+		for rank in range(1,11): check(capped.cost(id) == [25,100,150,200,300,450,650,1000,1500,2000][rank-1] and capped.purchase(id) and capped.level(id) == rank,"Upgrade purchases through rank ten: "+id+str(rank))
 		var wallet: int = capped.data.coins
 		check(capped.cost(id) == -1 and not capped.purchase(id) and capped.data.coins == wallet,"Rank eleven is blocked without payment: "+id)
 	check(capped.magazine_capacity("rifle",30) == 80 and capped.magazine_capacity("pistol",15) == 45,"Magazine capacity adds fixed rounds independently to rank ten")
@@ -76,14 +75,14 @@ func run() -> void:
 	saved.dirty = true
 	check(saved.save() and saved.purchase("rifle"),"Permanent transaction writes its upgraded state")
 	var reloaded = Store.new(path)
-	check(reloaded.data.coins == 150 and reloaded.level("rifle") == 1 and reloaded.cost("rifle") == 100,"Reload restores coins, levels and subsequent prices")
+	check(reloaded.data.coins == 175 and reloaded.level("rifle") == 1 and reloaded.cost("rifle") == 100,"Reload restores coins, levels and subsequent prices")
 	check(reloaded.purchase("rifle"),"Reloaded progress remains purchasable")
 	var bad = FileAccess.open(path,FileAccess.WRITE)
 	bad.store_string("{broken")
 	bad.close()
 	var recovered = Store.new(path)
-	check(recovered.data.coins == 150 and recovered.level("rifle") == 1 and not recovered.notice.is_empty(),"Corrupt primary save recovers the last complete backup")
-	check(recovered.save() and Store.new(path).data.coins == 150,"Recovered state repairs the primary save")
+	check(recovered.data.coins == 175 and recovered.level("rifle") == 1 and not recovered.notice.is_empty(),"Corrupt primary save recovers the last complete backup")
+	check(recovered.save() and Store.new(path).data.coins == 175,"Recovered state repairs the primary save")
 	var legacy: Dictionary = Store.defaults()
 	legacy.version = 1
 	legacy.weapons.revolver = 4
@@ -435,9 +434,9 @@ func validate_talent_economy() -> void:
 	profile.path = path
 	profile.data.coins = 50.5
 	check(profile.save() and Store.new(path).data.coins == 50.5,"Fractional coins survive JSON save and reload")
-	check(profile.purchase("rifle") and is_equal_approx(profile.data.coins,.5) and is_equal_approx(Store.new(path).data.coins,.5),"Coin purchases preserve fractional change through reload")
-	profile.data.coins = 49.9
-	check(not profile.purchase("pistol") and is_equal_approx(profile.data.coins,49.9),"Fractional wallet cannot buy an unaffordable upgrade")
+	check(profile.purchase("rifle") and is_equal_approx(profile.data.coins,25.5) and is_equal_approx(Store.new(path).data.coins,25.5),"Coin purchases preserve fractional change through reload")
+	profile.data.coins = 24.9
+	check(not profile.purchase("pistol") and is_equal_approx(profile.data.coins,24.9),"Fractional wallet cannot buy an unaffordable upgrade")
 	for invalid in [-.1,INF,NAN,"1.5"]:
 		var bad = Store.defaults()
 		bad.coins = invalid
