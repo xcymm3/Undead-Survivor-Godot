@@ -40,6 +40,9 @@ static func step(sim, dt: float) -> void:
 			sim.spawn(point,boss.summon_roster[0])
 			boss.summon_roster.remove_at(0)
 			var summoned: Dictionary = sim.zombies[-1]
+			if sim.defense_spawner and sim.defense_spawner.forest_routes.active(boss):
+				summoned["forest_route"] = boss.forest_route
+				summoned["forest_waypoint"] = boss.forest_waypoint
 			summoned.spawn_wave = int(boss.get("spawn_wave",10))
 			summoned.emerge_remaining = EMERGE_DURATION
 			summoned.summoned = true

@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless checks for random far-bank spawns and the bridge-mouth exclusion.
+## Fixed woodland origins, silhouette-safe births, routes and bridge exclusion.
 var checks := 0
 var failures := 0
 
@@ -39,16 +39,13 @@ func run() -> void:
 	var sim = game.sim
 	var planner = sim.defense_spawner
 	var entries: Array[Vector2] = []
-	for attempt in 3000:
-		var point: Vector2 = planner.random_point()
-		if planner.ground_clear(point): entries.append(point)
-		if entries.size() == 128: break
-	check(entries.size() == 128,"Random sampling finds 128 reachable far-bank positions")
-	check(entries.all(func(p): return layout.enemy_spawn_allowed(p) and arena.clear(p,p)),"Every sampled birth position clears obstacles and the bridge exclusion")
+	for entry in planner.forest_routes.entries: entries.append(entry.points[0])
+	check(entries.size() == 20,"Twenty authored woodland birth positions are available")
+	check(entries.all(func(p): return layout.enemy_spawn_allowed(p) and arena.clear(p,p)),"Every fixed birth position clears obstacles and the bridge exclusion")
 	var distinct = {}
 	for point in entries: distinct[point] = true
-	check(distinct.size() == entries.size(),"Spawn coordinates vary continuously instead of repeating five points")
-	check(entries.any(func(p): return p.x < -35) and entries.any(func(p): return p.x > 35) and entries.any(func(p): return p.y > -100) and entries.any(func(p): return p.y < -140),"Sampling covers the enlarged bank's side and rear regions")
+	check(distinct.size() == 20,"All twenty fixed birth points are unique")
+	check(entries.any(func(p): return p.x < -35) and entries.any(func(p): return p.x > 35) and entries.any(func(p): return p.y > -110) and entries.any(func(p): return p.y < -140),"Fixed points cover left, right, front and rear woodland")
 	var saved_seed: int = planner.spawn_random.seed
 	planner.spawn_random.seed = 19457
 	var first: Vector2 = planner.random_point()
@@ -70,9 +67,12 @@ func run() -> void:
 	p.height = original_height
 	# Completely exposed candidates keep their quota until cover is available.
 	var saved_check = planner.spawn_region
+	var saved_entries: Array[Dictionary] = planner.forest_routes.entries
 	var exposed = Vector2(44,-66)
 	planner.spawn_region = Rect2(exposed-Vector2.ONE*.01,Vector2.ONE*.02)
-	p.pos = Vector2(43,-70)
+	var exposed_entries: Array[Dictionary] = [{"id":"exposure_fixture","points":PackedVector2Array([exposed,exposed+Vector2(0,-1)])}]
+	planner.forest_routes.entries = exposed_entries
+	p.pos = Vector2(44,-76)
 	p.height = 0
 	check(not planner.hidden_from_players(exposed,"normal",[p]),"Direct sight rejects an exposed birth")
 	planner.reset(1)
@@ -80,6 +80,7 @@ func run() -> void:
 	planner.step(30,[p])
 	check(sim.spawned == 0 and sim.roster.size() == 1,"An exposed field retains its pending birth quota")
 	planner.spawn_region = saved_check
+	planner.forest_routes.entries = saved_entries
 	p.pos = original_pos
 	p.height = original_height
 	# Independent geometry fixtures: all three old centre rays are blocked,
@@ -119,10 +120,9 @@ func run() -> void:
 	p.pos = original_pos
 	p.height = original_height
 	# Check real movement from a distributed subset, in addition to path queries.
-	entries = entries.slice(0,12)
 	for index in entries.size():
 		var point: Vector2 = entries[index]
-		check(arena.clear(point,point),"Random spawn %d has free enemy clearance" % index)
+		check(arena.clear(point,point),"Fixed spawn %d has free enemy clearance" % index)
 		sim.zombies.clear()
 		sim.paths.clear()
 		sim.crowd_buckets.clear()
@@ -131,9 +131,10 @@ func run() -> void:
 		var stayed_on_route := true
 		for tick in 600:
 			sim.elapsed += .1
-			sim.move_zombie(zombie,goal,4.9,.1,zombie.pos.distance_to(goal),data.contact(zombie.kind))
+			if not planner.forest_routes.follow(sim,zombie,4.9,.1):
+				sim.move_zombie(zombie,goal,4.9,.1,zombie.pos.distance_to(goal),data.contact(zombie.kind))
 			stayed_on_route = stayed_on_route and arena.clear(zombie.pos,zombie.pos)
 			if zombie.pos.y > -63: break
-		check(stayed_on_route and zombie.pos.y > -63,"Random spawn %d reaches the bridge without leaving walkable terrain" % index)
+		check(stayed_on_route and zombie.pos.y > -63,"Fixed spawn %d reaches the bridge without leaving walkable terrain" % index)
 	print("DEFENSE SPAWN VALIDATION: %d checks; %d failures" % [checks,failures])
 	quit(1 if failures else 0)

@@ -145,7 +145,7 @@ func run() -> void:
 	sim.roster = ["normal","normal","normal","normal","normal"]
 	sim.zombies.clear()
 	var saved_region: Rect2 = planner.spawn_region
-	var blocked_point = Vector2(-10,-105)
+	var blocked_point: Vector2 = planner.forest_routes.entries[0].points[0]
 	planner.spawn_region = Rect2(blocked_point-Vector2.ONE*.05,Vector2.ONE*.1)
 	sim.spawn(blocked_point,"normal")
 	planner.step(30,sim.pawns.values())

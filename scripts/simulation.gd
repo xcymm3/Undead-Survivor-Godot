@@ -187,6 +187,7 @@ func spawn(pos: Vector2, kind: String) -> void:
 		zombies[-1].summon_clock = preload("res://scripts/dancer_boss.gd").INTERVAL
 		zombies[-1].dance_remaining = 0.0
 		zombies[-1].summon_roster = []
+	if defense_spawner: defense_spawner.forest_routes.attach(zombies[-1],pos)
 	if kind in ["normal","cone","bucket"]:
 		# Cosmetic RNG never advances encounter, movement or combat randomness.
 		var wardrobe = RandomNumberGenerator.new()
@@ -1003,6 +1004,7 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 			events.append({"kind":"enemy_impact" if hit else "enemy_miss","position":Vector3(z.pos.x,1.2+Data.enemy_ground_height(z.pos,map_id),z.pos.y)})
 		if z.attack_time >= profile.y: z.attack_time = 0.0
 		return
+	if defense_spawner and defense_spawner.forest_routes.follow(self,z,speed,dt): return
 	var goal = approach_goal(z,target)
 	move_zombie(z,goal,speed,dt,distance,contact,target.get("is_crystal",false) or target.get("is_structure",false))
 

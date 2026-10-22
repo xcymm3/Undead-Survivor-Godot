@@ -1,12 +1,11 @@
 extends RefCounted
-## Authority wave bursts. Opening waves ramp up to the thirty-second schedule.
+## Authority wave bursts from twenty fixed, prevalidated woodland lanes.
 const DURATION = 30.0
 const EARLY_WAVE_DURATIONS = [10.0,15.0,20.0]
 var duration = DURATION
 const MIN_BATCH_SIZE = 5
 const MAX_BATCHES = 30
 const Layout = preload("res://scripts/defense_layout.gd")
-const MAX_SPAWN_ATTEMPTS = 4096
 var owner_ref: WeakRef
 var sim:
 	get: return owner_ref.get_ref()
@@ -21,12 +20,14 @@ var spawn_random = RandomNumberGenerator.new()
 var reachable = PackedByteArray()
 var grid_width = 0
 var sight_profiles: Dictionary = {}
+var forest_routes
 const SIGHT_MASK = 1 | preload("res://scripts/defense_spawn_forest.gd").SIGHT_LAYER
 
 func _init(owner) -> void:
 	owner_ref = weakref(owner)
 	spawn_region = sim.map_definition.spawn_region
 	build_reachability()
+	forest_routes = preload("res://scripts/forest_spawn_routes.gd").new(sim.arena)
 
 func build_reachability() -> void:
 	var grid = sim.arena.grid
@@ -67,10 +68,10 @@ func scheduled_count(at: float) -> int:
 	return roundi(float(total)*due/batches)
 
 func describe() -> Dictionary:
-	return {"duration":duration,"total":total,"batches":batches,"interval":interval,"max_batch":batch_size}
+	return {"duration":duration,"total":total,"batches":batches,"interval":interval,"max_batch":batch_size,"fixed_points":forest_routes.entries.size()}
 
 func random_point() -> Vector2:
-	return Vector2(spawn_random.randf_range(spawn_region.position.x,spawn_region.end.x),spawn_random.randf_range(spawn_region.position.y,spawn_region.end.y))
+	return forest_routes.entries[spawn_random.randi_range(0,forest_routes.entries.size()-1)].points[0]
 
 func ground_clear(point: Vector2) -> bool:
 	if not Layout.enemy_spawn_allowed(point) or not sim.arena.clear(point,point): return false
@@ -139,13 +140,16 @@ func step(dt: float, living: Array) -> void:
 	for z in sim.zombies:
 		if z.hp > 0: add_occupied(occupied,z.pos)
 	var released = 0
-	var attempts = mini(MAX_SPAWN_ATTEMPTS,maxi(128,batch_size*64))
-	for attempt in attempts:
+	var entries: Array[Dictionary] = forest_routes.entries
+	if entries.is_empty(): return
+	var first = spawn_random.randi_range(0,entries.size()-1)
+	# Each fixed point is examined at most once per retry. Never scan thousands
+	# of random candidates or put an unsafe/occupied/visible birth elsewhere.
+	for attempt in entries.size():
 		if released >= mini(due,batch_size) or sim.roster.is_empty(): break
-		var point = random_point()
-		if not Layout.enemy_spawn_allowed(point) or near_occupied(occupied,point): continue
+		var point: Vector2 = entries[(first+attempt)%entries.size()].points[0]
+		if not spawn_region.has_point(point) or near_occupied(occupied,point): continue
 		if living.any(func(p): return p.pos.distance_squared_to(point) < 64): continue
-		if not ground_clear(point): continue
 		var kind: String = sim.roster[0]
 		if not hidden_from_players(point,kind,living): continue
 		sim.spawn(point,kind)
