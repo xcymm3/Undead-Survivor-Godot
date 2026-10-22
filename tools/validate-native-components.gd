@@ -788,6 +788,7 @@ func run() -> void:
 	session.playing = false
 	await load("res://tools/validate-first-attempt-intro.gd").validate(game,check)
 	await load("res://tools/validate-run-rewards.gd").validate(game,check)
+	await load("res://tools/validate-feedback-report.gd").validate(game,check)
 	await load("res://tools/validate-map-redesign.gd").validate(game,check)
 	await load("res://tools/validate-demo-refinements.gd").validate(game,check)
 	await load("res://tools/validate-woodland-collision.gd").validate(game,check)

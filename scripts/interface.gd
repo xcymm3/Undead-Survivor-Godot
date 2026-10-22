@@ -14,6 +14,7 @@ var multiplayer_view
 var hit_flash = 0.0
 var hurt_flash = 0.0
 var message = ""
+var feedback_draft = preload("res://scripts/feedback_report.gd").new()
 var victory_caption: Label
 var native_hud
 var binding_action = ""
@@ -375,16 +376,11 @@ func field_shell(title: String, subtitle: String, dimensions := Vector2(1040,840
 	return column
 
 func show_feedback() -> void:
-	var column = field_shell("问题反馈","欢迎反馈遇到的问题和游玩建议",Vector2(720,420))
+	var column = field_shell("问题反馈","告诉我们遇到的问题，帮助改进游戏",Vector2(940,820))
 	current = "feedback"
-	paragraph(column,"游戏内填写和发送功能正在准备中，可先加入QQ群反馈问题或建议。",19,SETTINGS_INK)
-	var space = Control.new()
-	space.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(space)
-	var group = label("QQ群聊号：1072344640",23,SETTINGS_BRASS)
-	group.name = "FeedbackQQGroup"
-	column.add_child(group)
-	home_button(column,"返回主菜单",show_home)
+	var form = preload("res://scripts/feedback_panel.gd").new()
+	column.add_child(form)
+	form.setup(self,feedback_draft)
 
 func lifetime_coin_text(amount: float) -> String:
 	return str(roundi(amount)) if amount == floorf(amount) else "%.1f" % amount
