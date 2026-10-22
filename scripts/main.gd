@@ -713,4 +713,4 @@ func select_save_slot(index: int) -> void:
 		ui.message = "存档切换失败，当前进度未改变。"
 		ui.show_home()
 		return
-	start_solo("defense")
+	ui.show_home()

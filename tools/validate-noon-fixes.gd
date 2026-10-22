@@ -162,6 +162,13 @@ func run() -> void:
 	for card in cards:
 		check(card.get_global_rect().end.y < game.ui.root.size.y and card.get_global_rect().end.x < game.ui.root.size.x,"Save dossier stays inside the viewport")
 	check(cards.size() == 3,"All three persistent saves have dedicated dossier panels")
+	var frame = game.ui.menu.find_child("FieldConsole",true,false)
+	check(frame.size == Vector2(820,660),"Save dialog stays smaller than the old 1040 by 840 frame")
+	for index in 3:
+		var card = game.ui.menu.find_child("SaveSlot%d" % (index+1),true,false)
+		var remove = card.find_child("DeleteSlot%d" % (index+1),true,false)
+		check(remove is Button and remove.text.is_empty() and remove.accessibility_name == "删除存档 %d" % (index+1) and remove.tooltip_text == remove.accessibility_name,"Save deletion uses an accessible icon without visible text: "+str(index))
+		check(card.find_child("LifetimeCoins",true,false).text.begins_with("获得金币：") and card.find_child("LifetimeDiamonds",true,false).text.begins_with("获得钻石：") and card.find_child("Victories",true,false).text.begins_with("通关次数："),"Save summary uses cumulative income and complete-run wins: "+str(index))
 	game.ui.confirm_delete_slot(1)
 	check(game.ui.current == "delete_save" and game.ui.menu.find_children("*","Button",true,false).size() == 2,"Save deletion still requires explicit confirmation and offers cancel")
 	game.free()

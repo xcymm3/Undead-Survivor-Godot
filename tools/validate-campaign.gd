@@ -51,7 +51,10 @@ func run() -> void:
 	await physics_frame
 	check(game.sim.progression.data.coins == wallet_before and game.sim.progression.data.diamonds == diamonds_before,"Starting a game preserves the earned wallet without test currency")
 	game.return_home()
+	game.ui.show_save_slots()
 	game.select_save_slot(1)
+	check(progress.active_slot == 1 and not game.running and game.sim == null and game.ui.current == "home","Selecting a save only switches progress and closes the dialog")
+	game.start_solo("defense",20261012)
 	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Economy fixture starts after the narrative intro.
 	await physics_frame
 	var sim = game.sim
@@ -64,7 +67,7 @@ func run() -> void:
 	check(sim.try_shove(p) and p.shove_anim == .32 and not sim.melee_swings.has(p.id),"Axe shove starts the animation and cancels an unfinished melee swing")
 	p.slot = 1
 	p.weapon = 0
-	check(progress.active_slot == 1 and sim.progression == progress.store and sim.wave == 1 and not sim.defense.started and sim.progression.data.coins == 0,"Selecting a new save creates a fresh preparation match")
+	check(progress.active_slot == 1 and sim.progression == progress.store and sim.wave == 1 and not sim.defense.started and sim.progression.data.coins == 0,"Starting after a save switch uses the selected profile")
 	var environment = game.arena.find_children("*","WorldEnvironment",true,false)[0].environment
 	check(environment.background_color.v < .2 and environment.ambient_light_energy <= .25 and game.arena.sun.light_energy < .4,"Native terrain uses night sky and moonlit exposure")
 	check(game.sound.streams.disco.get_length() >= 2.99 and game.sound.streams.disco.get_length() <= 3.01,"Boss has an independent three-second disco resource")

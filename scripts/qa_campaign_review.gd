@@ -14,6 +14,12 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
+	if scenario == "save_slots":
+		var slots = preload("res://scripts/qa_save_slots.gd").new()
+		slots.game = game
+		add_child(slots)
+		await slots.stage()
+		return
 	if scenario in ["demo_failure","demo_victory"]:
 		var ending = preload("res://scripts/qa_demo_endings.gd").new()
 		ending.game = game

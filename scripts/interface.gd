@@ -371,43 +371,59 @@ func field_shell(title: String, subtitle: String, dimensions := Vector2(1040,840
 	column.add_child(HSeparator.new())
 	return column
 
+func lifetime_coin_text(amount: float) -> String:
+	return str(roundi(amount)) if amount == floorf(amount) else "%.1f" % amount
+
 func show_save_slots() -> void:
-	var column = field_shell("幸存者档案","三个独立存档 · 切换后从第一波开始 · 成长进度永久保留")
+	# Hallmark · component scope: compact dossiers, existing field palette and type.
+	# Pre-emit critique: P4 H5 E4 S5 R5 V4
+	var column = field_shell("选择存档","切换后返回主菜单 · 累计收益不随消费减少",Vector2(820,660))
 	current = "saves"
-	var files = HBoxContainer.new()
+	var files = VBoxContainer.new()
 	files.name = "SaveDossiers"
 	files.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	files.add_theme_constant_override("separation",18)
+	files.add_theme_constant_override("separation",10)
 	column.add_child(files)
 	for index in 3:
 		var profile = Progress.slots[index]
 		var active: bool = index == Progress.active_slot
 		var card = PanelContainer.new()
 		card.name = "SaveSlot%d" % (index+1)
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var style = settings_box(PAPER.lightened(.07) if active else PAPER.darkened(.15),SETTINGS_BRASS if active else SETTINGS_MUTED.darkened(.55),20)
-		style.border_width_top = 4 if active else 1
+		card.custom_minimum_size.y = 92
+		var style = settings_box(PAPER.lightened(.07) if active else PAPER.darkened(.15),SETTINGS_BRASS if active else SETTINGS_MUTED.darkened(.55),14)
+		style.border_width_left = 3 if active else 1
 		card.add_theme_stylebox_override("panel",style)
 		files.add_child(card)
-		var dossier = VBoxContainer.new()
-		dossier.add_theme_constant_override("separation",15)
-		card.add_child(dossier)
-		dossier.add_child(label("档案  /  %02d" % (index+1),28,SETTINGS_BRASS))
-		dossier.add_child(label("当前使用" if active else "待命存档",17,SETTINGS_INK))
-		dossier.add_child(HSeparator.new())
-		for entry in [["金币",floori(profile.data.coins)],["钻石",profile.data.diamonds],["最佳波次",profile.data.best_wave]]:
-			var row = HBoxContainer.new()
-			dossier.add_child(row)
-			var caption = label(entry[0],17,SETTINGS_MUTED)
-			caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			row.add_child(caption)
-			row.add_child(label(str(entry[1]),25,SETTINGS_INK))
-		var space = Control.new()
-		space.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		dossier.add_child(space)
-		home_button(dossier,"使用存档 %d" % (index+1),game.select_save_slot.bind(index),active)
-		var remove = home_button(dossier,"永久删除存档 %d" % (index+1),confirm_delete_slot.bind(index))
-		remove.add_theme_font_size_override("font_size",15)
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation",18)
+		card.add_child(row)
+		var identity = VBoxContainer.new()
+		identity.alignment = BoxContainer.ALIGNMENT_CENTER
+		identity.custom_minimum_size.x = 110
+		row.add_child(identity)
+		identity.add_child(label("存档 %02d" % (index+1),23,SETTINGS_BRASS))
+		identity.add_child(label("当前使用" if active else "",15,SETTINGS_MUTED))
+		var statistics = VBoxContainer.new()
+		statistics.alignment = BoxContainer.ALIGNMENT_CENTER
+		statistics.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		statistics.add_theme_constant_override("separation",3)
+		row.add_child(statistics)
+		for entry in [["LifetimeCoins","获得金币：",lifetime_coin_text(profile.data.total_coins_earned)],["LifetimeDiamonds","获得钻石：",str(profile.data.total_diamonds_earned)],["Victories","通关次数：",str(profile.data.victories)]]:
+			var value = label(entry[1]+entry[2],18,SETTINGS_INK)
+			value.name = entry[0]
+			statistics.add_child(value)
+		var select = home_button(row,"当前使用" if active else "使用存档",game.select_save_slot.bind(index),active)
+		select.name = "SelectSlot%d" % (index+1)
+		select.custom_minimum_size = Vector2(112,48)
+		select.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var remove = preload("res://scripts/save_delete_button.gd").new()
+		remove.name = "DeleteSlot%d" % (index+1)
+		remove.tooltip_text = "删除存档 %d" % (index+1)
+		remove.accessibility_name = remove.tooltip_text
+		remove.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(remove)
+		remove.pressed.connect(confirm_delete_slot.bind(index))
+		remove.mouse_entered.connect(func(): game.sound.play("menu-hover",-18))
 	home_button(column,"返回主菜单",show_home)
 
 func show_pause() -> void:
@@ -752,7 +768,7 @@ func sync_victory_caption(age: float, enabled: bool) -> void:
 	victory_caption.visible = enabled and age < 5.8 and current != "result"
 
 func confirm_delete_slot(index: int) -> void:
-	var column = field_shell("永久删除存档 %d？" % (index+1),"金币、钻石、所有升级和备份将永久删除，无法恢复。")
+	var column = field_shell("永久删除存档 %d？" % (index+1),"金币、钻石、所有升级和备份将永久删除，无法恢复。",Vector2(680,420))
 	current = "delete_save"
 	var space = Control.new()
 	space.size_flags_vertical = Control.SIZE_EXPAND_FILL
