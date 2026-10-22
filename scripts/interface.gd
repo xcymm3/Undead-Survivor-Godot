@@ -14,7 +14,6 @@ var multiplayer_view
 var hit_flash = 0.0
 var hurt_flash = 0.0
 var message = ""
-var feedback_draft = preload("res://scripts/feedback_report.gd").new()
 var victory_caption: Label
 var native_hud
 var binding_action = ""
@@ -376,11 +375,41 @@ func field_shell(title: String, subtitle: String, dimensions := Vector2(1040,840
 	return column
 
 func show_feedback() -> void:
-	var column = field_shell("问题反馈","告诉我们遇到的问题，帮助改进游戏",Vector2(940,820))
+	var column = field_shell("问题反馈","通过以下方式联系开发者",Vector2(760,540))
 	current = "feedback"
-	var form = preload("res://scripts/feedback_panel.gd").new()
-	column.add_child(form)
-	form.setup(self,feedback_draft)
+	var contacts = VBoxContainer.new()
+	contacts.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	contacts.add_theme_constant_override("separation",18)
+	column.add_child(contacts)
+	contact_card(contacts,"QQ邮箱","2507524796@qq.com","发送问题反馈与建议")
+	contact_card(contacts,"QQ群","1072344640","加入群聊交流与反馈")
+	var footer = label("欢迎通过邮件或QQ群告诉我们游戏体验",17,SETTINGS_MUTED)
+	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(footer)
+	var back = home_button(column,"返回主菜单",show_home,true)
+	back.custom_minimum_size.y = 58
+
+func contact_card(parent: Node, channel: String, value: String, description: String) -> void:
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size.y = 112
+	panel.add_theme_stylebox_override("panel",settings_box(PAPER.darkened(.12),SETTINGS_BRASS,16))
+	parent.add_child(panel)
+	var row = HBoxContainer.new()
+	row.add_theme_constant_override("separation",22)
+	panel.add_child(row)
+	var name_label = label(channel,20,SETTINGS_BRASS)
+	name_label.custom_minimum_size.x = 120
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(name_label)
+	var details = VBoxContainer.new()
+	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	details.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(details)
+	var value_label = label(value,27,SETTINGS_INK)
+	value_label.name = "FeedbackContact_"+channel
+	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	details.add_child(value_label)
+	details.add_child(label(description,16,SETTINGS_MUTED))
 
 func lifetime_coin_text(amount: float) -> String:
 	return str(roundi(amount)) if amount == floorf(amount) else "%.1f" % amount
