@@ -135,6 +135,10 @@ static func unlock_ultimate(sim, zombie: Dictionary, damage_taken: int) -> void:
 
 static func unlock_from_health(sim, pawn: Dictionary) -> void:
 	if sim.mode == "defense" and float(pawn.get("hp",100)) < 50.0:
+		if not sim.progression.data.get("ultimate_unlocked",false) and stage(sim.defense) != COMPLETE:
+			# Let the new player survive the unlock beat, including a lethal triggering hit.
+			pawn.hp = maxf(1,pawn.hp)
+			pawn["tutorial_guard_remaining"] = 5.0
 		grant_ultimate(sim)
 
 static func grant_ultimate(sim) -> void:

@@ -491,6 +491,7 @@ static func accelerate_in_air(horizontal: Vector2, wish: Vector2, dt: float, mul
 	return (horizontal+direction*acceleration).limit_length(PLAYER_MOVE_SPEED*multiplier)
 
 func update_pawn(p: Dictionary, dt: float) -> void:
+	p["tutorial_guard_remaining"] = maxf(0,float(p.get("tutorial_guard_remaining",0.0))-dt)
 	if preload("res://scripts/onboarding.gd").blocked(defense):
 		p.input = {}
 		p.air = Vector2.ZERO
@@ -573,7 +574,7 @@ func recover_defense_fall(p: Dictionary, body) -> void:
 	body.position = Vector3(return_position.x,p.height,return_position.y)
 	body.velocity = Vector3.ZERO
 	body.grounded = false
-	p.hp = maxf(0,p.hp-DEFENSE_FALL_DAMAGE)
+	if p.get("tutorial_guard_remaining",0.0) <= 0: p.hp = maxf(0,p.hp-DEFENSE_FALL_DAMAGE)
 	preload("res://scripts/onboarding.gd").unlock_from_health(self,p)
 	enter_combat(p)
 	p.protection = .65
@@ -778,7 +779,7 @@ func advance_arsenal(p: Dictionary, input: Dictionary, dt: float) -> void:
 	p.trigger = trigger
 
 func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
-	if won or not p.get("connected",true) or p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
+	if won or not p.get("connected",true) or p.get("tutorial_guard_remaining",0.0) > 0 or p.protection > 0 or p.hp <= 0 or p.height-Data.enemy_ground_height(z.pos,map_id) >= 1.1: return false
 	p.hp = maxf(0,p.hp-amount)
 	preload("res://scripts/onboarding.gd").unlock_from_health(self,p)
 	enter_combat(p)

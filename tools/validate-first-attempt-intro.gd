@@ -7,6 +7,7 @@ const Catalog = preload("res://scripts/preparation_catalog.gd")
 
 static func validate(game, check: Callable) -> void:
 	await validate_health_unlock(game,check)
+	await validate_tutorial_guard(game,check)
 	var progress = game.get_node("/root/Progress")
 	var saved = progress.store
 	var path = OS.get_cache_dir().path_join("intro-qa-"+str(Time.get_ticks_usec())+".json")
@@ -305,4 +306,42 @@ static func validate_health_unlock(game, check: Callable) -> void:
 	for path in files:
 		for suffix in ["",".bak",".tmp"]:
 			if FileAccess.file_exists(path+suffix): DirAccess.remove_absolute(path+suffix)
+	progress.store = saved
+
+static func validate_tutorial_guard(game, check: Callable) -> void:
+	var progress = game.get_node("/root/Progress")
+	var saved = progress.store
+	for fatal in [false,true]:
+		progress.store = Store.new()
+		game.start_solo("defense",503)
+		game.set_process(false)
+		game.set_physics_process(false)
+		await game.get_tree().physics_frame
+		var sim = game.sim
+		var p: Dictionary = game.local_pawn()
+		sim.defense.erase("intro_elapsed")
+		sim.defense.tutorial_stage = Tutorial.FIRST_RUN
+		p.pos = Vector2(8,25)
+		p.height = game.get_node("/root/Data").enemy_ground_height(p.pos)
+		p.protection = 0.0
+		sim.spawn(p.pos+Vector2(0,-1),"normal")
+		var attacker: Dictionary = sim.zombies[-1]
+		if not fatal:
+			sim.damage_pawn(p,attacker,50)
+			check.call(p.hp == 50 and not p.get("tutorial_guard_remaining",0),"Tutorial protection does not start at exactly fifty health")
+			p.protection = 0.0
+		sim.damage_pawn(p,attacker,100 if fatal else 1)
+		check.call(p.hp == (1 if fatal else 49) and p.get("tutorial_guard_remaining",0) == 5.0 and p.ultimate_unlocked,"First tutorial health unlock grants five seconds to survive: "+str(fatal))
+		p.protection = 0.0
+		check.call(not sim.damage_pawn(p,attacker,1000),"Overlapping attacks cannot bypass tutorial protection")
+		var hp: float = p.hp
+		sim.recover_defense_fall(p,sim.player_body(p))
+		check.call(p.hp == hp and p.tutorial_guard_remaining == 5.0,"Falling cannot consume protected health or refresh its timer")
+		sim.update_pawn(p,4.99)
+		p.protection = 0.0
+		check.call(not sim.damage_pawn(p,attacker,1000),"Protection lasts through the final fraction of five seconds")
+		sim.update_pawn(p,.011)
+		p.protection = 0.0
+		attacker.pos = p.pos+Vector2(0,-1)
+		check.call(sim.damage_pawn(p,attacker,1) and p.hp == maxf(0,hp-1) and p.tutorial_guard_remaining == 0,"Normal damage resumes after five seconds without rearming")
 	progress.store = saved
