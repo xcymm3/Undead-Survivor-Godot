@@ -21,7 +21,7 @@ test('按需截取新手故事、操作提示、展台与老板付款', async ({
     return page.evaluate(() => window.__tutorialReviewReady);
   }
   for (const [scenario, time, filename] of [
-    ['intro', 13.2, '01-opening.png'],
+    ['intro', 7.2, '01-opening.png'],
     ['movement', 0, '02-movement-hint.png'],
     ['combat', 0, '03-combat-hint.png'],
     ['broken', 0, '04-broken-stations.png'],
@@ -30,7 +30,7 @@ test('按需截取新手故事、操作提示、展台与老板付款', async ({
     await open(scenario);
     const state = await seek(time);
     states.push(state);
-    if (scenario === 'intro') expect(state.caption.split('\n')).toHaveLength(5);
+    if (scenario === 'intro') expect(state.caption.split('\n')).toHaveLength(3);
     if (scenario === 'movement') expect(state.hint).toBe('movement');
     if (scenario === 'combat') expect(state.hint).toBe('combat');
     await page.screenshot({ path: path.join(directory, filename), timeout: 60_000 });

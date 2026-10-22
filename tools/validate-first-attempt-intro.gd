@@ -27,7 +27,7 @@ static func validate(game, check: Callable) -> void:
 	check.call(not ultimate.active(p),"Ultimate input cannot bypass its initial lock")
 	sim.defense.started = false
 
-	check.call(Intro.active(sim.defense) and Intro.LINES.size() == 5,"New save starts five cumulative narrative rows")
+	check.call(Intro.active(sim.defense) and Intro.LINES.size() == 3,"New save starts three cumulative narrative rows")
 	var story_font = game.ui.native_hud.tutorial_overlay.story_lines[0].get_theme_font("font")
 	var all_glyphs = true
 	for line in Intro.LINES:
@@ -41,16 +41,16 @@ static func validate(game, check: Callable) -> void:
 	sim.equipment.before_movement(.1)
 	sim.update_pawn(p,.1)
 	check.call(p.pos == origin and p.shots == 0 and p.ammo[0] == rounds and p.slot == 1 and is_zero_approx(p.yaw),"Authority blocks moving, looking, jumping, firing and switching during intro")
-	for index in 5:
+	for index in 3:
 		sim.defense_director.interactions(1.5 if index == 0 else 3.0)
 		game.ui.native_hud.sync()
 		check.call(Intro.caption(sim.defense).split("\n").size() == index+1 and Intro.line_alpha(sim.defense,index) == 1.0,"Narrative card fully visible: "+str(index))
-		check.call(game.ui.native_hud.tutorial_overlay.black.visible and game.ui.native_hud.tutorial_overlay.black.color == Color.BLACK and game.ui.native_hud.tutorial_overlay.caption.text == Intro.caption(sim.defense) and game.ui.native_hud.tutorial_overlay.story_lines.size() == 5,"Opaque full-screen black accompanies caption: "+str(index))
+		check.call(game.ui.native_hud.tutorial_overlay.black.visible and game.ui.native_hud.tutorial_overlay.black.color == Color.BLACK and game.ui.native_hud.tutorial_overlay.caption.text == Intro.caption(sim.defense) and game.ui.native_hud.tutorial_overlay.story_lines.size() == 3,"Opaque full-screen black accompanies caption: "+str(index))
 		check.call(Catalog.focus(sim,p).is_empty() and not sim.defense.started,"Interactions locked during caption: "+str(index))
 	check.call(not sim.progression.data.intro_seen,"Incomplete narrative is not marked seen")
 	check.call(Intro.line_alpha({"intro_elapsed":3.3},0) == 1 and Intro.line_alpha({"intro_elapsed":3.3},1) > 0 and Intro.line_alpha({"intro_elapsed":3.3},1) < 1 and Intro.line_alpha({"intro_elapsed":3.3},2) == 0 and Intro.alpha({"intro_elapsed":14.8}) < 1,"Earlier rows remain visible as new rows fade in every three seconds; all rows fade out at the end")
 	sim.defense_director.interactions(1.5)
-	check.call(not Intro.active(sim.defense) and Store.new(path).data.intro_seen,"Five cards finish and persist at fifteen seconds")
+	check.call(not Intro.active(sim.defense) and Store.new(path).data.intro_seen,"Three cards finish and persist at nine seconds")
 	game.ui.native_hud.sync()
 	check.call(not game.ui.native_hud.tutorial_overlay.black.visible and Tutorial.hint_mode(sim.defense) == "movement","Black lifts and sprint/crouch tips appear")
 	var world = game.arena.scenery
