@@ -614,6 +614,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_released("fire"): fire_held = false
+	if event.is_action_released("aim") and Data.settings.ads_mode == "hold": aim_held = false
 	if not running or paused or finished or not focused: return
 	if sim and preload("res://scripts/onboarding.gd").blocked(sim.defense): return
 	if event.is_action("fire") and not event.is_echo():
@@ -625,7 +626,9 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action("aim") and not event.is_echo():
 		if event.is_action_pressed("aim"):
 			var p: Dictionary = local_pawn()
-			aim_held = not aim_held if not p.is_empty() and Data.ads_enabled(Data.weapons[int(p.weapon)]) else false
+			if not p.is_empty() and Data.ads_enabled(Data.weapons[int(p.weapon)]):
+				aim_held = true if Data.settings.ads_mode == "hold" else not aim_held
+			else: aim_held = false
 		get_viewport().set_input_as_handled()
 
 	elif event.is_action_pressed("shove") and not event.is_echo():

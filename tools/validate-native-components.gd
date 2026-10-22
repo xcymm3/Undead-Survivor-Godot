@@ -648,7 +648,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	var single_width: float = card.panel.size.x
-	check(single_width >= 210 and single_width <= 260,"Single health card stays compact")
+	check(single_width >= 260 and single_width <= 290,"Framed health card stays compact")
 	for i in 3:
 		var peer: Dictionary = pawn.duplicate(true)
 		peer.id = "hud_fixture_"+str(i)

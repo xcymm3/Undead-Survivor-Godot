@@ -622,6 +622,7 @@ func stage_shake(scenario: String) -> void:
 	game.sim.defense.erase("intro_elapsed")
 	game.sim.defense.tutorial_stage = 5
 	game.sim.defense.started = true
+	game.sim.defense.crystal_hp = game.sim.defense.crystal_max_hp
 	game.sim.roster.clear()
 	await get_tree().physics_frame
 	game.ui.clear_menu()

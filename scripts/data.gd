@@ -7,7 +7,7 @@ var parts: Array = rules.parts
 const Maps = preload("res://scripts/map_catalog.gd")
 signal settings_changed
 var window_mode = preload("res://scripts/window_mode.gd").new()
-var settings = {"sensitivity": 0.0022, "volume": 1.0, "muted": false, "screen_shake": 1, "bindings": {}, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 3, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_defense", "defense_difficulty":"normal"}
+var settings = {"sensitivity": 0.0022, "volume": 1.0, "muted": false, "screen_shake": 1, "ads_mode":"toggle", "bindings": {}, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 3, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_defense", "defense_difficulty":"normal"}
 const Bindings = preload("res://scripts/control_bindings.gd")
 var controls = Bindings.new()
 const GRAPHICS_PRESETS = [

@@ -250,17 +250,44 @@ func text(parent: Node, font_size := 16) -> Label:
 	return result
 
 func health_card(id: String) -> Dictionary:
-	var panel = card(health_row,Vector2(236,40))
+	var panel = card(health_row,Vector2(270,64))
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	panel.size_flags_vertical = Control.SIZE_SHRINK_END
+	var frame = StyleBoxFlat.new()
+	frame.bg_color = Color(.035,.065,.055,.9)
+	frame.set_corner_radius_all(7)
+	frame.set_border_width_all(2)
+	frame.border_color = Color("78946a")
+	frame.set_content_margin_all(7)
+	panel.add_theme_stylebox_override("panel",frame)
+	var row = HBoxContainer.new()
+	row.add_theme_constant_override("separation",10)
+	panel.add_child(row)
+	var badge_panel = PanelContainer.new()
+	badge_panel.custom_minimum_size = Vector2(36,36)
+	var badge = StyleBoxFlat.new()
+	badge.bg_color = Color("53784e")
+	badge.set_corner_radius_all(18)
+	badge_panel.add_theme_stylebox_override("panel",badge)
+	row.add_child(badge_panel)
+	var plus = Label.new()
+	plus.text = "+"
+	plus.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	plus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	plus.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	plus.add_theme_font_size_override("font_size",28)
+	plus.add_theme_color_override("font_color",Color("f4edda"))
+	badge_panel.add_child(plus)
+	var stack = VBoxContainer.new()
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.add_theme_constant_override("separation",4)
+	row.add_child(stack)
 	var bar = ProgressBar.new()
 	bar.show_percentage = false
-	bar.custom_minimum_size.y = 22
-	panel.add_child(bar)
-	var hp = text(bar,18)
-	hp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	bar.custom_minimum_size.y = 14
+	stack.add_child(bar)
+	var hp = text(stack,16)
+	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	ignore_mouse(panel)
 	var result = {"panel":panel,"hp":hp,"bar":bar}
 	cards[id] = result

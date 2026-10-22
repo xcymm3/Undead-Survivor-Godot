@@ -230,7 +230,7 @@ func panel(title: String, subtitle: String, width := 700, warm := false) -> VBox
 	center.add_child(card)
 	card.add_child(preload("res://scripts/menu_plate.gd").new())
 	var scroll = ScrollContainer.new()
-	var height = 650 if warm or width >= 900 else 560 if title in ["游戏通关","水晶防线失守"] else 450
+	var height = 650 if warm or width >= 900 else 360 if title == "游戏暂停" else 560 if title in ["游戏通关","水晶防线失守","游戏结束"] else 450
 	scroll.custom_minimum_size = Vector2(minf(width-56,root.size.x-100),minf(height,root.size.y-160))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	card.add_child(scroll)
@@ -240,7 +240,7 @@ func panel(title: String, subtitle: String, width := 700, warm := false) -> VBox
 	scroll.add_child(column)
 	column.add_child(HSeparator.new())
 	column.add_child(label(title,34,SETTINGS_INK))
-	paragraph(column,subtitle,16,SETTINGS_MUTED if warm else Color("797b6f"))
+	if not subtitle.is_empty(): paragraph(column,subtitle,16,SETTINGS_MUTED if warm else Color("797b6f"))
 	return column
 
 func settings_heading(parent: VBoxContainer, text: String) -> void:
@@ -290,11 +290,6 @@ func show_home() -> void:
 	title.position = Vector2(140,175)
 	title.size = Vector2(1160,310)
 	stage.add_child(title)
-	var subtitle = label("守住水晶，击败舞王",25,Color("bccaab"))
-	subtitle.position = Vector2(300,505)
-	subtitle.size.x = 840
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stage.add_child(subtitle)
 	var emblem = TextureRect.new()
 	emblem.name = "CrystalSigil"
 	emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -304,25 +299,21 @@ func show_home() -> void:
 	stage.add_child(emblem)
 	var actions = HBoxContainer.new()
 	actions.name = "HomeActions"
-	actions.position = Vector2(0,723)
-	actions.resized.connect(func(): actions.position.x = (stage.size.x-actions.size.x)*.5)
-	actions.add_theme_constant_override("separation",14)
+	actions.position = Vector2(300,723)
+	actions.size = Vector2(1000,76)
+	actions.add_theme_constant_override("separation",18)
 	stage.add_child(actions)
-	for item in [["单人游戏",func(): game.start_solo("defense")],["设置",show_settings],["问题反馈",show_feedback],["退出",func(): game.quit_game()]]:
-		var option = home_button(actions,item[0],item[1],item[0] == "单人游戏")
-		option.custom_minimum_size = Vector2(188,76)
+	for item in [["开始游戏",func(): game.start_solo("defense")],["设置",show_settings],["问题反馈",show_feedback],["退出",func(): game.quit_game()]]:
+		var option = home_button(actions,item[0],item[1],item[0] == "开始游戏")
+		option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		option.custom_minimum_size = Vector2(220,76)
 		option.add_theme_font_size_override("font_size",25)
 		if item[0] == "问题反馈":
 			option.name = "FeedbackEntry"
-	var save = home_button(actions,"存档 %d" % (Progress.active_slot+1),show_save_slots)
+	var save = home_button(stage,"存档 %d" % (Progress.active_slot+1),show_save_slots)
 	save.name = "HomeSaveSlot"
-	actions.move_child(save,0)
-	save.custom_minimum_size = Vector2(168,76)
-	var profile = label("金币 %d   ◆ 钻石 %d   最佳第 %d 波" % [Progress.store.data.coins,Progress.store.data.diamonds,Progress.store.data.best_wave],17,Color("b6c3a5"))
-	profile.position = Vector2(120,827)
-	profile.size.x = 1200
-	profile.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stage.add_child(profile)
+	save.position = Vector2(155,738)
+	save.custom_minimum_size = Vector2(125,52)
 	if not message.is_empty():
 		var notice = label(message,17,Color("e9b79a"))
 		notice.position = Vector2(58,92)
@@ -462,13 +453,15 @@ func show_save_slots() -> void:
 	home_button(column,"返回主菜单",show_home)
 
 func show_pause() -> void:
-	var column = panel("休息片刻", "合作对局仍在进行" if Session.playing else "行动计时已暂停",560)
+	var column = panel("游戏暂停", "",480)
 	current = "pause"
+	var heading = column.get_child(1) as Label
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var resume = home_button(column,"继续游戏",func(): game.resume_game())
 	resume.selected = true
-	if not Session.playing: home_button(column,"重新开始",func(): game.start_solo(game.sim.mode))
 	home_button(column,"设置",show_settings)
-	home_button(column,"结束房间并返回" if Session.is_host() else "离开房间" if Session.playing else "返回主菜单",func(): game.return_home())
+	home_button(column,"问题反馈",show_feedback)
+	home_button(column,"返回主菜单",func(): game.return_home())
 
 func back() -> void:
 	if current == "multiplayer" and multiplayer_view and is_instance_valid(multiplayer_view.dialog):
@@ -531,7 +524,7 @@ func show_settings() -> void:
 	binding_action = ""
 	game.reset_mouse_buttons()
 	Data.sync_window_mode()
-	var shell = field_shell("战场设置","调整操控、声音与画面 · 更改自动保存")
+	var shell = field_shell("战场设置","")
 	shell.get_parent().theme = green_settings_theme()
 	current = "settings"
 	var navigation = HBoxContainer.new()
@@ -562,7 +555,10 @@ func show_settings() -> void:
 			Data.settings.screen_shake = v
 			game.screen_shake.clear()
 			Data.save())
-		paragraph(column,"点击按键后输入新按键或鼠标键，Esc 取消；重复绑定需确认后互换。开镜为切换模式。",16,SETTINGS_MUTED)
+		field_choice(column,"开镜方式",["切换","长按"],1 if Data.settings.ads_mode == "hold" else 0,func(value):
+			Data.settings.ads_mode = "hold" if value == 1 else "toggle"
+			game.aim_held = false
+			Data.save())
 		for spec in Data.Bindings.ACTIONS:
 			var row = HBoxContainer.new()
 			column.add_child(row)
@@ -661,7 +657,7 @@ func show_result() -> void:
 	if sim.mode != "defense": return
 	var state: Dictionary = sim.defense_state()
 	var guest = Session.playing and not Session.is_host()
-	var result = field_shell("游戏通关" if sim.won else "防线失守","十波尸潮已清除 · 舞王已击败" if sim.won else "本次防守结束 · 你的个人存档未改变" if guest else "本次防守结束 · 成长进度已保留",Vector2(1040,780))
+	var result = field_shell("游戏通关" if sim.won else "游戏结束","",Vector2(760,620))
 	current = "result"
 	var banner = HBoxContainer.new()
 	banner.add_theme_constant_override("separation",28)
@@ -674,47 +670,27 @@ func show_result() -> void:
 	summary.alignment = BoxContainer.ALIGNMENT_CENTER
 	summary.add_theme_constant_override("separation",12)
 	banner.add_child(summary)
-	summary.add_child(label("守住了最后的防线" if sim.won else "水晶被摧毁" if sim.cause == "crystal" else "房主阵亡" if Session.playing else "守卫阵亡",36,SETTINGS_BRASS if sim.won else RUST.lightened(.25)))
-	paragraph(summary,"水晶仍然闪耀，这一轮防守已完成。" if sim.won else "水晶已失去光芒，再次点亮它，重新守住防线。" if sim.cause == "crystal" else "房主已阵亡，本次合作防守结束。" if Session.playing else "你倒下了。下次进入时，水晶将恢复为破损状态，需要重新修复。",19,SETTINGS_INK)
-	paragraph(summary,"本局水晶  %d / %d" % [state.get("crystal_hp",0),state.get("crystal_max_hp",0)],15,SETTINGS_MUTED)
+	summary.add_child(label("守住了最后的防线" if sim.won else "水晶被摧毁",28,SETTINGS_BRASS if sim.won else RUST.lightened(.25)))
 	result.add_child(HSeparator.new())
-	var stats = HBoxContainer.new()
+	var stats = VBoxContainer.new()
 	stats.name = "ResultStatistics"
-	stats.add_theme_constant_override("separation",32)
+	stats.add_theme_constant_override("separation",7)
 	result.add_child(stats)
-	for entry in [["守住波次","%02d / 10" % sim.cleared],["击杀数量",str(sim.kills)],["防守时间",time_text(sim.elapsed)]]:
-		var stat = VBoxContainer.new()
+	for entry in [["本轮撑的波次","%02d / 10" % sim.cleared],["消灭的敌人",str(sim.kills)],["生存时间",time_text(sim.elapsed)],["获取的金币","+%d" % (0 if guest else sim.earned_coins)],["获取的钻石","+%d" % (0 if guest else sim.earned_diamonds)]]:
+		var stat = HBoxContainer.new()
 		stat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		stat.add_theme_constant_override("separation",24)
 		stats.add_child(stat)
 		stat.add_child(label(entry[0],15,SETTINGS_MUTED))
-		stat.add_child(label(entry[1],38,SETTINGS_INK))
-	var rewards = HBoxContainer.new()
-	rewards.add_theme_constant_override("separation",20)
-	rewards.custom_minimum_size.y = 62
-	result.add_child(rewards)
-	var heading = label("本局个人收益" if guest else "本局战利品 · 含阵亡补助25金币" if state.get("death_bonus",0) > 0 else "本局战利品",18,SETTINGS_MUTED)
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	rewards.add_child(heading)
-	for currency in ["coins","diamonds"]:
-		var row = HBoxContainer.new()
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation",8)
-		rewards.add_child(row)
-		var icon = TextureRect.new()
-		icon.texture = preload("res://scripts/currency_art.gd").coin() if currency == "coins" else preload("res://scripts/currency_art.gd").diamond()
-		icon.custom_minimum_size = Vector2(32,32)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		row.add_child(icon)
-		var amount = label("+%d" % (0 if guest else sim.earned_coins if currency == "coins" else sim.earned_diamonds),28,SETTINGS_BRASS)
-		amount.name = "EarnedCoins" if currency == "coins" else "EarnedDiamonds"
-		amount.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		row.add_child(amount)
+		var value = label(entry[1],20,SETTINGS_INK)
+		if entry[0] == "获取的金币": value.name = "EarnedCoins"
+		if entry[0] == "获取的钻石": value.name = "EarnedDiamonds"
+		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		stat.add_child(value)
 	var space = Control.new()
 	space.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	result.add_child(space)
-	paragraph(result,"本局收益保存至房主，你的个人存档未改变。" if guest else "金币、钻石、武器升级、建筑所有权及天赋已永久保留。",16,SETTINGS_MUTED)
 	var actions = HBoxContainer.new()
 	actions.add_theme_constant_override("separation",24)
 	result.add_child(actions)
