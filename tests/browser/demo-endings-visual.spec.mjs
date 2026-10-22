@@ -16,6 +16,7 @@ test('Demo第一人称倒下与击败舞王后的连续画面', async ({ page })
     await page.goto(`/?campaignReview=demo_${kind}`);
     await page.waitForFunction(() => Boolean(window.__campaignReviewReady), null, { timeout: 90_000 });
     const ready = await page.evaluate(() => window.__campaignReviewReady);
+    expect(ready.crystal_hp).toBe(3000);
     expect(ready.health_cards).toBe(1);
     expect(ready.no_portraits).toBe(true);
     expect(ready.partners).toBe(0);

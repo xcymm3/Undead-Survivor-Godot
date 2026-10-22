@@ -18,6 +18,8 @@ func stage(scenario: String) -> void:
 	var sim = game.sim
 	var p = game.local_pawn()
 	sim.roster.clear()
+	# Reproduce an already repaired, live defense rather than the pre-wave wreckage.
+	sim.defense.crystal_hp = sim.defense.crystal_max_hp
 	sim.defense.started = true
 	sim.wave = 10 if victory else 3
 	sim.defense.wave = sim.wave
@@ -40,7 +42,7 @@ func stage(scenario: String) -> void:
 	callback = JavaScriptBridge.create_callback(draw_frame)
 	JavaScriptBridge.get_interface("window").__drawDemoEnding = callback
 	JavaScriptBridge.eval("window.__demoEndingFrame=-1",true)
-	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"frames":69 if victory else 45,"fps":FPS,"health_cards":game.ui.native_hud.cards.size(),"no_portraits":game.ui.native_hud.cards.values().all(func(card): return not card.has("portrait")),"partners":game.partners.size()}),true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"frames":69 if victory else 45,"fps":FPS,"crystal_hp":sim.defense.crystal_hp,"health_cards":game.ui.native_hud.cards.size(),"no_portraits":game.ui.native_hud.cards.values().all(func(card): return not card.has("portrait")),"partners":game.partners.size()}),true)
 
 func draw_frame(args: Array) -> void:
 	var frame = int(args[0])
