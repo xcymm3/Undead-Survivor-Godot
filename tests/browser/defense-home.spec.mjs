@@ -14,7 +14,7 @@ test('主页只提供普通难度水晶防线，可直接单人游戏', async ({
   for (const difficulty of ['简单', '普通', '困难']) {
     expect(home.buttons.some(button => button.text === difficulty)).toBe(false);
   }
-  const button = home.buttons.find(button => button.text === '单人游戏' && !button.disabled);
+  const button = home.buttons.find(button => button.text === '开始游戏' && !button.disabled);
   expect(button).toBeTruthy();
   const canvas = await page.locator('canvas').boundingBox();
   await page.mouse.click(canvas.x + (button.x + button.width / 2) * canvas.width / 1440,

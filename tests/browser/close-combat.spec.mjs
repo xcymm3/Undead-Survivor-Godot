@@ -6,13 +6,13 @@ test('right shove cooldown ring and middle toggle use real input', async ({ page
   page.on('console', message => { if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text()); });
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
-  const button = await page.evaluate(() => window.__survivorSnapshot.buttons.find(item => item.text === '单人游戏' && !item.disabled));
+  const button = await page.evaluate(() => window.__survivorSnapshot.buttons.find(item => item.text === '开始游戏' && !item.disabled));
   expect(button).toBeTruthy();
   const canvas = await page.locator('canvas').boundingBox();
   await page.mouse.click(canvas.x + (button.x + button.width / 2) * canvas.width / 1440,
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.hp > 0);
-  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 15, null, { timeout: 45_000 });
+  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 9, null, { timeout: 45_000 });
   await page.mouse.down({ button: 'middle' });
   await page.mouse.up({ button: 'middle' });
   await page.waitForFunction(() => window.__survivorSnapshot.player.aim);

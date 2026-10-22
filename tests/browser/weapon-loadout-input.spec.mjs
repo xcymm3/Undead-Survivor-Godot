@@ -6,14 +6,14 @@ test('real input fires cancels and completes second-weapon reload', async ({ pag
   await page.goto('/');
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   expect(await page.evaluate(() => window.__survivorSnapshot.map_id)).toBe('graypine_defense');
-  for (const text of ['单人游戏']) {
+  for (const text of ['开始游戏']) {
     const button = await page.evaluate(text => window.__survivorSnapshot.buttons.find(b => b.text === text && !b.disabled), text);
     expect(button).toBeTruthy();
     const canvas = await page.locator('canvas').boundingBox();
     await page.mouse.click(canvas.x+(button.x+button.width/2)*canvas.width/1440, canvas.y+(button.y+button.height/2)*canvas.height/900);
   }
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense');
-  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 15, null, { timeout: 45_000 });
+  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 9, null, { timeout: 45_000 });
   const beforeEmptySlot = await page.evaluate(() => window.__survivorSnapshot.frames);
   await page.keyboard.press('4');
   await page.waitForFunction(frame => window.__survivorSnapshot.frames > frame + 1, beforeEmptySlot);

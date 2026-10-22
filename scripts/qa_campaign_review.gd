@@ -51,7 +51,7 @@ func stage() -> void:
 		if scenario == "home_hover":
 			var buttons = game.ui.menu.find_children("*","Button",true,false)
 			for item in buttons:
-				if item.text == "单人游戏":
+				if item.text == "开始游戏":
 					item.mouse_entered.emit()
 					await get_tree().create_timer(.16).timeout
 		if scenario in ["settings","settings_graphics","settings_sound"]:

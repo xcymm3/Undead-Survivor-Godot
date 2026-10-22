@@ -16,7 +16,7 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   await page.waitForFunction(() => window.__survivorSnapshot?.map_id === 'graypine_defense');
   await page.screenshot({ path: info.outputPath('defense-home.png') });
-  await clickButton(page, '单人游戏');
+  await clickButton(page, '开始游戏');
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense' && window.__survivorSnapshot?.running);
   let state = await snapshot(page);
   expect(state.defense.difficulty).toBe('normal');
@@ -30,7 +30,7 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   expect(state.menu).toBe('');
   expect(state.paused).toBe(false);
   // The opening black-screen story deliberately blocks all gameplay input.
-  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 15, null, { timeout: 45_000 });
+  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 9, null, { timeout: 45_000 });
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 2 && window.__survivorSnapshot?.player?.weapon === 2);
   expect(state.defense.crystal_hp).toBe(0);
