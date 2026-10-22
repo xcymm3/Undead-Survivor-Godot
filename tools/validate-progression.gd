@@ -99,14 +99,14 @@ func run() -> void:
 	legacy_file.store_string(JSON.stringify(legacy))
 	legacy_file.close()
 	var migrated = Store.new(path)
-	check(migrated.data.version == 8 and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("pistol") == 4 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
+	check(migrated.data.version == Store.SAVE_VERSION and Store.valid(migrated.data) and migrated.data.coins == 321 and migrated.data.diamonds == 7 and migrated.level("rifle") == 3 and migrated.level("pistol") == 4 and migrated.level("strong") == 2 and migrated.level("bridge_gate") == 2,"Migration preserves old currencies, talents and building upgrades")
 	check(migrated.owned("crystal_mine") and not migrated.owned("ramp_mine") and not migrated.owned("gate_mine") and not migrated.owned("bridge_entry_gate"),"Old free mine is retained while new defenses require purchase")
 	check(migrated.dirty and migrated.save() and Store.new(path).data == migrated.data,"Migrated progress persists and reloads without repeating migration")
 	var corrupt_primary = FileAccess.open(path,FileAccess.WRITE)
 	corrupt_primary.store_string("{broken")
 	corrupt_primary.close()
 	var legacy_backup = Store.new(path)
-	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == 8 and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
+	check(legacy_backup.owned("crystal_mine") and legacy_backup.data.version == Store.SAVE_VERSION and legacy_backup.level("bridge_gate") == 2,"Recovery also migrates a valid old-format backup")
 	var version_two = Store.defaults()
 	version_two.version = 2
 	version_two.coins = 1234
@@ -117,7 +117,7 @@ func run() -> void:
 	v2_file.store_string(JSON.stringify(version_two))
 	v2_file.close()
 	var upgraded_v2 = Store.new(path)
-	check(upgraded_v2.data.version == 8 and upgraded_v2.level("pistol") == 7 and upgraded_v2.data.coins == 1234 and upgraded_v2.data.diamonds == 9 and not upgraded_v2.data.weapons.has("revolver"),"Version-two saves migrate revolver upgrades without losing currencies")
+	check(upgraded_v2.data.version == Store.SAVE_VERSION and upgraded_v2.level("pistol") == 7 and upgraded_v2.data.coins == 1234 and upgraded_v2.data.diamonds == 9 and not upgraded_v2.data.weapons.has("revolver"),"Version-two saves migrate revolver upgrades without losing currencies")
 	check(upgraded_v2.save() and Store.new(path).data == upgraded_v2.data,"Migrated pistol state survives a second disk reload")
 	var old_v3 = Store.defaults()
 	old_v3.version = 3
@@ -129,7 +129,7 @@ func run() -> void:
 	old_file.store_string(JSON.stringify(old_v3))
 	old_file.close()
 	var migrated_v3 = Store.new(path)
-	check(migrated_v3.data.version == 8 and migrated_v3.data.coins == 555 and migrated_v3.level("rifle") == 10 and migrated_v3.level("bridge_gate") == 10 and migrated_v3.data.magazines == {"rifle_magazine":0,"pistol_magazine":0},"Old saves gain zero magazine levels and clamp previous upgrades to the new ten-level limit")
+	check(migrated_v3.data.version == Store.SAVE_VERSION and migrated_v3.data.coins == 555 and migrated_v3.level("rifle") == 10 and migrated_v3.level("bridge_gate") == 10 and migrated_v3.data.magazines == {"rifle_magazine":0,"pistol_magazine":0},"Old saves gain zero magazine levels and clamp previous upgrades to the new ten-level limit")
 	migrated_v3.data.coins = 1000
 	check(migrated_v3.purchase("pistol_magazine") and Store.new(path).level("pistol_magazine") == 1,"Magazine purchases persist across disk reloads")
 	for suffix in ["",".tmp",".bak"]:
@@ -410,7 +410,7 @@ func validate_talent_economy() -> void:
 	file.store_string(JSON.stringify(legacy))
 	file.close()
 	var migrated = Store.new(path)
-	check(migrated.data.version == 8 and migrated.level("precise") == 3 and migrated.level("swift") == 4 and migrated.level("greed") == 0 and migrated.data.coins == 123,"Version six retains old talent levels and adds zero Greed")
+	check(migrated.data.version == Store.SAVE_VERSION and migrated.level("precise") == 3 and migrated.level("swift") == 4 and migrated.level("greed") == 0 and migrated.data.coins == 123,"Version six retains old talent levels and adds zero Greed")
 	var v7 = Store.defaults()
 	v7.version = 7
 	v7.erase("ultimate_unlocked")

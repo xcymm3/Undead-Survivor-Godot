@@ -1,6 +1,8 @@
 extends RefCounted
 ## Permanent economy, separate from the disposable combat simulation.
 const MAX_CURRENCY = 9000000000000000
+const SAVE_VERSION = 9
+const DEATH_BONUS = 25
 const MAX_UPGRADE_LEVEL = 10
 const UPGRADE_PRICES = [25,100,150,200,300,450,650,1000,1500,2000]
 const TALENT_PRICES = [1,2,3,4,5]
@@ -24,7 +26,7 @@ var notice = ""
 var data: Dictionary = defaults()
 
 static func defaults() -> Dictionary:
-	return {"version":8,"ultimate_unlocked":false,"intro_seen":false,"tutorial_stage":0,"tutorial_blueprint_paid":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0,"greed":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
+	return {"version":SAVE_VERSION,"total_coins_earned":0.0,"total_diamonds_earned":0,"victories":0,"ultimate_unlocked":false,"intro_seen":false,"tutorial_stage":0,"tutorial_blueprint_paid":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0,"greed":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
 
 func _init(save_path := "") -> void:
 	path = save_path
@@ -34,13 +36,18 @@ static func bounded_integer(value, maximum: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and value >= 0 and value <= maximum and float(value) == floor(float(value))
 
 static func valid(value) -> bool:
-	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,8) or value.version < 1: return false
+	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,SAVE_VERSION) or value.version < 1: return false
 	if value.has("tutorial_stage") and not bounded_integer(value.tutorial_stage,5): return false
 	if value.has("tutorial_blueprint_paid") and not value.tutorial_blueprint_paid is bool: return false
 	if value.version >= 8 and not value.get("ultimate_unlocked") is bool: return false
 	if value.has("intro_seen") and not value.intro_seen is bool: return false
 	if not (value.coins is int or value.coins is float) or not is_finite(float(value.coins)) or value.coins < 0 or value.coins > MAX_CURRENCY: return false
 	if value.version < 7 and not bounded_integer(value.coins,MAX_CURRENCY): return false
+	if value.version >= 9:
+		var total = value.get("total_coins_earned")
+		if not (total is int or total is float) or not is_finite(float(total)) or total < 0 or total > MAX_CURRENCY: return false
+		for key in ["total_diamonds_earned","victories"]:
+			if not bounded_integer(value.get(key),MAX_CURRENCY): return false
 	for key in ["diamonds","best_wave","cleared_total"]:
 		if not bounded_integer(value[key],MAX_CURRENCY): return false
 	if not bounded_integer(value.grenade_level,4): return false
@@ -72,6 +79,8 @@ func read_save(file_path: String) -> Dictionary:
 	# JSON numbers deserialize as floats. Restore validated integer fields before
 	# migration so a second reload has exactly the same permanent state.
 	for key in ["version","diamonds","best_wave","cleared_total","grenade_level"]: parsed[key] = int(parsed[key])
+	if parsed.version >= 9:
+		for key in ["total_diamonds_earned","victories"]: parsed[key] = int(parsed[key])
 	if parsed.version >= 6: parsed.ultimate_level = int(parsed.ultimate_level)
 	if parsed.has("tutorial_stage"): parsed.tutorial_stage = int(parsed.tutorial_stage)
 	for key in OLD_WEAPONS if parsed.version < 3 else WEAPONS: parsed.weapons[key] = int(parsed.weapons[key])
@@ -139,6 +148,14 @@ func load_save() -> void:
 			data.version = 8
 			dirty = true
 
+		if data.version == 8:
+			# Earlier saves contain balances and cleared waves, not lifetime earnings/wins.
+			data["total_coins_earned"] = float(data.coins)
+			data["total_diamonds_earned"] = int(data.diamonds)
+			data["victories"] = 0
+			data.version = SAVE_VERSION
+			dirty = true
+
 func save() -> bool:
 	if path.is_empty() or not dirty: return true
 	var file = FileAccess.open(path+".tmp",FileAccess.WRITE)
@@ -157,14 +174,23 @@ func save() -> bool:
 	dirty = false
 	return true
 
-func award_kill(kind: String) -> float:
-	var reward: float = snappedf(float(COIN_REWARDS.get(kind,1))*coin_multiplier(),.1)
+func award_coins(amount: float) -> float:
+	var reward = maxf(0,snappedf(amount,.1))
 	data.coins = minf(MAX_CURRENCY,snappedf(float(data.coins)+reward,.1))
+	data.total_coins_earned = minf(MAX_CURRENCY,snappedf(float(data.total_coins_earned)+reward,.1))
 	dirty = true
 	return reward
 
+func award_kill(kind: String) -> float:
+	return award_coins(float(COIN_REWARDS.get(kind,1))*coin_multiplier())
+
+func award_victory() -> void:
+	data.victories = mini(MAX_CURRENCY,int(data.victories)+1)
+	dirty = true
+
 func award_wave(wave: int) -> void:
 	data.diamonds = mini(MAX_CURRENCY,int(data.diamonds)+1)
+	data.total_diamonds_earned = mini(MAX_CURRENCY,int(data.total_diamonds_earned)+1)
 	data.cleared_total = mini(MAX_CURRENCY,int(data.cleared_total)+1)
 	data.best_wave = maxi(int(data.best_wave),wave)
 	dirty = true

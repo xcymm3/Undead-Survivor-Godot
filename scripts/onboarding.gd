@@ -116,9 +116,15 @@ static func tick(sim, dt: float) -> void:
 static func finish_attempt(sim) -> void:
 	if sim.defense.get("tutorial_settled",false) or (not sim.failed and not sim.won): return
 	sim.defense["tutorial_settled"] = true
+	if sim.mode == "defense" and sim.failed and sim.pawns.values().any(func(pawn): return pawn.hp <= 0):
+		# A fixed additive death reward; Greed only multiplies kill income.
+		var bonus: float = sim.progression.award_coins(sim.progression.DEATH_BONUS)
+		sim.earned_coins = snappedf(sim.earned_coins+bonus,.1)
+		sim.defense["death_bonus"] = bonus
+	if sim.won: sim.progression.award_victory()
 	var current = stage(sim.defense)
 	var next = current
-	if current == FIRST_RUN and sim.progression.data.coins > 50: next = SHOP_PENDING
+	if current == FIRST_RUN and sim.progression.data.coins >= 25: next = SHOP_PENDING
 	elif current == SHOP_OPEN and sim.progression.data.coins > 100: next = DEFENSE_PENDING
 	elif current == DEFENSE_OPEN: next = COMPLETE
 	sim.defense.tutorial_stage = next

@@ -641,7 +641,7 @@ func show_result() -> void:
 	rewards.add_theme_constant_override("separation",20)
 	rewards.custom_minimum_size.y = 62
 	result.add_child(rewards)
-	var heading = label("本局个人收益" if guest else "本局战利品",18,SETTINGS_MUTED)
+	var heading = label("本局个人收益" if guest else "本局战利品 · 含阵亡补助25金币" if state.get("death_bonus",0) > 0 else "本局战利品",18,SETTINGS_MUTED)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	rewards.add_child(heading)

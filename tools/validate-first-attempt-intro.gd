@@ -138,13 +138,13 @@ static func validate(game, check: Callable) -> void:
 	p.erase("ultimate_saved_slot")
 
 	sim.failed = true
-	sim.progression.data.coins = 50
+	sim.progression.data.coins = 24.9
 	Tutorial.finish_attempt(sim)
-	check.call(Tutorial.stage(sim.defense) == Tutorial.FIRST_RUN,"Exactly fifty coins does not unlock shop dialogue")
+	check.call(Tutorial.stage(sim.defense) == Tutorial.FIRST_RUN,"Below twenty-five coins does not unlock shop dialogue")
 	sim.defense.erase("tutorial_settled")
-	sim.progression.data.coins = 50.1
+	sim.progression.data.coins = 25.0
 	Tutorial.finish_attempt(sim)
-	check.call(Store.new(path).data.tutorial_stage == Tutorial.SHOP_PENDING,"More than fifty coins schedules shop dialogue")
+	check.call(Store.new(path).data.tutorial_stage == Tutorial.SHOP_PENDING,"Exactly twenty-five coins schedules shop dialogue")
 	progress.store = Store.new(path)
 	game.start_solo("defense",492)
 	sim = game.sim

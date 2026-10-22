@@ -10,7 +10,7 @@ signal member_left(id: String)
 signal member_rejoined(id: String)
 signal invite_received
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-23"
+const PROTOCOL = "undead-survivor-godot-24"
 const PORT = 27777
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"
@@ -601,7 +601,7 @@ func valid_world(value) -> bool:
 	if not value is Dictionary or value.get("map_id") != map_id: return false
 	var shared = value.get("shared_progression")
 	var Store = preload("res://scripts/progression_store.gd")
-	if not Store.valid(shared) or shared.version != 8 or shared.coins != 0 or shared.diamonds != 0: return false
+	if not Store.valid(shared) or shared.version != Store.SAVE_VERSION or shared.coins != 0 or shared.diamonds != 0: return false
 	var profile = Store.new()
 	profile.data = shared
 	if not value.get("coop_host","") is String: return false
