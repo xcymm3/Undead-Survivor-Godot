@@ -312,15 +312,12 @@ func show_home() -> void:
 	actions.resized.connect(func(): actions.position.x = (stage.size.x-actions.size.x)*.5)
 	actions.add_theme_constant_override("separation",14)
 	stage.add_child(actions)
-	for item in [["单人游戏",func(): game.start_solo("defense")],["设置",show_settings],["问题反馈",func(): pass],["退出",func(): game.quit_game()]]:
+	for item in [["单人游戏",func(): game.start_solo("defense")],["设置",show_settings],["问题反馈",show_feedback],["退出",func(): game.quit_game()]]:
 		var option = home_button(actions,item[0],item[1],item[0] == "单人游戏")
 		option.custom_minimum_size = Vector2(188,76)
 		option.add_theme_font_size_override("font_size",25)
 		if item[0] == "问题反馈":
-			# Form and delivery service are still being discussed; never imply a report was sent.
 			option.name = "FeedbackEntry"
-			option.disabled = true
-			option.tooltip_text = "反馈渠道尚未接入，暂未开放"
 	var save = home_button(actions,"存档 %d" % (Progress.active_slot+1),show_save_slots)
 	save.name = "HomeSaveSlot"
 	actions.move_child(save,0)
@@ -376,6 +373,18 @@ func field_shell(title: String, subtitle: String, dimensions := Vector2(1040,840
 	paragraph(column,subtitle,16,SETTINGS_MUTED)
 	column.add_child(HSeparator.new())
 	return column
+
+func show_feedback() -> void:
+	var column = field_shell("问题反馈","欢迎反馈遇到的问题和游玩建议",Vector2(720,420))
+	current = "feedback"
+	paragraph(column,"游戏内填写和发送功能正在准备中，可先加入QQ群反馈问题或建议。",19,SETTINGS_INK)
+	var space = Control.new()
+	space.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(space)
+	var group = label("QQ群聊号：1072344640",23,SETTINGS_BRASS)
+	group.name = "FeedbackQQGroup"
+	column.add_child(group)
+	home_button(column,"返回主菜单",show_home)
 
 func lifetime_coin_text(amount: float) -> String:
 	return str(roundi(amount)) if amount == floorf(amount) else "%.1f" % amount
