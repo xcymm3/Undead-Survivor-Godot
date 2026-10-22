@@ -38,7 +38,7 @@ var snapshot_timer = 0.0
 var queued_effects: Array = []
 var pending_view_shots: Array = []
 var finish_camera_start = Transform3D.IDENTITY
-var finish_focus = Vector3.ZERO
+var finish_ground_height = 0.0
 var death_timer = 0.0
 var draw_timer = 0.0
 var display_buffer = preload("res://scripts/snapshot_buffer.gd").new()
@@ -91,6 +91,7 @@ func _ready() -> void:
 	Session.admission_open = func(): return running and sim != null and not sim.defense.get("started",false) and not sim.failed and not sim.won
 	Session.match_started.connect(start_coop)
 	Session.invite_received.connect(func():
+		if not Data.automation: return
 		if running: return_home()
 		ui.show_multiplayer())
 	Session.map_preparing.connect(prepare_coop)
@@ -127,7 +128,7 @@ func _ready() -> void:
 	get_window().focus_entered.connect(_focus_gained)
 	get_window().close_requested.connect(quit_game)
 	return_home()
-	Session.initialize_invites()
+	# Demo exposes single player only; keep transport available to headless tests.
 	# Explicit command-line launch modes also support silent local integration validation.
 	var args = OS.get_cmdline_user_args()
 	if "--defense" in args:
@@ -145,11 +146,6 @@ func start_solo(mode: String = "defense", random_seed := -1) -> void:
 	load_map(Data.settings.map_id)
 	sim = Simulation.new(arena)
 	sim.progression = Progress.store
-	if Data.test_money:
-		sim.progression.data.coins = 1000000000
-		sim.progression.data.diamonds = 10000
-		sim.progression.dirty = true
-		sim.progression.save()
 	sim.defense_difficulty = "normal"
 	sim.add_pawn("solo","幸存者",0)
 	sim.pawns.solo.pos = arena.definition.spawn
@@ -350,24 +346,6 @@ func _process(dt: float) -> void:
 	if not finished: sync_tutorial_voice()
 	effects.step(dt)
 	flush_view_shots()
-	for id in sim.pawns:
-		if id == Session.local_id:
-			if partners.has(id): partners[id].visible = false
-			continue
-		if not partners.has(id):
-			var partner = preload("res://scripts/partner_view.gd").new()
-			add_child(partner)
-			partner.setup(sim.pawns[id])
-			partners[id] = partner
-		partners[id].sync(visible_pawns.get(id,sim.pawns[id]),dt,not displayed.is_empty())
-		partners[id].visible = sim.pawns[id].get("connected",true)
-		partners[id].label.visible = id != Session.local_id
-		if spectate and id == p.id: partners[id].visible = false
-	for id in partners.keys():
-		if id == "fallen_guard" and finished: continue
-		if not sim.pawns.has(id):
-			partners[id].queue_free()
-			partners.erase(id)
 	if finished:
 		update_finish_camera(dt)
 	ui.tick(dt)
@@ -513,23 +491,8 @@ func finish_run() -> void:
 	ui.hud.queue_redraw()
 	death_timer = 0.0
 	finish_camera_start = camera.global_transform
-	finish_focus = Vector3(Data.Maps.Defense.CRYSTAL.x,4.1,Data.Maps.Defense.CRYSTAL.y)
 	var pawn = local_pawn()
-	if not pawn.is_empty():
-		var corpse = preload("res://scripts/partner_view.gd").new()
-		add_child(corpse)
-		corpse.setup(pawn)
-		corpse.name = "FallenGuard"
-		if pawn.hp <= 0:
-			corpse.position.y = pawn.height+.18
-			corpse.rotation.x = -PI/2
-		else:
-			corpse.sync(pawn,0.0,false)
-		corpse.label.hide()
-		if pawn.hp <= 0: corpse.held.hide()
-		corpse.force_update_transform()
-		finish_focus = preload("res://scripts/world_geometry.gd").posed_bounds(corpse.avatar).get_center()
-		partners["fallen_guard"] = corpse
+	finish_ground_height = float(pawn.get("height",finish_camera_start.origin.y-1.65))
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	sound.set_playing(false)
 	sound.play("victory" if sim.won else "failure",-9)
@@ -545,11 +508,13 @@ func update_finish_camera(dt: float) -> void:
 	for z in sim.zombies:
 		if z.hp <= 0: z.down = maxf(0,z.down-dt)
 	ui.sync_victory_caption(death_timer,sim.boss_victory)
-	var focus = finish_focus
-	var end = focus+(Vector3(2.4,1.6,2.8) if not sim.won and sim.cause != "crystal" else Vector3(3.8,2.8,4.8))
-	var target = Transform3D(Basis.IDENTITY,end).looking_at(focus)
-	var amount = smoothstep(0.0,1.0,death_timer/1.8)
-	camera.global_transform = finish_camera_start if sim.boss_victory else finish_camera_start.interpolate_with(target,amount)
+	# Fall in place through the player's eyes, without loading a third-person body.
+	var end = finish_camera_start.origin
+	end.y = finish_ground_height+.28
+	var angles = finish_camera_start.basis.get_euler()
+	var target = Transform3D(Basis.from_euler(Vector3(-.15,angles.y,deg_to_rad(-68))),end)
+	var amount = smoothstep(0.0,1.0,death_timer/1.4)
+	camera.global_transform = finish_camera_start if sim.won else finish_camera_start.interpolate_with(target,amount)
 	if death_timer >= (5.8 if sim.boss_victory else 3.8) and ui.current != "result": ui.show_result()
 func pause_game() -> void:
 	screen_shake.clear()

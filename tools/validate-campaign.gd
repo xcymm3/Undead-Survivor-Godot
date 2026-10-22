@@ -42,15 +42,15 @@ func run() -> void:
 	await physics_frame
 	game.set_process(false)
 	game.set_physics_process(false)
-	check(game.ui.menu.has_node("InfiniteCoins") or game.ui.menu.find_child("InfiniteCoins",true,false) != null,"Homepage exposes the test-money checkbox")
+	check(game.ui.menu.find_child("InfiniteCoins",true,false) == null,"Demo homepage removes the test-money checkbox")
 	check(game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text.begins_with("存档 ")),"Homepage exposes save-slot selection")
-	data.test_money = true
+	var wallet_before = progress.store.data.coins
+	var diamonds_before = progress.store.data.diamonds
 	game.start_solo("defense",20261012)
 	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Fixture starts after the narrative intro.
 	await physics_frame
-	check(game.sim.progression.data.coins == 1000000000 and game.sim.progression.data.diamonds == 10000,"Test-money checkbox configures one billion coins and ten thousand diamonds on entry")
+	check(game.sim.progression.data.coins == wallet_before and game.sim.progression.data.diamonds == diamonds_before,"Starting a game preserves the earned wallet without test currency")
 	game.return_home()
-	data.test_money = false
 	game.select_save_slot(1)
 	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim) # Economy fixture starts after the narrative intro.
 	await physics_frame

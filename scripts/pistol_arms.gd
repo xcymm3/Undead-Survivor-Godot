@@ -2,7 +2,7 @@ extends Node3D
 ## Two rigid square-section arms. Each arm is one continuous box from the
 ## camera edge to the pistol; the material paints a sleeve on the near end.
 
-const PROFILES = preload("res://scripts/survivor_model.gd").PROFILES
+const PROFILES = preload("res://scripts/survivor_palette.gd").PROFILES
 const ARM_WIDTH = .065
 
 var right_arm: MeshInstance3D

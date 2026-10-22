@@ -184,9 +184,8 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	var actions = game.ui.menu.get_node("HomeStage/HomeActions")
-	var setup_row = game.ui.menu.get_node("HomeStage/DifficultySelection")
-	check(absf(actions.get_global_rect().get_center().x-game.ui.root.size.x*.5) < 1 and actions.get_children().size() == 5,"All five home buttons including saves and cooperation form one centered row")
-	check(absf(setup_row.get_global_rect().get_center().x-game.ui.root.size.x*.5) < 1,"Difficulty and test-money controls are centered as a group")
+	check(absf(actions.get_global_rect().get_center().x-game.ui.root.size.x*.5) < 1 and actions.get_children().size() == 4,"All four Demo home buttons form one centered row")
+	check(game.ui.menu.find_child("InfiniteCoins",true,false) == null,"Demo has no test-money controls")
 	check(game.ui.menu.has_node("HomeStage/GameTitle"),"Home uses the central game title and bottom action layout")
 	check(game.ui.menu.get_node("HomeStage/CrystalSigil").size == Vector2(80,80),"Home crystal emblem stays inside its title-free reserved space")
 	check(game.ui.menu.get_child(0) is TextureRect and game.ui.menu.get_child(0).texture is GradientTexture2D,"Home restores the original translucent battlefield backdrop")
@@ -242,11 +241,12 @@ func run() -> void:
 	sim.failed = true
 	sim.cause = "enemy"
 	game.finish_run()
-	check(game.partners.has("fallen_guard") and not game.ui.native_hud.visible,"Player defeat creates a corpse and hides combat HUD")
+	check(game.partners.is_empty() and not game.ui.native_hud.visible,"Player defeat hides combat HUD without creating a body")
 	game.update_finish_camera(2.4)
 	game.ui.tick(0)
 	check(not game.ui.native_hud.visible,"HUD stays hidden throughout failure camera updates")
-	check(game.ui.current != "result" and game.camera.position.distance_to(Vector3(p.pos.x,p.height,p.pos.y)) < 10,"Player defeat focuses the fallen guard before any result dialog")
+	check(game.ui.current != "result" and Vector2(game.camera.position.x,game.camera.position.z).is_equal_approx(Vector2(game.finish_camera_start.origin.x,game.finish_camera_start.origin.z)),"Player defeat remains at the player before any result dialog")
+	check(is_equal_approx(game.camera.position.y,p.height+.28) and absf(game.camera.rotation.z) > 1.0,"Failure camera falls to ground level and tilts in first person")
 	game.update_finish_camera(1.5)
 	check(game.ui.current == "result","Player defeat opens results after the cinematic delay")
 	game.free()

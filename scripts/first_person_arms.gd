@@ -44,7 +44,7 @@ func sync(p: Dictionary, w: Dictionary, reload_phase: float, axe: Node3D) -> voi
 	var index = int(p.get("appearance",[0])[0])
 	if profile_index != index:
 		profile_index = index
-		var profile: Dictionary = preload("res://scripts/survivor_model.gd").PROFILES[clampi(index,0,3)]
+		var profile: Dictionary = preload("res://scripts/survivor_palette.gd").PROFILES[clampi(index,0,3)]
 		skin.albedo_color = Color(profile.skin)
 		cloth.albedo_color = Color(profile.shirt)
 	var r = Vector3(.025,-.12,.015)

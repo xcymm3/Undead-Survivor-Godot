@@ -22,16 +22,15 @@ test('商店柜台、贴墙现状及四人底部技能布局', async ({ page }, 
     if (scenario === 'front') expect(state.focus).toBe('shopkeeper');
     if (scenario === 'side') expect(state.focus).not.toBe('shopkeeper');
     if (scenario === 'four') {
-      expect(state.health_rects).toHaveLength(4);
-      expect(state.left_count).toBe(2);
-      expect(state.right_count).toBe(2);
+      expect(state.health_rects).toHaveLength(1);
+      expect(state.left_count).toBe(1);
+      expect(state.right_count).toBe(0);
       expect(state.health_rects.every(rect => Math.abs(rect.y-state.health_rects[0].y)<.5)).toBe(true);
-      expect(state.portraits).toBe(true);
+      expect(state.no_portraits).toBe(true);
       expect(state.overlaps).toBe(false);
       expect(state.ultimate_rect.x + state.ultimate_rect.width / 2).toBeCloseTo(state.width / 2, 0);
     }
-    if (scenario === 'locked') expect(state.ultimate_visible).toBe(false);
-    else expect(state.ultimate_visible).toBe(true);
+    expect(state.ultimate_visible).toBe(true);
     if (scenario === 'ready') {
       expect(state.ready_flash).toBeGreaterThan(0);
       expect(state.ready_flash_count).toBeGreaterThan(0);

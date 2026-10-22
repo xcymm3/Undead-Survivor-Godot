@@ -639,11 +639,11 @@ func run() -> void:
 	check(game.ui.native_hud.visible,"Native HUD appears on game start")
 	check(game.ui.native_hud.cards.has("solo"),"Player card is a retained control")
 	var card: Dictionary = game.ui.native_hud.cards.solo
-	check(card.bar is ProgressBar and card.name is Label,"Health and name use native widgets")
+	check(card.bar is ProgressBar and card.hp is Label and not card.has("portrait"),"Health uses a native bar without an avatar")
 	var pawn: Dictionary = game.local_pawn()
 	pawn.hp = 42
 	game.ui.tick(.016)
-	check(card.bar.value == 42 and card.hp.text == "+42","Native health widget updates from authority")
+	check(card.bar.value == 42 and card.hp.text == "42 / 100","Native health widget updates from authority")
 	check(card.panel.mouse_filter == Control.MOUSE_FILTER_IGNORE,"HUD does not capture combat input")
 	await process_frame
 	await process_frame
@@ -659,11 +659,9 @@ func run() -> void:
 	game.ui.tick(.016)
 	await process_frame
 	await process_frame
-	check(game.ui.native_hud.cards.size() == 4 and is_equal_approx(card.panel.size.x,single_width),"Each teammate gets a separate card without stretching the local card")
-	check(game.ui.native_hud.health_row.get_child_count() == 2 and game.ui.native_hud.health_right.get_child_count() == 2,"Four health cards split two on the left and two on the right")
-	var card_y: float = card.panel.get_global_rect().position.y
-	check(game.ui.native_hud.cards.values().all(func(entry): return is_equal_approx(entry.panel.get_global_rect().position.y,card_y)),"All four health cards share one horizontal row around the skill")
-	check(game.ui.native_hud.cards.values().all(func(card): return card.portrait.texture != null),"Every teammate receives the same model portrait pipeline as solo")
+	check(game.ui.native_hud.cards.size() == 1 and is_equal_approx(card.panel.size.x,single_width),"Demo retains only the local health bar")
+	check(game.ui.native_hud.health_row.get_child_count() == 1 and game.ui.native_hud.health_right.get_child_count() == 0,"Health stays at bottom left")
+	check(card.panel.find_children("*","TextureRect",true,false).is_empty() and game.partners.is_empty(),"HUD and world do not instantiate player models")
 	game.first_person_layer.sync_view()
 	var view_pass = game.first_person_layer
 	check(game.camera.cull_mask & 2 == 0 and view_pass.camera.cull_mask == 2 and view_pass.viewport.world_3d == game.camera.get_world_3d(),"World and first person share transforms and lighting while rendering separate depth targets")

@@ -14,7 +14,6 @@ var multiplayer_view
 var hit_flash = 0.0
 var hurt_flash = 0.0
 var message = ""
-var portraits: Dictionary = {}
 var victory_caption: Label
 var native_hud
 var binding_action = ""
@@ -307,25 +306,13 @@ func show_home() -> void:
 	emblem.position = Vector2(680,98)
 	emblem.size = Vector2(80,80)
 	stage.add_child(emblem)
-	var setup = HBoxContainer.new()
-	setup.name = "DifficultySelection"
-	setup.position = Vector2(0,642)
-	setup.resized.connect(func(): setup.position.x = (stage.size.x-setup.size.x)*.5)
-	setup.add_theme_constant_override("separation",12)
-	stage.add_child(setup)
-	var money = CheckBox.new()
-	money.name = "InfiniteCoins"
-	money.text = "无限金币 / 钻石 · 测试"
-	money.button_pressed = Data.test_money
-	money.toggled.connect(func(value): Data.test_money = value)
-	setup.add_child(money)
 	var actions = HBoxContainer.new()
 	actions.name = "HomeActions"
 	actions.position = Vector2(0,723)
 	actions.resized.connect(func(): actions.position.x = (stage.size.x-actions.size.x)*.5)
 	actions.add_theme_constant_override("separation",14)
 	stage.add_child(actions)
-	for item in [["单人游戏",func(): game.start_solo("defense")],["多人游戏",show_multiplayer],["设置",show_settings],["退出游戏",func(): game.quit_game()]]:
+	for item in [["单人游戏",func(): game.start_solo("defense")],["设置",show_settings],["退出游戏",func(): game.quit_game()]]:
 		var option = home_button(actions,item[0],item[1],item[0] == "单人游戏")
 		option.custom_minimum_size = Vector2(188,76)
 		option.add_theme_font_size_override("font_size",25)
@@ -587,10 +574,13 @@ func show_guide() -> void:
 		var w: Dictionary = Data.weapons[i]
 		for text in [w.label,"∞" if w.get("infiniteAmmo",false) else str(int(w.capacity)),str(roundi(w.damage*w.pellets)) if w.get("kind","gun") == "gun" else str(int(w.damage)),"—" if w.reloadDuration == 0 else "%.2f 秒%s" % [w.reloadDuration,"/发" if w.get("shellReload",false) else ""]]: grid.add_child(label(text,17))
 	paragraph(column,"击杀会掉落自动飞向玩家的金币，特殊僵尸奖励更高。金币、钻石、升级和已购建筑永久保存；重新开始只重置波次、生命和战场。",17)
-	paragraph(column,"生命、炮塔、栅栏和地雷状态跨波保留；手雷每15秒补充一颗至持有上限。没有强壮天赋时不会缓慢回血；学习后连续 5 秒未受伤开始恢复，期间可以攻击。商店也可被僵尸进入。首页可切换三个独立存档，并勾选测试金币。",17)
+	paragraph(column,"生命、炮塔、栅栏和地雷状态跨波保留；手雷每15秒补充一颗至持有上限。没有强壮天赋时不会缓慢回血；学习后连续 5 秒未受伤开始恢复，期间可以攻击。商店也可被僵尸进入。首页可切换三个独立存档。",17)
 	button(column,"返回",back,true)
 
 func show_multiplayer(qa_preview := false) -> void:
+	if not Data.automation:
+		show_home()
+		return
 	multiplayer_view = preload("res://scripts/multiplayer_menu.gd").new(self)
 	multiplayer_view.show_page(qa_preview)
 
@@ -752,66 +742,6 @@ func _draw_hud() -> void:
 			hud.draw_rect(Rect2(Vector2.ONE*inset,screen-Vector2.ONE*inset*2),Color(.18,.6,.29,heal*.08*(1.0-layer/8.0)),false,24)
 	if hurt_flash > 0:
 		hud.draw_rect(Rect2(Vector2.ZERO,screen),Color(.55,.08,.04,hurt_flash*.3),false,20)
-
-func sync_portraits() -> void:
-	var needed: Dictionary = {}
-	if game and game.running and game.sim:
-		for pawn in game.sim.pawns.values():
-			var key = str(pawn.appearance)
-			needed[key] = true
-			if not portraits.has(key): portraits[key] = create_portrait(pawn)
-	for key in portraits.keys():
-		if not needed.has(key):
-			portraits[key].queue_free()
-			portraits.erase(key)
-
-func create_portrait(pawn: Dictionary) -> SubViewport:
-	var viewport = SubViewport.new()
-	viewport.size = Vector2i(168,216)
-	viewport.transparent_bg = true
-	viewport.own_world_3d = true
-	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-	add_child(viewport)
-	# Reuse the in-world character construction so model and outfit colors agree.
-	var partner = preload("res://scripts/partner_view.gd").new()
-	viewport.add_child(partner)
-	partner.setup(pawn)
-	var avatar: Node3D = partner.avatar
-	avatar.reparent(viewport)
-	avatar.position = Vector3.ZERO
-	avatar.rotation = Vector3(0,PI,0)
-	if partner.animation:
-		for clip in partner.animation.get_animation_list():
-			if clip.to_lower().ends_with("idle"):
-				partner.animation.play(clip)
-				partner.animation.seek(0,true)
-				partner.animation.pause()
-				break
-	partner.free()
-	var bounds = AABB()
-	var first = true
-	for mesh in avatar.find_children("*","MeshInstance3D",true,false):
-		var mesh_bounds: AABB = mesh.global_transform * mesh.get_aabb()
-		bounds = mesh_bounds if first else bounds.merge(mesh_bounds)
-		first = false
-	var camera = Camera3D.new()
-	viewport.add_child(camera)
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = maxf(.5,bounds.size.y*.53)
-	var target = Vector3(bounds.get_center().x,bounds.end.y-bounds.size.y*.24,bounds.get_center().z)
-	camera.position = target+Vector3(0,0,4)
-	camera.look_at(target)
-	var light = DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-25,-25,0)
-	light.light_energy = 1.2
-	viewport.add_child(light)
-	var world = WorldEnvironment.new()
-	world.environment = Environment.new()
-	world.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	world.environment.ambient_light_color = Color.WHITE
-	world.environment.ambient_light_energy = .65
-	viewport.add_child(world)
-	return viewport
 
 static func victory_caption_alpha(age: float) -> float:
 	if age < 0 or age >= 5.8: return 0.0

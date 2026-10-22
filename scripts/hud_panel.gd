@@ -250,35 +250,25 @@ func text(parent: Node, font_size := 16) -> Label:
 	return result
 
 func health_card(id: String) -> Dictionary:
-	var panel = card(health_row,Vector2(236,86))
+	var panel = card(health_row,Vector2(236,40))
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	panel.size_flags_vertical = Control.SIZE_SHRINK_END
-	var row = HBoxContainer.new()
-	panel.add_child(row)
-	var portrait = TextureRect.new()
-	portrait.custom_minimum_size = Vector2(44,58)
-	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	row.add_child(portrait)
-	var column = column_in(row)
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var title = text(column,15)
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	title.custom_minimum_size.x = 90
-	var hp = text(column,21)
 	var bar = ProgressBar.new()
 	bar.show_percentage = false
-	bar.custom_minimum_size.y = 7
-	column.add_child(bar)
+	bar.custom_minimum_size.y = 22
+	panel.add_child(bar)
+	var hp = text(bar,18)
+	hp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	ignore_mouse(panel)
-	var result = {"panel":panel,"portrait":portrait,"name":title,"hp":hp,"bar":bar}
+	var result = {"panel":panel,"hp":hp,"bar":bar}
 	cards[id] = result
 	return result
 
 func sync() -> void:
 	visible = ui.game.running and ui.game.sim != null and not ui.game.finished
 	if not visible: return
-	ui.sync_portraits()
 	var sim = ui.game.sim
 	var bosses = sim.zombies.filter(func(z): return z.kind == "dancer" and z.hp > 0)
 	boss_title.get_parent().visible = not bosses.is_empty()
@@ -363,28 +353,16 @@ func sync() -> void:
 		for i in slots.size():
 			slots[i].text = "%s %s  %s  %s" % ["›" if int(p.weapon) == i else " ",Data.binding_label("weapon_%d" % i),Data.weapons[i].label,"∞" if Data.weapons[i].get("infiniteAmmo",false) else str(p.ammo[i])]
 
-	var ids: Array = sim.pawns.keys()
-	ids.erase(Session.local_id)
-	if sim.pawns.has(Session.local_id): ids.push_front(Session.local_id)
+	var ids: Array = [p.id]
 	for id in cards.keys():
-		if not sim.pawns.has(id):
+		if id not in ids:
 			cards[id].panel.queue_free()
 			cards.erase(id)
-	health_row.offset_top = -146
-	health_right.offset_top = -146
-	for i in ids.size():
-		var pawn: Dictionary = sim.pawns[ids[i]]
-		var item: Dictionary = cards[ids[i]] if cards.has(ids[i]) else health_card(ids[i])
-		var side = health_row if i < 2 else health_right
-		if item.panel.get_parent() != side: item.panel.reparent(side)
-		side.move_child(item.panel,i%2)
-		item.name.text = "我" if ids[i] == Session.local_id and not Session.playing else str(pawn.get("name",ids[i]))
-		item.hp.text = "已断线" if not pawn.get("connected",true) else "+%d" % pawn.hp if pawn.hp > 0 else "阵亡"
-		item.bar.max_value = pawn.get("max_hp",100)
-		item.bar.value = pawn.hp
-		item.bar.modulate = Color.WHITE if pawn.hp > 50 else Color("e0bc62") if pawn.hp > 25 else Color("dd6958")
-		var key = str(pawn.appearance)
-		if ui.portraits.has(key): item.portrait.texture = ui.portraits[key].get_texture()
+	var item: Dictionary = cards[p.id] if cards.has(p.id) else health_card(p.id)
+	item.hp.text = "%d / %d" % [p.hp,p.get("max_hp",100)]
+	item.bar.max_value = p.get("max_hp",100)
+	item.bar.value = p.hp
+	item.bar.modulate = Color.WHITE if p.hp > 50 else Color("e0bc62") if p.hp > 25 else Color("dd6958")
 	rest_label.visible = sim.rest > 0
 	if rest_label.visible: rest_label.text = "整波清除 · 全员恢复   %.1f 秒后继续" % sim.rest
 	if sim.mode == "defense":

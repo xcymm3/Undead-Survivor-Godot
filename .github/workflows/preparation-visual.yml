@@ -6,7 +6,7 @@ on:
         type: choice
         description: 截图范围
         default: all
-        options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, map_toys, ultimate_ring, dialogs, shop_hud]
+        options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, map_toys, ultimate_ring, dialogs, shop_hud, demo_endings]
   workflow_call:
     inputs:
       scope:
@@ -64,6 +64,15 @@ jobs:
       - name: 商店与四人技能布局截图
         if: inputs.scope == 'shop_hud'
         run: npx playwright test tests/browser/shop-hud-visual.spec.mjs
+      - name: Demo倒下与舞王胜利GIF
+        if: inputs.scope == 'demo_endings'
+        run: |
+          npx playwright test tests/browser/demo-endings-visual.spec.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Demo capture failed' }
+          python -m pip install Pillow==11.3.0
+          if ($LASTEXITCODE -ne 0) { throw 'Pillow install failed' }
+          python tools/encode-demo-gifs.py
+          if ($LASTEXITCODE -ne 0) { throw 'GIF encoding failed' }
       - name: 大招充能环截图
         if: inputs.scope == 'ultimate_ring'
         run: npx playwright test tests/browser/ultimate-ring-visual.spec.mjs
@@ -71,7 +80,7 @@ jobs:
         if: inputs.scope == 'dialogs'
         run: npx playwright test tests/browser/dialogs-visual.spec.mjs
       - run: npx playwright test tests/browser/campaign-review.spec.mjs tests/browser/defense.spec.mjs
-        if: inputs.scope != 'noon' && inputs.scope != 'axe_gif' && inputs.scope != 'map_toys' && inputs.scope != 'ultimate_ring' && inputs.scope != 'dialogs' && inputs.scope != 'shop_hud'
+        if: inputs.scope != 'noon' && inputs.scope != 'axe_gif' && inputs.scope != 'map_toys' && inputs.scope != 'ultimate_ring' && inputs.scope != 'dialogs' && inputs.scope != 'shop_hud' && inputs.scope != 'demo_endings'
         env:
           QA_BLADE_ATTACK_ONLY: ${{ inputs.scope == 'blade_attack' && '1' || '' }}
           QA_SHIELD_BLADE_ONLY: ${{ inputs.scope == 'shield_blade' && '1' || '' }}

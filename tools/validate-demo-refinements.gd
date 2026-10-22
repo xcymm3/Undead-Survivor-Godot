@@ -62,6 +62,5 @@ static func validate(game, check: Callable) -> void:
 	sim.cause = "crystal"
 	game.finish_run()
 	game.update_finish_camera(2.4)
-	var survivor = game.partners.get("fallen_guard")
-	check.call(is_instance_valid(survivor) and survivor.visible and is_zero_approx(survivor.rotation.x),"Crystal defeat retains the living player in an upright third-person pose")
-	check.call(not game.camera.is_position_behind(survivor.global_position+Vector3.UP),"Ending camera keeps the surviving player in front of the lens")
+	check.call(game.partners.is_empty(),"Crystal defeat does not create a third-person body")
+	check.call(is_equal_approx(game.camera.position.y,p.height+.28) and absf(game.camera.rotation.z) > 1.0,"Crystal defeat also falls through the first-person camera")

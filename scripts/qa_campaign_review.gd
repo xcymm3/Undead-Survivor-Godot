@@ -14,6 +14,12 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
+	if scenario in ["demo_failure","demo_victory"]:
+		var ending = preload("res://scripts/qa_demo_endings.gd").new()
+		ending.game = game
+		add_child(ending)
+		await ending.stage(scenario)
+		return
 	if scenario in ["forest_overview","forest_detail","bedroom_furniture"]:
 		await stage_woodland(scenario)
 		return
