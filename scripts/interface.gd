@@ -676,7 +676,7 @@ func show_result() -> void:
 	stats.name = "ResultStatistics"
 	stats.add_theme_constant_override("separation",7)
 	result.add_child(stats)
-	for entry in [["本轮撑的波次","%02d / 10" % sim.cleared],["消灭的敌人",str(sim.kills)],["生存时间",time_text(sim.elapsed)],["获取的金币","+%d" % (0 if guest else sim.earned_coins)],["获取的钻石","+%d" % (0 if guest else sim.earned_diamonds)]]:
+	for entry in [["波次","%02d / 10" % sim.cleared],["消灭的敌人",str(sim.kills)],["生存时间",time_text(sim.elapsed)],["获取的金币","+%d" % (0 if guest else sim.earned_coins)],["获取的钻石","+%d" % (0 if guest else sim.earned_diamonds)]]:
 		var stat = HBoxContainer.new()
 		stat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		stat.add_theme_constant_override("separation",24)

@@ -180,6 +180,8 @@ func run() -> void:
 	var earned_coins = game.ui.menu.find_child("EarnedCoins",true,false)
 	var earned_diamonds = game.ui.menu.find_child("EarnedDiamonds",true,false)
 	check(game.ui.current == "result" and earned_coins != null and earned_diamonds != null and earned_coins.text == "+%d" % sim.earned_coins and earned_diamonds.text == "+%d" % sim.earned_diamonds,"Result shows exact session coin and diamond earnings after camera sequence")
+	var result_labels: Array = game.ui.menu.find_children("*","Label",true,false).map(func(node): return node.text)
+	check(result_labels.has("波次") and not result_labels.has("本轮撑的波次"),"Result labels the cleared count simply as waves")
 	game.return_home()
 	await process_frame
 	await process_frame
