@@ -3,10 +3,10 @@ config_version=5
 
 [application]
 config/name="Undead Survivor · Godot"
-config/version="2.11.2"
+config/version="2.11.3"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
-config/icon="res://icon.svg"
+config/icon="res://assets/icons/crystal-game-icon.png"
 
 [autoload]
 Data="*res://scripts/data.gd"
