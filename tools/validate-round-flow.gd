@@ -50,6 +50,12 @@ static func validate(game, check: Callable) -> void:
 		ending.step(.6)
 		check.call(game.ending_sequence == null and game.ui.menu == null,"Automatic respawn ends without opening a result dialog")
 		await game.get_tree().process_frame
+	game.sim.failed = true
+	game.sim.cause = "crystal"
+	game.finish_run()
+	var point = game.get_node("/root/Data").Maps.Defense.CRYSTAL
+	check.call(game.camera.is_position_in_frustum(Vector3(point.x,4.5,point.y)),"Crystal defeat always frames the real crystal destruction even from the spawn room")
+	game.start_solo("defense",713)
 	game.sim.coop_host = "solo"
 	game.sim.add_pawn("qa_guest","客机",1)
 	var guest: Dictionary = game.sim.pawns.qa_guest

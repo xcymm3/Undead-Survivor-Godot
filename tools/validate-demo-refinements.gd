@@ -63,4 +63,4 @@ static func validate(game, check: Callable) -> void:
 	game.finish_run()
 	game.update_finish_camera(2.4)
 	check.call(game.partners.is_empty(),"Crystal defeat does not create a third-person body")
-	check.call(is_equal_approx(game.camera.position.y,p.height+.28) and absf(game.camera.rotation.z) > 1.0,"Crystal defeat also falls through the first-person camera")
+	check.call(game.camera.global_transform.is_equal_approx(game.finish_camera_start) and game.camera.is_position_in_frustum(Vector3(Layout.CRYSTAL.x,4.5,Layout.CRYSTAL.y)),"Crystal defeat holds a visible view of destruction instead of faking a player collapse")

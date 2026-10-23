@@ -565,6 +565,10 @@ func finish_run() -> void:
 	ui.native_hud.hide()
 	ui.hud.queue_redraw()
 	death_timer = 0.0
+	if sim.cause == "crystal" and not sim.won:
+		var point: Vector2 = Data.Maps.Defense.CRYSTAL
+		camera.position = Vector3(point.x+7,9,point.y+10)
+		camera.look_at(Vector3(point.x,4.5,point.y))
 	finish_camera_start = camera.global_transform
 	var pawn = local_pawn()
 	finish_ground_height = float(pawn.get("height",finish_camera_start.origin.y-1.65))
@@ -720,6 +724,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if ending_sequence: return
 	if event.is_pressed() and not event.is_echo():
 		if event.is_action_pressed("pause"):
 			if running and not finished:
