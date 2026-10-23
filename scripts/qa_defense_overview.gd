@@ -56,6 +56,15 @@ func stage() -> void:
 		game.camera.look_at(Vector3(0,1,-16),Vector3.UP)
 	RenderingServer.render_loop_enabled = true
 	for i in 5: await get_tree().process_frame
+	if not damage_preview:
+		# Static views need one completed frame, not continuous software rendering
+		# competing with Chromium's screenshot compositor.
+		game.set_process(false)
+		game.set_physics_process(false)
+		RenderingServer.render_loop_enabled = false
+		for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+		RenderingServer.force_draw(true)
+		await get_tree().process_frame
 	JavaScriptBridge.eval("window.__defenseStructuresReady=true" if structure_preview else "window.__defenseSafeZoneReady=true" if safe_zone else "window.__defenseOverviewReady=true",true)
 
 func _process(dt: float) -> void:

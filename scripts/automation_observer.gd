@@ -4,6 +4,10 @@ var game
 var interval = 0.0
 var frames = 0
 var aim_assist
+var observed_sim_id = 0
+var observed_shoves = 0
+var shove_events: Array = []
+var announcement_seen: Array = []
 
 func _ready() -> void:
 	if not Data.automation:
@@ -34,9 +38,29 @@ func _ready() -> void:
 func _process(dt: float) -> void:
 	frames += 1
 	interval += dt
-	if not OS.has_feature("web") or interval < .1: return
+	if not OS.has_feature("web"): return
+	observe_transients()
+	if interval < .1: return
 	interval = 0
 	JavaScriptBridge.eval("window.__survivorSnapshot = " + JSON.stringify(snapshot()) + ";", true)
+
+func observe_transients() -> void:
+	var identity = game.sim.get_instance_id() if game.sim else 0
+	if identity != observed_sim_id:
+		observed_sim_id = identity
+		observed_shoves = 0
+		shove_events.clear()
+		announcement_seen.clear()
+	if not game.sim: return
+	var pawn: Dictionary = game.local_pawn()
+	var count = int(pawn.get("shoves",0))
+	if count > observed_shoves:
+		shove_events.append({"count":count,"combo":int(pawn.get("shove_count",0)),"cooldown":float(pawn.get("shove_cd",0))})
+		if shove_events.size() > 16: shove_events.pop_front()
+		observed_shoves = count
+	var caption = game.ui.native_hud.wave_announcement
+	if caption.is_visible_in_tree() and caption.modulate.a > 0 and caption.text not in announcement_seen:
+		announcement_seen.append(caption.text)
 
 func snapshot() -> Dictionary:
 	var result = {"menu": game.ui.current, "map_id":game.arena.map_id, "running": game.running, "paused": game.paused,
@@ -53,6 +77,8 @@ func snapshot() -> Dictionary:
 	if game.sim:
 		result.progress = game.sim.progression.data
 		result.announcement = {"visible":game.ui.native_hud.wave_announcement.visible,"text":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a}
+		result.announcement_seen = announcement_seen
+		result.shove_events = shove_events
 		result.mode = game.sim.mode
 		result.defense = game.sim.defense_state()
 		result.won = game.sim.won

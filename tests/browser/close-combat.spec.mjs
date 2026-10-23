@@ -23,7 +23,10 @@ test('right shove cooldown ring and middle toggle use real input', async ({ page
     await page.waitForFunction(() => window.__survivorSnapshot.player.shove_gap === 0);
     await page.mouse.down({ button: 'right' });
     await page.mouse.up({ button: 'right' });
-    await page.waitForFunction(value => value === 3 ? window.__survivorSnapshot.player.shove_cd > 0 : window.__survivorSnapshot.player.shove_count === value, count);
+    await page.waitForFunction(value => window.__survivorSnapshot.shove_events?.some(event => event.count === value), count);
+    const event = await page.evaluate(value => window.__survivorSnapshot.shove_events.find(event => event.count === value), count);
+    expect(event.combo).toBe(count === 3 ? 0 : count);
+    if (count === 3) expect(event.cooldown).toBeGreaterThan(0);
   }
   const before = await page.evaluate(() => window.__survivorSnapshot.player.shove_cd);
   await page.mouse.down({ button: 'right' });
