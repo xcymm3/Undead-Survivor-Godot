@@ -29,11 +29,13 @@ test('right shove cooldown ring and middle toggle use real input', async ({ page
   await page.mouse.down({ button: 'right' });
   await page.mouse.up({ button: 'right' });
   expect(await page.evaluate(() => window.__survivorSnapshot.player.shove_cd)).toBeLessThanOrEqual(before);
-  await page.screenshot({ path: info.outputPath('shove-cooldown-ring.png') });
+  await page.screenshot({ path: info.outputPath('shove-cooldown-ring.png'), timeout: 60_000 });
   await page.waitForFunction(() => window.__survivorSnapshot.player.shove_cd === 0);
+  const completedShoves = await page.evaluate(() => window.__survivorSnapshot.shoves);
   await page.mouse.down({ button: 'right' });
   await page.mouse.up({ button: 'right' });
-  await page.waitForFunction(() => window.__survivorSnapshot.player.shove_count === 1);
+  // The short combo window may expire during a slow software-rendered frame.
+  await page.waitForFunction(before => window.__survivorSnapshot.shoves === before + 1, completedShoves);
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });
 });

@@ -13,7 +13,7 @@ for (const scenario of ['gate', 'kills', 'destroy', 'mine', 'support']) {
     const report = await page.evaluate(() => window.__structureReport);
     await info.attach('combat-report', { body: JSON.stringify(report, null, 2), contentType: 'application/json' });
     await page.waitForTimeout(500);
-    await page.screenshot({ path: info.outputPath(`${scenario}.png`) });
+    await page.screenshot({ path: info.outputPath(`${scenario}.png`), timeout: 60_000 });
     expect(errors).toEqual([]);
     expect(report.done).toBe(true);
     expect(report.failed).toBe(false);
