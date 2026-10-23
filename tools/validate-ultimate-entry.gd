@@ -74,7 +74,15 @@ func run() -> void:
 	progress.store.path = OS.get_cache_dir().path_join("missing-ultimate-entry-"+str(OS.get_process_id())+"/save.json")
 	check(not entry.choose("blade") and entry.phase == "room" and progress.store.needs_ultimate_choice(),"Failed disk write keeps selection open and rolls back its state")
 	progress.store.path = valid_path
-	check(entry.choose("blade") and entry.phase == "fade_out" and Store.new(save_path).data.ultimate_choice == "blade","Only blade selection persists before the fade starts")
+	# A complete tap may arrive between physics frames; retain that press once.
+	var tap = InputEventAction.new()
+	tap.action = "interact"
+	tap.pressed = true
+	game._unhandled_input(tap)
+	tap.pressed = false
+	game._unhandled_input(tap)
+	entry.step(.016,{"movement":Vector2.ZERO,"interact":false})
+	check(entry.phase == "fade_out" and Store.new(save_path).data.ultimate_choice == "blade","A press and release between physics frames selects and persists blade before the fade")
 	check(not progress.store.data.ultimate_unlocked,"Choosing an ultimate does not bypass the existing unlock tutorial")
 	entry.step(.45)
 	entry.render()

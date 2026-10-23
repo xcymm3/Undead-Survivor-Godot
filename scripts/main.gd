@@ -720,6 +720,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not running or paused or finished: return
 	if entry_sequence:
 		if event is InputEventMouseMotion and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Data.automation): entry_sequence.look(event.screen_relative)
+		if event.is_action_pressed("interact"): entry_sequence.request_interaction()
 		return
 	if sim and preload("res://scripts/onboarding.gd").blocked(sim.defense): return
 	if event is InputEventMouseMotion and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Data.automation):

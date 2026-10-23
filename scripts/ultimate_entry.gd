@@ -14,6 +14,7 @@ var focus = ""
 var notice = ""
 var notice_time = 0.0
 var interact_latch = false
+var interact_pending = false
 var handing_over = false
 var restored = false
 var old_environment: Environment
@@ -124,7 +125,8 @@ func step(dt: float, command: Dictionary = {}) -> void:
 		var direction = Basis(Vector3.UP,yaw)*Vector3(movement.x,0,movement.y)
 		room.player.advance(Vector2(direction.x,direction.z)*3.6,dt)
 		focus = room.focused(yaw,pitch)
-		var interact: bool = command.get("interact",Input.is_action_pressed("interact"))
+		var interact: bool = command.get("interact",Input.is_action_pressed("interact")) or interact_pending
+		interact_pending = false
 		if interact and not interact_latch: choose(focus)
 		interact_latch = interact
 	elif phase == "fade_out":
@@ -160,6 +162,9 @@ func choose(id: String) -> bool:
 	phase = "fade_out"
 	elapsed = 0.0
 	return true
+
+func request_interaction() -> void:
+	if phase == "room": interact_pending = true
 
 func look(delta: Vector2) -> void:
 	if phase != "room": return
