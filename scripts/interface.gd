@@ -667,7 +667,8 @@ func show_result() -> void:
 	summary.alignment = BoxContainer.ALIGNMENT_CENTER
 	summary.add_theme_constant_override("separation",12)
 	banner.add_child(summary)
-	summary.add_child(label("守住了最后的防线" if sim.won else "水晶被摧毁",28,SETTINGS_BRASS if sim.won else RUST.lightened(.25)))
+	var reason = "水晶被摧毁" if sim.cause == "crystal" else "房主阵亡" if not sim.coop_host.is_empty() and sim.pawns[sim.coop_host].hp <= 0 else "守卫阵亡"
+	summary.add_child(label("守住了最后的防线" if sim.won else reason,28,SETTINGS_BRASS if sim.won else RUST.lightened(.25)))
 	result.add_child(HSeparator.new())
 	var stats = VBoxContainer.new()
 	stats.name = "ResultStatistics"

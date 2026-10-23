@@ -289,6 +289,7 @@ func host_test() -> void:
 	if not await until(func(): return acknowledgements.has("finished"),"client receives terminal snapshot"): return
 	game.finish_run()
 	game.ui.show_result()
+	check(game.ui.menu.find_children("*","Label",true,false).any(func(label): return label.text == "房主阵亡"),"Host death result identifies the actual defeat cause")
 	check(game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text == "重新防守"),"Host defeat result offers cooperative retry")
 	var old_nonce: String = net.nonce
 	game.restart_coop()
