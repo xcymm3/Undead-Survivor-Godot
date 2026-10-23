@@ -39,7 +39,7 @@ test('新存档序章、三色终极武器展厅与选择后进入商店GIF', as
     // Let the Web input loop receive DOM events before advancing physics.
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     inputs.push({ frame, key, mouseDeltaX: turn });
-    await page.evaluate(index => window.__drawUltimateEntry(index), frame);
+    await page.evaluate(({ index, paint }) => window.__drawUltimateEntry(index, paint), { index: frame, paint: !stills || [110, 198, 255].includes(frame) });
     await page.waitForFunction(index => window.__entryFrame === index, frame);
     states.push(await page.evaluate(() => window.__entryState));
     if (!stills) await page.screenshot({ path: path.join(directory, `frame-${String(frame).padStart(3, '0')}.png`) });

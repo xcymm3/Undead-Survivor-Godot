@@ -40,14 +40,14 @@ func draw_frame(args: Array) -> void:
 	game._process(1.0/FPS)
 	game.first_person_layer.sync_view()
 	for i in 2: await get_tree().process_frame
-	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
-	# Label3D can grow the shared font atlas after the custom dossier drew.
-	# Rebuild its cached canvas commands against the settled atlas before capture.
-	for settle in 2:
-		if game.entry_sequence: game.entry_sequence.detail.queue_redraw()
-		await get_tree().process_frame
-		RenderingServer.force_draw(true)
-		await get_tree().process_frame
+	# Stills advance the exact same input/physics timeline but render only target views.
+	var paint: bool = args.size() < 2 or bool(args[1])
+	if paint:
+		for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
+		for settle in 2:
+			await get_tree().process_frame
+			RenderingServer.force_draw(true)
+			await get_tree().process_frame
 	var sequence = game.entry_sequence
 	var state = {"frame":frame,"phase":sequence.phase if sequence else "shop","focus":sequence.focus if sequence else "","hold_progress":sequence.hold_time/sequence.HOLD_SECONDS if sequence else 0.0,"black":sequence.black.color.a if sequence else 0.0,"choice":Progress.store.data.ultimate_choice,"rocket_blocked":attempted_rocket,"scepter_blocked":attempted_scepter,"sim_started":game.sim != null,"intro_seen":Progress.store.data.intro_seen,"ultimate_unlocked":Progress.store.data.ultimate_unlocked,"main_visible":game.arena.visible,"x":sequence.room.player.position.x if sequence else 0.0,"z":sequence.room.player.position.z if sequence else 0.0,"yaw":sequence.yaw if sequence else 0.0,"detail":sequence.detail.details if sequence else {}}
 	JavaScriptBridge.eval("window.__entryState="+JSON.stringify(state),true)
