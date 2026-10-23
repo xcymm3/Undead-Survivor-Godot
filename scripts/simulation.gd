@@ -31,6 +31,7 @@ var coop_host = ""
 var coin_drops: Array = []
 var won = false
 var elapsed = 0.0
+var sync_clock = 0.0
 var wave = 1
 var cleared = 0
 var spawned = 0
@@ -221,6 +222,7 @@ func submit(id: String, input: Dictionary) -> void:
 	pawns[id].input_age = 0.0
 
 func step(dt: float) -> void:
+	sync_clock += dt
 	events.clear()
 	ray_index_valid = false
 	cpu_neighbor_visits = 0
@@ -1371,7 +1373,7 @@ func snapshot() -> Dictionary:
 	var shared = progression.data.duplicate(true)
 	shared.coins = 0.0
 	shared.diamonds = 0
-	return {"shared_progression":shared,"coop_host":coop_host,"coin_drops":coin_drops.duplicate(true),"earned_coins":earned_coins,"earned_diamonds":earned_diamonds,"boss_victory":boss_victory,"defense":defense_state(),"won":won,"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":wave_total,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
+	return {"sync_clock":sync_clock,"shared_progression":shared,"coop_host":coop_host,"coin_drops":coin_drops.duplicate(true),"earned_coins":earned_coins,"earned_diamonds":earned_diamonds,"boss_victory":boss_victory,"defense":defense_state(),"won":won,"map_id":map_id,"pawns":players,"zombies":zombies.duplicate(true),"mode":mode,"elapsed":elapsed,"wave":wave,"cleared":cleared,"spawned":spawned,"total":wave_total,"kills":kills,"rest":rest,"failed":failed,"cause":cause,"culprit":culprit}
 
 func apply_snapshot(state: Dictionary) -> void:
 	pawns = state.pawns.duplicate(true)

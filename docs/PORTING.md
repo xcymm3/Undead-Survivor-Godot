@@ -20,7 +20,7 @@
 | 战斗损伤保留的炮塔、栅栏门与按波恢复的地雷 | `scripts/defense_structures.gd`、`scripts/defense_structure_view.gd` |
 | 共享装备与场景几何 | `scripts/equipment_core.gd`、`scripts/equipment_props.gd`、`scripts/world_geometry.gd` |
 | 敌人积分分配 | `scripts/enemy_population.gd`、`scripts/defense_population.gd` |
-| 暂停使用的网络会话 | `scripts/session.gd` |
+| Steam/ENet 合作网络会话 | `scripts/session.gd` |
 | 永久进度、商店经济与金币显示 | `scripts/progression.gd`、`scripts/progression_store.gd`、`scripts/coin_view.gd` |
 | HUD 与菜单 | `scripts/interface.gd` |
 | 数据与武器规则 | `scripts/data.gd`、`assets/data/rules.json` |

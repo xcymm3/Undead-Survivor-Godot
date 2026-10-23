@@ -91,7 +91,6 @@ func _ready() -> void:
 	Session.admission_open = func(): return running and sim != null and not sim.defense.get("started",false) and not sim.failed and not sim.won
 	Session.match_started.connect(start_coop)
 	Session.invite_received.connect(func():
-		if not Data.automation: return
 		if running: return_home()
 		ui.show_multiplayer())
 	Session.map_preparing.connect(prepare_coop)
@@ -128,7 +127,7 @@ func _ready() -> void:
 	get_window().focus_entered.connect(_focus_gained)
 	get_window().close_requested.connect(quit_game)
 	return_home()
-	# Demo exposes single player only; keep transport available to headless tests.
+	Session.call_deferred("initialize_invites")
 	# Explicit command-line launch modes also support silent local integration validation.
 	var args = OS.get_cmdline_user_args()
 	if "--defense" in args:
@@ -179,11 +178,20 @@ func start_coop() -> void:
 	resume_game()
 
 func prepare_coop() -> void:
+	running = false
+	reset_mouse_buttons()
 	load_map(Session.map_id)
 	# Wait for physics to register the loaded terrain before acknowledging readiness.
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	if Session.active and Session.loading: Session.confirm_map_ready()
+
+func restart_coop() -> void:
+	if not Session.is_host() or not finished: return
+	var connected: Dictionary = {}
+	for id in Session.members:
+		if sim.pawns.has(id) and sim.pawns[id].get("connected",true): connected[id] = Session.members[id]
+	Session.restart_match(connected)
 
 func reset_game() -> void:
 	screen_shake.clear()
@@ -295,6 +303,7 @@ func _process(dt: float) -> void:
 	var p = view_pawn()
 	if p.is_empty(): return
 	if p.id != Session.local_id: p = visible_pawns.get(p.id,p)
+	sync_partners(visible_pawns,str(p.id),dt,not displayed.is_empty())
 	var desired = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 	if Session.playing and not Session.is_host(): camera.position = camera.position.lerp(desired,1-exp(-dt*22))
 	else: camera.position = desired
@@ -350,6 +359,23 @@ func _process(dt: float) -> void:
 		update_finish_camera(dt)
 	ui.tick(dt)
 	qa_draw(dt)
+
+func sync_partners(pawns: Dictionary, viewed_id: String, dt: float, buffered := false) -> void:
+	for id in partners.keys():
+		if not pawns.has(id):
+			partners[id].queue_free()
+			partners.erase(id)
+	for id in pawns:
+		if id == viewed_id:
+			if partners.has(id): partners[id].hide()
+			continue
+		if not partners.has(id):
+			var partner = preload("res://scripts/partner_view.gd").new()
+			add_child(partner)
+			partner.setup(pawns[id])
+			partners[id] = partner
+		partners[id].sync(pawns[id],dt,buffered)
+		partners[id].visible = pawns[id].get("connected",true)
 
 func sync_dialogue_camera(p: Dictionary) -> void:
 	if not preload("res://scripts/onboarding.gd").talking(sim.defense): return

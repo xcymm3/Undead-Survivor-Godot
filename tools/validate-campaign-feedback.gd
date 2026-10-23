@@ -186,12 +186,13 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	var actions = game.ui.menu.get_node("HomeStage/HomeActions")
-	check(actions.get_children().size() == 4 and actions.get_children().all(func(node): return node is Button),"Home has four primary actions in a separate equal-width row")
+	check(actions.get_children().size() == 5 and actions.get_children().all(func(node): return node is Button),"Home has five primary actions including cooperative play")
 	var save_button = game.ui.menu.find_child("HomeSaveSlot",true,false) as Button
 	var first_action = actions.get_child(0) as Button
 	check(save_button != null and save_button.get_global_rect().end.x < first_action.get_global_rect().position.x and save_button.get_global_rect().end.y > first_action.get_global_rect().position.y,"Save entry sits separately to the left of starting the game")
 	var widths = actions.get_children().map(func(node): return (node as Control).get_global_rect().size.x)
-	check(widths.max()-widths.min() <= 1,"Four main menu actions have equal widths")
+	check(widths.max()-widths.min() <= 1,"Five main menu actions have equal widths")
+	check(actions.get_children().all(func(node): return node.get_global_rect().end.x <= game.ui.menu.get_global_rect().end.x),"All five home actions fit inside the viewport")
 	check(game.ui.menu.find_child("InfiniteCoins",true,false) == null,"Demo has no test-money controls")
 	check(game.ui.menu.has_node("HomeStage/GameTitle"),"Home uses the central game title and bottom action layout")
 	var home_copy: Array = game.ui.menu.get_node("HomeStage").find_children("*","Label",true,false).map(func(node): return node.text)
@@ -200,7 +201,7 @@ func run() -> void:
 	check(game.ui.menu.get_child(0) is TextureRect and game.ui.menu.get_child(0).texture is GradientTexture2D,"Home restores the original translucent battlefield backdrop")
 	check(game.sound.streams.has("menu-hover") and game.sound.streams["menu-hover"].get_length() < .1,"Home hover cue is a short bounded audio tick")
 	var home_buttons = game.ui.menu.find_children("*","Button",true,false)
-	check(not home_buttons.any(func(n): return n.text in ["武器与操作","操作提示","开始防守","多人合作"]),"Home exposes the renamed game entries without a controls-guide option")
+	check(home_buttons.any(func(n): return n.text == "多人合作") and not home_buttons.any(func(n): return n.text in ["武器与操作","操作提示","开始防守"]),"Home restores cooperative play alongside the existing game entries")
 	var start_button = home_buttons.filter(func(n): return n.text == "开始游戏")[0]
 	var voices = game.sound.index
 	start_button.mouse_entered.emit()

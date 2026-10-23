@@ -116,6 +116,8 @@ try {
   const feedback = await run('campaign-feedback', engine, [...godotArgs, '--script', 'res://tools/validate-campaign-feedback.gd', '--', '--silent', '--automation']);
   if (!/CAMPAIGN FEEDBACK: \d+ checks; 0 failures/.test(feedback)) throw new Error('Missing campaign feedback check marker.');
 
+  await run('cooperative-network', process.execPath, ['tools/validate-coop.mjs'], 120_000);
+
   const combatUpgrades = await run('combat-upgrades', engine, [...godotArgs, '--script', 'res://tools/validate-combat-upgrades.gd', '--', '--silent', '--automation']);
   if (!/COMBAT UPGRADES: \d+ checks; 0 failures/.test(combatUpgrades)) throw new Error('Missing combat upgrade check marker.');
 
@@ -180,8 +182,8 @@ try {
 } finally {
   for (const child of children) stop(child);
   const boundaries = full
-    ? ['本次为发布技术门禁：包含水晶防守规则、弹道、Web 导出和六组浏览器技术检查。', '所有脚本试玩及所有联机测试均为独立观察项，不参与发布通过判定；原生 GPU、真人体验和 Steam 双账号联网也不在自动门禁范围内。']
-    : ['本次为基础测试：检查版本、资源导入、原生组件、增量进度与存档及十波战役。整关、联网、Web、浏览器、视觉与发布项目未执行，也不计为通过。'];
+    ? ['本次为发布技术门禁：包含水晶防守规则、弹道、Web 导出、六组浏览器技术检查及本机 ENet 双进程合作回归。', '脚本试玩、原生 GPU、真人体验和 Steam 双账号联网不在自动门禁范围内。']
+    : ['本次为基础测试：检查版本、资源导入、原生组件、增量进度与存档、十波战役及本机 ENet 双进程合作回归。整关、Steam 双账号联网、Web、浏览器、视觉与发布项目未执行，也不计为通过。'];
   if (release) boundaries.push('本次包含 Windows 导出、无窗口 EXE 冒烟和 ZIP 打包。');
   const report = {
     status: failure ? 'failed' : 'passed', startedAt, finishedAt: new Date().toISOString(),

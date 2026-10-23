@@ -303,10 +303,10 @@ func show_home() -> void:
 	actions.size = Vector2(1000,76)
 	actions.add_theme_constant_override("separation",18)
 	stage.add_child(actions)
-	for item in [["开始游戏",func(): game.start_solo("defense")],["设置",show_settings],["问题反馈",show_feedback],["退出",func(): game.quit_game()]]:
+	for item in [["开始游戏",func(): game.start_solo("defense")],["多人合作",show_multiplayer],["设置",show_settings],["问题反馈",show_feedback],["退出",func(): game.quit_game()]]:
 		var option = home_button(actions,item[0],item[1],item[0] == "开始游戏")
 		option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		option.custom_minimum_size = Vector2(220,76)
+		option.custom_minimum_size = Vector2(180,76)
 		option.add_theme_font_size_override("font_size",25)
 		if item[0] == "问题反馈":
 			option.name = "FeedbackEntry"
@@ -625,9 +625,6 @@ func show_guide() -> void:
 	button(column,"返回",back,true)
 
 func show_multiplayer(qa_preview := false) -> void:
-	if not Data.automation:
-		show_home()
-		return
 	multiplayer_view = preload("res://scripts/multiplayer_menu.gd").new(self)
 	multiplayer_view.show_page(qa_preview)
 
@@ -694,11 +691,13 @@ func show_result() -> void:
 	var actions = HBoxContainer.new()
 	actions.add_theme_constant_override("separation",24)
 	result.add_child(actions)
-	if not Session.playing:
-		var retry = home_button(actions,"重新防守",func(): game.start_solo("defense"))
+	if not Session.playing or Session.is_host():
+		var retry = home_button(actions,"重新防守",func(): game.restart_coop() if Session.playing else game.start_solo("defense"))
 		retry.selected = true
 		retry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		retry.custom_minimum_size.y = 56
+	else:
+		actions.add_child(label("等待房主重新防守",17,SETTINGS_MUTED))
 	var home = home_button(actions,"返回主菜单",func(): game.return_home())
 	home.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	home.custom_minimum_size.y = 56

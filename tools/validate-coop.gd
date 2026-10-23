@@ -12,6 +12,15 @@ var acknowledgements: Dictionary = {}
 var last_publish = 0
 var host_save_path = ""
 
+func saved_progress_matches(profile) -> bool:
+	var restored = Store.new(host_save_path).data
+	var expected = profile.data.duplicate(true)
+	for field in ["coins","total_coins_earned"]:
+		if not is_equal_approx(float(restored[field]),float(expected[field])): return false
+		restored.erase(field)
+		expected.erase(field)
+	return restored == expected
+
 class SteamFixture:
 	extends RefCounted
 	var sent: Array = []
@@ -62,7 +71,7 @@ func run() -> void:
 	else: await client_test()
 	game.return_home()
 	if not host_save_path.is_empty():
-		check(Store.new(host_save_path).data == root.get_node("Progress").store.data,"Leaving the host room preserves all earned progress on disk")
+		check(saved_progress_matches(root.get_node("Progress").store),"Leaving the host room preserves all earned progress on disk")
 		for suffix in ["",".bak",".tmp"]:
 			if FileAccess.file_exists(host_save_path+suffix): DirAccess.remove_absolute(host_save_path+suffix)
 	game.queue_free()
@@ -71,6 +80,7 @@ func run() -> void:
 	quit(1 if failures else 0)
 
 func publish(phase: String) -> void:
+	game.sim.sync_clock += .1
 	game.sim.defense["qa_phase"] = phase
 	net.send_world(game.sim.snapshot(),[])
 
@@ -141,6 +151,12 @@ func host_test() -> void:
 	var p: Dictionary = sim.pawns[guest]
 	publish("preparation")
 	if not await until(func(): return acknowledgements.has("preparation"),"guest joining during world preparation"): return
+	var initial_position: Vector2 = host.pos
+	sim.submit(host.id,{"x":1.0,"yaw":host.yaw})
+	sim.step(.1)
+	check(host.pos.distance_to(initial_position) > .01 and sim.elapsed == 0,"Host moves before crystal repair while combat elapsed stays frozen")
+	publish("preparation_move")
+	if not await until(func(): return acknowledgements.has("preparation_move"),"preparation movement reaches display buffer"): return
 	check(sim.progression == profile and sim.coop_host == net.host_id,"Authority uses the selected host Store")
 	check(p.hp == 150 and p.ultimate_unlocked and p.grenades == 4 and p.ammo[0] == sim.weapon_capacity(0),"Guests inherit health, grenade and magazine upgrades")
 	check(sim.progression.level("rifle") == 5,"Shared weapon rank follows host")
@@ -162,6 +178,18 @@ func host_test() -> void:
 	p.input = {"ultimate":true}
 	Ultimate.tick(sim,p,p.input,.01)
 	check(Ultimate.active(p) and not Ultimate.active(host),"Ultimate activation is independent per player")
+	host.input = {"ultimate":true}
+	Ultimate.tick(sim,host,host.input,.01)
+	game.sync_partners(sim.pawns,host.id,.016)
+	check(game.partners[guest].ultimate_model and game.partners[guest].held.visible,"Host sees guest ultimate blade in slot three")
+	publish("ultimate")
+	if not await until(func(): return acknowledgements.has("ultimate"),"remote ultimate display"): return
+	host.ultimate_remaining = 0.0
+	host.ultimate_sheathe = 0.0
+	host.erase("ultimate_saved_slot")
+	host.slot = 1
+	host.weapon = 0
+	host.requested = 0
 	p.ultimate_remaining = 0.0
 	p.ultimate_sheathe = 0.0
 	p.erase("ultimate_saved_slot")
@@ -205,12 +233,12 @@ func host_test() -> void:
 	sim.defense_director.launched_waves = {1:true}
 	sim.defense_director.reward_finished_waves()
 	check(profile.data.diamonds == 1 and sim.earned_diamonds == 1,"Wave diamonds belong only to host after one strong purchase")
-	check(profile.save() and Store.new(host_save_path).data == profile.data,"Host rewards persist through actual disk reload")
+	check(profile.save() and saved_progress_matches(profile),"Host rewards persist through actual disk reload")
 	# A dead guest stays dead through a wave start.
 	p.hp = 0
-	sim.defense.wave = 2
-	sim.defense_director.begin_wave()
-	check(p.hp == 0 and not sim.failed,"Wave transition never revives a guest")
+	sim.defense.next_wave_at = sim.elapsed+.1
+	sim.step(.11)
+	check(sim.wave == 2 and p.hp == 0 and not sim.failed and net.playing,"Automatic wave transition retains the room and never revives a guest")
 	# Controlled alive fixture for reconnection preservation, not a gameplay revival.
 	p.hp = 57
 	p.pos = Vector2(8,25)
@@ -258,7 +286,24 @@ func host_test() -> void:
 	sim.step(.01)
 	check(sim.failed,"Host death ends the match even with a living guest")
 	publish("failed")
-	await until(func(): return acknowledgements.has("finished"),"client receives terminal snapshot")
+	if not await until(func(): return acknowledgements.has("finished"),"client receives terminal snapshot"): return
+	game.finish_run()
+	game.ui.show_result()
+	check(game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text == "重新防守"),"Host defeat result offers cooperative retry")
+	var old_nonce: String = net.nonce
+	game.restart_coop()
+	if not await until(func(): return game.running and net.playing and net.nonce != old_nonce,"defeat retry handshake"): return
+	check(not game.finished and not game.sim.failed and game.sim.pawns[net.host_id].hp > 0 and game.sim.pawns[guest].hp > 0 and net.members.size() == 2,"Defeat retry preserves connected room and resets both players")
+	publish("retry")
+	if not await until(func(): return acknowledgements.has("retry"),"client joins next match after host death"): return
+	game.sim.won = true
+	game.finish_run()
+	publish("victory")
+	if not await until(func(): return acknowledgements.has("victory"),"client victory settlement"): return
+	game.restart_coop()
+	if not await until(func(): return game.running and not game.finished and net.playing,"victory retry handshake"): return
+	publish("victory_retry")
+	await until(func(): return acknowledgements.has("victory_retry"),"client joins next match after victory")
 
 func phase(name: String) -> bool:
 	return game.running and game.sim and game.sim.defense.get("qa_phase","") == name
@@ -314,6 +359,23 @@ func client_test() -> void:
 	early.leave()
 	early.queue_free()
 	net.send_input({"qa_ack":"preparation"})
+	if not await until(func(): return phase("preparation_move"),"moving host before crystal repair"): return
+	var shown: Dictionary = game.display_buffer.sample(1)
+	check(game.sim.elapsed == 0 and not game.sim.defense.started and shown.pawns[net.host_id].pos == game.sim.pawns[net.host_id].pos,"Client display receives host movement before crystal repair")
+	net.send_input({"qa_ack":"preparation_move"})
+	if not await until(func(): return phase("ultimate"),"ultimate snapshot"): return
+	game._process(.2)
+	var partner = game.partners[net.host_id]
+	check(partner.ultimate_model and partner.held.visible and partner.axe_pivot != null,"Client sees host ultimate blade with a valid animated grip")
+	var axe: Dictionary = game.sim.pawns[net.host_id].duplicate(true)
+	axe.ultimate_remaining = 0.0
+	axe.ultimate_sheathe = 0.0
+	partner.sync(axe,.016)
+	check(not partner.ultimate_model and partner.held.visible,"Slot three restores the ordinary axe after ultimate")
+	axe.slot = 4
+	partner.sync(axe,.016)
+	check(not partner.held.visible and partner.equipment_prop.visible,"Grenade slot displays its prop without a null reference")
+	net.send_input({"qa_ack":"ultimate"})
 	if not await until(func(): return phase("alive"),"first host snapshot"): return
 	var original_id = net.local_id
 	var p = game.local_pawn()
@@ -352,6 +414,15 @@ func client_test() -> void:
 	check(game.ui.menu.find_child("EarnedCoins",true,false).text == "+0" and game.ui.menu.find_child("EarnedDiamonds",true,false).text == "+0","Guest result UI shows zero personal coin and diamond earnings")
 	check(personal.data == before and FileAccess.get_file_as_bytes(secret_path) == bytes_before,"Client local progress is byte-for-byte unchanged across joins, rewards, disconnects and defeat")
 	net.send_input({"qa_ack":"finished"})
+	if not await until(func(): return phase("retry") and not game.finished,"next match after defeat"): return
+	check(net.local_id == original_id and game.local_pawn().hp == 150 and not game.sim.defense.started and not game.awaiting_coop_snapshot,"Client remains in room and revives for a new match after host death")
+	net.send_input({"qa_ack":"retry"})
+	if not await until(func(): return phase("victory") and game.finished,"victory result"): return
+	check(net.active and net.playing and game.sim.won,"Victory retains the connected room")
+	net.send_input({"qa_ack":"victory"})
+	if not await until(func(): return phase("victory_retry") and not game.finished,"next match after victory"): return
+	check(not game.sim.won and game.local_pawn().hp == 150 and personal.data == before,"Victory retry resets combat while preserving guest progress")
+	net.send_input({"qa_ack":"victory_retry"})
 	await create_timer(.2).timeout
 	game.return_home()
 	game.start_solo()

@@ -776,9 +776,11 @@ func run() -> void:
 	session.playing = true
 	var world: Dictionary = game.sim.snapshot()
 	world.elapsed = 2.0
+	world.sync_clock = 2.0
 	session.world_received.emit(world)
 	world = world.duplicate(true)
 	world.elapsed = 2.1
+	world.sync_clock = 2.1
 	world.zombies[0].pos.x += 1
 	session.world_received.emit(world)
 	game.display_buffer.clock = 2.05

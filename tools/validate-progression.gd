@@ -392,7 +392,7 @@ func run() -> void:
 	check(preload("res://scripts/preparation_catalog.gd").description(sim,"rifle_magazine").begins_with("LV MAX") and not preload("res://scripts/preparation_catalog.gd").available(sim,"rifle_magazine"),"Maximum magazine level displays LV MAX and disables the interaction")
 	validate_instinct(sim,p)
 	game.return_home()
-	check(not game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text == "多人游戏"),"Demo homepage exposes single player only")
+	check(game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text == "多人合作"),"Homepage exposes cooperative play")
 	game.queue_free()
 	print("INCREMENTAL PROGRESSION: %d checks; %d failures" % [checks,failures])
 	quit(1 if failures else 0)

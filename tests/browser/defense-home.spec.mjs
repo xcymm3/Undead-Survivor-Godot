@@ -8,7 +8,7 @@ test('主页只提供普通难度水晶防线，可直接单人游戏', async ({
   await page.waitForFunction(() => window.__survivorSnapshot?.menu === 'home', null, { timeout: 90_000 });
   const home = await page.evaluate(() => window.__survivorSnapshot);
   expect(home.map_id).toBe('graypine_defense');
-  expect(home.buttons.some(button => button.text === '多人游戏')).toBe(false);
+  expect(home.buttons.some(button => button.text === '多人合作' && !button.disabled)).toBe(true);
   expect(home.buttons.some(button => /无限金币|测试金币/.test(button.text))).toBe(false);
   expect(home.buttons.some(button => /灰松夜路|保卫水晶/.test(button.text))).toBe(false);
   for (const difficulty of ['简单', '普通', '困难']) {

@@ -10,22 +10,24 @@ func clear() -> void:
 	clock = 0.0
 
 func push(state: Dictionary) -> void:
-	if not history.is_empty() and state.elapsed <= history[-1].elapsed: return
-	var frame = {"elapsed":state.elapsed,"pawns":state.pawns.duplicate(true),"zombies":state.zombies.duplicate(true)}
-	if history.is_empty(): clock = state.elapsed-DELAY
+	# Combat elapsed is frozen during preparation; transport time still advances.
+	var time: float = state.get("sync_clock",state.elapsed)
+	if not history.is_empty() and time <= history[-1].time: return
+	var frame = {"time":time,"elapsed":state.elapsed,"pawns":state.pawns.duplicate(true),"zombies":state.zombies.duplicate(true)}
+	if history.is_empty(): clock = time-DELAY
 	history.append(frame)
 	while history.size() > MAX_HISTORY: history.pop_front()
 	# Recover after a long stall instead of replaying obsolete movement.
-	if state.elapsed-clock > .4: clock = state.elapsed-DELAY
+	if time-clock > .4: clock = time-DELAY
 
 func sample(dt: float) -> Dictionary:
 	if history.is_empty(): return {}
-	clock = minf(clock+dt,history[-1].elapsed)
-	while history.size() > 2 and history[1].elapsed <= clock: history.pop_front()
+	clock = minf(clock+dt,history[-1].time)
+	while history.size() > 2 and history[1].time <= clock: history.pop_front()
 	var a: Dictionary = history[0]
-	if history.size() == 1 or clock <= a.elapsed: return a
+	if history.size() == 1 or clock <= a.time: return a
 	var b: Dictionary = history[1]
-	var weight = clampf((clock-a.elapsed)/(b.elapsed-a.elapsed),0,1)
+	var weight = clampf((clock-a.time)/(b.time-a.time),0,1)
 	var players = {}
 	for id in a.pawns:
 		players[id] = blend(a.pawns[id],b.pawns.get(id,a.pawns[id]),weight,true)

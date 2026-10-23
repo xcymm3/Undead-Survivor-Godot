@@ -123,7 +123,7 @@ func sync(p: Dictionary, dt: float, buffered := false) -> void:
 		if item_slot == 4:
 			equipment_prop = preload("res://scripts/equipment_props.gd").model(item_slot)
 			add_child(equipment_prop)
-	if item_slot == 3:
+	if item_slot == 4 and equipment_prop:
 		held.visible = false
 		flash.visible = false
 		equipment_prop.visible = p.hp > 0

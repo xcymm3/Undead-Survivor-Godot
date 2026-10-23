@@ -10,7 +10,7 @@ signal member_left(id: String)
 signal member_rejoined(id: String)
 signal invite_received
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-24"
+const PROTOCOL = "undead-survivor-godot-25"
 const PORT = 27777
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"
@@ -344,11 +344,21 @@ func begin_match() -> void:
 	if transport == "steam": steam.setLobbyData(lobby,"playing","1")
 	loading_started = Time.get_ticks_msec()
 	ready_members.clear()
+	var previous_nonce = nonce
 	nonce = str(Time.get_unix_time_from_system())+"-"+str(randi())
 	status = "正在加载战场，等待所有队员准备完成…"
-	broadcast({"type":"prepare","members":members,"nonce":nonce,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
+	broadcast({"type":"prepare","members":members,"nonce":nonce,"previous_nonce":previous_nonce,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
 	map_preparing.emit()
 	changed.emit()
+
+func restart_match(connected: Dictionary) -> void:
+	if not is_host() or not playing or loading or not connected.has(host_id) or connected.size() < 2: return
+	members = connected.duplicate()
+	input_sequences.clear()
+	received_edges.clear()
+	pending_resumes.clear()
+	playing = false
+	begin_match()
 
 func confirm_map_ready() -> void:
 	if not active or not loading: return
@@ -536,12 +546,15 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 	if sender == host_id: last_host = Time.get_ticks_msec()/1000.0
 	match packet.get("type"):
 		"prepare":
-			if sender == host_id and not playing and packet.get("members") is Dictionary and packet.members.size() in [2,3,4] and packet.get("nonce") is String and Data.Maps.valid(packet.get("map_id")) and packet.get("defense_difficulty") in DefensePopulation.DIFFICULTIES:
+			if sender == host_id and (not playing or (packet.get("previous_nonce") == nonce and packet.get("nonce") != nonce and not packet.get("resume",false))) and packet.get("members") is Dictionary and packet.members.size() in [2,3,4] and packet.get("nonce") is String and Data.Maps.valid(packet.get("map_id")) and packet.get("defense_difficulty") in DefensePopulation.DIFFICULTIES:
 				map_id = packet.map_id
 				defense_difficulty = packet.defense_difficulty
 				nonce = packet.nonce
 				members = packet.members
 				reconnecting = packet.get("resume",false) == true
+				playing = false
+				send_sequence = 0
+				for action in sent_edges: sent_edges[action] = 0
 				receive_sequence = -1
 				loading = true
 				loading_started = Time.get_ticks_msec()
@@ -599,6 +612,7 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 
 func valid_world(value) -> bool:
 	if not value is Dictionary or value.get("map_id") != map_id: return false
+	if not (value.get("sync_clock",0.0) is float or value.get("sync_clock",0.0) is int) or not is_finite(float(value.get("sync_clock",0.0))) or value.get("sync_clock",0.0) < 0: return false
 	var shared = value.get("shared_progression")
 	var Store = preload("res://scripts/progression_store.gd")
 	if not Store.valid(shared) or shared.version != Store.SAVE_VERSION or shared.coins != 0 or shared.diamonds != 0: return false
