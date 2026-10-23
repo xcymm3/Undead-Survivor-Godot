@@ -216,13 +216,14 @@ func render() -> void:
 	if in_room and room.exhibits.has(focus):
 		var item: Dictionary = room.exhibits[focus].item
 		var ultimate = preload("res://scripts/ultimate.gd")
-		var rows: Array = [["伤害",str(ultimate.DAMAGE[0]) if item.available else "--","--"],["持续时间",str(int(ultimate.DURATION))+"秒" if item.available else "--","--"],["冷却时间",str(int(ultimate.COOLDOWN))+"秒" if item.available else "--","--"]]
-		dossier = {"title":item.label,"level":"LV--","rows":rows,"note":notice if notice_time > 0 else "长按 %s 确认选择" % Data.binding_label("interact") if item.available else "Demo版不可用"}
+		var damage = {"blade":ultimate.DAMAGE[0],"rocket_launcher":600,"crimson_scepter":720}[focus]
+		var rows: Array = [["伤害","--",str(damage)],["持续时间","--",str(int(ultimate.DURATION))+"秒"],["冷却时间","--",str(int(ultimate.COOLDOWN))+"秒"]]
+		dossier = {"title":item.label,"level":"LV0","rows":rows,"note":notice if notice_time > 0 else "长按 %s 确认选择" % Data.binding_label("interact") if item.available else "Demo版不可用"}
 	detail.sync(dossier)
 	station_prompt.visible = in_room and not focus.is_empty()
 	if station_prompt.visible:
 		var at: Vector3 = room.exhibits[focus].root.position+Vector3(0,.45,0)
-		station_prompt.sync(at,game.camera.global_position,game.camera,room.exhibits[focus].item.label+"\n--","--",preload("res://scripts/currency_art.gd").coin(),hold_time/HOLD_SECONDS,focus == "blade","ready" if focus == "blade" else "disabled")
+		station_prompt.sync(at,game.camera.global_position,game.camera,room.exhibits[focus].item.label+"\n0","0",preload("res://scripts/currency_art.gd").coin(),hold_time/HOLD_SECONDS,focus == "blade","ready" if focus == "blade" else "disabled")
 	var alpha = 1.0
 	if phase == "reveal": alpha = 1.0-clampf(elapsed/.9,0,1)
 	elif phase == "room": alpha = 0.0
