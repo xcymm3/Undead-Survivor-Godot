@@ -61,6 +61,7 @@ func run() -> void:
 	check(not entry.choose("blade"),"Blade cannot be selected from outside its interaction range")
 	for id in ["rocket_launcher","crimson_scepter"]:
 		face(entry,-8 if id == "rocket_launcher" else 8)
+		check(entry.detail.details.level == "LV--" and entry.detail.details.rows[0] == ["伤害","--","--"],"Unavailable weapon uses placeholder rank and stats: "+id)
 		check(entry.focus == id,"Proximity and gaze identify exhibit: "+id)
 		entry.step(.016,{"movement":Vector2.ZERO,"interact":true})
 		check(entry.phase == "room" and progress.store.needs_ultimate_choice() and entry.notice == "Demo版不可用" and game.sim == null,"Unavailable weapon cannot persist or leave the room: "+id)
@@ -71,7 +72,11 @@ func run() -> void:
 	for tick in 120: entry.step(1.0/60,{"movement":Vector2(1,0),"interact":false})
 	check(entry.room.player.position.x < 11.6,"Room side wall contains the native player capsule")
 	face(entry,0)
-	check(entry.detail.visible and entry.detail.details.selection and entry.detail.details.rows[0] == ["伤害","200"],"Blade uses the left upgrade dossier with its real base damage")
+	check(entry.detail.visible and entry.detail.details.level == "LV--" and entry.detail.details.rows[0] == ["伤害","200","--"],"Blade uses the left upgrade dossier with its real base damage")
+	check(entry.station_prompt.get_script() == game.arena.scenery.preparation.station_prompt.get_script() and entry.station_prompt.focus_label.text == "长刀\n--" and entry.station_prompt.price_icon.visible,"Selection directly reuses shop keycap, price icon and placeholder prompt")
+	for id in entry.room.exhibits:
+		var desk = entry.room.exhibits[id].root.get_child(0)
+		check(desk.get_script() == preload("res://scripts/upgrade_station_base.gd") and desk.has_node("StationDesk"),"Weapon sits on the shared solid shop desk: "+id)
 	check(not entry.choose("blade"),"Direct selection cannot bypass the required hold duration")
 	entry.step(.45,{"movement":Vector2.ZERO,"interact":true})
 	entry.render()

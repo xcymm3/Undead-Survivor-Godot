@@ -15,6 +15,7 @@ var focus = ""
 var notice = ""
 var notice_time = 0.0
 var hold_time = 0.0
+var station_prompt: Node3D
 var interaction_ring: Node3D
 var interact_latch = false
 var interact_pending = false
@@ -35,9 +36,10 @@ func _ready() -> void:
 	old_fov = game.camera.fov
 	room = Room.instantiate()
 	add_child(room)
-	interaction_ring = preload("res://scripts/interaction_ring.gd").new()
-	room.add_child(interaction_ring)
-	interaction_ring.hide()
+	station_prompt = preload("res://scripts/upgrade_station_prompt.gd").new()
+	room.add_child(station_prompt)
+	interaction_ring = station_prompt.ring
+	station_prompt.hide()
 	game.arena.hide()
 	game.get_viewport().world_3d.environment = room.room_environment
 	game.weapon.hide()
@@ -213,13 +215,14 @@ func render() -> void:
 	var dossier: Dictionary = {}
 	if in_room and room.exhibits.has(focus):
 		var item: Dictionary = room.exhibits[focus].item
-		var rows: Array = [["伤害",str(preload("res://scripts/ultimate.gd").DAMAGE[0])],["攻击方式","近战劈砍"]] if item.available else []
-		dossier = {"selection":true,"title":item.label,"level":"终极武器 · 长刀" if item.available else "终极武器 · Demo版不可用","rows":rows,"note":notice if notice_time > 0 else "长按 %s 确认选择" % Data.binding_label("interact") if item.available else "Demo版不可用"}
+		var ultimate = preload("res://scripts/ultimate.gd")
+		var rows: Array = [["伤害",str(ultimate.DAMAGE[0]) if item.available else "--","--"],["持续时间",str(int(ultimate.DURATION))+"秒" if item.available else "--","--"],["冷却时间",str(int(ultimate.COOLDOWN))+"秒" if item.available else "--","--"]]
+		dossier = {"title":item.label,"level":"LV--","rows":rows,"note":notice if notice_time > 0 else "长按 %s 确认选择" % Data.binding_label("interact") if item.available else "Demo版不可用"}
 	detail.sync(dossier)
-	interaction_ring.visible = in_room and not focus.is_empty()
-	if interaction_ring.visible:
-		interaction_ring.position = room.exhibits[focus].root.position+Vector3(0,1.5,.9)
-		interaction_ring.sync(hold_time/HOLD_SECONDS,game.camera.global_position,focus == "blade","ready" if focus == "blade" else "disabled")
+	station_prompt.visible = in_room and not focus.is_empty()
+	if station_prompt.visible:
+		var at: Vector3 = room.exhibits[focus].root.position+Vector3(0,.45,0)
+		station_prompt.sync(at,game.camera.global_position,game.camera,room.exhibits[focus].item.label+"\n--","--",preload("res://scripts/currency_art.gd").coin(),hold_time/HOLD_SECONDS,focus == "blade","ready" if focus == "blade" else "disabled")
 	var alpha = 1.0
 	if phase == "reveal": alpha = 1.0-clampf(elapsed/.9,0,1)
 	elif phase == "room": alpha = 0.0

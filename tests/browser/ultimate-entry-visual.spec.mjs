@@ -13,6 +13,7 @@ test('新存档序章、三色终极武器展厅与选择后进入商店GIF', as
   await page.goto('/?campaignReview=ultimate_entry');
   await page.waitForFunction(() => Boolean(window.__campaignReviewReady), null, { timeout: 90_000 });
   const ready = await page.evaluate(() => window.__campaignReviewReady);
+  const stills = process.env.QA_ENTRY_STILLS === '1';
   const states = [];
   // Actual browser input, never teleporting the player or setting the camera.
   const held = new Set();
@@ -41,7 +42,9 @@ test('新存档序章、三色终极武器展厅与选择后进入商店GIF', as
     await page.evaluate(index => window.__drawUltimateEntry(index), frame);
     await page.waitForFunction(index => window.__entryFrame === index, frame);
     states.push(await page.evaluate(() => window.__entryState));
-    await page.screenshot({ path: path.join(directory, `frame-${String(frame).padStart(3, '0')}.png`) });
+    if (!stills) await page.screenshot({ path: path.join(directory, `frame-${String(frame).padStart(3, '0')}.png`) });
+    const weapon = { 110: 'rocket-launcher', 198: 'crimson-scepter', 255: 'long-blade' }[frame];
+    if (weapon) await page.screenshot({ path: path.join(directory, `${weapon}.png`) });
   }
   await writeFile(path.join(directory, 'timing.json'), JSON.stringify({ ...ready, commit: process.env.GITHUB_SHA, inputs, states }, null, 2));
   expect(states.slice(0, 70).every(state => state.phase === 'intro' && !state.sim_started)).toBe(true);
@@ -53,7 +56,11 @@ test('新存档序章、三色终极武器展厅与选择后进入商店GIF', as
   expect(states[255].hold_progress).toBeGreaterThan(.4);
   expect(states[255].phase).toBe('room');
   expect(states[260].choice).toBe('blade');
-  expect(states[244].detail.rows[0]).toEqual(['伤害', '200']);
+  for (const frame of [110, 198, 244]) {
+    expect(states[frame].detail.level).toBe('LV--');
+    expect(states[frame].detail.rows.every(row => row[2] === '--')).toBe(true);
+  }
+  expect(states[244].detail.rows[0]).toEqual(['伤害', '200', '--']);
   expect(Math.abs(states[115].yaw - states[111].yaw)).toBeGreaterThan(.02);
   for (let index = 81; index < 260; index++) {
     expect(Math.hypot(states[index].x - states[index - 1].x, states[index].z - states[index - 1].z)).toBeLessThanOrEqual(.451);

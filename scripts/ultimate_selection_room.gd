@@ -158,26 +158,23 @@ func build_exhibit(item: Dictionary) -> void:
 	base.position = Vector3(item.x,0,-3.0)
 	add_child(base)
 	var color: String = item.color
-	g.solid(base,"Pedestal",Vector3(0,.50,0),Vector3(1.55,1.0,1.55),"273346" if item.available else "26202f")
-	g.cylinder(base,"ExhibitCrown",Vector3(0,1.04,0),.97,.12,"59677a",-1,0,.5,8)
-	g.ring(base,"PedestalLight",Vector3(0,1.12,0),.82,.025,color,1.5)
+	base.add_child(preload("res://scripts/upgrade_station_base.gd").new())
+	var display = Node3D.new()
+	base.add_child(display)
+	display.position.y = -.16
 	var model = Weapons.create("ultimate" if item.id == "blade" else str(item.id))
 	model.name = "DisplayWeapon"
-	base.add_child(model)
+	display.add_child(model)
 	if item.id == "rocket_launcher":
 		model.position = Vector3(0,1.91,0)
 		model.rotation = Vector3(.08,PI-.55,.03)
-		for z in [-.53,.53]: g.rod(base,"LauncherSupport",Vector3(0,1.1,z),Vector3(0,1.72,z),.05,"8699ab",0,.6)
+		for z in [-.53,.53]: g.rod(display,"LauncherSupport",Vector3(0,1.1,z),Vector3(0,1.72,z),.05,"8699ab",0,.6)
 	elif item.id == "blade":
 		model.position = Vector3(0,1.68,0)
 		model.scale = Vector3.ONE*1.35
-		for x in [-.32,.32]: g.rod(base,"SwordStand",Vector3(x,1.1,-.12),Vector3(x,1.7,-.12),.035,"b6a377",0,.5)
+		for x in [-.32,.32]: g.rod(display,"SwordStand",Vector3(x,1.1,-.12),Vector3(x,1.7,-.12),.035,"b6a377",0,.5)
 	else: model.position = Vector3(0,2.03,0)
-	g.label(base,"WeaponName",str(item.label),Vector3(0,.72,.805),"edf4ff",52,.0044)
-	g.label(base,"Availability","可选择" if item.available else "Demo版不可用",Vector3(0,.32,.815),color,36,.0038)
-	var focus_ring = g.ring(base,"FocusRing",Vector3(0,.10,0),1.15,.035,color,1.6)
-	focus_ring.visible = false
-	exhibits[item.id] = {"root":base,"weapon":model,"ring":focus_ring,"item":item}
+	exhibits[item.id] = {"root":base,"weapon":model,"item":item}
 
 func focused(yaw: float, pitch: float) -> String:
 	var eye: Vector3 = player.position+Vector3.UP*1.7
@@ -193,9 +190,5 @@ func focused(yaw: float, pitch: float) -> String:
 
 func animate(dt: float, focus: String) -> void:
 	clock += dt
-	for id in exhibits:
-		var exhibit: Dictionary = exhibits[id]
-		exhibit.ring.visible = id == focus
-		if id == focus: exhibit.ring.scale = Vector3.ONE*(1+.025*sin(clock*3))
 	var blade = exhibits.blade.weapon.get_node("UltimateGrip/UltimateLongBlade")
 	blade.sync_energy(true,clock)

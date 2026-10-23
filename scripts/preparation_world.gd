@@ -5,6 +5,7 @@ var stations: Dictionary = {}
 var blueprints: Dictionary = {}
 var price_icon: Sprite3D
 var focus_label: Label3D
+var station_prompt: Node3D
 var interaction_ring: Node3D
 var money_flights
 
@@ -19,31 +20,11 @@ func _ready() -> void:
 		var chest = block("Toolbox",marker.position+Vector3(0,.32,0),Vector3(.78,.38,.48),"b2873e",false)
 		var stripe = block("ToolboxStripe",marker.position+Vector3(0,.52,0),Vector3(.8,.04,.13),"ebc66b",false)
 		blueprints[item.id] = [base,chest,stripe]
-	focus_label = Label3D.new()
-	focus_label.name = "FocusedInformation"
-	focus_label.font = preload("res://scripts/upgrade_art.gd").font()
-	focus_label.font_size = 38
-	focus_label.pixel_size = .0026
-	focus_label.outline_size = 12
-	focus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	focus_label.modulate = Color("fff0ca")
-	focus_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	# Visibility is gated by the authority's scenery ray; the owner's mesh must
-	# not hide its own contextual text (notably the tall crystal).
-	focus_label.no_depth_test = true
-	focus_label.visible = false
-	add_child(focus_label)
-	price_icon = Sprite3D.new()
-	price_icon.name = "UpgradeCurrencyIcon"
-	price_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	price_icon.no_depth_test = true
-	price_icon.pixel_size = .00055
-	price_icon.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	price_icon.hide()
-	add_child(price_icon)
-	interaction_ring = preload("res://scripts/interaction_ring.gd").new()
-	add_child(interaction_ring)
-	interaction_ring.hide()
+	station_prompt = preload("res://scripts/upgrade_station_prompt.gd").new()
+	add_child(station_prompt)
+	focus_label = station_prompt.focus_label
+	price_icon = station_prompt.price_icon
+	interaction_ring = station_prompt.ring
 	money_flights = preload("res://scripts/coin_view.gd").new()
 	add_child(money_flights)
 
@@ -53,15 +34,9 @@ func build_station(entry: Dictionary) -> void:
 	root.name = "Station_"+entry.id
 	add_child(root)
 	root.position = Vector3(p.x,3,p.z)
-	var before = get_children()
-	block("StationFoot",Vector3(p.x,3.13,p.z),Vector3(2.2,.26,1.5),"303c3b",false)
-	block("StationDesk",Vector3(p.x,3.52,p.z),Vector3(1.9,.65,1.25),"66513b",true,false)
-	# Enemies can enter the shop; only actual solid furniture blocks their route.
+	root.add_child(preload("res://scripts/upgrade_station_base.gd").new())
+	# Keep the same navigation obstacle as the original solid desk.
 	get_parent().obstacles.append({"minX":p.x-.95,"maxX":p.x+.95,"minZ":p.z-.625,"maxZ":p.z+.625})
-	block("StationTop",Vector3(p.x,3.89,p.z),Vector3(2.12,.1,1.4),"b5a581",false)
-	block("StationTrim",Vector3(p.x,3.95,p.z+.67),Vector3(2.12,.06,.07),"d1b060",false)
-	for child in get_children():
-		if child not in before: child.reparent(root)
 	var prop = Node3D.new()
 	prop.name = "DisplayObject"
 	root.add_child(prop)
@@ -204,6 +179,7 @@ func sync_focus(sim, p: Dictionary) -> void:
 	var shop = get_parent().shop
 	if shop and shop.owner_model:
 		shop.owner_model.get_node("OwnerName").visible = choice.get("id","") != "shopkeeper" and not preload("res://scripts/onboarding.gd").talking(sim.defense)
+	station_prompt.visible = not choice.is_empty()
 	interaction_ring.visible = not choice.is_empty()
 	var drops: Array = []
 	if interaction_ring.visible:
@@ -214,7 +190,10 @@ func sync_focus(sim, p: Dictionary) -> void:
 		var eye = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)
 		var status = "ready" if enabled else "maxed" if price < 0 else "error"
 		if time <= 0.0 and p.get("work_feedback_id","") == choice.id and p.get("work_feedback_until",0.0) > sim.defense.prop_clock and p.get("work_feedback","") == "完成": status = "complete"
-		interaction_ring.sync(time/Catalog.HOLD_SECONDS,eye,enabled,status)
+		var currency: Texture2D
+		if choice.id not in ["crystal","shopkeeper"] and price >= 0:
+			currency = preload("res://scripts/currency_art.gd").diamond() if sim.progression.currency(choice.id) == "diamonds" else preload("res://scripts/currency_art.gd").coin()
+		station_prompt.sync(interaction_ring.position,eye,get_viewport().get_camera_3d(),Catalog.prompt_description(sim,choice.id),str(price),currency,time/Catalog.HOLD_SECONDS,enabled,status)
 		if enabled and price > 0:
 			var from = Vector3(p.pos.x,p.height+.8,p.pos.y)
 			var interval = Catalog.payment_interval(price)
@@ -238,18 +217,5 @@ func sync_focus(sim, p: Dictionary) -> void:
 			var point = source.lerp(destination,smoothstep(0,1,progress))+Vector3.UP*sin(progress*PI)*.6
 			drops.append({"pos":point,"age":age,"value":1,"scale":.25,"arrival":maxf(0,(progress-.8)*5)})
 	money_flights.sync(drops)
-	price_icon.hide()
 	focus_label.visible = not choice.is_empty()
-	if choice.is_empty(): return
-	var text = Catalog.prompt_description(sim,choice.id)
-	focus_label.text = text
-	var right: Vector3 = get_viewport().get_camera_3d().global_basis.x
-	focus_label.position = interaction_ring.position+right*.24+Vector3(0,.04,0)
-
-	if choice.id not in ["crystal","shopkeeper"] and sim.progression.cost(choice.id) >= 0:
-		price_icon.texture = preload("res://scripts/currency_art.gd").diamond() if sim.progression.currency(choice.id) == "diamonds" else preload("res://scripts/currency_art.gd").coin()
-		var camera = get_viewport().get_camera_3d()
-		var width: float = focus_label.font.get_string_size(str(sim.progression.cost(choice.id)),HORIZONTAL_ALIGNMENT_LEFT,-1,focus_label.font_size).x*focus_label.pixel_size
-		var line_height: float = focus_label.font.get_height(focus_label.font_size)*focus_label.pixel_size
-		price_icon.position = focus_label.position+right*(width+.085)-camera.global_basis.y*line_height*.5
-		price_icon.show()
+	if choice.is_empty(): price_icon.hide()
