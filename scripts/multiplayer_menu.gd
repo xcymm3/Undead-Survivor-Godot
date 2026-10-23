@@ -255,7 +255,7 @@ func act(index: int) -> void:
 		return
 	if Session.active:
 		if index == 0:
-			if not preview: Session.begin_match()
+			if not preview: ui.game.begin_coop()
 		elif index == 1:
 			if Session.transport == "steam":
 				if not preview: Session.invite_friends()

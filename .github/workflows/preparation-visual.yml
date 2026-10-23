@@ -6,7 +6,7 @@ on:
         type: choice
         description: 截图范围
         default: all
-        options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, map_toys, ultimate_ring, dialogs, shop_hud, demo_endings, save_slots, coop_gifs]
+        options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, map_toys, ultimate_ring, dialogs, shop_hud, demo_endings, save_slots, coop_gifs, ultimate_entry]
       coop_scenarios:
         type: string
         description: '合作GIF场景：all 或逗号分隔的场景名'
@@ -91,6 +91,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Pillow install failed' }
           python tools/encode-coop-gifs.py
           if ($LASTEXITCODE -ne 0) { throw 'Coop GIF encoding failed' }
+      - name: 终极武器独立序章房间GIF
+        if: inputs.scope == 'ultimate_entry'
+        run: |
+          npx playwright test tests/browser/ultimate-entry-visual.spec.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Ultimate entry capture failed' }
+          python -m pip install Pillow==11.3.0
+          if ($LASTEXITCODE -ne 0) { throw 'Pillow install failed' }
+          python tools/encode-entry-gif.py
+          if ($LASTEXITCODE -ne 0) { throw 'Ultimate entry GIF encoding failed' }
       - name: 紧凑存档弹窗截图
         if: inputs.scope == 'save_slots'
         run: npx playwright test tests/browser/save-slots-visual.spec.mjs
@@ -101,7 +110,7 @@ jobs:
         if: inputs.scope == 'dialogs'
         run: npx playwright test tests/browser/dialogs-visual.spec.mjs
       - run: npx playwright test tests/browser/campaign-review.spec.mjs tests/browser/defense.spec.mjs
-        if: inputs.scope != 'noon' && inputs.scope != 'axe_gif' && inputs.scope != 'map_toys' && inputs.scope != 'ultimate_ring' && inputs.scope != 'dialogs' && inputs.scope != 'shop_hud' && inputs.scope != 'demo_endings' && inputs.scope != 'save_slots' && inputs.scope != 'coop_gifs'
+        if: inputs.scope != 'noon' && inputs.scope != 'axe_gif' && inputs.scope != 'map_toys' && inputs.scope != 'ultimate_ring' && inputs.scope != 'dialogs' && inputs.scope != 'shop_hud' && inputs.scope != 'demo_endings' && inputs.scope != 'save_slots' && inputs.scope != 'coop_gifs' && inputs.scope != 'ultimate_entry'
         env:
           QA_BLADE_ATTACK_ONLY: ${{ inputs.scope == 'blade_attack' && '1' || '' }}
           QA_SHIELD_BLADE_ONLY: ${{ inputs.scope == 'shield_blade' && '1' || '' }}

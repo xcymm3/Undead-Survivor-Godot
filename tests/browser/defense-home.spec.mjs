@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { finishEntry } from './finish-entry.mjs';
 
 test('主页只提供普通难度水晶防线，可直接单人游戏', async ({ page }) => {
   const errors = [];
@@ -19,7 +20,7 @@ test('主页只提供普通难度水晶防线，可直接单人游戏', async ({
   const canvas = await page.locator('canvas').boundingBox();
   await page.mouse.click(canvas.x + (button.x + button.width / 2) * canvas.width / 1440,
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
-  await page.waitForFunction(() => window.__survivorSnapshot?.running);
+  await finishEntry(page);
   const game = await page.evaluate(() => window.__survivorSnapshot);
   expect(game.mode).toBe('defense');
   expect(game.defense.waiting).toBe(true);

@@ -45,6 +45,7 @@ var display_buffer = preload("res://scripts/snapshot_buffer.gd").new()
 var pixelation: ColorRect
 var coins
 var awaiting_coop_snapshot = false
+var entry_sequence
 
 func _ready() -> void:
 	RenderingServer.render_loop_enabled = focused and not software_qa()
@@ -138,7 +139,42 @@ func _ready() -> void:
 		observer.game = self
 		add_child(observer)
 
+func begin_game() -> void:
+	if Progress.store.needs_ultimate_choice():
+		Session.leave()
+		begin_entry_sequence(func(): start_solo("defense"))
+	else: start_solo("defense")
+
+func begin_coop() -> void:
+	if not Session.is_host() or Session.members.size() < 2: return
+	if Progress.store.needs_ultimate_choice(): begin_entry_sequence(complete_coop_entry)
+	else: Session.begin_match()
+
+func complete_coop_entry() -> void:
+	if Session.is_host() and Session.members.size() >= 2: Session.begin_match()
+	else:
+		running = false
+		ui.show_multiplayer()
+
+func begin_entry_sequence(continuation: Callable) -> void:
+	cancel_entry_sequence()
+	Progress.store.save()
+	reset_game()
+	sim = null
+	ui.clear_menu()
+	ui.current = "ultimate_choice"
+	entry_sequence = preload("res://scripts/ultimate_entry.gd").new()
+	entry_sequence.game = self
+	entry_sequence.continuation = continuation
+	add_child(entry_sequence)
+
+func cancel_entry_sequence() -> void:
+	if not entry_sequence: return
+	entry_sequence.cancel()
+	entry_sequence = null
+
 func start_solo(mode: String = "defense", random_seed := -1) -> void:
+	if entry_sequence and not entry_sequence.handing_over: cancel_entry_sequence()
 	Progress.store.save()
 	Session.leave()
 	reset_game()
@@ -247,7 +283,7 @@ func cycle_spectator() -> void:
 	spectating = living[index].id
 
 func input_state() -> Dictionary:
-	var enabled = running and not paused and focused and not finished and (not sim or not preload("res://scripts/onboarding.gd").blocked(sim.defense)) and (local_pawn().is_empty() or local_pawn().hp > 0)
+	var enabled = running and not entry_sequence and not paused and focused and not finished and (not sim or not preload("res://scripts/onboarding.gd").blocked(sim.defense)) and (local_pawn().is_empty() or local_pawn().hp > 0)
 	var local: Dictionary = local_pawn() if sim else {}
 	if not local.is_empty() and not Data.ads_enabled(Data.weapons[int(local.weapon)]): aim_held = false
 	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"crouch":enabled and Input.is_action_pressed("crouch"),"sprint":enabled and Input.is_action_pressed("sprint"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"fire_pressed":enabled and fire_pending,"aim":enabled and aim_held,"shove":enabled and shove_pending,"ultimate":enabled and ultimate_pending}
@@ -264,6 +300,9 @@ func input_state() -> Dictionary:
 	return command
 
 func _physics_process(dt: float) -> void:
+	if entry_sequence:
+		entry_sequence.step(dt)
+		if entry_sequence and entry_sequence.blocks_world(): return
 	if "--auto-start" in OS.get_cmdline_user_args() and Session.is_host() and not Session.playing and Session.members.size() >= 2: Session.begin_match()
 	if not running or not sim or finished: return
 	if paused and not Session.playing: return
@@ -285,6 +324,11 @@ func _physics_process(dt: float) -> void:
 	if sim.failed or sim.won: finish_run()
 
 func _process(dt: float) -> void:
+	if entry_sequence:
+		entry_sequence.render()
+		if entry_sequence.blocks_world():
+			qa_draw(dt)
+			return
 	sound.sync_work(local_pawn() if sim else {},running and not paused and focused and not finished)
 	sound.sync_weapon_actions(local_pawn() if sim else {},running and not paused and focused and not finished)
 	if not focused: return
@@ -565,6 +609,7 @@ func resume_game() -> void:
 	sound.set_playing(true)
 
 func return_home() -> void:
+	cancel_entry_sequence()
 	screen_shake.clear()
 	if Progress.store: Progress.store.save()
 	display_buffer.clear()
@@ -639,6 +684,7 @@ func _input(event: InputEvent) -> void:
 	if ui and ui.capture_binding(event):
 		get_viewport().set_input_as_handled()
 		return
+	if entry_sequence: return
 	if event.is_action_released("fire"): fire_held = false
 	if event.is_action_released("aim") and Data.settings.ads_mode == "hold": aim_held = false
 	if not running or paused or finished or not focused: return
@@ -672,6 +718,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			Data.toggle_fullscreen()
 			Data.save()
 	if not running or paused or finished: return
+	if entry_sequence:
+		if event is InputEventMouseMotion and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Data.automation): entry_sequence.look(event.screen_relative)
+		return
 	if sim and preload("res://scripts/onboarding.gd").blocked(sim.defense): return
 	if event is InputEventMouseMotion and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Data.automation):
 		var sensitivity: float = Data.settings.sensitivity*tan(deg_to_rad(camera.fov)/2)/tan(deg_to_rad(61)/2)

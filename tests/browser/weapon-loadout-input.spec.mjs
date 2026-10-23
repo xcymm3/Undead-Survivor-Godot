@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { finishEntry } from './finish-entry.mjs';
 
 test('real input fires cancels and completes second-weapon reload', async ({ page }, info) => {
   const errors = [];
@@ -12,8 +13,7 @@ test('real input fires cancels and completes second-weapon reload', async ({ pag
     const canvas = await page.locator('canvas').boundingBox();
     await page.mouse.click(canvas.x+(button.x+button.width/2)*canvas.width/1440, canvas.y+(button.y+button.height/2)*canvas.height/900);
   }
-  await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense');
-  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 9, null, { timeout: 45_000 });
+  await finishEntry(page);
   const beforeEmptySlot = await page.evaluate(() => window.__survivorSnapshot.frames);
   await page.keyboard.press('4');
   await page.waitForFunction(frame => window.__survivorSnapshot.frames > frame + 1, beforeEmptySlot);

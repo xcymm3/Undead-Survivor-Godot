@@ -111,6 +111,8 @@ try {
   if (!/NATIVE COMPONENTS: \d+ checks; 0 failures/.test(native)) throw new Error('Missing native component check marker.');
   const progression = await run('incremental-progression', engine, [...godotArgs, '--script', 'res://tools/validate-progression.gd', '--', '--silent', '--automation']);
   if (!/INCREMENTAL PROGRESSION: \d+ checks; 0 failures/.test(progression)) throw new Error('Missing incremental progression check marker.');
+  const entry = await run('ultimate-entry', engine, [...godotArgs, '--script', 'res://tools/validate-ultimate-entry.gd', '--', '--silent', '--automation']);
+  if (!/ULTIMATE ENTRY: \d+ checks; 0 failures/.test(entry)) throw new Error('Missing ultimate entry check marker.');
   const campaign = await run('ten-wave-campaign', engine, [...godotArgs, '--script', 'res://tools/validate-campaign.gd', '--', '--silent', '--automation']);
   if (!/CAMPAIGN VALIDATION: \d+ checks; 0 failures/.test(campaign)) throw new Error('Missing ten-wave campaign check marker.');
   const feedback = await run('campaign-feedback', engine, [...godotArgs, '--script', 'res://tools/validate-campaign-feedback.gd', '--', '--silent', '--automation']);

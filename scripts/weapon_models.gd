@@ -6,6 +6,8 @@ const AXE_HEAD_PARTS = ["NeckGuard","FireAxeHead","FireAxeBlade","FireAxePick","
 static func create(id: String, first_person := false) -> Node3D:
 	var model: Node3D
 	match id:
+		"rocket_launcher": model = preload("res://scripts/ultimate_exhibit_models.gd").rocket_launcher()
+		"crimson_scepter": model = preload("res://scripts/ultimate_exhibit_models.gd").crimson_scepter()
 		"ultimate":
 			model = Node3D.new()
 			var grip = Node3D.new()

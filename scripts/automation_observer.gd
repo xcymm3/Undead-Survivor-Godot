@@ -42,6 +42,9 @@ func snapshot() -> Dictionary:
 	var result = {"menu": game.ui.current, "map_id":game.arena.map_id, "running": game.running, "paused": game.paused,
 		"finished": game.finished, "frames": frames, "mouse_mode": Input.mouse_mode,
 		"yaw": game.yaw, "pitch": game.pitch, "fov": game.camera.fov, "buttons": []}
+	if game.entry_sequence:
+		var entry = game.entry_sequence
+		result.entry = {"phase":entry.phase,"focus":entry.focus,"x":entry.room.player.position.x,"z":entry.room.player.position.z,"black":entry.black.color.a,"choice":Progress.store.data.ultimate_choice}
 	for node in game.ui.root.find_children("*", "Button", true, false):
 		if node.is_visible_in_tree():
 			var rect: Rect2 = node.get_global_rect()
@@ -73,7 +76,26 @@ func snapshot() -> Dictionary:
 
 func native_smoke() -> void:
 	# Packaged-EXE validation: same scene, real input path, no renderer or Steam login.
-	game.start_solo("defense")
+	game.begin_game()
+	var entry_deadline = Time.get_ticks_msec()+30000
+	while game.entry_sequence and game.entry_sequence.phase != "room" and Time.get_ticks_msec() < entry_deadline:
+		await get_tree().process_frame
+	if game.entry_sequence:
+		Input.action_press("forward")
+		entry_deadline = Time.get_ticks_msec()+12000
+		while game.entry_sequence and game.entry_sequence.room.player.position.z > .2 and Time.get_ticks_msec() < entry_deadline:
+			await get_tree().process_frame
+		Input.action_release("forward")
+		Input.action_press("interact")
+		await get_tree().create_timer(.1).timeout
+		Input.action_release("interact")
+		entry_deadline = Time.get_ticks_msec()+5000
+		while game.entry_sequence and Time.get_ticks_msec() < entry_deadline: await get_tree().process_frame
+	if game.sim == null:
+		if game.entry_sequence: print("ENTRY SMOKE STATE: "+JSON.stringify(snapshot().get("entry",{})))
+		print("PACKAGED EXE SMOKE: FAIL (ultimate selection did not finish)")
+		get_tree().quit(1)
+		return
 	await get_tree().create_timer(.2).timeout
 	# The packaged game must finish its real first-entry narrative before E works.
 	var intro = preload("res://scripts/first_attempt_intro.gd")

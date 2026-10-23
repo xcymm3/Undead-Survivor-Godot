@@ -10,7 +10,7 @@ signal member_left(id: String)
 signal member_rejoined(id: String)
 signal invite_received
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-25"
+const PROTOCOL = "undead-survivor-godot-26"
 const PORT = 27777
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"

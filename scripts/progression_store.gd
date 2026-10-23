@@ -1,7 +1,7 @@
 extends RefCounted
 ## Permanent economy, separate from the disposable combat simulation.
 const MAX_CURRENCY = 9000000000000000
-const SAVE_VERSION = 9
+const SAVE_VERSION = 10
 const DEATH_BONUS = 25
 const MAX_UPGRADE_LEVEL = 10
 const UPGRADE_PRICES = [25,100,150,200,300,450,650,1000,1500,2000]
@@ -26,7 +26,7 @@ var notice = ""
 var data: Dictionary = defaults()
 
 static func defaults() -> Dictionary:
-	return {"version":SAVE_VERSION,"total_coins_earned":0.0,"total_diamonds_earned":0,"victories":0,"ultimate_unlocked":false,"intro_seen":false,"tutorial_stage":0,"tutorial_blueprint_paid":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0,"greed":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
+	return {"version":SAVE_VERSION,"ultimate_choice":"","total_coins_earned":0.0,"total_diamonds_earned":0,"victories":0,"ultimate_unlocked":false,"intro_seen":false,"tutorial_stage":0,"tutorial_blueprint_paid":false,"ultimate_level":0,"coins":0,"diamonds":0,"grenade_level":0,"magazines":{"rifle_magazine":0,"pistol_magazine":0},"weapons":{"rifle":0,"pistol":0,"axe":0},"talents":{"strong":0,"precise":0,"swift":0,"supply":0,"greed":0},"buildings":{"turret_left":{"owned":false,"level":0},"turret_right":{"owned":false,"level":0},"bridge_gate":{"owned":false,"level":0},"bridge_entry_gate":{"owned":false,"level":0}},"mines":{"crystal_mine":false,"ramp_mine":false,"gate_mine":false},"best_wave":0,"cleared_total":0}
 
 func _init(save_path := "") -> void:
 	path = save_path
@@ -40,6 +40,7 @@ static func valid(value) -> bool:
 	if value.has("tutorial_stage") and not bounded_integer(value.tutorial_stage,5): return false
 	if value.has("tutorial_blueprint_paid") and not value.tutorial_blueprint_paid is bool: return false
 	if value.version >= 8 and not value.get("ultimate_unlocked") is bool: return false
+	if value.version >= 10 and value.get("ultimate_choice") not in ["","blade"]: return false
 	if value.has("intro_seen") and not value.intro_seen is bool: return false
 	if not (value.coins is int or value.coins is float) or not is_finite(float(value.coins)) or value.coins < 0 or value.coins > MAX_CURRENCY: return false
 	if value.version < 7 and not bounded_integer(value.coins,MAX_CURRENCY): return false
@@ -153,8 +154,31 @@ func load_save() -> void:
 			data["total_coins_earned"] = float(data.coins)
 			data["total_diamonds_earned"] = int(data.diamonds)
 			data["victories"] = 0
+			data.version = 9
+			dirty = true
+		if data.version == 9:
+			# Existing played saves retain the only previously available ultimate.
+			data["ultimate_choice"] = "blade" if data.get("intro_seen",false) or data.get("tutorial_stage",0) > 0 or data.coins > 0 or data.best_wave > 0 or data.ultimate_unlocked else ""
 			data.version = SAVE_VERSION
 			dirty = true
+
+func needs_ultimate_choice() -> bool:
+	return data.get("ultimate_choice","").is_empty()
+
+func select_ultimate(id: String) -> bool:
+	if id != "blade": return false
+	var previous: Dictionary = data.duplicate(true)
+	var was_dirty = dirty
+	data.ultimate_choice = id
+	data.intro_seen = true
+	dirty = true
+	if save():
+		notice = ""
+		return true
+	data = previous
+	dirty = was_dirty
+	notice = "终极武器选择保存失败，请重试"
+	return false
 
 func save() -> bool:
 	if path.is_empty() or not dirty: return true

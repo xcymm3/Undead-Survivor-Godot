@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { finishEntry } from './finish-entry.mjs';
 
 const snapshot = page => page.evaluate(() => window.__survivorSnapshot);
 async function clickButton(page, text) {
@@ -17,6 +18,7 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   await page.waitForFunction(() => window.__survivorSnapshot?.map_id === 'graypine_defense');
   await page.screenshot({ path: info.outputPath('defense-home.png') });
   await clickButton(page, '开始游戏');
+  await finishEntry(page);
   await page.waitForFunction(() => window.__survivorSnapshot?.mode === 'defense' && window.__survivorSnapshot?.running);
   let state = await snapshot(page);
   expect(state.defense.difficulty).toBe('normal');
@@ -29,8 +31,7 @@ test('店内出生后使用真实输入穿过武器前厅并出门修复水晶�
   expect(state.player.grenades).toBe(0);
   expect(state.menu).toBe('');
   expect(state.paused).toBe(false);
-  // The opening black-screen story deliberately blocks all gameplay input.
-  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 9, null, { timeout: 45_000 });
+  // The story and selection room have finished before combat input begins.
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot?.player?.slot === 2 && window.__survivorSnapshot?.player?.weapon === 2);
   expect(state.defense.crystal_hp).toBe(0);

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { finishEntry } from './finish-entry.mjs';
 
 test('right shove cooldown ring and middle toggle use real input', async ({ page }, info) => {
   const errors = [];
@@ -11,8 +12,7 @@ test('right shove cooldown ring and middle toggle use real input', async ({ page
   const canvas = await page.locator('canvas').boundingBox();
   await page.mouse.click(canvas.x + (button.x + button.width / 2) * canvas.width / 1440,
     canvas.y + (button.y + button.height / 2) * canvas.height / 900);
-  await page.waitForFunction(() => window.__survivorSnapshot?.player?.hp > 0);
-  await page.waitForFunction(() => window.__survivorSnapshot.defense.intro_elapsed >= 9, null, { timeout: 45_000 });
+  await finishEntry(page);
   await page.mouse.down({ button: 'middle' });
   await page.mouse.up({ button: 'middle' });
   await page.waitForFunction(() => window.__survivorSnapshot.player.aim);

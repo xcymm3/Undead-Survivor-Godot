@@ -14,6 +14,12 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
+	if scenario == "ultimate_entry":
+		var entry = preload("res://scripts/qa_ultimate_entry.gd").new()
+		entry.game = game
+		add_child(entry)
+		await entry.stage()
+		return
 	if scenario.begins_with("coop_"):
 		var coop = preload("res://scripts/qa_coop_review.gd").new()
 		coop.game = game
