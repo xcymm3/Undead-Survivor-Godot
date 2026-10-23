@@ -42,11 +42,13 @@ func until(predicate: Callable, label: String, seconds := 15.0) -> bool:
 	var start = Time.get_ticks_msec()
 	while not predicate.call():
 		if Time.get_ticks_msec()-start > seconds*1000:
+			if game and game.ending_sequence: print("ENDING WAIT: "+JSON.stringify({"phase":game.ending_sequence.phase,"ready":net.ending_ready_members,"members":net.members,"pawns":game.sim.pawns.values().map(func(p): return {"id":p.id,"connected":p.get("connected",true)})}))
 			check(false,"Timeout: "+label)
 			return false
 		if role == "host" and game and game.running and game.sim and game.sim.defense.has("qa_phase") and Time.get_ticks_msec()-last_publish > 100:
 			last_publish = Time.get_ticks_msec()
 			net.send_world(game.sim.snapshot(),[])
+		if game and game.ending_sequence and game.ending_sequence.phase in ["wait","fade_in"]: game.ending_sequence.step(.1)
 		await process_frame
 	return true
 
@@ -60,6 +62,7 @@ func run() -> void:
 		if arg.begins_with("--coop-address="): address = arg.get_slice("=",1)
 	net = root.get_node("Session")
 	net.lan_directory.port = int(address.get_slice(":",1))+1
+	root.get_node("Data").settings.coop_notice_seen = true
 	game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
 	await process_frame
@@ -115,6 +118,12 @@ func validate_steam_protocol() -> void:
 	session.lobby = 123
 	session.invite_friends()
 	check(steam.invited,"Steam friend invite button routes to the invite overlay API (mock transport)")
+	session.playing = true
+	session.ending_ready_members.clear()
+	session.receive("200",session.encode_packet({"type":"ending_ready"}))
+	check(session.ending_ready_members.has("200") and not session.all_ending_ready(),"Restart barrier waits for host cinematic readiness even after the guest is ready (mock Steam transport)")
+	session.mark_ending_ready()
+	check(session.all_ending_ready(),"Restart barrier opens only after both current members finish their cinematics (mock Steam transport)")
 	session.steam_ready = false
 	session.active = false
 	session.queue_free()
@@ -264,7 +273,7 @@ func host_test() -> void:
 	p.hp = 0
 	sim.defense.next_wave_at = sim.elapsed+.1
 	sim.step(.11)
-	check(sim.wave == 2 and p.hp == 0 and not sim.failed and net.playing,"Automatic wave transition retains the room and never revives a guest")
+	check(sim.wave == 2 and p.hp == 0 and not sim.failed and net.playing,"Automatic wave transition retains the room and does not revive a newly fallen guest before the next wave clear")
 	# Controlled alive fixture for reconnection preservation, not a gameplay revival.
 	p.hp = 57
 	p.pos = Vector2(8,25)
@@ -306,6 +315,13 @@ func host_test() -> void:
 	check(p.hp == 0,"Dead guest cannot bypass death through reconnect")
 	publish("dead_return")
 	if not await until(func(): return acknowledgements.has("dead_return"),"dead spectator confirmation"): return
+	sim.roster.clear()
+	for zombie in sim.zombies: zombie.hp = 0
+	sim.defense_director.launched_waves = {3:true}
+	sim.defense_director.reward_finished_waves()
+	check(p.hp == p.max_hp,"Actual wave clear revives the connected guest at the spawn")
+	publish("guest_revived")
+	if not await until(func(): return acknowledgements.has("guest_revived"),"guest observes wave-clear revival"): return
 	host.hp = 0
 	# Leave one living guest to demonstrate that host death alone ends the match.
 	p.hp = 57
@@ -317,11 +333,11 @@ func host_test() -> void:
 	check(game.view_pawn().id == net.host_id,"Terminal host death keeps the local first-person ending camera instead of spectating")
 	game._process(.016)
 	check(not game.partners.has(net.host_id) or not game.partners[net.host_id].visible,"Terminal host death never renders its own corpse inside the camera")
-	game.ui.show_result()
-	check(game.ui.menu.find_children("*","Label",true,false).any(func(label): return label.text == "房主阵亡"),"Host death result identifies the actual defeat cause")
-	check(game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text == "重新防守"),"Host defeat result offers cooperative retry")
+	check(game.ending_sequence.caption.text == "今晚，无人生还..." and game.ui.menu == null,"Host death starts the shared failure cinematic without settlement buttons")
 	var old_nonce: String = net.nonce
-	game.restart_coop()
+	game.ending_sequence.step(3.1)
+	game.ending_sequence.step(1.1)
+	game.ending_sequence.step(2.9)
 	if not await until(func(): return game.running and net.playing and net.nonce != old_nonce,"defeat retry handshake"): return
 	check(not game.finished and not game.sim.failed and game.sim.pawns[net.host_id].hp > 0 and game.sim.pawns[guest].hp > 0 and net.members.size() == 2,"Defeat retry preserves connected room and resets both players")
 	publish("retry")
@@ -330,7 +346,9 @@ func host_test() -> void:
 	game.finish_run()
 	publish("victory")
 	if not await until(func(): return acknowledgements.has("victory"),"client victory settlement"): return
-	game.restart_coop()
+	game.ending_sequence.step(5.9)
+	game.ending_sequence.step(1.1)
+	game.ending_sequence.step(2.9)
 	if not await until(func(): return game.running and not game.finished and net.playing,"victory retry handshake"): return
 	publish("victory_retry")
 	await until(func(): return acknowledgements.has("victory_retry"),"client joins next match after victory")
@@ -441,10 +459,15 @@ func client_test() -> void:
 	if not await until(func(): return phase("dead_return"),"dead resume snapshot"): return
 	check(game.local_pawn().hp == 0 and game.view_pawn().id == net.host_id,"Dead reconnect returns to spectator mode")
 	net.send_input({"qa_ack":"dead_return"})
+	if not await until(func(): return phase("guest_revived"),"wave-clear revival snapshot"): return
+	check(game.local_pawn().hp == 150 and game.view_pawn().id == net.local_id,"Guest leaves spectator mode and revives from the authoritative wave-clear snapshot")
+	net.send_input({"qa_ack":"guest_revived"})
 	if not await until(func(): return game.finished,"host death failure"): return
 	check(game.sim.failed,"Host death reaches client terminal state")
-	game.ui.show_result()
-	check(game.ui.menu.find_child("EarnedCoins",true,false).text == "+0" and game.ui.menu.find_child("EarnedDiamonds",true,false).text == "+0","Guest result UI shows zero personal coin and diamond earnings")
+	check(game.ending_sequence != null and game.ui.menu == null,"Guest receives the same failure cinematic without settlement UI")
+	game.ending_sequence.step(3.1)
+	game.ending_sequence.step(1.1)
+	game.ending_sequence.step(2.9)
 	check(personal.data == before and FileAccess.get_file_as_bytes(secret_path) == bytes_before,"Client local progress is byte-for-byte unchanged across joins, rewards, disconnects and defeat")
 	net.send_input({"qa_ack":"finished"})
 	if not await until(func(): return phase("retry") and not game.finished,"next match after defeat"): return
@@ -452,6 +475,9 @@ func client_test() -> void:
 	net.send_input({"qa_ack":"retry"})
 	if not await until(func(): return phase("victory") and game.finished,"victory result"): return
 	check(net.active and net.playing and game.sim.won,"Victory retains the connected room")
+	game.ending_sequence.step(5.9)
+	game.ending_sequence.step(1.1)
+	game.ending_sequence.step(2.9)
 	net.send_input({"qa_ack":"victory"})
 	if not await until(func(): return phase("victory_retry") and not game.finished,"next match after victory"): return
 	check(not game.sim.won and game.local_pawn().hp == 150 and personal.data == before,"Victory retry resets combat while preserving guest progress")

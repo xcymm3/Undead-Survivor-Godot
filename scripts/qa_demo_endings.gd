@@ -4,11 +4,16 @@ var game
 var callback: JavaScriptObject
 var last_frame = -1
 var victory = false
-const FPS = 12.0
+var crystal = false
+const FPS = 8.0
 
 func stage(scenario: String) -> void:
 	if not Data.automation or not OS.has_feature("web"): return
 	victory = scenario == "demo_victory"
+	crystal = scenario == "demo_crystal"
+	Data.settings.resolution = 1.0
+	Data.settings.aa = 0
+	game.apply_graphics()
 	Progress.store = preload("res://scripts/progression_store.gd").new()
 	Progress.store.data.merge({"intro_seen":true,"tutorial_stage":5,"ultimate_unlocked":true},true)
 	game.start_solo("defense",491)
@@ -42,7 +47,7 @@ func stage(scenario: String) -> void:
 	callback = JavaScriptBridge.create_callback(draw_frame)
 	JavaScriptBridge.get_interface("window").__drawDemoEnding = callback
 	JavaScriptBridge.eval("window.__demoEndingFrame=-1",true)
-	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"frames":69 if victory else 45,"fps":FPS,"crystal_hp":sim.defense.crystal_hp,"health_cards":game.ui.native_hud.cards.size(),"no_portraits":game.ui.native_hud.cards.values().all(func(card): return not card.has("portrait")),"partners":game.partners.size()}),true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"frames":112,"fps":FPS,"crystal_hp":sim.defense.crystal_hp,"health_cards":game.ui.native_hud.cards.size(),"no_portraits":game.ui.native_hud.cards.values().all(func(card): return not card.has("portrait")),"partners":game.partners.size()}),true)
 
 func draw_frame(args: Array) -> void:
 	var frame = int(args[0])
@@ -54,6 +59,10 @@ func draw_frame(args: Array) -> void:
 		if victory:
 			var boss: Dictionary = sim.zombies[0]
 			sim.hit_enemy(boss,boss.hp+1,false,p,Vector3(boss.pos.x,4.2,boss.pos.y))
+		elif crystal:
+			sim.damage_crystal(sim.zombies[0],3000)
+			sim.failed = true
+			sim.cause = "crystal"
 		else:
 			p.protection = 0.0
 			sim.damage_pawn(p,sim.zombies[0],1000)
@@ -66,5 +75,6 @@ func draw_frame(args: Array) -> void:
 	for node in game.find_children("*","Node3D",true,false): node.force_update_transform()
 	RenderingServer.force_draw(true)
 	await get_tree().process_frame
-	JavaScriptBridge.eval("window.__demoEndingState="+JSON.stringify({"frame":frame,"age":game.death_timer,"camera_y":game.camera.position.y,"camera_roll":game.camera.rotation.z,"partners":game.partners.size(),"result":game.ui.current == "result","won":sim.won,"failed":sim.failed,"caption":game.ui.victory_caption.visible,"caption_alpha":game.ui.victory_caption.modulate.a}),true)
+	var ending = game.ending_sequence
+	JavaScriptBridge.eval("window.__demoEndingState="+JSON.stringify({"frame":frame,"age":game.death_timer,"camera_y":game.camera.position.y,"camera_roll":game.camera.rotation.z,"phase":ending.phase if ending else "playing","black":ending.black.color.a if ending else 0.0,"text":ending.caption.text if ending else "","caption":ending.caption.visible if ending else false,"caption_alpha":ending.caption.modulate.a if ending else 0.0,"result":game.ui.current == "result","restarted":not game.finished,"crystal_hp":game.sim.defense.crystal_hp,"failed":game.sim.failed,"won":game.sim.won}),true)
 	JavaScriptBridge.eval("window.__demoEndingFrame="+str(frame),true)

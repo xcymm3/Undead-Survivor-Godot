@@ -791,6 +791,7 @@ func run() -> void:
 	check(game.sim.zombies[0].pos == world.zombies[0].pos,"Rendering retains the latest authoritative enemy position")
 	session.playing = false
 	await load("res://tools/validate-first-attempt-intro.gd").validate(game,check)
+	await load("res://tools/validate-round-flow.gd").validate(game,check)
 	await load("res://tools/validate-run-rewards.gd").validate(game,check)
 	await load("res://tools/validate-map-redesign.gd").validate(game,check)
 	await load("res://tools/validate-demo-refinements.gd").validate(game,check)

@@ -137,7 +137,7 @@ static func validate_player_death(game, check: Callable) -> void:
 		game.finish_run()
 		game.update_finish_camera(4.0)
 		check.call(game.arena.scenery.crystal_damage.debris.visible == fragments and sim.defense.get("crystal_broken_at",-1.0) == broken_at,"Defeat camera and result dialog cannot shatter the crystal: "+scenario)
-		check.call(game.ui.current == "result" and game.ui.menu.has_node("FieldMenuStage"),"Player death opens the native game-style result panel: "+scenario)
+		check.call(game.ending_sequence != null and game.ui.current != "result","Player death starts the automatic cinematic without a result panel: "+scenario)
 		sim.step(.02)
 		check.call(sim.events.is_empty() and sim.defense.get("crystal_broken_at",-1.0) == broken_at,"Failed ticks do not restart crystal shattering: "+scenario)
 		game.start_solo("defense",492)

@@ -81,6 +81,26 @@ func reward_finished_waves() -> void:
 		sim.progression.award_wave(generation)
 		sim.earned_diamonds += 1
 		sim.cleared = rewarded_waves.size()
+		revive_guests()
+
+func revive_guests() -> void:
+	if sim.coop_host.is_empty() or sim.failed or sim.pawns[sim.coop_host].hp <= 0: return
+	var index = 0
+	for p in sim.pawns.values():
+		index += 1
+		if p.id == sim.coop_host or p.hp > 0 or not p.get("connected",true): continue
+		p.pos = sim.map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6)
+		p.height = Layout.height(p.pos)
+		p.velocity = 0.0
+		p.input = {}
+		p.aim = false
+		p.reloading = false
+		p.reload = 0.0
+		p.ultimate_remaining = 0.0
+		p.ultimate_sheathe = 0.0
+		p.erase("ultimate_saved_slot")
+		equipment.initialize_pawn(p)
+		p.protection = 3.0
 
 func choose_weapon(p: Dictionary, _requested: int) -> int:
 	return p.weapon1 if p.slot == 1 else 6 if p.slot == 3 else p.weapon2 if p.slot == 2 else p.weapon

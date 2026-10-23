@@ -13,6 +13,9 @@ var actions: Array = []
 var dialog: Control
 var preview = false
 var was_active = false
+var notice_read = false
+var notice_scroll: ScrollContainer
+var notice_confirm: Button
 
 func _init(owner_ui) -> void:
 	owner_ref = weakref(owner_ui)
@@ -79,7 +82,82 @@ func show_page(qa_preview: bool) -> void:
 		action.custom_minimum_size = Vector2(0,66)
 		action.add_theme_font_size_override("font_size",23)
 		actions.append(action)
+	var notice_button = ui.home_button(stage,"联机须知",open_notice)
+	notice_button.name = "CoopNoticeButton"
+	notice_button.position = Vector2(1150,62)
+	notice_button.size = Vector2(218,54)
 	sync()
+	if not preview and not Data.settings.coop_notice_seen: open_notice()
+
+func open_notice() -> void:
+	close_dialog()
+	notice_read = false
+	dialog = Control.new()
+	dialog.name = "CoopNoticeOverlay"
+	dialog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stage.add_child(dialog)
+	var shade = ColorRect.new()
+	shade.color = Color(0,0,0,.82)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dialog.add_child(shade)
+	var frame = PanelContainer.new()
+	frame.position = Vector2(280,120)
+	frame.size = Vector2(880,660)
+	frame.add_theme_stylebox_override("panel",ui.settings_box(ui.PAPER,ui.SETTINGS_BRASS,28))
+	dialog.add_child(frame)
+	var column = VBoxContainer.new()
+	column.add_theme_constant_override("separation",18)
+	frame.add_child(column)
+	column.add_child(ui.label("联机须知",34,ui.SETTINGS_INK))
+	column.add_child(ui.label("请向下滚动至最底部，阅读完毕后确认",18,ui.SETTINGS_MUTED))
+	notice_scroll = ScrollContainer.new()
+	notice_scroll.name = "NoticeScroll"
+	notice_scroll.custom_minimum_size = Vector2(810,420)
+	notice_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	notice_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(notice_scroll)
+	var text_column = VBoxContainer.new()
+	text_column.custom_minimum_size = Vector2(770,760)
+	text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_column.add_theme_constant_override("separation",45)
+	notice_scroll.add_child(text_column)
+	for text in ["1.当前联机为测试功能，采用P2P联机方式，支持Steam和局域网连接","2.联机时的游戏进度以房主当前存档为准，并且只有房主能进行购买升级项和交互，客机共享房主的升级进度，但在退出游戏后无法保留至自己的存档","3.客机死亡后进入观战视角，需要等待本轮防守结束才能复活；房主死亡则游戏直接结束。"]:
+		var row = ui.label(text,25,ui.SETTINGS_INK)
+		row.custom_minimum_size.y = 170
+		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text_column.add_child(row)
+	var bottom = ui.label("—— 已到达须知末尾 ——",18,ui.SETTINGS_MUTED)
+	var spacer = Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	text_column.add_child(spacer)
+	text_column.add_child(bottom)
+	var buttons = HBoxContainer.new()
+	buttons.alignment = BoxContainer.ALIGNMENT_END
+	buttons.add_theme_constant_override("separation",20)
+	column.add_child(buttons)
+	notice_confirm = ui.home_button(buttons,"确认",confirm_notice,true)
+	notice_confirm.name = "NoticeConfirm"
+	notice_confirm.custom_minimum_size = Vector2(180,56)
+	notice_confirm.disabled = true
+	var cancel = ui.home_button(buttons,"取消",cancel_notice)
+	cancel.name = "NoticeCancel"
+	cancel.custom_minimum_size = Vector2(180,56)
+	notice_scroll.get_v_scroll_bar().value_changed.connect(func(value):
+		var bar = notice_scroll.get_v_scroll_bar()
+		if value > 0 and value >= bar.max_value-bar.page-1:
+			notice_read = true
+			notice_confirm.disabled = false)
+
+func confirm_notice() -> void:
+	if not notice_read: return
+	Data.settings.coop_notice_seen = true
+	Data.save()
+	close_dialog()
+
+func cancel_notice() -> void:
+	Session.leave()
+	ui.show_home()
 
 func put_label(text: String, position: Vector2, dimensions: Vector2, font_size: int, color: Color) -> Label:
 	var item = ui.label(text,font_size,color)
@@ -246,7 +324,7 @@ func render_lobby() -> void:
 		body.add_child(row)
 		column(row,"%02d" % (i+1),70,22,ui.SETTINGS_MUTED)
 		column(row,"等待队员加入…",730,20,ui.SETTINGS_MUTED)
-	tally.text = "房主成长共享 · 客机存档不变 · 客机阵亡后本局不可复活"
+	tally.text = "房主成长共享 · 客机存档不变 · 客机阵亡后观战，本轮结束复活"
 
 func act(index: int) -> void:
 	if index == 3:

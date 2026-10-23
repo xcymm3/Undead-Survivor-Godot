@@ -10,7 +10,7 @@ signal member_left(id: String)
 signal member_rejoined(id: String)
 signal invite_received
 signal disconnected(message: String)
-const PROTOCOL = "undead-survivor-godot-26"
+const PROTOCOL = "undead-survivor-godot-27"
 const PORT = 27777
 const DefensePopulation = preload("res://scripts/defense_population.gd")
 var map_id = "graypine_defense"
@@ -26,6 +26,7 @@ var search_transport = ""
 var admission_metadata = ""
 var active = false
 var playing = false
+var ending_ready_members: Dictionary = {}
 var loading = false
 var loading_started = 0
 var ready_members: Dictionary = {}
@@ -340,6 +341,7 @@ func _steam_rooms(ids: Array) -> void:
 
 func begin_match() -> void:
 	if not is_host() or members.size() < 2 or members.size() > 4 or playing or loading: return
+	ending_ready_members.clear()
 	loading = true
 	if transport == "steam": steam.setLobbyData(lobby,"playing","1")
 	loading_started = Time.get_ticks_msec()
@@ -350,6 +352,16 @@ func begin_match() -> void:
 	broadcast({"type":"prepare","members":members,"nonce":nonce,"previous_nonce":previous_nonce,"map_id":map_id,"defense_difficulty":defense_difficulty},true)
 	map_preparing.emit()
 	changed.emit()
+
+func mark_ending_ready() -> void:
+	if not active or not playing: return
+	if is_host(): ending_ready_members[local_id] = true
+	else: send_to(host_id,{"type":"ending_ready"},true)
+
+func all_ending_ready(ids: Array = []) -> bool:
+	for id in (members.keys() if ids.is_empty() else ids):
+		if not ending_ready_members.has(id): return false
+	return true
 
 func restart_match(connected: Dictionary) -> void:
 	if not is_host() or not playing or loading or not connected.has(host_id) or connected.size() < 2: return
@@ -593,6 +605,8 @@ func receive(sender: String, bytes: PackedByteArray) -> void:
 				playing = true
 				loading = false
 				match_started.emit()
+		"ending_ready":
+			if is_host() and playing and members.has(sender) and packet.get("session") == nonce: ending_ready_members[sender] = true
 		"input":
 			if is_host() and playing and not pending_resumes.has(sender) and packet.get("session") == nonce and packet.get("command") is Dictionary and packet.get("seq") is int:
 				if packet.seq > input_sequences.get(sender,-1):

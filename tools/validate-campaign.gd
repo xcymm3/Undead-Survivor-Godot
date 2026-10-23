@@ -212,8 +212,8 @@ func run() -> void:
 	for enemy in sim.zombies: enemy.hp = 0
 	sim.step(.02)
 	check(sim.won and sim.wave == 10 and sim.cleared == 10,"Clearing the final wave wins and never creates wave eleven")
-	game.ui.show_result()
-	check(game.ui.menu.find_children("*","Label",true,false).any(func(label): return label.text == "游戏通关"),"Native result screen explicitly displays campaign victory")
+	game.finish_run()
+	check(game.ending_sequence.caption.text == "太阳升起，你活下来了...","Campaign victory uses the automatic sunrise ending instead of a result modal")
 	game.return_home()
 	await validate_balance(game)
 	game.queue_free()

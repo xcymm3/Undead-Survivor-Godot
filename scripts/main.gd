@@ -45,6 +45,7 @@ var display_buffer = preload("res://scripts/snapshot_buffer.gd").new()
 var pixelation: ColorRect
 var coins
 var awaiting_coop_snapshot = false
+var ending_sequence
 var entry_sequence
 
 func _ready() -> void:
@@ -230,6 +231,9 @@ func restart_coop() -> void:
 	Session.restart_match(connected)
 
 func reset_game() -> void:
+	if ending_sequence and not ending_sequence.transitioning and ending_sequence.phase not in ["wait","fade_in"]:
+		ending_sequence.queue_free()
+		ending_sequence = null
 	screen_shake.clear()
 	tutorial_voice_key = ""
 	awaiting_coop_snapshot = false
@@ -283,7 +287,7 @@ func cycle_spectator() -> void:
 	spectating = living[index].id
 
 func input_state() -> Dictionary:
-	var enabled = running and not entry_sequence and not paused and focused and not finished and (not sim or not preload("res://scripts/onboarding.gd").blocked(sim.defense)) and (local_pawn().is_empty() or local_pawn().hp > 0)
+	var enabled = running and not entry_sequence and not ending_sequence and not paused and focused and not finished and (not sim or not preload("res://scripts/onboarding.gd").blocked(sim.defense)) and (local_pawn().is_empty() or local_pawn().hp > 0)
 	var local: Dictionary = local_pawn() if sim else {}
 	if not local.is_empty() and not Data.ads_enabled(Data.weapons[int(local.weapon)]): aim_held = false
 	var command = {"x":Input.get_axis("left","right") if enabled else 0.0,"y":Input.get_axis("forward","back") if enabled else 0.0,"yaw":yaw,"pitch":pitch,"weapon":requested_weapon,"interact":enabled and Input.is_action_pressed("interact"),"crouch":enabled and Input.is_action_pressed("crouch"),"sprint":enabled and Input.is_action_pressed("sprint"),"jump":jump_pending and enabled,"reload":reload_pending and enabled,"fire":enabled and (fire_pending or fire_held),"fire_pressed":enabled and fire_pending,"aim":enabled and aim_held,"shove":enabled and shove_pending,"ultimate":enabled and ultimate_pending}
@@ -324,6 +328,7 @@ func _physics_process(dt: float) -> void:
 	if sim.failed or sim.won: finish_run()
 
 func _process(dt: float) -> void:
+	if ending_sequence: ending_sequence.step(dt)
 	if entry_sequence:
 		entry_sequence.render()
 		if entry_sequence.blocks_world():
@@ -566,6 +571,10 @@ func finish_run() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	sound.set_playing(false)
 	sound.play("victory" if sim.won else "failure",-9)
+	if ending_sequence: ending_sequence.queue_free()
+	ending_sequence = preload("res://scripts/round_ending.gd").new()
+	ending_sequence.game = self
+	add_child(ending_sequence)
 
 func update_finish_camera(dt: float) -> void:
 	death_timer += dt
@@ -577,15 +586,15 @@ func update_finish_camera(dt: float) -> void:
 	arena.scenery.sync(sim.defense)
 	for z in sim.zombies:
 		if z.hp <= 0: z.down = maxf(0,z.down-dt)
-	ui.sync_victory_caption(death_timer,sim.boss_victory)
+	ui.victory_caption.hide()
 	# Fall in place through the player's eyes, without loading a third-person body.
 	var end = finish_camera_start.origin
 	end.y = finish_ground_height+.28
 	var angles = finish_camera_start.basis.get_euler()
 	var target = Transform3D(Basis.from_euler(Vector3(-.15,angles.y,deg_to_rad(-68))),end)
 	var amount = smoothstep(0.0,1.0,death_timer/1.4)
-	camera.global_transform = finish_camera_start if sim.won else finish_camera_start.interpolate_with(target,amount)
-	if death_timer >= (5.8 if sim.boss_victory else 3.8) and ui.current != "result": ui.show_result()
+	camera.global_transform = finish_camera_start if sim.won or sim.cause == "crystal" else finish_camera_start.interpolate_with(target,amount)
+
 func pause_game() -> void:
 	screen_shake.clear()
 	if not running or finished: return
@@ -609,6 +618,9 @@ func resume_game() -> void:
 	sound.set_playing(true)
 
 func return_home() -> void:
+	if ending_sequence:
+		ending_sequence.queue_free()
+		ending_sequence = null
 	cancel_entry_sequence()
 	screen_shake.clear()
 	if Progress.store: Progress.store.save()

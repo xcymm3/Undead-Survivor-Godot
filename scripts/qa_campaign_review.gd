@@ -32,7 +32,13 @@ func stage() -> void:
 		add_child(slots)
 		await slots.stage()
 		return
-	if scenario in ["demo_failure","demo_victory"]:
+	if scenario == "notice_merchant":
+		var notice = preload("res://scripts/qa_notice_merchant.gd").new()
+		notice.game = game
+		add_child(notice)
+		await notice.stage()
+		return
+	if scenario in ["demo_failure","demo_victory","demo_crystal"]:
 		var ending = preload("res://scripts/qa_demo_endings.gd").new()
 		ending.game = game
 		add_child(ending)

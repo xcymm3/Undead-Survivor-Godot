@@ -465,7 +465,8 @@ func show_pause() -> void:
 
 func back() -> void:
 	if current == "multiplayer" and multiplayer_view and is_instance_valid(multiplayer_view.dialog):
-		multiplayer_view.close_dialog()
+		if multiplayer_view.dialog.name == "CoopNoticeOverlay": multiplayer_view.cancel_notice()
+		else: multiplayer_view.close_dialog()
 		return
 	if current == "multiplayer": Session.leave()
 	if game.running: show_pause()
@@ -649,60 +650,6 @@ func shop_description(profile, id: String) -> String:
 
 # Hallmark · component: result modal · atmospheric · existing field palette
 # Pre-emit critique: P4 H5 E4 S5 R4 V4
-func show_result() -> void:
-	var sim = game.sim
-	if sim.mode != "defense": return
-	var state: Dictionary = sim.defense_state()
-	var guest = Session.playing and not Session.is_host()
-	var result = field_shell("游戏通关" if sim.won else "游戏结束","",Vector2(760,620))
-	current = "result"
-	var banner = HBoxContainer.new()
-	banner.add_theme_constant_override("separation",28)
-	result.add_child(banner)
-	var emblem = preload("res://scripts/result_emblem.gd").new()
-	emblem.victorious = sim.won
-	banner.add_child(emblem)
-	var summary = VBoxContainer.new()
-	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	summary.alignment = BoxContainer.ALIGNMENT_CENTER
-	summary.add_theme_constant_override("separation",12)
-	banner.add_child(summary)
-	var reason = "水晶被摧毁" if sim.cause == "crystal" else "房主阵亡" if not sim.coop_host.is_empty() and sim.pawns[sim.coop_host].hp <= 0 else "守卫阵亡"
-	summary.add_child(label("守住了最后的防线" if sim.won else reason,28,SETTINGS_BRASS if sim.won else RUST.lightened(.25)))
-	result.add_child(HSeparator.new())
-	var stats = VBoxContainer.new()
-	stats.name = "ResultStatistics"
-	stats.add_theme_constant_override("separation",7)
-	result.add_child(stats)
-	for entry in [["波次","%02d / 10" % sim.cleared],["消灭的敌人",str(sim.kills)],["生存时间",time_text(sim.elapsed)],["获取的金币","+%d" % (0 if guest else sim.earned_coins)],["获取的钻石","+%d" % (0 if guest else sim.earned_diamonds)]]:
-		var stat = HBoxContainer.new()
-		stat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		stat.add_theme_constant_override("separation",24)
-		stats.add_child(stat)
-		stat.add_child(label(entry[0],15,SETTINGS_MUTED))
-		var value = label(entry[1],20,SETTINGS_INK)
-		if entry[0] == "获取的金币": value.name = "EarnedCoins"
-		if entry[0] == "获取的钻石": value.name = "EarnedDiamonds"
-		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		stat.add_child(value)
-	var space = Control.new()
-	space.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	result.add_child(space)
-	var actions = HBoxContainer.new()
-	actions.add_theme_constant_override("separation",24)
-	result.add_child(actions)
-	if not Session.playing or Session.is_host():
-		var retry = home_button(actions,"重新防守",func(): game.restart_coop() if Session.playing else game.start_solo("defense"))
-		retry.selected = true
-		retry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		retry.custom_minimum_size.y = 56
-	else:
-		actions.add_child(label("等待房主重新防守",17,SETTINGS_MUTED))
-	var home = home_button(actions,"返回主菜单",func(): game.return_home())
-	home.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	home.custom_minimum_size.y = 56
-
 static func time_text(value: float) -> String:
 	return "%02d:%02d" % [floori(value/60),floori(value)%60]
 

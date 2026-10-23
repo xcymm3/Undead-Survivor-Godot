@@ -66,8 +66,7 @@ static func validate(game, check: Callable) -> void:
 		Tutorial.finish_attempt(sim)
 		check.call(is_equal_approx(sim.earned_coins,before+reward) and sim.progression.data.victories == (1 if scenario == "victory" else 0),"Repeated terminal updates cannot duplicate rewards: "+scenario)
 		game.update_finish_camera(6.0)
-		var amount = game.ui.menu.find_child("EarnedCoins",true,false)
-		check.call(amount != null and amount.text == "+%d" % (before+reward),"Results display the death bonus as part of total run income: "+scenario)
+		check.call(game.ending_sequence != null and game.ui.menu == null and is_equal_approx(sim.progression.data.coins,before+reward),"Automatic ending preserves all rewards without a settlement dialog: "+scenario)
 	progress.store = saved
 	for suffix in ["",".bak",".tmp"]:
 		if FileAccess.file_exists(path+suffix): DirAccess.remove_absolute(path+suffix)

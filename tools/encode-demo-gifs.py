@@ -4,10 +4,10 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 root = Path('artifacts/demo-endings')
-for kind in ('failure', 'victory'):
+for kind in ('failure', 'crystal', 'victory', 'notice'):
     directory = root / kind
     timing = json.loads((directory / 'timing.json').read_text(encoding='utf-8'))
-    frames = [Image.open(file).convert('RGB') for file in sorted(directory.glob('frame-*.png'))]
+    frames = [Image.open(file).convert('P', palette=Image.Palette.ADAPTIVE, colors=128) for file in sorted(directory.glob('frame-*.png'))]
     assert len(frames) == timing['frames']
     durations = [round((i + 1) * 100 / timing['fps']) * 10 - round(i * 100 / timing['fps']) * 10 for i in range(len(frames))]
     frames[0].save(root / f'{kind}.gif', save_all=True, append_images=frames[1:],
