@@ -62,8 +62,9 @@ test('新存档序章、三色终极武器展厅与选择后进入商店GIF', as
   }
   expect(states[244].detail.rows[0]).toEqual(['伤害', '200', '--']);
   expect(Math.abs(states[115].yaw - states[111].yaw)).toBeGreaterThan(.02);
+  // Each capture frame contains 8 capsule sweeps, each allowing safe_margin recovery.
   for (let index = 81; index < 260; index++) {
-    expect(Math.hypot(states[index].x - states[index - 1].x, states[index].z - states[index - 1].z)).toBeLessThanOrEqual(.451);
+    expect(Math.hypot(states[index].x - states[index - 1].x, states[index].z - states[index - 1].z)).toBeLessThanOrEqual(ready.movement_limit + 1e-5);
   }
   expect(states.some(state => state.phase === 'fade_out'  && state.choice === 'blade' && !state.sim_started)).toBe(true);
   expect(states.some(state => state.phase === 'handoff' && state.black === 1 && state.sim_started)).toBe(true);

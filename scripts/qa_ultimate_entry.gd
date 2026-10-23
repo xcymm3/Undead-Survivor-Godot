@@ -27,7 +27,7 @@ func stage() -> void:
 	callback = JavaScriptBridge.create_callback(draw_frame)
 	JavaScriptBridge.get_interface("window").__drawUltimateEntry = callback
 	JavaScriptBridge.eval("window.__entryFrame=-1",true)
-	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":"ultimate_entry","fps":FPS,"frames":FRAMES,"renderer":"Godot Web / Chromium SwiftShader, full internal resolution","camera":"first-person browser keyboard/mouse; production input, walking collisions and selection"}),true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":"ultimate_entry","fps":FPS,"frames":FRAMES,"movement_limit":3.6/FPS+8*entry.room.player.safe_margin,"renderer":"Godot Web / Chromium SwiftShader, full internal resolution","camera":"first-person browser keyboard/mouse; production input, walking collisions and selection"}),true)
 
 func draw_frame(args: Array) -> void:
 	var frame = int(args[0])
