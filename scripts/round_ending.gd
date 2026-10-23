@@ -14,7 +14,7 @@ var caption: Label
 func _ready() -> void:
 	victorious = game.sim.won
 	cooperative = Session.playing
-	animation_seconds = 5.8 if victorious else 3.0
+	animation_seconds = 1.4 if victorious else 3.0
 	layer = CanvasLayer.new()
 	layer.layer = 80
 	add_child(layer)

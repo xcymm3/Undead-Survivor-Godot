@@ -171,6 +171,7 @@ func run() -> void:
 	check(sim.won and sim.alive_count() == 0 and sim.earned_coins > 0 and sim.earned_diamonds == 1,"Boss defeat clears and rewards the army and wins immediately")
 	check(sim.coin_drops.filter(func(drop): return drop.get("burst",false)).size() == 20,"Boss bursts into twenty coins without duplicating currency")
 	game.finish_run()
+	check(game.camera.is_position_in_frustum(Vector3(boss.pos.x,root.get_node("Data").enemy_ground_height(boss.pos,sim.map_id)+1.4,boss.pos.y)),"Victory camera frames the actual fallen boss from the side instead of behind the crystal")
 	game.update_finish_camera(1)
 	check(not sim.coin_drops.is_empty() and sim.coin_drops.any(func(drop): return drop.age >= 1),"Victory coin pickup animations continue during the cinematic")
 	check(game.ending_sequence != null and not game.ending_sequence.caption.visible,"Victory begins with the boss collapse before black text")

@@ -47,7 +47,7 @@ func stage(scenario: String) -> void:
 	callback = JavaScriptBridge.create_callback(draw_frame)
 	JavaScriptBridge.get_interface("window").__drawDemoEnding = callback
 	JavaScriptBridge.eval("window.__demoEndingFrame=-1",true)
-	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"frames":112,"fps":FPS,"crystal_hp":sim.defense.crystal_hp,"health_cards":game.ui.native_hud.cards.size(),"no_portraits":game.ui.native_hud.cards.values().all(func(card): return not card.has("portrait")),"partners":game.partners.size()}),true)
+	JavaScriptBridge.eval("window.__campaignReviewReady="+JSON.stringify({"scenario":scenario,"frames":64 if victory else 80,"fps":FPS,"crystal_hp":sim.defense.crystal_hp,"health_cards":game.ui.native_hud.cards.size(),"no_portraits":game.ui.native_hud.cards.values().all(func(card): return not card.has("portrait")),"partners":game.partners.size()}),true)
 
 func draw_frame(args: Array) -> void:
 	var frame = int(args[0])

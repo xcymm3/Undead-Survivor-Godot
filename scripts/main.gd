@@ -565,7 +565,14 @@ func finish_run() -> void:
 	ui.native_hud.hide()
 	ui.hud.queue_redraw()
 	death_timer = 0.0
-	if sim.cause == "crystal" and not sim.won:
+	if sim.won and sim.boss_victory:
+		var bosses: Array = sim.zombies.filter(func(z): return z.get("original",z.kind) == "dancer" and z.hp <= 0)
+		if not bosses.is_empty():
+			var boss: Dictionary = bosses[0]
+			var height = Data.enemy_ground_height(boss.pos,sim.map_id)
+			camera.position = Vector3(boss.pos.x+7,height+4.2,boss.pos.y+5)
+			camera.look_at(Vector3(boss.pos.x,height+1.4,boss.pos.y))
+	elif sim.cause == "crystal" and not sim.won:
 		var point: Vector2 = Data.Maps.Defense.CRYSTAL
 		camera.position = Vector3(point.x+7,9,point.y+10)
 		camera.look_at(Vector3(point.x,4.5,point.y))
