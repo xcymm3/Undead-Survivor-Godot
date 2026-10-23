@@ -303,10 +303,10 @@ func show_home() -> void:
 	actions.size = Vector2(1000,76)
 	actions.add_theme_constant_override("separation",18)
 	stage.add_child(actions)
-	for item in [["开始游戏",func(): game.start_solo("defense")],["多人合作",show_multiplayer],["设置",show_settings],["问题反馈",show_feedback],["退出",func(): game.quit_game()]]:
+	for item in [["开始游戏",func(): game.start_solo("defense")],["多人合作",show_multiplayer],["设置",show_settings],["退出",func(): game.quit_game()]]:
 		var option = home_button(actions,item[0],item[1],item[0] == "开始游戏")
 		option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		option.custom_minimum_size = Vector2(180,76)
+		option.custom_minimum_size = Vector2(220,76)
 		option.add_theme_font_size_override("font_size",25)
 		if item[0] == "问题反馈":
 			option.name = "FeedbackEntry"
