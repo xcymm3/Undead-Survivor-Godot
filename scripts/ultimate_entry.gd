@@ -72,15 +72,21 @@ func build_overlay() -> void:
 	prompt.offset_bottom = 122
 	root.add_child(prompt)
 	detail = ui_label("靠近展台，查看终极武器",25)
-	detail.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	detail.offset_top = -132
-	detail.offset_bottom = -87
+	detail.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	detail.offset_left = 28
+	detail.offset_right = 400
+	detail.offset_top = -120
+	detail.offset_bottom = -65
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(detail)
 	var movement_keys = "%s %s %s %s" % [Data.binding_label("forward"),Data.binding_label("left"),Data.binding_label("back"),Data.binding_label("right")]
 	controls = ui_label("%s 移动  ·  鼠标环视  ·  %s 选择" % [movement_keys,Data.binding_label("interact")],19)
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	controls.offset_top = -76
-	controls.offset_bottom = -38
+	controls.offset_left = 28
+	controls.offset_top = -65
+	controls.offset_bottom = -25
+	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	root.add_child(controls)
 
 func ui_label(value: String, font_size: int) -> Label:
