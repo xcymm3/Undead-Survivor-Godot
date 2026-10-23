@@ -3,7 +3,11 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 test.use({ trace: 'off' });
-const scenarios = ['fire', 'axe', 'reload', 'switch', 'ultimate', 'guest_death', 'retry_failure', 'retry_victory', 'host_death', 'spectate'];
+const allScenarios = ['fire', 'axe', 'reload', 'switch', 'ultimate', 'guest_death', 'retry_failure', 'retry_victory', 'host_death', 'spectate'];
+const requested = process.env.QA_COOP_SCENARIOS ?? 'all';
+const selection = requested.split(',');
+if (requested !== 'all' && selection.some(name => !allScenarios.includes(name))) throw new Error(`Unknown coop scenario: ${requested}`);
+const scenarios = requested === 'all' ? allScenarios : allScenarios.filter(name => selection.includes(name));
 for (const scenario of scenarios) {
   test(`合作动作与流程 GIF：${scenario}`, async ({ page }) => {
     test.setTimeout(300_000);

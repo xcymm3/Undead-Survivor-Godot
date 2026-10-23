@@ -230,7 +230,7 @@ func local_pawn() -> Dictionary:
 
 func view_pawn() -> Dictionary:
 	var local = local_pawn()
-	if local.is_empty() or local.hp > 0 or not Session.playing: return local
+	if local.is_empty() or local.hp > 0 or not Session.playing or finished: return local
 	if sim.pawns.has(spectating) and sim.pawns[spectating].hp > 0 and sim.pawns[spectating].get("connected",true): return sim.pawns[spectating]
 	for p in sim.pawns.values():
 		if p.hp > 0 and p.get("connected",true):

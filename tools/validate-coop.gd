@@ -288,6 +288,9 @@ func host_test() -> void:
 	publish("failed")
 	if not await until(func(): return acknowledgements.has("finished"),"client receives terminal snapshot"): return
 	game.finish_run()
+	check(game.view_pawn().id == net.host_id,"Terminal host death keeps the local first-person ending camera instead of spectating")
+	game._process(.016)
+	check(not game.partners.has(net.host_id) or not game.partners[net.host_id].visible,"Terminal host death never renders its own corpse inside the camera")
 	game.ui.show_result()
 	check(game.ui.menu.find_children("*","Label",true,false).any(func(label): return label.text == "房主阵亡"),"Host death result identifies the actual defeat cause")
 	check(game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text == "重新防守"),"Host defeat result offers cooperative retry")

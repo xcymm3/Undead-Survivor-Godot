@@ -7,11 +7,18 @@ on:
         description: 截图范围
         default: all
         options: [all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, map_toys, ultimate_ring, dialogs, shop_hud, demo_endings, save_slots, coop_gifs]
+      coop_scenarios:
+        type: string
+        description: '合作GIF场景：all 或逗号分隔的场景名'
+        default: all
   workflow_call:
     inputs:
       scope:
         type: string
         default: switch
+      coop_scenarios:
+        type: string
+        default: all
 permissions:
   contents: read
 jobs:
@@ -75,6 +82,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'GIF encoding failed' }
       - name: 队友动作、阵亡、重开与观战GIF
         if: inputs.scope == 'coop_gifs'
+        env:
+          QA_COOP_SCENARIOS: ${{ inputs.coop_scenarios || 'all' }}
         run: |
           npx playwright test tests/browser/coop-gifs-visual.spec.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Coop capture failed' }
