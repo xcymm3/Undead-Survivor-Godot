@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
 import { spawn, execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
@@ -8,11 +8,14 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const stage = path.join(root, 'build/trailer40-source');
-const output = path.join(root, 'artifacts/trailer40');
+const revision = process.argv.includes('--revision=2') ? 2 : 1;
+const stage = path.join(root, revision === 2 ? 'build/trailer40-v2-source' : 'build/trailer40-source');
+const output = path.join(root, revision === 2 ? 'artifacts/trailer40-v2' : 'artifacts/trailer40');
 const source = path.join(root, 'tools/trailer');
 const width = Number(process.env.QA_TRAILER_WIDTH ?? 1440), height = Number(process.env.QA_TRAILER_HEIGHT ?? 604), fps = 24;
-const shots = { rifle: 6, ultimate: 7, defense: 5, boss: 6, upgrade: 4, build: 4, team: 5 };
+const shots = revision === 2
+  ? { rifle: 6, ultimate: 6, defense: 4.5, boss: 5, upgrade: 2.5, upgraded: 1, build: 2.5, team: 6.5 }
+  : { rifle: 6, ultimate: 7, defense: 5, boss: 6, upgrade: 4, build: 4, team: 5 };
 await mkdir(output, { recursive: true });
 
 async function run(args, label) {
@@ -26,6 +29,22 @@ async function run(args, label) {
   await writeFile(path.join(output, label + '.log'), log);
   if (code || /^(?:SCRIPT ERROR|ERROR):/m.test(log)) throw new Error(log.slice(-5000));
   console.log(label + ': PASS');
+}
+
+async function snapshotDigest() {
+  const hash = createHash('sha256');
+  let files = 0;
+  async function walk(relative) {
+    for (const entry of (await readdir(path.join(stage, relative), { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
+      const name = path.posix.join(relative, entry.name);
+      if (entry.isDirectory()) await walk(name);
+      else if (!entry.name.endsWith('.import')) {
+        hash.update(name + '\0'); hash.update(await readFile(path.join(stage, name))); files++;
+      }
+    }
+  }
+  for (const name of ['assets', 'scripts', 'scenes']) await walk(name);
+  return { snapshotDigest: hash.digest('hex'), snapshotFiles: files };
 }
 
 if (process.argv.includes('--prepare')) {
@@ -53,8 +72,9 @@ if (process.argv.includes('--prepare')) {
   await writeFile(path.join(output, 'source.json'), JSON.stringify({
     commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, windowsHide: true, encoding: 'utf8' }).trim(),
     environment: 'isolated source copy / Godot Web Compatibility / headless Chromium / SwiftShader',
-    nativeResolution: [width, height], fps, shots, fixtureSha256: createHash('sha256').update(await readFile(path.join(source,'capture40_scene.gd'))).digest('hex'),
+    nativeResolution: [width, height], fps, shots, revision, fixtureSha256: createHash('sha256').update(await readFile(path.join(source,'capture40_scene.gd'))).digest('hex'),
     staging: 'Staged cameras, enemy placement and protected performers. Native simulation, blue blade, summoning, purchase and four authority pawns; software Web, not multiplayer transport verification.',
+    ...await snapshotDigest(),
   }, null, 2));
 }
 
@@ -63,7 +83,9 @@ if (process.argv.includes('--refresh-fixture')) {
   await run(['--editor', '--import', '--quit'], 'import');
   await run(['--export-release', 'Web QA'], 'export');
   const metadata = JSON.parse(await readFile(path.join(output,'source.json'),'utf8'));
+  metadata.shotFixtureSha256 ??= Object.fromEntries(Object.keys(metadata.shots).map(shot => [shot, metadata.fixtureSha256]));
   metadata.fixtureSha256 = createHash('sha256').update(await readFile(path.join(source,'capture40_scene.gd'))).digest('hex');
+  Object.assign(metadata, { shots, revision }, await snapshotDigest());
   await writeFile(path.join(output,'source.json'),JSON.stringify(metadata,null,2));
 }
 
@@ -83,6 +105,7 @@ if (process.argv.includes('--preview') || process.argv.includes('--capture')) {
   const browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio', '--disable-background-timer-throttling'] });
   try {
     const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
+    await context.addInitScript(value => { window.__trailerRevision = value; }, revision);
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(String(error)));
@@ -120,6 +143,12 @@ if (process.argv.includes('--preview') || process.argv.includes('--capture')) {
         previous.errors = errors;
         await writeFile(path.join(output, 'capture.json'), JSON.stringify(previous, null, 2));
       } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+    if (!preview) {
+      const metadata = JSON.parse(await readFile(path.join(output,'source.json'),'utf8'));
+      metadata.shotFixtureSha256 ??= {};
+      for (const shot of new Set(records.map(record => record.shot))) metadata.shotFixtureSha256[shot] = metadata.fixtureSha256;
+      await writeFile(path.join(output,'source.json'), JSON.stringify(metadata,null,2));
     }
   } finally {
     await browser.close();
