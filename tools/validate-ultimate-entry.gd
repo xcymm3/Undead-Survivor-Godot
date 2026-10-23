@@ -72,11 +72,28 @@ func run() -> void:
 	check(entry.room.player.position.x < 11.6,"Room side wall contains the native player capsule")
 	face(entry,0)
 	check(entry.detail.visible and entry.detail.details.selection and entry.detail.details.rows[0] == ["伤害","200"],"Blade uses the left upgrade dossier with its real base damage")
+	check(not entry.choose("blade"),"Direct selection cannot bypass the required hold duration")
+	entry.step(.45,{"movement":Vector2.ZERO,"interact":true})
+	entry.render()
+	check(entry.phase == "room" and is_equal_approx(entry.interaction_ring.progress,.45),"Partial hold displays the shared upgrade interaction progress without selecting")
+	entry.step(.01,{"movement":Vector2.ZERO,"interact":false})
+	check(entry.hold_time == 0.0,"Releasing the interaction key resets partial selection")
+	entry.step(.5,{"movement":Vector2.ZERO,"interact":true})
+	entry.yaw = PI
+	entry.step(.01,{"movement":Vector2.ZERO,"interact":true})
+	check(entry.hold_time == 0.0 and entry.focus.is_empty(),"Looking away while holding cancels selection progress")
+	face(entry,0)
+	entry.step(.5,{"movement":Vector2.ZERO,"interact":true})
+	face(entry,0,5.8)
+	check(entry.hold_time == 0.0,"Leaving interaction range cancels selection progress")
+	face(entry,0)
 	var valid_path: String = progress.store.path
 	progress.store.path = OS.get_cache_dir().path_join("missing-ultimate-entry-"+str(OS.get_process_id())+"/save.json")
-	check(not entry.choose("blade") and entry.phase == "room" and progress.store.needs_ultimate_choice(),"Failed disk write keeps selection open and rolls back its state")
+	entry.step(1.01,{"movement":Vector2.ZERO,"interact":true})
+	check(entry.phase == "room" and progress.store.needs_ultimate_choice() and entry.hold_time == 0.0,"Failed disk write keeps selection open and resets its progress")
 	progress.store.path = valid_path
-	# A complete tap may arrive between physics frames; retain that press once.
+	face(entry,0)
+	# A short press and release must never count as a complete hold.
 	var tap = InputEventAction.new()
 	tap.action = "interact"
 	tap.pressed = true
@@ -84,7 +101,11 @@ func run() -> void:
 	tap.pressed = false
 	game._unhandled_input(tap)
 	entry.step(.016,{"movement":Vector2.ZERO,"interact":false})
-	check(entry.phase == "fade_out" and Store.new(save_path).data.ultimate_choice == "blade","A press and release between physics frames selects and persists blade before the fade")
+	check(entry.phase == "room" and entry.hold_time == 0.0 and progress.store.needs_ultimate_choice(),"A complete short tap between physics frames cannot select blade")
+	Input.action_press("interact")
+	for tick in 61: game._physics_process(1.0/60)
+	Input.action_release("interact")
+	check(entry.phase == "fade_out" and Store.new(save_path).data.ultimate_choice == "blade","Holding the real engine input for one second persists blade before the fade")
 	check(not progress.store.data.ultimate_unlocked,"Choosing an ultimate does not bypass the existing unlock tutorial")
 	entry.step(.45)
 	entry.render()

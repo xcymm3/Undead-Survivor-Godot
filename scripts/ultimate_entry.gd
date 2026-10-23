@@ -1,6 +1,7 @@
 extends Node
 ## First-entry story -> independent native room -> opaque handoff -> shop fade-in.
 const Intro = preload("res://scripts/first_attempt_intro.gd")
+const HOLD_SECONDS = preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS
 const Room = preload("res://scenes/ultimate_selection_room.tscn")
 var game
 var profile
@@ -13,6 +14,8 @@ var pitch = 0.0
 var focus = ""
 var notice = ""
 var notice_time = 0.0
+var hold_time = 0.0
+var interaction_ring: Node3D
 var interact_latch = false
 var interact_pending = false
 var handing_over = false
@@ -32,6 +35,9 @@ func _ready() -> void:
 	old_fov = game.camera.fov
 	room = Room.instantiate()
 	add_child(room)
+	interaction_ring = preload("res://scripts/interaction_ring.gd").new()
+	room.add_child(interaction_ring)
+	interaction_ring.hide()
 	game.arena.hide()
 	game.get_viewport().world_3d.environment = room.room_environment
 	game.weapon.hide()
@@ -117,7 +123,9 @@ func blocks_world() -> bool:
 	return phase != "return" and phase != "done"
 
 func step(dt: float, command: Dictionary = {}) -> void:
-	if game.paused: return
+	if game.paused:
+		hold_time = 0.0
+		return
 	elapsed += dt
 	notice_time = maxf(0,notice_time-dt)
 	if phase == "intro":
@@ -133,11 +141,18 @@ func step(dt: float, command: Dictionary = {}) -> void:
 		var movement: Vector2 = command.get("movement",Input.get_vector("left","right","forward","back"))
 		var direction = Basis(Vector3.UP,yaw)*Vector3(movement.x,0,movement.y)
 		room.player.advance(Vector2(direction.x,direction.z)*3.6,dt)
+		var previous_focus = focus
 		focus = room.focused(yaw,pitch)
-		var interact: bool = command.get("interact",Input.is_action_pressed("interact")) or interact_pending
+		var held: bool = command.get("interact",Input.is_action_pressed("interact"))
+		var pressed = held or interact_pending
 		interact_pending = false
-		if interact and not interact_latch: choose(focus)
-		interact_latch = interact
+		if focus != previous_focus or not held or focus != "blade": hold_time = 0.0
+		if held and focus == "blade":
+			hold_time = minf(HOLD_SECONDS,hold_time+dt)
+			if hold_time >= HOLD_SECONDS:
+				if not choose(focus): hold_time = 0.0
+		elif pressed and not interact_latch: choose(focus)
+		interact_latch = pressed
 	elif phase == "fade_out":
 		if elapsed >= .9:
 			restore_world()
@@ -163,6 +178,7 @@ func choose(id: String) -> bool:
 		notice = "Demo版不可用"
 		notice_time = 1.8
 		return false
+	if hold_time < HOLD_SECONDS: return false
 	if not profile.select_ultimate(id):
 		notice = profile.notice
 		notice_time = 3.0
@@ -198,8 +214,12 @@ func render() -> void:
 	if in_room and room.exhibits.has(focus):
 		var item: Dictionary = room.exhibits[focus].item
 		var rows: Array = [["伤害",str(preload("res://scripts/ultimate.gd").DAMAGE[0])],["攻击方式","近战劈砍"]] if item.available else []
-		dossier = {"selection":true,"title":item.label,"level":"终极武器 · 长刀" if item.available else "终极武器 · Demo版不可用","rows":rows,"note":notice if notice_time > 0 else "按 %s 选择" % Data.binding_label("interact") if item.available else "Demo版不可用"}
+		dossier = {"selection":true,"title":item.label,"level":"终极武器 · 长刀" if item.available else "终极武器 · Demo版不可用","rows":rows,"note":notice if notice_time > 0 else "长按 %s 确认选择" % Data.binding_label("interact") if item.available else "Demo版不可用"}
 	detail.sync(dossier)
+	interaction_ring.visible = in_room and not focus.is_empty()
+	if interaction_ring.visible:
+		interaction_ring.position = room.exhibits[focus].root.position+Vector3(0,1.5,.9)
+		interaction_ring.sync(hold_time/HOLD_SECONDS,game.camera.global_position,focus == "blade","ready" if focus == "blade" else "disabled")
 	var alpha = 1.0
 	if phase == "reveal": alpha = 1.0-clampf(elapsed/.9,0,1)
 	elif phase == "room": alpha = 0.0

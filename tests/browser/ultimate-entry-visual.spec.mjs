@@ -29,7 +29,7 @@ test('新存档序章、三色终极武器展厅与选择后进入商店GIF', as
       : frame >= 202 && frame < 214 ? 's'
       : frame >= 214 && frame < 232 ? 'a'
       : frame >= 232 && frame < 244 ? 'w'
-      : [122, 198, 260].includes(frame) ? 'e' : '';
+      : ([122, 198].includes(frame) || (frame >= 252 && frame <= 260)) ? 'e' : '';
     for (const old of held) if (old !== key) { await page.keyboard.up(old); held.delete(old); }
     if (key && !held.has(key)) { await page.keyboard.down(key); held.add(key); }
     const turn = [112, 188, 246].some(start => frame >= start && frame < start + 4) ? 6
@@ -50,6 +50,9 @@ test('新存档序章、三色终极武器展厅与选择后进入商店GIF', as
   expect(states[110].focus).toBe('rocket_launcher');
   expect(states[186].focus).toBe('crimson_scepter');
   expect(states[244].focus).toBe('blade');
+  expect(states[255].hold_progress).toBeGreaterThan(.4);
+  expect(states[255].phase).toBe('room');
+  expect(states[260].choice).toBe('blade');
   expect(states[244].detail.rows[0]).toEqual(['伤害', '200']);
   expect(Math.abs(states[115].yaw - states[111].yaw)).toBeGreaterThan(.02);
   for (let index = 81; index < 260; index++) {

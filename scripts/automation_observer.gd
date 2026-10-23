@@ -128,7 +128,7 @@ func native_smoke() -> void:
 			await get_tree().process_frame
 		Input.action_release("forward")
 		Input.action_press("interact")
-		await get_tree().create_timer(.1).timeout
+		await get_tree().create_timer(preload("res://scripts/preparation_catalog.gd").HOLD_SECONDS+.2).timeout
 		Input.action_release("interact")
 		entry_deadline = Time.get_ticks_msec()+5000
 		while game.entry_sequence and Time.get_ticks_msec() < entry_deadline: await get_tree().process_frame

@@ -125,7 +125,8 @@ func host_test() -> void:
 	host_save_path = OS.get_cache_dir().path_join("coop-host-"+str(OS.get_process_id())+".json")
 	profile.path = host_save_path
 	profile.data["tutorial_stage"] = 5
-	profile.data["intro_seen"] = true
+	profile.data["intro_seen"] = false
+	profile.data["ultimate_choice"] = ""
 	profile.data.weapons.rifle = 5
 	profile.data.magazines.rifle_magazine = 10
 	profile.data.talents.strong = 5
@@ -143,8 +144,33 @@ func host_test() -> void:
 	check(game.ui.current == "multiplayer" and game.ui.menu.find_children("*","Button",true,false).any(func(button): return button.text == "开始合作"),"Host lobby exposes the actual cooperative start action")
 	print("COOP HOST READY")
 	if not await until(func(): return net.members.size() == 2,"initial admission"): return
-	net.begin_match()
-	if not await until(func(): return game.running and net.playing,"map handshake"): return
+	game.begin_coop()
+	await physics_frame
+	var entry = game.entry_sequence
+	check(entry != null and entry.phase == "intro" and game.sim == null and not net.loading and not net.playing,"New host starts personal ultimate selection while keeping ENet guests in the lobby")
+	# Real network processing continues while the host watches the prologue.
+	await create_timer(1.0).timeout
+	entry.step(9.0)
+	entry.step(1.0)
+	check(net.members.size() == 2 and not net.loading and game.sim == null,"Host selection does not prematurely start the map-loading timeout or drop the guest")
+	Input.action_press("forward")
+	for tick in 90: game._physics_process(1.0/60)
+	Input.action_release("forward")
+	check(entry.focus == "blade","Host reaches the blade using the production movement input")
+	Input.action_press("interact")
+	for tick in 30: game._physics_process(1.0/60)
+	check(entry.phase == "room" and not net.loading and game.sim == null,"Partial host hold does not start the cooperative scene handshake")
+	for tick in 31: game._physics_process(1.0/60)
+	Input.action_release("interact")
+	check(entry.phase == "fade_out" and Store.new(host_save_path).data.ultimate_choice == "blade" and not net.loading,"Host persists its held selection before the cooperative scene transition")
+	entry.step(1.0)
+	entry.render()
+	check(entry.black.color.a == 1 and net.loading,"Cooperative map handshake begins only under the opaque fade")
+	if not await until(func(): return game.running and net.playing and game.sim != null,"map handshake after host ultimate selection"): return
+	entry.step(.25)
+	entry.step(1.1)
+	await process_frame
+	check(game.entry_sequence == null and net.members.size() == 2 and game.sim.pawns.size() == 2 and game.arena.visible,"Host leaves selection and enters the shared shop with both player pawns")
 	var sim = game.sim
 	var guest = net.members.keys().filter(func(id): return id != net.host_id)[0]
 	var host: Dictionary = sim.pawns[net.host_id]
@@ -351,7 +377,10 @@ func client_test() -> void:
 	check(menu_type.valid_target("192.168.1.20:27777","lan") and not menu_type.valid_target("192.168.1.20:70000","lan") and not menu_type.valid_target("broken","lan") and menu_type.valid_target("109775244906512345","steam") and not menu_type.valid_target("0","steam"),"Direct connection validates IP, port and Steam room id")
 	game.ui.room_query = ""
 	net.join_lan(address,"客机")
-	if not await until(func(): return phase("preparation"),"preparation snapshot"): return
+	if not await until(func(): return net.members.size() == 2,"lobby admission before host selection"): return
+	check(not net.playing and not net.loading and game.sim == null and game.entry_sequence == null,"Guest waits in the lobby without entering the host's personal selection scene")
+	if not await until(func(): return phase("preparation"),"preparation snapshot after host blade selection"): return
+	check(net.playing and not net.loading and game.sim.pawns.size() == 2 and game.sim.progression.data.ultimate_choice == "blade","Guest enters the same two-player shop after the host confirms blade")
 	var early = load("res://scripts/session.gd").new()
 	root.add_child(early)
 	early.map_preparing.connect(early.confirm_map_ready)
