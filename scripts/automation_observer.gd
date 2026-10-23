@@ -8,6 +8,9 @@ var observed_sim_id = 0
 var observed_shoves = 0
 var shove_events: Array = []
 var announcement_seen: Array = []
+var observed_reloading = false
+var observed_reload_weapon = -1
+var reload_events: Array = []
 
 func _ready() -> void:
 	if not Data.automation:
@@ -51,6 +54,9 @@ func observe_transients() -> void:
 		observed_shoves = 0
 		shove_events.clear()
 		announcement_seen.clear()
+		observed_reloading = false
+		observed_reload_weapon = -1
+		reload_events.clear()
 	if not game.sim: return
 	var pawn: Dictionary = game.local_pawn()
 	var count = int(pawn.get("shoves",0))
@@ -58,6 +64,13 @@ func observe_transients() -> void:
 		shove_events.append({"count":count,"combo":int(pawn.get("shove_count",0)),"cooldown":float(pawn.get("shove_cd",0))})
 		if shove_events.size() > 16: shove_events.pop_front()
 		observed_shoves = count
+	if not pawn.is_empty():
+		var reloading = bool(pawn.get("reloading",false))
+		if reloading and not observed_reloading: observed_reload_weapon = int(pawn.weapon)
+		if reloading != observed_reloading and observed_reload_weapon >= 0:
+			reload_events.append({"phase":"start" if reloading else "end","weapon":observed_reload_weapon,"ammo":int(pawn.ammo[observed_reload_weapon])})
+			if reload_events.size() > 32: reload_events.pop_front()
+		observed_reloading = reloading
 	var caption = game.ui.native_hud.wave_announcement
 	if caption.is_visible_in_tree() and caption.modulate.a > 0 and caption.text not in announcement_seen:
 		announcement_seen.append(caption.text)
@@ -79,6 +92,7 @@ func snapshot() -> Dictionary:
 		result.announcement = {"visible":game.ui.native_hud.wave_announcement.visible,"text":game.ui.native_hud.wave_announcement.text,"alpha":game.ui.native_hud.wave_announcement.modulate.a}
 		result.announcement_seen = announcement_seen
 		result.shove_events = shove_events
+		result.reload_events = reload_events
 		result.mode = game.sim.mode
 		result.defense = game.sim.defense_state()
 		result.won = game.sim.won

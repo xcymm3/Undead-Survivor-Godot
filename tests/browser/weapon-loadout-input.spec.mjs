@@ -22,10 +22,14 @@ test('real input fires cancels and completes second-weapon reload', async ({ pag
   await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 2 && window.__survivorSnapshot.player.switch <= 0);
   await page.mouse.click(480, 300);
   await page.waitForFunction(() => window.__survivorSnapshot.player.ammo[2] === 14);
-  await page.keyboard.press('r');
-  await page.waitForFunction(() => window.__survivorSnapshot.player.reloading);
+  // Keep a human-length press, then cancel immediately instead of waiting for
+  // a transient flag that can disappear during a slow software-rendered frame.
+  await page.keyboard.press('r', { delay: 200 });
   await page.keyboard.press('1');
   await page.waitForFunction(() => !window.__survivorSnapshot.player.reloading && window.__survivorSnapshot.player.weapon === window.__survivorSnapshot.player.weapon1);
+  const cancelledReload = await page.evaluate(() => window.__survivorSnapshot.reload_events.filter(event => event.weapon === 2));
+  expect(cancelledReload.some(event => event.phase === 'start' && event.ammo === 14)).toBe(true);
+  expect(cancelledReload.some(event => event.phase === 'end' && event.ammo === 14)).toBe(true);
   expect(await page.evaluate(() => window.__survivorSnapshot.player.ammo[2])).toBe(14);
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__survivorSnapshot.player.weapon === 2 && window.__survivorSnapshot.player.switch <= 0);
