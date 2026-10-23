@@ -69,6 +69,15 @@ static func validate(game, check: Callable) -> void:
 	game.sim.defense_director.rewarded_waves.clear()
 	game.sim.defense_director.reward_finished_waves()
 	check.call(guest.hp == guest.max_hp and guest.pos.distance_to(game.sim.map_definition.spawn) < 6,"Connected dead guest revives at spawn after the actual wave is cleared")
+	game.sim.wave = 3
+	guest.protection = 0.0
+	guest.tutorial_guard_remaining = 0.0
+	game.sim.damage_pawn(guest,{"id":991,"pos":guest.pos},10000)
+	check.call(guest.hp == 0 and guest.death_wave == 3,"Authoritative damage records the wave in which a guest dies")
+	game.sim.defense_director.revive_guests(2)
+	check.call(guest.hp == 0,"Clearing an older overlapping wave cannot revive a guest from a later wave")
+	game.sim.defense_director.revive_guests(3)
+	check.call(guest.hp == guest.max_hp and not guest.has("death_wave"),"Guest revives only after the wave of death has actually cleared")
 	for index in [2,3]:
 		var id = "qa_guest"+str(index)
 		game.sim.add_pawn(id,id,index)

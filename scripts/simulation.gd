@@ -577,6 +577,7 @@ func recover_defense_fall(p: Dictionary, body) -> void:
 	body.velocity = Vector3.ZERO
 	body.grounded = false
 	if p.get("tutorial_guard_remaining",0.0) <= 0: p.hp = maxf(0,p.hp-DEFENSE_FALL_DAMAGE)
+	if p.hp <= 0: p["death_wave"] = wave
 	preload("res://scripts/onboarding.gd").unlock_from_health(self,p)
 	enter_combat(p)
 	p.protection = .65
@@ -793,6 +794,7 @@ func damage_pawn(p: Dictionary, z: Dictionary, amount := 10) -> bool:
 	p.damage_hint = 1.8
 	events.append({"kind":"hurt","player":p.id,"rear":p.damage_rear})
 	if p.hp == 0:
+		p["death_wave"] = wave
 		cause = "zombie"
 		culprit = int(z.id)
 	return true
