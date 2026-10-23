@@ -33,14 +33,16 @@ func _draw() -> void:
 	lettering(Vector2(24,51),details.title,27,Art.PAPER)
 	lettering(Vector2(24,82),details.level,15,Art.MUTED)
 	draw_rect(Rect2(24,98,w-48,2),Art.STEEL)
-	lettering(Vector2(146,123),"当前",12,Art.MUTED)
-	lettering(Vector2(245,123),"升级后",12,Art.GOLD)
+	var selection: bool = details.get("selection",false)
+	lettering(Vector2(146,123),"属性" if selection else "当前",12,Art.MUTED)
+	if not selection: lettering(Vector2(245,123),"升级后",12,Art.GOLD)
 	var y = 159.0
 	for row in details.rows:
 		lettering(Vector2(24,y),row[0],17,Art.PAPER)
 		lettering(Vector2(145,y),row[1],19,Art.MUTED)
-		lettering(Vector2(222,y),"›",22,Art.GOLD)
-		lettering(Vector2(247,y),row[2],19,Art.SUCCESS)
+		if not selection:
+			lettering(Vector2(222,y),"›",22,Art.GOLD)
+			lettering(Vector2(247,y),row[2],19,Art.SUCCESS)
 		draw_rect(Rect2(24,y+13,w-48,1),Art.STEEL*Color(1,1,1,.35))
 		y += 48
 	if not details.note.is_empty(): lettering(Vector2(24,y+5),details.note,14,Art.GOLD)

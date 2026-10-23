@@ -43,7 +43,7 @@ func run() -> void:
 	check(entry.room.global_position.y == 80 and not game.arena.visible and entry.room.player.global_position.y > 79,"Selection scene and collisions are independent of the hidden defense terrain")
 	check(entry.room.has_node("NeonTechnology") and entry.room.has_node("AzureMoonHall") and entry.room.has_node("CrimsonGothicChapel"),"Room builds three distinct architectural bays")
 	check(entry.room.exhibits.size() == 3 and entry.room.exhibits.rocket_launcher.weapon.get_meta("weapon_id") == "rocket_launcher" and entry.room.exhibits.crimson_scepter.weapon.get_meta("weapon_id") == "crimson_scepter","Both new native display weapon models are instantiated alongside the existing blade")
-	check(entry.prompt.text == "开始游戏前，选择你的终极武器","Selection prompt matches the requested text")
+	check(entry.prompt.text == "选择你的终极武器","Selection prompt matches the requested text")
 	entry.step(4.5)
 	entry.render()
 	check(entry.phase == "intro" and entry.black.color.a == 1 and game.sim == null and not progress.store.data.intro_seen,"Incomplete story stays opaque and does not start or save the main game")
@@ -57,6 +57,7 @@ func run() -> void:
 	entry.step(1.0)
 	entry.render()
 	check(entry.phase == "room" and entry.black.color.a == 0,"Room reveals fully before selection controls enable")
+	check(not entry.detail.visible,"Weapon dossier stays hidden outside interaction range")
 	check(not entry.choose("blade"),"Blade cannot be selected from outside its interaction range")
 	for id in ["rocket_launcher","crimson_scepter"]:
 		face(entry,-8 if id == "rocket_launcher" else 8)
@@ -70,6 +71,7 @@ func run() -> void:
 	for tick in 120: entry.step(1.0/60,{"movement":Vector2(1,0),"interact":false})
 	check(entry.room.player.position.x < 11.6,"Room side wall contains the native player capsule")
 	face(entry,0)
+	check(entry.detail.visible and entry.detail.details.selection and entry.detail.details.rows[0] == ["伤害","200"],"Blade uses the left upgrade dossier with its real base damage")
 	var valid_path: String = progress.store.path
 	progress.store.path = OS.get_cache_dir().path_join("missing-ultimate-entry-"+str(OS.get_process_id())+"/save.json")
 	check(not entry.choose("blade") and entry.phase == "room" and progress.store.needs_ultimate_choice(),"Failed disk write keeps selection open and rolls back its state")

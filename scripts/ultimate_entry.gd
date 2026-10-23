@@ -23,8 +23,8 @@ var overlay: CanvasLayer
 var black: ColorRect
 var story: VBoxContainer
 var prompt: Label
-var detail: Label
-var controls: Label
+var detail: Control
+var hint_frame: CenterContainer
 
 func _ready() -> void:
 	profile = Progress.store
@@ -67,28 +67,37 @@ func build_overlay() -> void:
 		var label = ui_label(line,38)
 		label.add_theme_font_override("font",preload("res://assets/fonts/SourceHanSerifSC-SemiBold.otf"))
 		story.add_child(label)
-	prompt = ui_label("开始游戏前，选择你的终极武器",32)
-	prompt.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	prompt.offset_top = 65
-	prompt.offset_bottom = 122
-	root.add_child(prompt)
-	detail = ui_label("靠近展台，查看终极武器",25)
-	detail.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	detail.offset_left = 28
-	detail.offset_right = 400
-	detail.offset_top = -120
-	detail.offset_bottom = -65
-	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint_frame = CenterContainer.new()
+	hint_frame.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	hint_frame.offset_top = 200
+	root.add_child(hint_frame)
+	var panel = PanelContainer.new()
+	var enamel = StyleBoxFlat.new()
+	enamel.bg_color = Color(.035,.065,.058,.94)
+	enamel.border_color = Color("b89a59")
+	enamel.set_border_width_all(2)
+	enamel.border_width_bottom = 4
+	enamel.content_margin_left = 28
+	enamel.content_margin_right = 28
+	enamel.content_margin_top = 9
+	enamel.content_margin_bottom = 9
+	enamel.shadow_color = Color(0,0,0,.5)
+	enamel.shadow_size = 5
+	panel.add_theme_stylebox_override("panel",enamel)
+	hint_frame.add_child(panel)
+	prompt = Label.new()
+	prompt.text = "选择你的终极武器"
+	prompt.add_theme_font_override("font",preload("res://scripts/tutorial_overlay.gd").StoryFont)
+	prompt.add_theme_font_size_override("font_size",32)
+	prompt.add_theme_color_override("font_color",Color("fff0cc"))
+	prompt.add_theme_color_override("font_outline_color",Color("10191b"))
+	prompt.add_theme_constant_override("outline_size",5)
+	prompt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(prompt)
+	detail = preload("res://scripts/upgrade_details.gd").new()
+	detail.position = Vector2(28,235)
 	root.add_child(detail)
-	var movement_keys = "%s %s %s %s" % [Data.binding_label("forward"),Data.binding_label("left"),Data.binding_label("back"),Data.binding_label("right")]
-	controls = ui_label("%s 移动  ·  鼠标环视  ·  %s 选择" % [movement_keys,Data.binding_label("interact")],19)
-	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	controls.offset_left = 28
-	controls.offset_top = -65
-	controls.offset_bottom = -25
-	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	root.add_child(controls)
 
 func ui_label(value: String, font_size: int) -> Label:
 	var label = Label.new()
@@ -184,14 +193,13 @@ func render() -> void:
 	story.visible = phase == "intro"
 	for i in story.get_child_count(): story.get_child(i).modulate.a = Intro.line_alpha({"intro_elapsed":elapsed},i)
 	var in_room = phase in ["room","reveal"]
-	prompt.visible = in_room
-	detail.visible = in_room
-	controls.visible = in_room
-	if notice_time > 0: detail.text = notice
-	elif room.exhibits.has(focus):
+	hint_frame.visible = in_room
+	var dossier: Dictionary = {}
+	if in_room and room.exhibits.has(focus):
 		var item: Dictionary = room.exhibits[focus].item
-		detail.text = "%s  ·  %s" % [item.label,"按 %s 选择" % Data.binding_label("interact") if item.available else "Demo版不可用"]
-	else: detail.text = "靠近展台，查看终极武器"
+		var rows: Array = [["伤害",str(preload("res://scripts/ultimate.gd").DAMAGE[0])],["攻击方式","近战劈砍"]] if item.available else []
+		dossier = {"selection":true,"title":item.label,"level":"终极武器 · 长刀" if item.available else "终极武器 · Demo版不可用","rows":rows,"note":notice if notice_time > 0 else "按 %s 选择" % Data.binding_label("interact") if item.available else "Demo版不可用"}
+	detail.sync(dossier)
 	var alpha = 1.0
 	if phase == "reveal": alpha = 1.0-clampf(elapsed/.9,0,1)
 	elif phase == "room": alpha = 0.0

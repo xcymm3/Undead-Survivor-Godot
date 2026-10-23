@@ -10,7 +10,7 @@ assert len(frames) == timing['frames']
 durations = [round((i + 1) * 100 / timing['fps']) * 10 - round(i * 100 / timing['fps']) * 10 for i in range(len(frames))]
 frames[0].save(root / 'ultimate-entry.gif', save_all=True, append_images=frames[1:], duration=durations,
                loop=0, optimize=False, disposal=2)
-indices = [12, 40, 68, 84, 100, 116, 124, 154, 164, 184, 198, 218]
+indices = [80, 96, 110, 120, 150, 186, 198, 232, 244, 260, 268, 286]
 sheet = Image.new('RGB', (1440, 1280), '#080d17')
 draw = ImageDraw.Draw(sheet)
 for i, frame in enumerate(indices):
