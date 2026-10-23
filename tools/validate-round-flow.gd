@@ -69,6 +69,13 @@ static func validate(game, check: Callable) -> void:
 	game.sim.defense_director.rewarded_waves.clear()
 	game.sim.defense_director.reward_finished_waves()
 	check.call(guest.hp == guest.max_hp and guest.pos.distance_to(game.sim.map_definition.spawn) < 6,"Connected dead guest revives at spawn after the actual wave is cleared")
+	for index in [2,3]:
+		var id = "qa_guest"+str(index)
+		game.sim.add_pawn(id,id,index)
+		game.sim.equipment.initialize_pawn(game.sim.pawns[id])
+		game.sim.pawns[id].hp = 0
+	game.sim.defense_director.revive_guests()
+	check.call(game.sim.pawns.qa_guest3.pos.is_equal_approx(game.sim.map_definition.spawn+Vector2(1.4,2.6)),"Fourth-player wave revival uses its original valid spawn slot instead of an extra row")
 	guest.hp = 0
 	guest.connected = false
 	game.sim.defense_director.revive_guests()

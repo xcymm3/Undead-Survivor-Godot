@@ -85,9 +85,9 @@ func reward_finished_waves() -> void:
 
 func revive_guests() -> void:
 	if sim.coop_host.is_empty() or sim.failed or sim.pawns[sim.coop_host].hp <= 0: return
-	var index = 0
-	for p in sim.pawns.values():
-		index += 1
+	var ids: Array = sim.pawns.keys()
+	for index in ids.size():
+		var p: Dictionary = sim.pawns[ids[index]]
 		if p.id == sim.coop_host or p.hp > 0 or not p.get("connected",true): continue
 		p.pos = sim.map_definition.spawn+Vector2((index%2)*2.8-1.4,floori(index/2.0)*2.6)
 		p.height = Layout.height(p.pos)
