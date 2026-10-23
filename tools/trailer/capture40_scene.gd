@@ -50,7 +50,8 @@ func _process(_dt):
 	RenderingServer.force_draw(true)
 	var p = game.local_pawn()
 	var structures = game.sim.defense.get("structures",[]).filter(func(s): return s.get("owned",false) and s.hp > 0).size()
-	JavaScriptBridge.eval("window.__trailerFrame="+JSON.stringify({"shot":shot,"frame":frame,"kills":game.sim.kills,"shots":p.shots,"alive":game.sim.alive_count(),"summoned":game.sim.zombies.filter(func(z):return z.get("summoned",false)).size(),"ultimate":p.get("ultimate_remaining",0),"team":actors.size(),"level":game.sim.progression.level("rifle"),"structures":structures,"crystalHP":game.sim.defense.crystal_hp,"cues":cues}),true)
+	var crystal_targets = game.sim.zombies.filter(func(z): return z.hp > 0 and z.get("target","") == "crystal").size()
+	JavaScriptBridge.eval("window.__trailerFrame="+JSON.stringify({"shot":shot,"frame":frame,"kills":game.sim.kills,"shots":p.shots,"alive":game.sim.alive_count(),"summoned":game.sim.zombies.filter(func(z):return z.get("summoned",false)).size(),"ultimate":p.get("ultimate_remaining",0),"team":actors.size(),"level":game.sim.progression.level("rifle"),"structures":structures,"crystalHP":game.sim.defense.crystal_hp,"crystalTargets":crystal_targets,"cues":cues}),true)
 	busy = false
 
 func stage(id):
@@ -81,7 +82,7 @@ func stage(id):
 	game.sim.defense.waiting = true
 	game.sim.defense.crystal_repair_required = false
 	game.sim.defense.crystal_hp = 3000
-	if revision == 2 and id == "build": game.sim.defense.waiting = false
+	if revision >= 2 and id == "build": game.sim.defense.waiting = false
 	game.camera.fov = 66
 	game.arena.sun.light_energy = .48
 	game.arena.sun.shadow_enabled = true
@@ -106,11 +107,12 @@ func stage(id):
 					point = p.pos+Vector2(sin(angle),cos(angle))*(3.1+row*.27)
 				if id == "build": point = Vector2((col-4)*.85,-12-row*1.1)
 				if id == "defense": point.y = 6.8-row*1.2
-				if revision == 2 and id in ["rifle","upgraded"]: point.y += 2.3
-				if revision == 2 and id in ["defense","team"]: point.y = 12.0-row*1.25
+				if revision >= 2 and id in ["rifle","upgraded"]: point.y += 2.3
+				if revision >= 2 and id in ["defense","team"]: point.y = 12.0-row*1.25
+				if revision == 3 and id == "defense": point.y = 14.0-row*1.25
 				game.sim.spawn(point,"bucket" if col%4 == 0 else "normal")
-				if (id == "team" or (revision == 2 and id == "defense")) and col%3 != 0:
-					var durability = 5 if revision == 2 and id == "team" else 2
+				if (id == "team" or (revision >= 2 and id == "defense")) and col%3 != 0:
+					var durability = 5 if revision >= 2 and id == "team" else 2
 					game.sim.zombies[-1].hp *= durability
 					game.sim.zombies[-1].body *= durability
 				game.sim.zombies[-1].chase_speed = .65 if id == "ultimate" else 1.15
@@ -135,14 +137,14 @@ func stage(id):
 		light.position = entry.position+Vector3(1,2,-2)
 	if id == "team" or (revision == 2 and id == "defense"):
 		p.pos = Vector2(-4.2,12.2)
-		if revision == 2: p.pos.y = 20.0
+		if revision >= 2: p.pos.y = 20.0
 		for i in 3:
 			var id2 = "film_"+str(i)
 			game.sim.add_pawn(id2,"",i+1)
 			game.sim.equipment.initialize_pawn(game.sim.pawns[id2])
 			var other = game.sim.pawns[id2]
 			other.pos = Vector2(-1.4+i*2.8,12.2)
-			if revision == 2: other.pos.y = 20.0
+			if revision >= 2: other.pos.y = 20.0
 			other.height = 3
 			other.protection = 999
 		for i in game.sim.pawns.size():
@@ -153,6 +155,10 @@ func stage(id):
 			actor.setup(pawn)
 			actor.label.hide()
 			actors.append(actor)
+	if revision == 3 and id == "defense":
+		# Keep the required authority pawn far outside the shot and target selection.
+		# No actor models or player gunfire are staged in this crystal-only scene.
+		p.pos = Vector2(18,40)
 	game.arena.scenery.sync(game.sim.defense)
 
 func advance(t,dt):
@@ -170,7 +176,7 @@ func advance(t,dt):
 		game.camera.fov = 51+12*k
 		light.light_color = Color.from_hsv(fmod(t*.2+.7,1),.35,1)
 	else:
-		var fire = shot in ["rifle","ultimate","team","upgraded"] and (t > .2 or revision == 2)
+		var fire = shot in ["rifle","ultimate","team","upgraded"] and (t > .2 or revision >= 2)
 		if revision == 2 and shot == "defense": fire = t > .5
 		var aim = Vector3(0,4.5,0)
 		var best = INF
@@ -184,7 +190,7 @@ func advance(t,dt):
 			var dir = (aim-Vector3(p.pos.x,p.height+1.65,p.pos.y)).normalized()
 			p.yaw = lerp_angle(p.yaw,atan2(-dir.x,-dir.z),.3)
 			p.pitch = lerpf(p.pitch,asin(dir.y),.3)
-		var draw_frame = 24 if revision == 2 else 34
+		var draw_frame = 24 if revision >= 2 else 34
 		if shot == "ultimate" and frame < draw_frame: p.ammo[0] = mini(p.ammo[0],1)
 		if shot == "ultimate" and frame >= draw_frame: p.reloading = false
 		var command = {"x":0,"y":0,"yaw":p.yaw,"pitch":p.pitch,"weapon":p.weapon,"slot":p.slot,"fire":fire,"ultimate":shot == "ultimate" and frame == draw_frame,"aim":shot == "rifle" and t>2.5 and t<4,"interact":shot == "upgrade" and t > .5 and t < 1.7}
@@ -194,8 +200,8 @@ func advance(t,dt):
 				if other.id == p.id: continue
 				sim.submit(other.id,{"x":0,"y":0,"yaw":0,"pitch":0,"weapon":0,"slot":1,"fire":true})
 		if shot == "rifle" and frame == 50: sim.equipment.throw_grenade(p)
-		if revision == 2 and shot == "build": sim.defense.waiting = false
-		if revision == 2 and shot == "build" and frame in [0,12,24]:
+		if revision >= 2 and shot == "build": sim.defense.waiting = false
+		if revision >= 2 and shot == "build" and frame in [0,12,24]:
 			var key = ["bridge_gate","turret_left","turret_right"][floori(frame/12.0)]
 			if sim.progression.purchase(key): sim.defense_director.structures.refresh_purchase(key)
 		sim.step(dt)
@@ -206,9 +212,12 @@ func advance(t,dt):
 		if shot == "defense":
 			game.camera.position = Vector3(8-t*.7,8,20-t*.6)
 			game.camera.look_at(Vector3(0,4.3,10))
-			if revision == 2:
+			if revision >= 2:
 				game.camera.position = Vector3(10-t*.9,7.2,25-t*.5)
 				game.camera.look_at(Vector3(0,4.5,15.8))
+			if revision == 3:
+				game.camera.position = Vector3(8-t*.8,7.2-t*.18,24-t*.65)
+				game.camera.look_at(Vector3(0,4.8,Layout.CRYSTAL.y-.7))
 		if shot == "build":
 			game.camera.position = Vector3(10-t*.5,7,-3)
 			game.camera.look_at(Vector3(0,3.5,-10))
@@ -216,20 +225,20 @@ func advance(t,dt):
 			game.camera.fov = 54
 			game.arena.scenery.sync_focus(sim,p)
 		if shot == "team":
-			var wide = sin(clampf(t/(6.5 if revision == 2 else 5.0),0,1)*PI)
+			var wide = sin(clampf(t/(6.5 if revision >= 2 else 5.0),0,1)*PI)
 			game.camera.position = Vector3(4+6*wide,6.4+4*wide,19+5*wide)
 			game.camera.look_at(Vector3(0,4.4,11))
-			if revision == 2:
+			if revision >= 2:
 				game.camera.position = Vector3(4+1.5*wide,6.8+wide,27)
 				game.camera.look_at(Vector3(0,4.7,17.8))
 			game.camera.fov = 64
-			if revision == 2: game.camera.fov = 60
+			if revision >= 2: game.camera.fov = 60
 		if shot == "team" or (revision == 2 and shot == "defense"):
 			for i in actors.size():
 				actors[i].sync(sim.pawns.values()[i],dt,false)
 				actors[i].label.hide()
 	game.effects.step(dt)
-	if revision == 2 and shot == "build" and frame in [0,12,24]: cues.append({"kind":"build","time":t})
+	if revision >= 2 and shot == "build" and frame in [0,12,24]: cues.append({"kind":"build","time":t})
 	for event in sim.events:
 		if event.kind == "turret_shot":
 			game.effects.gunshot(event.from,event.to)

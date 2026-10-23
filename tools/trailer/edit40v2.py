@@ -15,6 +15,9 @@ import edit as base
 OUT = base.ROOT / 'artifacts/trailer40-v2'
 TARGET = OUT / 'Undead-Survivor-Trailer-40s-V2-1080p.mp4'
 FPS, RATE = 24, base.RATE
+DURATION = 40
+FREEZE_START, FADE_START, FINAL_ACCENT, FIRE_ACCENT = 38, 39, 38, 3
+CAPTURE_REVISION = 2
 HERO_FRAME = 153
 CARDS = [(1.5, 3, '迎击海量尸潮'), (11, 12.5, '守住最后防线'),
          (22, 23.5, '升级永久保留'), (26, 27.5, '筑起你的防线'),
@@ -54,7 +57,7 @@ def frame_at(number):
             art = base.text_art(text, 88, (245, 245, 245), True, 9)
             base.title(canvas, text, (1080-art.height)//2, 88, (245, 245, 245), opacity=opacity, tracking=9)
             return canvas
-    if t >= 38:
+    if FREEZE_START is not None and t >= FREEZE_START:
         pic = source_frame('team', HERO_FRAME)
     else:
         start, end, shot, point, zoom = next(row for row in CLIPS if row[0] <= t < row[1])
@@ -65,8 +68,8 @@ def frame_at(number):
             x, y = (expanded.width-1920)//2, (expanded.height-804)//2
             pic = expanded.crop((x, y, x+1920, y+804))
     canvas.paste(pic, (0, 138))
-    if t >= 39:
-        alpha = 1-base.smooth(39, 40-1/FPS, t)
+    if t >= FADE_START:
+        alpha = 1-base.smooth(FADE_START, DURATION-1/FPS, t)
         canvas = canvas.point([round(i*alpha) for i in range(256)]*3)
     return canvas
 
@@ -83,20 +86,21 @@ def mapped_cues():
                     continue
                 if point-1e-6 <= cue['time'] < point+end-start-1e-6:
                     result.append({'kind': cue['kind'], 'time': start+cue['time']-point,
-                                   'until': 39 if end == 38 else end, 'shot': shot, 'sourceTime': cue['time']})
+                                   'until': FADE_START if end == FREEZE_START else end, 'shot': shot, 'sourceTime': cue['time']})
     return sorted(result, key=lambda row: row['time'])
 
 
 def soundtrack():
     rng = np.random.default_rng(20261023)
-    music = np.zeros((40*RATE, 2), np.float32)
+    music = np.zeros((DURATION*RATE, 2), np.float32)
     effects = np.zeros_like(music)
     cues = mapped_cues()
     chords = [(50, 53, 57), (46, 50, 53), (48, 52, 55), (45, 48, 52)]
-    for bar in range(20):
-        for j, note in enumerate(chords[0 if bar == 19 else (bar//2)%4]):
+    bars = (DURATION+1)//2
+    for bar in range(bars):
+        for j, note in enumerate(chords[0 if bar == bars-1 else (bar//2)%4]):
             base.add(music, base.synth(base.midi(note), 2.2, 'pad'), bar*2, .052, [-.6, 0, .6][j])
-    base.add(music, base.synth(base.midi(26), 2, 'pad'), 38, .12)
+    base.add(music, base.synth(base.midi(26), 2, 'pad'), FINAL_ACCENT, .12)
     t = np.arange(int(.42*RATE))/RATE
     kick = (np.sin(2*np.pi*(46*t+100*.028*(1-np.exp(-t/.028))))
             + rng.normal(0, .04, len(t))*np.exp(-t*100))*np.exp(-t*12)
@@ -107,7 +111,7 @@ def soundtrack():
     snaps = []
     gun_times = [c['time'] for c in cues if c['kind'] == 'rifle']
     # Keep gun sounds on the actual rendered events. Move nearby drum attacks to them.
-    for beat in range(76):
+    for beat in range(round(FINAL_ACCENT*2)):
         at = beat*.5
         if 6 <= at < 7.75:
             continue
@@ -131,7 +135,7 @@ def soundtrack():
     impact = (np.sin(2*np.pi*(31*tt+70*.06*(1-np.exp(-tt/.06))))
               + rng.normal(0, .12, RATE))*np.exp(-tt*7)
     first_blade = min(c['time'] for c in cues if c['kind'] == 'blade')
-    accents = [0, 3, first_blade, 12.5, 17, 23.5, 27.5, 31.5, 38]
+    accents = [0, FIRE_ACCENT, first_blade, 12.5, 17, 23.5, 27.5, 31.5, FINAL_ACCENT]
     accents += [c['time'] for c in cues if c['kind'] == 'explosion']
     for at in accents:
         base.add(music, impact, at, .43)
@@ -143,7 +147,7 @@ def soundtrack():
         'ultimate_start': 'blade-draw.wav', 'disco': 'disco.wav',
         'explosion': 'grenade-explosion.wav', 'world_upgrade': 'reload.wav',
         'crystal_hit': 'enemy-impact.wav', 'build': 'reload.wav'}.items()}
-    duck = np.ones(40*RATE, np.float32)
+    duck = np.ones(DURATION*RATE, np.float32)
     for cue in cues:
         if cue['kind'] not in samples:
             continue
@@ -198,7 +202,7 @@ def master_audio():
         capture_output=True, text=True, creationflags=base.NO_WINDOW, check=True)
     (OUT/'mastering.log').write_text(first.stderr+'\nSECOND PASS\n'+second.stderr, encoding='utf-8')
     with wave.open(str(target)) as audio:
-        assert audio.getnframes() == 40*RATE and audio.getframerate() == RATE
+        assert audio.getnframes() == DURATION*RATE and audio.getframerate() == RATE
     return target
 
 
@@ -225,8 +229,10 @@ def decoded_frame(seconds):
 
 
 def verify():
-    coverage = np.zeros(960, np.int32)
-    for start, end, *_ in CLIPS+CARDS+[(38, 40)]:
+    frames = DURATION*FPS
+    coverage = np.zeros(frames, np.int32)
+    ending = [(FREEZE_START, DURATION)] if FREEZE_START is not None else []
+    for start, end, *_ in CLIPS+CARDS+ending:
         coverage[round(start*FPS):round(end*FPS)] += 1
     assert np.all(coverage == 1)
     for a, b, _ in CARDS:
@@ -234,18 +240,27 @@ def verify():
         assert not frame_at(round(b*FPS)-1).getbbox()
         bbox = frame_at(round((a+.5)*FPS)).getbbox()
         assert bbox and bbox[1] > 350 and bbox[3] < 700
-    assert frame_at(38*FPS).tobytes() == frame_at(39*FPS-1).tobytes()
-    assert not frame_at(959).getbbox()
+    if FREEZE_START is not None:
+        assert frame_at(FREEZE_START*FPS).tobytes() == frame_at(FADE_START*FPS-1).tobytes()
+    else:
+        assert source_frame('team', 84).tobytes() != source_frame('team', 96).tobytes()
+    assert not frame_at(frames-1).getbbox()
     data = json.loads((OUT/'capture.json').read_text(encoding='utf-8'))
     source = json.loads((OUT/'source.json').read_text(encoding='utf-8'))
-    assert source['revision'] == 2 and not data['errors'] and not any(data['safety'].values())
+    assert source['revision'] == CAPTURE_REVISION and not data['errors'] and not any(data['safety'].values())
     for shot, duration in source['shots'].items():
         assert sum(r['shot'] == shot for r in data['records']) == round(duration*FPS)
     for shot in ['defense', 'team']:
         rows = [r for r in data['records'] if r['shot'] == shot]
-        assert all(r['structures'] == 0 and r['team'] == 4 for r in rows)
-    hero = next(r for r in data['records'] if r['shot'] == 'team' and r['frame'] == HERO_FRAME)
-    assert sum(c['kind'] == 'rifle' for c in hero['cues']) == 4
+        players = 0 if CAPTURE_REVISION == 3 and shot == 'defense' else 4
+        assert all(r['structures'] == 0 and r['team'] == players for r in rows)
+        if players == 0:
+            assert all(r['shots'] == 0 and not any(c['kind'] == 'rifle' for c in r['cues']) for r in rows)
+            assert min(r['crystalHP'] for r in rows) < rows[0]['crystalHP']
+            assert max(r['crystalTargets'] for r in rows) > 0
+    if FREEZE_START is not None:
+        hero = next(r for r in data['records'] if r['shot'] == 'team' and r['frame'] == HERO_FRAME)
+        assert sum(c['kind'] == 'rifle' for c in hero['cues']) == 4
     assert max(r['kills'] for r in data['records'] if r['shot'] == 'ultimate') > 0
     assert max(r['summoned'] for r in data['records'] if r['shot'] == 'boss') > 0
     assert max(r['level'] for r in data['records'] if r['shot'] == 'upgrade') > 0
@@ -255,7 +270,7 @@ def verify():
     result = subprocess.run([base.FFMPEG, '-hide_banner', '-i', str(TARGET), '-f', 'null', '-'],
         capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=base.NO_WINDOW)
     (OUT/'decode.log').write_text(result.stderr, encoding='utf-8')
-    assert result.returncode == 0 and '00:00:40.00' in result.stderr and '1920x1080' in result.stderr and '24 fps' in result.stderr
+    assert result.returncode == 0 and f'00:00:{DURATION:02d}.00' in result.stderr and '1920x1080' in result.stderr and '24 fps' in result.stderr
     audio = subprocess.run([base.FFMPEG, '-hide_banner', '-i', str(TARGET), '-af', 'ebur128=peak=true', '-vn', '-f', 'null', '-'],
         capture_output=True, text=True, creationflags=base.NO_WINDOW)
     (OUT/'loudness.log').write_text(audio.stderr, encoding='utf-8')
@@ -263,13 +278,20 @@ def verify():
     assert audio.returncode == 0 and peak <= -1
     loudness = float(re.search(r'Integrated loudness:\s+I:\s+([\d.-]+)', audio.stderr)[1])
     assert -15 <= loudness <= -13
-    frozen = np.asarray(decoded_frame(38.1)).astype(float)
-    assert np.mean(np.abs(frozen-np.asarray(decoded_frame(38.9)))) < .5
-    assert np.asarray(decoded_frame(39.5)).mean() < frozen.mean()*.75
-    assert np.asarray(decoded_frame(959/FPS)).max() <= 3
-    report = {'status': 'passed', 'duration': 40, 'size': [1920, 1080], 'fps': FPS,
-        'captions': [c[2] for c in CARDS], 'cards': CARDS, 'freeze': [38, 39], 'fadeToBlack': [39, 40],
-        'finalPlayers': 4, 'heroSourceFrame': HERO_FRAME, 'crystalShotsHaveStructures': False,
+    if FREEZE_START is not None:
+        frozen = np.asarray(decoded_frame(FREEZE_START+.1)).astype(float)
+        assert np.mean(np.abs(frozen-np.asarray(decoded_frame(FADE_START-.1)))) < .5
+    else:
+        assert np.mean(np.abs(np.asarray(decoded_frame(33.5)).astype(float)-np.asarray(decoded_frame(34.5)))) > .5
+    bright = np.asarray(decoded_frame(FADE_START-.1)).mean()
+    assert np.asarray(decoded_frame(FADE_START+.5)).mean() < bright*.75
+    assert np.asarray(decoded_frame((frames-1)/FPS)).max() <= 3
+    report = {'status': 'passed', 'duration': DURATION, 'size': [1920, 1080], 'fps': FPS,
+        'captions': [c[2] for c in CARDS], 'cards': CARDS,
+        'freeze': [FREEZE_START, FADE_START] if FREEZE_START is not None else None,
+        'fadeToBlack': [FADE_START, DURATION], 'teamDisplay': [31.5, FADE_START],
+        'finalPlayers': 4, 'heroSourceFrame': HERO_FRAME if FREEZE_START is not None else None,
+        'crystalShotPlayers': 0 if CAPTURE_REVISION == 3 else 4, 'crystalShotsHaveStructures': False,
         'truePeakDBTP': peak, 'integratedLUFS': loudness,
         'nativeFrames': len(data['records']), 'source': source, 'bytes': TARGET.stat().st_size,
         'sha256': hashlib.sha256(TARGET.read_bytes()).hexdigest()}
@@ -282,14 +304,14 @@ def render():
     args = [base.FFMPEG, '-y', '-hide_banner', '-loglevel', 'warning', '-f', 'rawvideo', '-pix_fmt', 'rgb24',
         '-s', '1920x1080', '-r', '24', '-i', 'pipe:0', '-i', str(wav), '-c:v', 'libx264', '-preset', 'fast',
         '-crf', '18', '-pix_fmt', 'yuv420p', '-threads', '2', '-c:a', 'aac', '-b:a', '256k', '-ar', '48000',
-        '-t', '40', '-movflags', '+faststart', str(TARGET)]
+        '-t', str(DURATION), '-movflags', '+faststart', str(TARGET)]
     with (OUT/'encode.log').open('wb') as log:
         p = subprocess.Popen(args, stdin=subprocess.PIPE, stderr=log, creationflags=base.NO_WINDOW)
         try:
-            for n in range(960):
+            for n in range(DURATION*FPS):
                 p.stdin.write(frame_at(n).tobytes())
                 if n%120 == 0:
-                    print(f'Edit {n/FPS:.1f}/40s', flush=True)
+                    print(f'Edit {n/FPS:.1f}/{DURATION}s', flush=True)
             p.stdin.close()
             assert p.wait() == 0
         finally:
@@ -306,7 +328,7 @@ if __name__ == '__main__':
         temporary = TARGET.with_suffix('.remux.mp4')
         subprocess.run([base.FFMPEG, '-y', '-hide_banner', '-loglevel', 'warning', '-i', str(TARGET),
             '-i', str(wav), '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac',
-            '-b:a', '256k', '-ar', str(RATE), '-t', '40', '-movflags', '+faststart', str(temporary)],
+            '-b:a', '256k', '-ar', str(RATE), '-t', str(DURATION), '-movflags', '+faststart', str(temporary)],
             creationflags=base.NO_WINDOW, check=True)
         temporary.replace(TARGET)
         verify()

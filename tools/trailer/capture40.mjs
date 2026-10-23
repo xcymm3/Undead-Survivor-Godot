@@ -8,12 +8,12 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const revision = process.argv.includes('--revision=2') ? 2 : 1;
-const stage = path.join(root, revision === 2 ? 'build/trailer40-v2-source' : 'build/trailer40-source');
-const output = path.join(root, revision === 2 ? 'artifacts/trailer40-v2' : 'artifacts/trailer40');
+const revision = process.argv.includes('--revision=3') ? 3 : process.argv.includes('--revision=2') ? 2 : 1;
+const stage = path.join(root, revision === 3 ? 'build/trailer36-v3-source' : revision === 2 ? 'build/trailer40-v2-source' : 'build/trailer40-source');
+const output = path.join(root, revision === 3 ? 'artifacts/trailer36-v3' : revision === 2 ? 'artifacts/trailer40-v2' : 'artifacts/trailer40');
 const source = path.join(root, 'tools/trailer');
 const width = Number(process.env.QA_TRAILER_WIDTH ?? 1440), height = Number(process.env.QA_TRAILER_HEIGHT ?? 604), fps = 24;
-const shots = revision === 2
+const shots = revision >= 2
   ? { rifle: 6, ultimate: 6, defense: 4.5, boss: 5, upgrade: 2.5, upgraded: 1, build: 2.5, team: 6.5 }
   : { rifle: 6, ultimate: 7, defense: 5, boss: 6, upgrade: 4, build: 4, team: 5 };
 await mkdir(output, { recursive: true });
