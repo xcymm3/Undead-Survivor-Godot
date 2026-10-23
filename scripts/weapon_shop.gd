@@ -157,9 +157,12 @@ func build_owner() -> void:
 	owner_alert.name = "TutorialExclamation"
 	owner_alert.font = title.font
 	owner_alert.text = "!"
-	owner_alert.font_size = 100
-	owner_alert.pixel_size = .005
-	owner_alert.position.y = 2.9
+	owner_alert.font_size = 156
+	owner_alert.pixel_size = .0065
+	owner_alert.outline_size = 22
+	owner_alert.outline_modulate = Color("2a1008")
+	owner_alert.no_depth_test = true
+	owner_alert.position.y = 3.2
 	owner_alert.modulate = Color("ffd263")
 	owner_alert.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	owner_model.add_child(owner_alert)
@@ -187,9 +190,10 @@ func sync(state: Dictionary) -> void:
 	owner_clock = clock
 	owner_clock_ready = true
 	pose_owner(dt,clock)
+	owner_alert.position.y = 3.2+sin(clock*3.8)*.12
+	owner_alert.scale = Vector3.ONE*(1+.10*sin(clock*4.6))
 	owner_model.visible = tutorial.stage(state) != tutorial.FIRST_RUN
 	owner_alert.visible = tutorial.pending(state) and not tutorial.talking(state)
-	owner_alert.position.y = 2.9+sin(float(state.get("prop_clock",0))*3)*.06
 	owner_model.get_node("OwnerName").visible = not tutorial.talking(state)
 	owner_dialogue.visible = tutorial.talking(state)
 	owner_dialogue.text = tutorial.dialogue_frame(state).text
