@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { finishEntry } from './finish-entry.mjs';
 
+// SwiftShader plus trace screencasts can stall input dispatch beyond the real
+// three-second combo window. Keep the action trace and final HUD screenshot,
+// while reducing rendering cost for this timing-sensitive input test.
+test.use({ viewport: { width: 640, height: 400 }, trace: { mode: 'on', screenshots: false, snapshots: false } });
+
 test('right shove cooldown ring and middle toggle use real input', async ({ page }, info) => {
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
@@ -20,14 +25,13 @@ test('right shove cooldown ring and middle toggle use real input', async ({ page
   await page.mouse.up({ button: 'middle' });
   await page.waitForFunction(() => !window.__survivorSnapshot.player.aim);
   for (let count = 1; count <= 3; count++) {
-    await page.waitForFunction(() => window.__survivorSnapshot.player.shove_gap === 0);
-    await page.mouse.down({ button: 'right' });
-    await page.mouse.up({ button: 'right' });
-    await page.waitForFunction(value => window.__survivorSnapshot.shove_events?.some(event => event.count === value), count);
-    const event = await page.evaluate(value => window.__survivorSnapshot.shove_events.find(event => event.count === value), count);
-    expect(event.combo).toBe(count === 3 ? 0 : count);
-    if (count === 3) expect(event.cooldown).toBeGreaterThan(0);
+    await page.waitForFunction(previous => window.__survivorSnapshot.shoves === previous && window.__survivorSnapshot.player.shove_gap === 0, count - 1);
+    await page.mouse.click(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2, { button: 'right' });
   }
+  await page.waitForFunction(() => window.__survivorSnapshot.shove_events?.some(event => event.count === 3));
+  const events = await page.evaluate(() => window.__survivorSnapshot.shove_events.slice(0, 3));
+  expect(events.map(event => event.combo)).toEqual([1, 2, 0]);
+  expect(events[2].cooldown).toBeGreaterThan(0);
   const before = await page.evaluate(() => window.__survivorSnapshot.player.shove_cd);
   await page.mouse.down({ button: 'right' });
   await page.mouse.up({ button: 'right' });
