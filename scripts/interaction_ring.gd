@@ -8,7 +8,6 @@ const FRAME = Art.PAPER
 const PAPER = Color("d8ddd3")
 const FILL = Art.GOLD
 const MUTED = Color("78847b")
-const SUCCESS = Color("8fce83")
 const ERROR = Color("d98870")
 const HALF = .11
 const INNER = .08
@@ -90,13 +89,13 @@ func sync(value: float, eye: Vector3, enabled: bool, status := "ready") -> void:
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	bevel(mesh,HALF+.027,.036,INK,0)
 	bevel(mesh,HALF+.012,.029,Art.RUST,.001)
-	bevel(mesh,HALF,.024,SUCCESS if status == "complete" else ERROR if status == "error" else FRAME if enabled else MUTED,.002)
+	bevel(mesh,HALF,.024,ERROR if status == "error" else FRAME if enabled or status == "complete" else MUTED,.002)
 	rectangle(mesh,Rect2(-.075,.084,.15,.012),Color.WHITE,.003)
 	rectangle(mesh,Rect2(-.096,-.075,.012,.15),Art.STEEL,.003)
 	rectangle(mesh,Rect2(-INNER-.006,-INNER-.006,2*INNER+.012,2*INNER+.012),INK,.004)
 	rectangle(mesh,Rect2(-INNER,-INNER,2*INNER,2*INNER),PAPER if enabled else MUTED,.005)
 	if progress > 0:
-		sector(mesh,progress,SUCCESS if status == "complete" else FILL)
+		sector(mesh,progress,FILL)
 	var key: String = get_node("/root/Data").binding_label("interact")
 	if key == "E": pixel_letter(mesh)
 	letter.visible = key != "E"
@@ -105,4 +104,4 @@ func sync(value: float, eye: Vector3, enabled: bool, status := "ready") -> void:
 	arc.mesh = mesh
 	letter.text = key
 	hint.text = {"complete":"完成","maxed":"满级","error":"不足","disabled":"不可用"}.get(status,"长按")
-	hint.modulate = SUCCESS if status == "complete" else ERROR if status == "error" else FRAME if enabled else MUTED
+	hint.modulate = ERROR if status == "error" else FRAME if enabled or status == "complete" else MUTED

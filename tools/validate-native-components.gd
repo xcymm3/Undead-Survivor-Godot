@@ -409,6 +409,8 @@ func validate_pistol_and_equip() -> void:
 	check(key_view.progress == 0 and key_view.hint.text == "不足","Unaffordable square key cannot display accumulated progress")
 	key_view.sync(0,Vector3(0,4,-2),true,"complete")
 	check(key_view.progress == 1 and key_view.hint.text == "完成","Completed upgrade fills the whole key and shows Chinese confirmation")
+	var completed_colors = key_view.arc.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	check(not completed_colors.has(Color("8fce83")) and completed_colors.has(ring.FRAME) and completed_colors.has(ring.FILL),"Completed interaction retains the original cream frame and gold fill without turning green")
 	key_view.queue_free()
 
 	sim.defense.crystal_hp = sim.defense.crystal_max_hp
