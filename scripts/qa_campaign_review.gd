@@ -14,6 +14,12 @@ func stage() -> void:
 	var scenario = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('campaignReview')",true))
 	game.set_process(false)
 	game.set_physics_process(false)
+	if scenario.begins_with("ak_"):
+		var rifle = preload("res://scripts/qa_ak_rifle.gd").new()
+		rifle.game = game
+		add_child(rifle)
+		await rifle.stage(scenario.trim_prefix("ak_"))
+		return
 	if scenario == "ultimate_entry":
 		var entry = preload("res://scripts/qa_ultimate_entry.gd").new()
 		entry.game = game
