@@ -114,7 +114,7 @@ func build_station(entry: Dictionary) -> void:
 		crack.rotation.y = -.3+index*.3
 		broken.add_child(crack)
 	broken.hide()
-	stations[entry.id] = {"broken":broken,"root":root,"prop":prop,"cover":cover,"light":light,"display_basis":prop.basis}
+	stations[entry.id] = {"broken":broken,"root":root,"prop":prop,"cover":cover,"light":light,"display_basis":prop.basis,"energy_blade":prop.find_child("UltimateLongBlade",true,false)}
 
 func build_talent(parent: Node3D, id: String) -> void:
 	var before = get_children()
@@ -154,6 +154,8 @@ func sync(state: Dictionary) -> void:
 		station.cover.visible = closed and not broken
 		station.prop.visible = not closed
 		station.light.light_energy = 0.0 if closed else 1.1
+		if station.energy_blade:
+			station.energy_blade.sync_energy(not closed,float(state.get("prop_clock",0.0)))
 		if not closed and id in ["rifle","pistol","axe"]:
 			station.prop.basis = Basis(Vector3.UP,float(state.get("prop_clock",0.0))*TAU/40.0)*station.display_basis
 	for item in state.get("structures",[]):
