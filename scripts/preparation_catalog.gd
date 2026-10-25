@@ -123,13 +123,13 @@ static func description(sim, id: String) -> String:
 static func prompt_description(sim, id: String) -> String:
 	if id == "shopkeeper": return "武器店老板\n交谈"
 	if id == "crystal": return description(sim,id)
-	if id == "unsupported_weapon": return description(sim,id)+"\n切换不同武器可以改变此升级项"
+	if id == "unsupported_weapon": return description(sim,id)+"（切换手持武器以更改升级项）"
 	var profile = sim.progression
 	var title: String = NAMES.get(id,id)
 	var price: int = profile.cost(id)
 	var payment = str(price) if price >= 0 else "LV MAX"
 	if id in profile.WEAPONS or id in profile.MAGAZINES:
-		return title+"\n切换不同武器可以改变此升级项\n"+payment
+		return title+"（切换手持武器以更改升级项）\n"+payment
 	return title+"\n"+payment
 
 static func upgrade_details(sim, id: String) -> Dictionary:

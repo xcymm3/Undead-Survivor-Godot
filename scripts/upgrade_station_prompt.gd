@@ -37,16 +37,16 @@ func sync(at: Vector3, eye: Vector3, camera: Camera3D, text: String, price: Stri
 	ring.sync(progress,eye,enabled,status)
 	focus_label.show()
 	focus_label.text = text
-	var switching = text.contains("切换不同武器可以改变此升级项")
+	var switching = text.contains("（切换手持武器以更改升级项）")
 	focus_label.font_size = 28 if switching else 38
 	focus_label.outline_size = 8 if switching else 12
 	focus_label.pixel_size = .0026
 	var right = camera.global_basis.x
 	focus_label.position = at+right*.24+Vector3(0,.04,0)
 	if switching:
-		# Keep the extra line readable beside the E key without entering the
+		# Keep the inline hint readable beside the E key without entering the
 		# right-hand equipment card, including when standing closer to the desk.
-		var width = focus_label.font.get_string_size("切换不同武器可以改变此升级项",HORIZONTAL_ALIGNMENT_LEFT,-1,focus_label.font_size).x
+		var width = focus_label.font.get_string_size(text.get_slice("\n",0),HORIZONTAL_ALIGNMENT_LEFT,-1,focus_label.font_size).x
 		var start = camera.unproject_position(focus_label.global_position)
 		var end = camera.unproject_position(focus_label.global_position+right*width*focus_label.pixel_size)
 		var screen_width = camera.get_viewport().get_visible_rect().size.x

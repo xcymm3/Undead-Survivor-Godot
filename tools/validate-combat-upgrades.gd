@@ -239,8 +239,9 @@ func run() -> void:
 	var rifle_details: Dictionary = catalog.upgrade_details(sim,"rifle")
 	check(rifle_details.rows[0][1] == catalog.number(sim.weapon_damage(data.weapons[0],false)),"Left weapon dossier matches authority damage including permanent upgrades")
 	for id in ["rifle","pistol","axe","rifle_magazine","pistol_magazine"]:
-		check(catalog.prompt_description(sim,id).contains("\n切换不同武器可以改变此升级项\n"),"Shared weapon and magazine stand explains weapon switching: "+id)
-	check(not catalog.prompt_description(sim,"ultimate").contains("切换不同武器"),"Fixed ultimate stand does not advertise weapon-dependent upgrades")
+		var prompt: String = catalog.prompt_description(sim,id)
+		check(prompt.begins_with(catalog.NAMES[id]+"（切换手持武器以更改升级项）\n") and prompt.count("\n") == 1,"Shared weapon and magazine stand explains weapon switching inline: "+id)
+	check(not catalog.prompt_description(sim,"ultimate").contains("切换手持武器"),"Fixed ultimate stand does not advertise weapon-dependent upgrades")
 	check(catalog.upgrade_details(sim,"strong").rows == [["最大生命","100","110"],["每秒回复","0","0.5"]],"Left talent dossier shows current and next values")
 	var initial_pawn: Dictionary = p.duplicate(true)
 	sim.defense.started = true

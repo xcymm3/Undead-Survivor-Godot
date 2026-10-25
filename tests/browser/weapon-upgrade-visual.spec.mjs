@@ -13,7 +13,7 @@ test('步枪与手枪递减升级和切换提示截图', async ({ page }) => {
     await page.waitForFunction(() => Boolean(window.__preparationReviewReady), null, { timeout: 120_000 });
     const state = await page.evaluate(() => window.__preparationReviewReady);
     expect(state.focus_visible).toBe(true);
-    expect(state.focus_text).toContain('切换不同武器可以改变此升级项');
+    expect(state.focus_text.split('\n')).toEqual([`${weapon === 'rifle' ? '步枪' : '手枪'}（切换手持武器以更改升级项）`, '100']);
     expect(state.upgrade_details.rows[0]).toEqual(['伤害', before, after]);
     expect(state.currency_icon_visible).toBe(true);
     expect(state.focus_text.split('\n').at(-1)).toBe('100');
