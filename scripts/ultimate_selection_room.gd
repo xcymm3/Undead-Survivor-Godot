@@ -174,7 +174,7 @@ func build_exhibit(item: Dictionary) -> void:
 		model.scale = Vector3.ONE*1.35
 		for x in [-.32,.32]: g.rod(display,"SwordStand",Vector3(x,1.1,-.12),Vector3(x,1.7,-.12),.035,"b6a377",0,.5)
 	else: model.position = Vector3(0,2.03,0)
-	exhibits[item.id] = {"root":base,"weapon":model,"item":item}
+	exhibits[item.id] = {"root":base,"weapon":model,"item":item,"display_basis":model.basis}
 
 func focused(yaw: float, pitch: float) -> String:
 	var eye: Vector3 = player.position+Vector3.UP*1.7
@@ -190,5 +190,7 @@ func focused(yaw: float, pitch: float) -> String:
 
 func animate(dt: float, focus: String) -> void:
 	clock += dt
+	for exhibit in exhibits.values():
+		exhibit.weapon.basis = Basis(Vector3.UP,clock*TAU/40.0)*exhibit.display_basis
 	var blade = exhibits.blade.weapon.get_node("UltimateGrip/UltimateLongBlade")
 	blade.sync_energy(true,clock)
