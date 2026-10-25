@@ -17,6 +17,8 @@ func _ready() -> void:
 		queue_free()
 		return
 	if "--qa-native-smoke" in OS.get_cmdline_user_args(): call_deferred("native_smoke")
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.__forestLaunchArgs="+JSON.stringify(OS.get_cmdline_user_args()),true)
 	if "--qa-forest-review" in OS.get_cmdline_user_args() and OS.has_feature("web"):
 		var forest = preload("res://scripts/qa_forest_review.gd").new()
 		forest.game = game

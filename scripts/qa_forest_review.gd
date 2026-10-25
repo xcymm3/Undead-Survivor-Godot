@@ -23,6 +23,7 @@ func advance() -> void:
 	tick += 1
 
 func stage() -> void:
+	print("FOREST REVIEW: staging")
 	view = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('forestReview')",true))
 	Data.settings.map_id = "graypine_defense"
 	Progress.store = preload("res://scripts/progression_store.gd").new()
@@ -43,6 +44,7 @@ func stage() -> void:
 	game.local_pawn().protection = 99999
 	await get_tree().physics_frame
 	for step in 1080: advance()
+	print("FOREST REVIEW: warmup complete")
 	game.camera.projection = Camera3D.PROJECTION_PERSPECTIVE
 	game.camera.fov = 61
 	game.camera.position = Vector3(34,31,-41) if view == "overview" else Vector3(0,5,-52)

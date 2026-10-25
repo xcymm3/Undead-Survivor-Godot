@@ -7,12 +7,18 @@ for (const view of ['overview', 'bridge']) {
     test.setTimeout(360_000);
     await page.setViewportSize({ width: 960, height: 600 });
     const errors = [];
-    page.on('pageerror', error => errors.push(String(error)));
-    page.on('console', message => { if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text()); });
+    page.on('pageerror', error => { errors.push(String(error)); console.log('[pageerror]', String(error)); });
+    page.on('console', message => { console.log('[browser]', message.text()); if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text()); });
     const directory = `artifacts/forest-bridge/${view}`;
     await mkdir(directory, { recursive: true });
+    await writeFile(`${directory}/exported-shell.html`, await (await page.request.get('/')).text());
     await page.goto(`/?forestReview=${view}`);
-    await page.waitForFunction(() => Boolean(window.__forestReady), null, { timeout: 120_000 });
+    try {
+      await page.waitForFunction(() => Boolean(window.__forestReady), null, { timeout: 120_000 });
+    } catch (error) {
+      await writeFile(`${directory}/startup-errors.json`, JSON.stringify({ errors, snapshot: await page.evaluate(() => window.__survivorSnapshot), args: await page.evaluate(() => window.__forestLaunchArgs) }, null, 2));
+      throw error;
+    }
     const ready = await page.evaluate(() => window.__forestReady);
     const states = [];
     for (let frame = 0; frame < ready.frames; frame++) {
