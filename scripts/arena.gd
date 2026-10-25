@@ -133,6 +133,12 @@ func nearest_cell(p: Vector2) -> Vector2i:
 	return best
 
 func path_to(a: Vector2, b: Vector2) -> PackedVector2Array:
+	var stamp = preload("res://scripts/stutter_log.gd").begin()
+	var result = _path_to_measured(a,b)
+	preload("res://scripts/stutter_log.gd").end("pathfinding",stamp)
+	return result
+
+func _path_to_measured(a: Vector2, b: Vector2) -> PackedVector2Array:
 	if clear(a,b): return PackedVector2Array([b])
 	var start = nearest_cell(a)
 	var end = nearest_cell(b)

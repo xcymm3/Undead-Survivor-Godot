@@ -181,6 +181,12 @@ func select_ultimate(id: String) -> bool:
 	return false
 
 func save() -> bool:
+	var stamp = preload("res://scripts/stutter_log.gd").begin()
+	var result = _save_measured()
+	preload("res://scripts/stutter_log.gd").end("save",stamp)
+	return result
+
+func _save_measured() -> bool:
 	if path.is_empty() or not dirty: return true
 	var file = FileAccess.open(path+".tmp",FileAccess.WRITE)
 	if not file:

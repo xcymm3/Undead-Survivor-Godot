@@ -101,6 +101,11 @@ func set_preset(index: int) -> void:
 	save()
 
 func save() -> void:
+	var stamp = preload("res://scripts/stutter_log.gd").begin()
+	_save_measured()
+	preload("res://scripts/stutter_log.gd").end("settings_save",stamp)
+
+func _save_measured() -> void:
 	if automation: return
 	var file = FileAccess.open(SAVE_PATH + ".tmp", FileAccess.WRITE)
 	if file:

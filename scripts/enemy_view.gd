@@ -44,6 +44,7 @@ func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1)
 	var dressed = outfit >= 0 and kind in ["normal","cone","bucket"]
 	var key = kind+str(outfit if dressed else palette)+str(rage)+str(armor)+str(dressed)
 	if meshes.has(key): return meshes[key]
+	var stamp = preload("res://scripts/stutter_log.gd").begin()
 	var styled = Toy.styled(kind)
 	var surface = SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -97,6 +98,7 @@ func mesh_for(kind: String, palette: int, rage: bool, armor: bool, outfit := -1)
 		eyes.index()
 		eyes.commit(mesh)
 	meshes[key] = mesh
+	preload("res://scripts/stutter_log.gd").end("mesh_build",stamp)
 	return mesh
 
 func emit_box(surface: SurfaceTool, frame: Transform3D, size: Vector3, color: Color, bone: int, bevel: float) -> void:
@@ -108,6 +110,7 @@ func emit_box(surface: SurfaceTool, frame: Transform3D, size: Vector3, color: Co
 		surface.add_vertex(frame*vertex.position)
 
 func create_actor(z: Dictionary) -> Dictionary:
+	var stamp = preload("res://scripts/stutter_log.gd").begin()
 	var body = Node3D.new()
 	add_child(body)
 	var skeleton = Skeleton3D.new()
@@ -121,6 +124,7 @@ func create_actor(z: Dictionary) -> Dictionary:
 	view.skeleton = NodePath("../Pose")
 	view.skin = skin
 	view.custom_aabb = AABB(Vector3(-4,-3,-4),Vector3(8,9,8))
+	preload("res://scripts/stutter_log.gd").end("enemy_create",stamp)
 	return {"body":body,"skeleton":skeleton,"view":view,"kind":z.kind}
 
 func clear() -> void:
@@ -128,10 +132,12 @@ func clear() -> void:
 	actors.clear()
 
 func retire_actor(actor: Dictionary) -> void:
+	var stamp = preload("res://scripts/stutter_log.gd").begin()
 	# Bone updates are deferred by Skeleton3D. Hide immediately, but release the
 	# hierarchy at the frame boundary after pending engine notifications finish.
 	actor.body.hide()
 	actor.body.queue_free()
+	preload("res://scripts/stutter_log.gd").end("enemy_retire",stamp)
 
 static func root_transform(z: Dictionary, elapsed: float, stationary: bool, stride: float, toy_walk := Vector3.INF) -> Transform3D:
 	var basis = Basis(Vector3.UP,z.heading).scaled(Vector3.ONE*Data.enemy_scale(z.kind))

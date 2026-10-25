@@ -49,6 +49,7 @@ var ending_sequence
 var entry_sequence
 
 func _ready() -> void:
+	get_node("/root/StutterLog").attach(self)
 	RenderingServer.render_loop_enabled = focused and not software_qa()
 	arena = Arena.new()
 	arena.map_id = Data.settings.map_id
@@ -304,6 +305,11 @@ func input_state() -> Dictionary:
 	return command
 
 func _physics_process(dt: float) -> void:
+	var stamp = preload("res://scripts/stutter_log.gd").begin()
+	_physics_frame(dt)
+	preload("res://scripts/stutter_log.gd").end("physics",stamp)
+
+func _physics_frame(dt: float) -> void:
 	if entry_sequence:
 		entry_sequence.step(dt)
 		if entry_sequence and entry_sequence.blocks_world(): return
@@ -315,19 +321,28 @@ func _physics_process(dt: float) -> void:
 		if not awaiting_coop_snapshot: Session.send_input(command)
 	else:
 		sim.submit(Session.local_id,command)
+		var logic_stamp = preload("res://scripts/stutter_log.gd").begin()
 		sim.step(dt)
+		preload("res://scripts/stutter_log.gd").end("logic",logic_stamp)
 		handle_effects(sim.events)
 		queued_effects.append_array(sim.events)
 		if Session.is_host():
 			snapshot_timer += dt
 			if snapshot_timer >= .05 or sim.failed or sim.won:
 				snapshot_timer = 0
+				var network_stamp = preload("res://scripts/stutter_log.gd").begin()
 				Session.send_world(sim.snapshot(),queued_effects)
+				preload("res://scripts/stutter_log.gd").end("network_snapshot",network_stamp)
 				queued_effects.clear()
 		else: queued_effects.clear()
 	if sim.failed or sim.won: finish_run()
 
 func _process(dt: float) -> void:
+	var stamp = preload("res://scripts/stutter_log.gd").begin()
+	_render_frame(dt)
+	preload("res://scripts/stutter_log.gd").end("view_update",stamp)
+
+func _render_frame(dt: float) -> void:
 	if ending_sequence: ending_sequence.step(dt)
 	if entry_sequence:
 		entry_sequence.render()
@@ -398,7 +413,9 @@ func _process(dt: float) -> void:
 			for mesh in equipment_prop.find_children("*","MeshInstance3D",true,false): mesh.layers = 2
 			equipment_prop.position = Vector3(.24,-.20,-.55)
 	if equipment_prop: equipment_prop.visible = not finished
+	var enemies_stamp = preload("res://scripts/stutter_log.gd").begin()
 	enemies.sync(visible_zombies,visual_time,false)
+	preload("res://scripts/stutter_log.gd").end("enemy_view",enemies_stamp)
 	coins.sync(sim.coin_drops)
 	if arena.scenery.has_method("sync_focus"): arena.scenery.sync_focus(sim,p)
 	if not finished: sync_tutorial_voice()
