@@ -213,7 +213,7 @@ func run() -> void:
 	sim.step(.02)
 	check(sim.won and sim.wave == 10 and sim.cleared == 10,"Clearing the final wave wins and never creates wave eleven")
 	game.finish_run()
-	check(game.ending_sequence.caption.text == "太阳升起，你活下来了...","Campaign victory uses the automatic sunrise ending instead of a result modal")
+	check(game.ending_sequence.caption.text == "太阳升起，你活下来了...\n感谢游玩本DEMO！","Campaign victory uses the automatic sunrise ending instead of a result modal")
 	game.return_home()
 	await validate_balance(game)
 	game.queue_free()

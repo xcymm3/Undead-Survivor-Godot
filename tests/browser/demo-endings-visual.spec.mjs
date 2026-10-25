@@ -48,7 +48,7 @@ test('倒下、水晶摧毁、舞王胜利自动重生和联机须知与老板�
     } else {
       expect(states.every(state => !state.result)).toBe(true);
       expect(states.some(state => state.phase === 'fade_out' && state.black > 0 && state.black < 1)).toBe(true);
-      expect(states.some(state => state.caption && state.caption_alpha > .9 && state.black === 1 && state.text === (kind === 'victory' ? '太阳升起，你活下来了...' : '今晚，无人生还...'))).toBe(true);
+      expect(states.some(state => state.caption && state.caption_alpha > .9 && state.black === 1 && state.text === (kind === 'victory' ? '太阳升起，你活下来了...\n感谢游玩本DEMO！' : '你失败了，但是死亡并非终点...'))).toBe(true);
       expect(states.some(state => state.phase === 'fade_in' && state.restarted && state.black > 0 && state.black < 1)).toBe(true);
       expect(states.at(-1)).toMatchObject({ restarted: true, phase: 'playing', black: 0, failed: false, won: false });
       if (kind === 'failure') expect(states.some(state => Math.abs(state.camera_roll) > 1)).toBe(true);

@@ -333,7 +333,7 @@ func host_test() -> void:
 	check(game.view_pawn().id == net.host_id,"Terminal host death keeps the local first-person ending camera instead of spectating")
 	game._process(.016)
 	check(not game.partners.has(net.host_id) or not game.partners[net.host_id].visible,"Terminal host death never renders its own corpse inside the camera")
-	check(game.ending_sequence.caption.text == "今晚，无人生还..." and game.ui.menu == null,"Host death starts the shared failure cinematic without settlement buttons")
+	check(game.ending_sequence.caption.text == "你失败了，但是死亡并非终点..." and game.ui.menu == null,"Host death starts the shared failure cinematic without settlement buttons")
 	var old_nonce: String = net.nonce
 	game.ending_sequence.step(3.1)
 	game.ending_sequence.step(1.1)

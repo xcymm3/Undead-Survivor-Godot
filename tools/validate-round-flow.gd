@@ -41,7 +41,7 @@ static func validate(game, check: Callable) -> void:
 		check.call(ending.black.color.a > .49 and ending.black.color.a < .51 and not ending.caption.visible,"Caption cannot appear before the opaque fade")
 		ending.step(.51)
 		check.call(ending.black.color.a == 1 and ending.caption.visible,"Ending caption appears on fully opaque black")
-		check.call(ending.caption.text == ("太阳升起，你活下来了..." if victorious else "今晚，无人生还..."),"Ending uses the exact requested caption")
+		check.call(ending.caption.text == ("太阳升起，你活下来了...\n感谢游玩本DEMO！" if victorious else "你失败了，但是死亡并非终点..."),"Ending uses the exact requested caption")
 		ending.step(2.81)
 		ending.step(.01)
 		check.call(not game.finished and not game.sim.failed and not game.sim.won and ending.black.color.a == 1,"New attempt is constructed only while the screen remains black")

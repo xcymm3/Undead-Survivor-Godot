@@ -177,7 +177,7 @@ func run() -> void:
 	check(game.ending_sequence != null and not game.ending_sequence.caption.visible,"Victory begins with the boss collapse before black text")
 	game.ending_sequence.step(5.81)
 	game.ending_sequence.step(1.01)
-	check(game.ending_sequence.black.color.a == 1 and game.ending_sequence.caption.text == "太阳升起，你活下来了...","Victory shows the sunrise text only after the opaque fade")
+	check(game.ending_sequence.black.color.a == 1 and game.ending_sequence.caption.text == "太阳升起，你活下来了...\n感谢游玩本DEMO！","Victory shows the sunrise text only after the opaque fade")
 	check(game.ui.menu == null,"Victory never opens a settlement dialog")
 	game.return_home()
 	await process_frame
@@ -265,7 +265,7 @@ func run() -> void:
 	game.update_finish_camera(1.5)
 	game.ending_sequence.step(3.1)
 	game.ending_sequence.step(1.1)
-	check(game.ending_sequence.caption.visible and game.ending_sequence.caption.text == "今晚，无人生还..." and game.ui.menu == null,"Failure replaces results with the opaque survival caption")
+	check(game.ending_sequence.caption.visible and game.ending_sequence.caption.text == "你失败了，但是死亡并非终点..." and game.ui.menu == null,"Failure replaces results with the opaque survival caption")
 	game.free()
 	print("CAMPAIGN FEEDBACK: %d checks; %d failures" % [checks,failures])
 	quit(1 if failures else 0)

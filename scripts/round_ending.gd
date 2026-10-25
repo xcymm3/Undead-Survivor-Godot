@@ -24,7 +24,7 @@ func _ready() -> void:
 	black.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(black)
 	caption = Label.new()
-	caption.text = "太阳升起，你活下来了..." if victorious else "今晚，无人生还..."
+	caption.text = "太阳升起，你活下来了...\n感谢游玩本DEMO！" if victorious else "你失败了，但是死亡并非终点..."
 	caption.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
