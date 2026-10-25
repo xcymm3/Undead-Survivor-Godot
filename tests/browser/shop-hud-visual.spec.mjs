@@ -8,7 +8,7 @@ test('商店柜台、贴墙现状及四人底部技能布局', async ({ page }, 
   page.on('console', message => {
     if (/^(SCRIPT ERROR|ERROR):/.test(message.text())) errors.push(message.text());
   });
-  for (const [scenario, width, height] of (process.env.QA_HEALTH_ROW_ONLY ? [['four',1440,900],['four',960,540]] : [
+  for (const [scenario, width, height] of (process.env.QA_SHOP_FIX_ONLY ? [['entry',1440,900],['dialogue_near',1440,900],['dialogue_normal',1440,900],['dialogue_near',960,600]] : process.env.QA_HEALTH_ROW_ONLY ? [['four',1440,900],['four',960,540]] : [
     ['front', 1440, 900], ['side', 1440, 900], ['wall', 1440, 900],
     ['four', 1440, 900], ['four', 960, 540],
     ['locked', 1440, 900], ['ready', 1440, 900], ['flow', 1440, 900],
@@ -19,6 +19,18 @@ test('商店柜台、贴墙现状及四人底部技能布局', async ({ page }, 
     const state = await page.evaluate(() => window.__shopHudReviewReady);
     expect(state.owner_yaw).toBeCloseTo(0, 4);
     expect(state.stations).toBe(9);
+    if (process.env.QA_SHOP_FIX_ONLY) {
+      const fix = await page.evaluate(() => window.__shopFixReview);
+      expect(fix.doorway_posts).toBe(0);
+      if (scenario.startsWith('dialogue_')) {
+        expect(fix.dialogue_visible).toBe(true);
+        expect(fix.dialogue).toBe('要对付僵尸，光靠勇气可不够，你还得有好的武器');
+        expect(fix.center.y).toBeGreaterThan(height * .1);
+        expect(fix.center.y).toBeLessThan(height * .8);
+        if (scenario === 'dialogue_near') expect(fix.distance).toBeCloseTo(1.5, 2);
+      }
+      await info.attach(`${scenario}-${width}-fix`, { body: JSON.stringify(fix, null, 2), contentType: 'application/json' });
+    }
     if (scenario === 'front') expect(state.focus).toBe('shopkeeper');
     if (scenario === 'side') expect(state.focus).not.toBe('shopkeeper');
     if (scenario === 'four') {
@@ -40,7 +52,7 @@ test('商店柜台、贴墙现状及四人底部技能布局', async ({ page }, 
     expect(state.grenade_caption).toBe('');
     expect(state.grenade_progress).toBeCloseTo(.65, 3);
     const file = info.outputPath(`${scenario}-${width}.png`);
-    await page.screenshot({ path: file });
+    await page.screenshot({ path: file, timeout: 60_000 });
     await info.attach(`${scenario}-${width}`, { path: file, contentType: 'image/png' });
     await info.attach(`${scenario}-${width}-state`, { body: JSON.stringify(state, null, 2), contentType: 'application/json' });
     if (scenario === 'flow') {

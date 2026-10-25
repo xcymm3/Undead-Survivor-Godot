@@ -156,6 +156,8 @@ func build_facade() -> void:
 		for y in [4.1,7.18]: block("FacadeTimberRail",Vector3(0,y,z),Vector3(26,.18,.24),TIMBER,false)
 	for x in [-13.28,13.28]:
 		for z in [front+.5,front+8.5,front+15,rear-.5]:
+			# The east-side entrance stays open; decorative trim cannot cross it.
+			if x > 0 and absf(z-Layout.SHOP_DOOR_Z) < Layout.SHOP_DOOR_WIDTH*.5: continue
 			block("SideTimberPost",Vector3(x,5.2,z),Vector3(.24,4.4,.22),TIMBER,false)
 		# Rear side trim never bridges across the open doorway.
 		block("SideTimberRail",Vector3(x,4.05,front+18),Vector3(.24,.18,11.5),TIMBER,false)

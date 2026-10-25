@@ -13,7 +13,7 @@ func rectangle(rect: Rect2) -> Dictionary:
 func stage(scenario: String) -> void:
 	var progress = game.get_node("/root/Progress")
 	progress.store = preload("res://scripts/progression_store.gd").new()
-	progress.store.data.merge({"intro_seen":true,"tutorial_stage":Tutorial.SHOP_PENDING if scenario in ["shop_review_front","shop_review_side"] else Tutorial.COMPLETE,"ultimate_unlocked":true,"coins":350.0},true)
+	progress.store.data.merge({"intro_seen":true,"tutorial_stage":Tutorial.SHOP_PENDING if scenario in ["shop_review_front","shop_review_side","shop_review_dialogue_near","shop_review_dialogue_normal"] else Tutorial.COMPLETE,"ultimate_unlocked":true,"coins":350.0},true)
 	progress.store.data.grenade_level = 3
 	game.start_solo("defense",491)
 	game.set_process(false)
@@ -30,6 +30,16 @@ func stage(scenario: String) -> void:
 	game.weapon.hide()
 	var point = Vector3(Layout.SHOP_OWNER.x,4.7,Layout.SHOP_OWNER.y)
 	match scenario:
+		"shop_review_entry":
+			p.pos = Vector2(20,Layout.SHOP_DOOR_Z)
+			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
+			game.camera.look_at(Vector3(12.8,4.7,Layout.SHOP_DOOR_Z))
+		"shop_review_dialogue_near", "shop_review_dialogue_normal":
+			p.pos = Vector2(Layout.SHOP_OWNER.x,Layout.SHOP_COUNTER_FRONT_Z-.65) if scenario.ends_with("near") else Layout.SHOP_OWNER+Vector2(.7,-2.7)
+			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
+			Tutorial.begin_dialogue(sim,p)
+			sim.defense.tutorial_dialogue_elapsed = Tutorial.SHOP_LINES[0].length()/Tutorial.CHARACTERS_PER_SECOND+.1
+			game.camera.rotation = Vector3(p.pitch,p.yaw,0)
 		"shop_review_front":
 			p.pos = Layout.SHOP_OWNER+Vector2(0,-2.7)
 			game.camera.position = Vector3(p.pos.x,4.7,p.pos.y)
@@ -63,6 +73,7 @@ func stage(scenario: String) -> void:
 			game.camera.position = Vector3(p.pos.x,6.2,p.pos.y)
 			game.camera.look_at(Vector3(-2,4.2,Layout.SHOP_FRONT_Z+10.5))
 	game.camera.fov = 72 if scenario == "shop_review_overview" else 65
+	if scenario in ["shop_review_entry","shop_review_dialogue_near","shop_review_dialogue_normal"]: game.camera.fov = 61
 	p.yaw = game.camera.rotation.y
 	p.pitch = game.camera.rotation.x
 	game.weapon.sync(p,0,sim.elapsed,Vector3(0,0,-20))
@@ -97,6 +108,10 @@ func stage(scenario: String) -> void:
 	var grenade_rect: Rect2 = hud.grenade_ring.get_global_rect()
 	var health_rects: Array = []
 	var overlaps = false
+	var shop = game.arena.scenery.shop
+	var doorway_posts = shop.get_node("Storefront").get_children().filter(func(node): return str(node.name).begins_with("SideTimberPost") and node.position.x > 0 and absf(node.position.z-Layout.SHOP_DOOR_Z) < Layout.SHOP_DOOR_WIDTH*.5).size()
+	var dialogue_center: Vector2 = game.camera.unproject_position(shop.owner_dialogue.global_position)
+	JavaScriptBridge.eval("window.__shopFixReview="+JSON.stringify({"doorway_posts":doorway_posts,"dialogue":shop.owner_dialogue.text,"dialogue_visible":shop.owner_dialogue.visible,"dialogue_height":shop.owner_dialogue.position.y,"dialogue_width":shop.owner_dialogue.width,"center":rectangle(Rect2(dialogue_center,Vector2.ZERO)),"distance":p.pos.distance_to(Layout.SHOP_OWNER)}),true)
 	for card in hud.cards.values():
 		var rect: Rect2 = card.panel.get_global_rect()
 		health_rects.append(rectangle(rect))
