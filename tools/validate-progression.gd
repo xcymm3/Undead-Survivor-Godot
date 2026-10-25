@@ -40,7 +40,16 @@ func run() -> void:
 	profile.data.coins = 100000
 	for id in Store.WEAPONS:
 		check(profile.cost(id) == 25 and profile.purchase(id) and profile.cost(id) == 100,"First weapon upgrade uses the next fixed price: "+id)
-		check(profile.purchase(id) and is_equal_approx(profile.weapon_multiplier(id),1.44 if id == "axe" else 1.5625),"Gun damage compounds by twenty-five percent; axe keeps twenty percent: "+id)
+		check(profile.purchase(id) and is_equal_approx(profile.weapon_multiplier(id),1.44 if id == "axe" else 1.7955),"Gun upgrades start at thirty-five then thirty-three percent; axe keeps twenty percent: "+id)
+	var gun_damage = [120.0,162.0,215.46,280.098,358.52544,451.7420544,560.160147456,683.39537989632,820.074455875584,959.487113374433,1103.410180380598]
+	var curve_profile = Store.new()
+	for rank in range(11):
+		for id in ["rifle","pistol"]:
+			check(is_equal_approx(profile.weapon_multiplier(id,rank)*120,gun_damage[rank]),"Authored compound damage at "+id+" level "+str(rank))
+			curve_profile.data.weapons[id] = rank
+			check(curve_profile.cost(id) == ([25,100,150,200,300,450,650,1000,1500,2000][rank] if rank < 10 else -1),"Gun upgrade prices remain unchanged at "+id+" level "+str(rank))
+			check(curve_profile.weapon_upgrade_percent(id) == ([35,33,30,28,26,24,22,20,17,15][rank] if rank < 10 else 0),"Next gun upgrade percentage follows its authored level: "+id+str(rank))
+		check(is_equal_approx(profile.weapon_multiplier("axe",rank),pow(1.2,rank)) and is_equal_approx(profile.building_multiplier("turret_left"),1.0),"Non-gun upgrade formulas remain unchanged at "+str(rank))
 	for count in range(1,5):
 		check(profile.cost("grenade") == [300,450,650,1000][count-1] and profile.purchase("grenade") and profile.grenade_capacity() == count,"Grenade capacity increases to "+str(count))
 	check(not profile.purchase("grenade") and profile.cost("grenade") == -1,"Grenade capacity cannot exceed four")
@@ -184,7 +193,7 @@ func run() -> void:
 	check(p.reserves[0] == 240 and p.reserves[2] == 120,"Supply increases both finite reserves")
 	for rank in range(2,6): check(Fixture.buy(sim,p,"supply"),"Additional Supply purchase "+str(rank))
 	check(p.reserves[0] == 480 and p.reserves[2] == 240,"Repeated Supply purchases retain exact reserve rounding")
-	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),165.0) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),330.0),"Instinct increases both body and head damage without changing base headshot ratio")
+	check(is_equal_approx(sim.weapon_damage(data.weapons[0],false),178.2) and is_equal_approx(sim.weapon_damage(data.weapons[0],true),356.4),"Instinct increases both body and head damage without changing base headshot ratio")
 	check(Fixture.buy(sim,p,"grenade") and p.grenades == 1 and p.grenade_capacity == 1,"Capacity purchase immediately grants its extra grenade")
 	check(Fixture.buy(sim,p,"bridge_entry_gate"),"New bridge-end gate can be bought")
 	var shop_position: Vector2 = p.pos

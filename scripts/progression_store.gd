@@ -4,6 +4,8 @@ const MAX_CURRENCY = 9000000000000000
 const SAVE_VERSION = 10
 const DEATH_BONUS = 25
 const MAX_UPGRADE_LEVEL = 10
+const GUN_UPGRADE_PERCENT = [35,33,30,28,26,24,22,20,17,15]
+static var gun_damage_multipliers: Array[float] = build_gun_damage_curve()
 const UPGRADE_PRICES = [25,100,150,200,300,450,650,1000,1500,2000]
 const TALENT_PRICES = [1,2,3,4,5]
 const GATE_BASE_HEALTH = 500
@@ -290,8 +292,20 @@ func purchase(id: String) -> bool:
 		return false
 	return true
 
-func weapon_multiplier(id: String) -> float:
-	return pow(1.25 if id in ["rifle","pistol"] else 1.2,level(id)) if id in WEAPONS else 1.0
+static func build_gun_damage_curve() -> Array[float]:
+	var values: Array[float] = [1.0]
+	for rate in GUN_UPGRADE_PERCENT: values.append(values.back()*(1.0+rate/100.0))
+	return values
+
+func weapon_multiplier(id: String, rank := -1) -> float:
+	var upgrade_rank = clampi(level(id) if rank < 0 else rank,0,MAX_UPGRADE_LEVEL)
+	if id in ["rifle","pistol"]: return gun_damage_multipliers[upgrade_rank]
+	return pow(1.2,upgrade_rank) if id == "axe" else 1.0
+
+func weapon_upgrade_percent(id: String) -> int:
+	var rank = level(id)
+	if rank >= MAX_UPGRADE_LEVEL: return 0
+	return int(GUN_UPGRADE_PERCENT[rank]) if id in ["rifle","pistol"] else 20 if id == "axe" else 0
 
 func building_multiplier(id: String) -> float:
 	return pow(1.25,level(id))

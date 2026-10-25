@@ -122,11 +122,14 @@ static func description(sim, id: String) -> String:
 
 static func prompt_description(sim, id: String) -> String:
 	if id == "shopkeeper": return "武器店老板\n交谈"
-	if id in ["crystal","unsupported_weapon"]: return description(sim,id)
+	if id == "crystal": return description(sim,id)
+	if id == "unsupported_weapon": return description(sim,id)+"\n切换不同武器可以改变此升级项"
 	var profile = sim.progression
 	var title: String = NAMES.get(id,id)
 	var price: int = profile.cost(id)
 	var payment = str(price) if price >= 0 else "LV MAX"
+	if id in profile.WEAPONS or id in profile.MAGAZINES:
+		return title+"\n切换不同武器可以改变此升级项\n"+payment
 	return title+"\n"+payment
 
 static func upgrade_details(sim, id: String) -> Dictionary:
@@ -139,7 +142,7 @@ static func upgrade_details(sim, id: String) -> Dictionary:
 	var note = ""
 	if id in profile.WEAPONS:
 		var base: float = sim.arena.get_node("/root/Data").weapons[{"rifle":0,"pistol":2,"axe":6}[id]].damage*profile.damage_multiplier()
-		rows.append(["伤害",number(base*pow(1.2 if id == "axe" else 1.25,rank)),number(base*pow(1.2 if id == "axe" else 1.25,next_rank))])
+		rows.append(["伤害",number(base*profile.weapon_multiplier(id,rank)),number(base*profile.weapon_multiplier(id,next_rank))])
 	elif id in profile.MAGAZINES:
 		var base: float = sim.arena.get_node("/root/Data").weapons[0 if id == "rifle_magazine" else 2].capacity
 		rows.append(["弹匣容量",str(profile.magazine_capacity(id.trim_suffix("_magazine"),int(base),rank)),str(profile.magazine_capacity(id.trim_suffix("_magazine"),int(base),next_rank))])

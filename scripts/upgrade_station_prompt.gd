@@ -44,4 +44,4 @@ func sync(at: Vector3, eye: Vector3, camera: Camera3D, text: String, price: Stri
 		price_icon.texture = currency
 		var width = focus_label.font.get_string_size(price,HORIZONTAL_ALIGNMENT_LEFT,-1,focus_label.font_size).x*focus_label.pixel_size
 		var line_height = focus_label.font.get_height(focus_label.font_size)*focus_label.pixel_size
-		price_icon.position = focus_label.position+right*(width+.085)-camera.global_basis.y*line_height*.5
+		price_icon.position = focus_label.position+right*(width+.085)-camera.global_basis.y*line_height*(text.count("\n")*.5)

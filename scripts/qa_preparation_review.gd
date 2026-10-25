@@ -65,7 +65,13 @@ func stage() -> void:
 		game.camera.fov = 65
 		game.arena.scenery.sync_focus(game.sim,p)
 	if scenario.begins_with("upgrade_"):
-		var entry: Dictionary = preload("res://scripts/preparation_catalog.gd").stations()[0 if scenario == "upgrade_weapon" else 4 if scenario == "upgrade_talent" else 2]
+		var entry: Dictionary = preload("res://scripts/preparation_catalog.gd").stations()[0 if scenario.begins_with("upgrade_weapon") else 4 if scenario == "upgrade_talent" else 2]
+		if scenario in ["upgrade_weapon_rifle","upgrade_weapon_pistol"]:
+			var id = "pistol" if scenario.ends_with("pistol") else "rifle"
+			game.sim.progression.data.weapons[id] = 1
+			p.slot = 2 if id == "pistol" else 1
+			p.weapon = p.weapon2 if id == "pistol" else p.weapon1
+			p.requested = p.weapon
 		p.pos = Vector2(entry.position.x,entry.position.z-2.4)
 		p.height = 3
 		game.camera.position = Vector3(p.pos.x,p.height+preload("res://scripts/player_body.gd").eye_height(p),p.pos.y)

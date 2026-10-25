@@ -631,7 +631,7 @@ func show_multiplayer(qa_preview := false) -> void:
 func shop_description(profile, id: String) -> String:
 	if id in profile.WEAPONS:
 		var index: int = {"rifle":0,"pistol":2,"axe":6}[id]
-		return "伤害 %.1f → %.1f · 每次 +%d%%，最高10级，采用固定价格表" % [Data.weapons[index].damage*profile.weapon_multiplier(id)*profile.damage_multiplier(),Data.weapons[index].damage*profile.weapon_multiplier(id)*profile.damage_multiplier()*(1.2 if id == "axe" else 1.25),20 if id == "axe" else 25]
+		return "伤害 %.1f → %.1f · 本次 +%d%%，最高10级，采用固定价格表" % [Data.weapons[index].damage*profile.weapon_multiplier(id)*profile.damage_multiplier(),Data.weapons[index].damage*profile.weapon_multiplier(id,mini(profile.level(id)+1,10))*profile.damage_multiplier(),profile.weapon_upgrade_percent(id)]
 	if id in profile.MAGAZINES:
 		var base: int = int(Data.weapons[0 if id == "rifle_magazine" else 2].capacity)
 		return "弹匣 %d → %d · 每级 +%d 发 · 上限10级，采用固定价格表" % [profile.magazine_capacity(id.trim_suffix("_magazine"),int(base)),profile.magazine_capacity(id.trim_suffix("_magazine"),int(base),profile.level(id)+1),5 if id == "rifle_magazine" else 3]
