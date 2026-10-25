@@ -41,11 +41,11 @@ func stage(kind: String) -> void:
 	game._process(0)
 	game.arena.scenery.sync(sim.defense)
 	# A stationary neutral fill makes the authored metal/wood readable in the night map.
-	var fill = OmniLight3D.new()
+	var fill = DirectionalLight3D.new()
 	fill.name = "AKReviewFill"
-	fill.position = game.camera.position+Vector3(-.6,.5,-.6)
-	fill.light_energy = 1.8
-	fill.omni_range = 3.5
+	fill.rotation_degrees = Vector3(-25,-30,0)
+	fill.light_cull_mask = 2
+	fill.light_energy = 2.5
 	fill.shadow_enabled = false
 	game.add_child(fill)
 	var overlay = CanvasLayer.new()
