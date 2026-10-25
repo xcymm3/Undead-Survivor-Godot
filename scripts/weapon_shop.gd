@@ -172,7 +172,7 @@ func build_owner() -> void:
 	owner_dialogue.font_size = 42
 	owner_dialogue.pixel_size = .003
 	owner_dialogue.position.y = 2.15
-	owner_dialogue.width = 820
+	owner_dialogue.width = 500
 	owner_dialogue.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	owner_dialogue.outline_size = 6
 	owner_dialogue.modulate = Color("fff0d1")

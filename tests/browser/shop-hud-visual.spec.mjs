@@ -27,6 +27,11 @@ test('商店柜台、贴墙现状及四人底部技能布局', async ({ page }, 
         expect(fix.dialogue).toBe('要对付僵尸，光靠勇气可不够，你还得有好的武器');
         expect(fix.center.y).toBeGreaterThan(height * .1);
         expect(fix.center.y).toBeLessThan(height * .8);
+        expect(fix.text_rect.width).toBeGreaterThan(10);
+        expect(fix.text_rect.x).toBeGreaterThan(0);
+        expect(fix.text_rect.x + fix.text_rect.width).toBeLessThan(width * .82);
+        expect(fix.text_rect.y).toBeGreaterThan(height * .1);
+        expect(fix.text_rect.y + fix.text_rect.height).toBeLessThan(height * .8);
         if (scenario === 'dialogue_near') expect(fix.distance).toBeCloseTo(1.5, 2);
       }
       await info.attach(`${scenario}-${width}-fix`, { body: JSON.stringify(fix, null, 2), contentType: 'application/json' });
