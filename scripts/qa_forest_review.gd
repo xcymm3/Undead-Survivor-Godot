@@ -27,8 +27,8 @@ func stage() -> void:
 	view = str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('forestReview')",true))
 	Data.settings.map_id = "graypine_defense"
 	Progress.store = preload("res://scripts/progression_store.gd").new()
+	Progress.store.data.merge({"intro_seen":true,"tutorial_stage":5,"ultimate_unlocked":true},true)
 	game.start_solo("defense",19457)
-	preload("res://tools/preparation-fixture.gd").skip_tutorial(game.sim)
 	game.set_process(false)
 	game.set_physics_process(false)
 	game.running = false
