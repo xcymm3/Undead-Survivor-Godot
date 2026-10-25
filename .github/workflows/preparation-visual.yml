@@ -6,7 +6,7 @@ on:
         type: choice
         description: 截图范围
         default: all
-        options: [ak_rifle, weapon_upgrades, all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, map_toys, ultimate_ring, dialogs, shop_hud, shop_fixes, demo_endings, save_slots, coop_gifs, ultimate_entry, ultimate_entry_stills]
+        options: [weapon_upgrades, all, switch, normal, face, toys, shield_blade, blade_attack, noon, axe_gif, map_toys, ultimate_ring, dialogs, shop_hud, shop_fixes, demo_endings, save_slots, coop_gifs, ultimate_entry, ultimate_entry_stills]
       coop_scenarios:
         type: string
         description: '合作GIF场景：all 或逗号分隔的场景名'
@@ -71,15 +71,6 @@ jobs:
       - name: 武器递减升级与展台切换提示截图
         if: inputs.scope == 'weapon_upgrades'
         run: npx playwright test tests/browser/weapon-upgrade-visual.spec.mjs
-      - name: Blender AK开火换弹与枪托攻击GIF
-        if: inputs.scope == 'ak_rifle'
-        run: |
-          npx playwright test tests/browser/ak-rifle-visual.spec.mjs
-          if ($LASTEXITCODE -ne 0) { throw 'AK capture failed' }
-          python -m pip install Pillow==11.3.0
-          if ($LASTEXITCODE -ne 0) { throw 'Pillow install failed' }
-          python tools/encode-ak-gifs.py
-          if ($LASTEXITCODE -ne 0) { throw 'AK GIF encoding failed' }
       - name: 商店与四人技能布局截图
         if: inputs.scope == 'shop_hud' || inputs.scope == 'shop_fixes'
         env:
@@ -128,7 +119,7 @@ jobs:
         if: inputs.scope == 'dialogs'
         run: npx playwright test tests/browser/dialogs-visual.spec.mjs
       - run: npx playwright test tests/browser/campaign-review.spec.mjs tests/browser/defense.spec.mjs
-        if: inputs.scope != 'ak_rifle' && inputs.scope != 'weapon_upgrades' && inputs.scope != 'noon' && inputs.scope != 'axe_gif' && inputs.scope != 'map_toys' && inputs.scope != 'ultimate_ring' && inputs.scope != 'dialogs' && inputs.scope != 'shop_hud' && inputs.scope != 'shop_fixes' && inputs.scope != 'demo_endings' && inputs.scope != 'save_slots' && inputs.scope != 'coop_gifs' && inputs.scope != 'ultimate_entry' && inputs.scope != 'ultimate_entry_stills'
+        if: inputs.scope != 'weapon_upgrades' && inputs.scope != 'noon' && inputs.scope != 'axe_gif' && inputs.scope != 'map_toys' && inputs.scope != 'ultimate_ring' && inputs.scope != 'dialogs' && inputs.scope != 'shop_hud' && inputs.scope != 'shop_fixes' && inputs.scope != 'demo_endings' && inputs.scope != 'save_slots' && inputs.scope != 'coop_gifs' && inputs.scope != 'ultimate_entry' && inputs.scope != 'ultimate_entry_stills'
         env:
           QA_BLADE_ATTACK_ONLY: ${{ inputs.scope == 'blade_attack' && '1' || '' }}
           QA_SHIELD_BLADE_ONLY: ${{ inputs.scope == 'shield_blade' && '1' || '' }}

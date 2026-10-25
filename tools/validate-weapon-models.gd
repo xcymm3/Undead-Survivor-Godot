@@ -56,30 +56,6 @@ static func validate(game, check: Callable) -> void:
 				check.call(geometry_matches(reference,display),id+": mounted wall display uses the same gun and sights")
 		if id in ["p90","pistol","heavy-machine-gun"]:
 			check.call(reference.find_children("TopIronSight","Node3D",true,false).size() == 1,id+": world model contains exactly one shared sight")
-		if id == "rifle":
-			var meshes = reference.find_children("*","MeshInstance3D",true,false)
-			check.call(reference.get_meta("model_source","") == "Blender / assets/models/ak47.glb" and meshes.size() == 3,"AK uses the baked Blender body, magazine and bolt")
-			var muzzle_anchor: Node3D = reference.find_child("MuzzleAnchor",true,false)
-			var right_grip: Node3D = reference.find_child("RightGrip",true,false)
-			var left_grip: Node3D = reference.find_child("LeftGrip",true,false)
-			var ak = load("res://scripts/ak_rifle.gd")
-			check.call(reference.to_local(muzzle_anchor.global_position).is_equal_approx(ak.MUZZLE),"Blender AK muzzle preserves the production shot origin")
-			check.call(reference.to_local(right_grip.global_position).is_equal_approx(ak.RIGHT_GRIP) and reference.to_local(left_grip.global_position).is_equal_approx(ak.LEFT_GRIP),"Blender AK grip anchors preserve the common view/world coordinates")
-			var magazine_rest: Transform3D = reference.magazine.transform
-			var bolt_rest: Transform3D = reference.bolt.transform
-			reference.pose(true,.5,1.0)
-			check.call(is_equal_approx(reference.magazine.position.y,magazine_rest.origin.y-.3) and is_equal_approx(reference.bolt.position.z,bolt_rest.origin.z+.05),"AK reload and recoil move imported parts from their authored origins")
-			check.call(partner.gun_model.magazine.transform.is_equal_approx(magazine_rest),"Posing one AK does not change another shared-mesh instance")
-			reference.pose(false,0.0,0.0)
-			check.call(reference.magazine.transform.is_equal_approx(magazine_rest) and reference.bolt.transform.is_equal_approx(bolt_rest),"AK parts return to the authored pose after reload and recoil")
-			var triangles = 0
-			var surfaces = 0
-			for mesh in meshes:
-				surfaces += mesh.mesh.get_surface_count()
-				for surface in mesh.mesh.get_surface_count():
-					var arrays = mesh.mesh.surface_get_arrays(surface)
-					triangles += arrays[Mesh.ARRAY_INDEX].size()/3 if arrays[Mesh.ARRAY_INDEX] != null and not arrays[Mesh.ARRAY_INDEX].is_empty() else arrays[Mesh.ARRAY_VERTEX].size()/3
-			check.call(triangles < 15000 and surfaces <= 12,"Baked AK stays within its mesh/material budget")
 		if id == "revolver":
 			check.call(reference.find_child("SwingOutCylinder",true,false) != null and not reference.loader.visible and not reference.shells.visible,"Displayed revolver is closed and has no loose reload props")
 			check.call(reference.find_children("*","MeshInstance3D",true,false).all(func(mesh): return mesh.layers == 1 and mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON),"World revolver has world visibility and casts shadows")
