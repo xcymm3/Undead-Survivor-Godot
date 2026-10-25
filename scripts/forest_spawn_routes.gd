@@ -1,7 +1,8 @@
 extends RefCounted
 ## Shared, authored woodland lanes. Only displaced enemies need a rejoin query.
 const DATA_PATH = "res://assets/data/forest_routes.json"
-const EXIT = Vector2(0,-74)
+const EXITS = [Vector2(-23,-80),Vector2(0,-80),Vector2(23,-80)]
+const HANDOFF_Z = -56.0
 var entries: Array[Dictionary] = []
 
 func _init(arena) -> void:
@@ -9,13 +10,19 @@ func _init(arena) -> void:
 	for item in data.routes:
 		var points = PackedVector2Array()
 		for point in item.points: points.append(Vector2(point[0],point[1]))
-		var valid = points.size() >= 2 and points[-1].is_equal_approx(EXIT)
+		var group = int(item.get("exit",-1))
+		var valid = points.size() >= 5 and group >= 0 and group < EXITS.size()
+		valid = valid and is_equal_approx(points[-1].y,HANDOFF_Z) and absf(points[-1].x) <= 2.5
+		if valid:
+			valid = false
+			for point in points:
+				if point.distance_to(EXITS[group]) <= .5: valid = true
 		for index in points.size()-1:
 			valid = valid and arena.clear(points[index],points[index+1])
 		if not valid:
 			push_error("Invalid fixed forest route: "+str(item.id))
 			continue
-		entries.append({"id":str(item.id),"points":points})
+		entries.append({"id":str(item.id),"exit":group,"points":points})
 	if entries.size() != 20: push_error("Expected twenty fixed forest routes")
 
 func attach(z: Dictionary, position: Vector2) -> void:

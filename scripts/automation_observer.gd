@@ -17,6 +17,10 @@ func _ready() -> void:
 		queue_free()
 		return
 	if "--qa-native-smoke" in OS.get_cmdline_user_args(): call_deferred("native_smoke")
+	if "--qa-forest-review" in OS.get_cmdline_user_args() and OS.has_feature("web"):
+		var forest = preload("res://scripts/qa_forest_review.gd").new()
+		forest.game = game
+		add_child(forest)
 	if "--qa-defense-structures" in OS.get_cmdline_user_args() and OS.has_feature("web"):
 		var fixture = preload("res://scripts/qa_defense_structures.gd").new()
 		fixture.game = game

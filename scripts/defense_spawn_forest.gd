@@ -137,13 +137,16 @@ func batch(title: String, mesh: Mesh, poses: Array[Transform3D], color: String) 
 	world.add_child(view)
 
 func build() -> void:
-	var centers = [Vector2(-14,-87),Vector2(14,-87),Vector2(-34,-91),Vector2(34,-91),Vector2(0,-112),Vector2(-30,-116),Vector2(30,-116),Vector2(-13,-139),Vector2(13,-139),Vector2(-35,-143),Vector2(35,-143)]
+	# Keep three clear openings at x=-23, 0, 23; relocate whole front groves
+	# rather than removing cover or changing collision-only geometry.
+	var centers = [Vector2(-12,-87),Vector2(12,-87),Vector2(-37,-91),Vector2(37,-91),Vector2(0,-112),Vector2(-30,-116),Vector2(30,-116),Vector2(-13,-139),Vector2(13,-139),Vector2(-35,-143),Vector2(35,-143)]
 	for index in centers.size():
 		var center: Vector2 = centers[index]
 		for offset in [Vector2(-4,0),Vector2(0,0),Vector2(4,0),Vector2(-5,-5),Vector2(0,-5),Vector2(5,-5),Vector2(0,5)]:
 			tree(center+offset+Vector2(random.randf_range(-.5,.5),random.randf_range(-.5,.5)))
 		for side in [-1.0,1.0]:
 			var point = center+Vector2(side*6.5,2.5)
+			if index < 2 and absf(point.x) < 8.5: point.x = signf(center.x)*8.5
 			var height = random.randf_range(3.1,4.4)
 			EnvironmentArt.make_rock(world,"FarForestBoulder%d_%d" % [index,int(side+1)],Vector3(point.x,height*.43,point.y),Vector3(4.5,height,3.8),random.randf_range(-30,30),true,true)
 	var bark = CylinderMesh.new()
