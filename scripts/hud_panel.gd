@@ -102,6 +102,7 @@ func setup(owner_ui) -> void:
 	# The ultimate itself stays on the exact screen centre line.
 	ultimate_ring = preload("res://scripts/cooldown_ring.gd").new()
 	ultimate_ring.name = "UltimateCharge"
+	ultimate_ring.hide()
 	content.add_child(ultimate_ring)
 	ultimate_ring.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	ultimate_ring.offset_left = -60
@@ -267,8 +268,11 @@ func health_card(id: String) -> Dictionary:
 	cards[id] = result
 	return result
 
+func can_display() -> bool:
+	return ui.game.running and ui.game.sim != null and not ui.game.finished and not (ui.game.entry_sequence and ui.game.entry_sequence.blocks_world())
+
 func sync() -> void:
-	visible = ui.game.running and ui.game.sim != null and not ui.game.finished
+	visible = can_display()
 	if not visible: return
 	var sim = ui.game.sim
 	var bosses = sim.zombies.filter(func(z): return z.kind == "dancer" and z.hp > 0)
@@ -294,7 +298,7 @@ func sync() -> void:
 	var intro_active: bool = intro.active(defense)
 	if intro_active: announcement_opacity = 0.0
 	var local_pawn: Dictionary = ui.game.local_pawn()
-	tutorial_overlay.sync(defense,not local_pawn.is_empty() and local_pawn.hp > 0 and not sim.failed,not bosses.is_empty())
+	tutorial_overlay.sync(defense,not local_pawn.is_empty() and local_pawn.hp > 0 and not sim.failed,not bosses.is_empty(),Progress.store.combat_controls_learned())
 	wave_announcement.offset_top = 280 if tutorial_overlay.hint_frame.visible else 200
 	wave_announcement.visible = announcement_opacity > 0
 	wave_announcement.modulate = Color(1,1,1,announcement_opacity)

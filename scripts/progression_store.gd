@@ -39,6 +39,8 @@ static func valid(value) -> bool:
 	if not value is Dictionary or not value.has_all(["version","coins","diamonds","grenade_level","weapons","talents","buildings","best_wave","cleared_total"]) or not bounded_integer(value.version,SAVE_VERSION) or value.version < 1: return false
 	if value.has("tutorial_stage") and not bounded_integer(value.tutorial_stage,5): return false
 	if value.has("tutorial_blueprint_paid") and not value.tutorial_blueprint_paid is bool: return false
+	for key in ["tutorial_aim_used","tutorial_shove_used"]:
+		if value.has(key) and not value[key] is bool: return false
 	if value.version >= 8 and not value.get("ultimate_unlocked") is bool: return false
 	if value.version >= 10 and value.get("ultimate_choice") not in ["","blade"]: return false
 	if value.has("intro_seen") and not value.intro_seen is bool: return false
@@ -161,6 +163,19 @@ func load_save() -> void:
 			data["ultimate_choice"] = "blade" if data.get("intro_seen",false) or data.get("tutorial_stage",0) > 0 or data.coins > 0 or data.best_wave > 0 or data.ultimate_unlocked else ""
 			data.version = SAVE_VERSION
 			dirty = true
+
+func combat_controls_learned() -> bool:
+	return data.get("tutorial_aim_used",false) and data.get("tutorial_shove_used",false)
+
+func record_combat_controls(command: Dictionary) -> void:
+	# Personal tutorial progress, including on guests; never copy host upgrades.
+	if combat_controls_learned(): return
+	for action in ["aim","shove"]:
+		var key = "tutorial_"+action+"_used"
+		if command.get(action,false) and not data.get(key,false):
+			data[key] = true
+			dirty = true
+	# The existing periodic/exit save flushes at most these two transitions.
 
 func needs_ultimate_choice() -> bool:
 	return data.get("ultimate_choice","").is_empty()

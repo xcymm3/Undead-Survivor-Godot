@@ -297,6 +297,7 @@ func input_state() -> Dictionary:
 		if not preload("res://scripts/equipment_core.gd").slot_available(local_pawn(),requested_slot): requested_slot = int(local_pawn().get("slot",1))
 		command.slot = requested_slot
 		command.use_self = enabled and fire_pending
+	if enabled and sim and not local.is_empty() and (command.aim or command.shove): Progress.store.record_combat_controls(command)
 	ultimate_pending = false
 	shove_pending = false
 	aim_pending = false

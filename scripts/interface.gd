@@ -193,7 +193,7 @@ func clear_menu() -> void:
 		menu.queue_free()
 		menu = null
 	current = ""
-	if native_hud: native_hud.visible = game.running
+	if native_hud: native_hud.visible = native_hud.can_display()
 	if hud: hud.queue_redraw()
 
 func panel(title: String, subtitle: String, width := 700, warm := false) -> VBoxContainer:
@@ -663,7 +663,7 @@ func tick(dt: float) -> void:
 		hud.queue_redraw()
 
 func _draw_hud() -> void:
-	if not game or not game.running or not game.sim or game.finished: return
+	if not game or not native_hud.can_display(): return
 	var sim = game.sim
 	var p: Dictionary = game.view_pawn()
 	if p.is_empty(): return

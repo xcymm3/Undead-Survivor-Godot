@@ -757,6 +757,7 @@ func run() -> void:
 	await validate_rifle_penetration()
 	await validate_pistol_and_equip()
 	validate_close_combat()
+	load("res://tools/validate-combat-tutorial.gd").validate(game,check)
 	validate_enemy_overlap()
 	validate_revolver()
 	validate_sight_only_changes()

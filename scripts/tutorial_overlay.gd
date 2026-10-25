@@ -102,7 +102,7 @@ func label(value: String) -> Label:
 	hints.add_child(view)
 	return view
 
-func sync(state: Dictionary, alive := true, combat_obscured := false) -> void:
+func sync(state: Dictionary, alive := true, combat_obscured := false, combat_learned := false) -> void:
 	if not black: return
 	black.visible = Intro.active(state)
 	caption.visible = black.visible
@@ -113,7 +113,7 @@ func sync(state: Dictionary, alive := true, combat_obscured := false) -> void:
 		story_lines[index].modulate.a = Intro.line_alpha(state,index)
 		story_lines[index].add_theme_font_size_override("font_size",font_size)
 	var mode = Tutorial.hint_mode(state,alive)
-	if mode == "combat" and combat_obscured: mode = ""
+	if mode == "combat" and (combat_obscured or combat_learned): mode = ""
 	hints.visible = not mode.is_empty()
 	hint_frame.visible = hints.visible
 	movement.visible = mode in ["movement","ultimate"]
