@@ -50,7 +50,7 @@ func make_crystal() -> void:
 	crystal_light.light_color = Color("65dff2")
 	crystal_light.light_energy = 2.4
 	crystal_light.omni_range = 13.0
-	crystal_light.shadow_enabled = true
+	crystal_light.shadow_enabled = false
 	crystal.add_child(crystal_light)
 
 func make_bridge() -> void:
@@ -158,7 +158,7 @@ func _ready() -> void:
 		light.light_color = Color("ffc77d")
 		light.light_energy = 2.5
 		light.omni_range = 10
-		light.shadow_enabled = true
+		light.shadow_enabled = false
 		add_child(light)
 	set_meta("navigation_obstacles",obstacles)
 

@@ -67,7 +67,7 @@ func _ready() -> void:
 	ceiling.light_color = Color("ffda9f")
 	ceiling.light_energy = 1.5
 	ceiling.omni_range = 9
-	ceiling.shadow_enabled = true
+	ceiling.shadow_enabled = false
 	add_child(ceiling)
 
 func solid_core(title: String, center: Vector3, size: Vector3) -> void:
@@ -92,5 +92,5 @@ func lamp(base: Vector3) -> void:
 	light.light_color = Color("ffc885")
 	light.light_energy = 2.0
 	light.omni_range = 5.0
-	light.shadow_enabled = true
+	light.shadow_enabled = false
 	add_child(light)

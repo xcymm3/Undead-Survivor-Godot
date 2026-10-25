@@ -13,6 +13,7 @@ var static_solid = PackedByteArray()
 var navigation_structures: Array = []
 var navigation_revision = 0
 var scenery: Node3D
+var static_scenery
 var sun: DirectionalLight3D
 const CELL = .65
 
@@ -45,10 +46,13 @@ func _ready() -> void:
 	sun.light_energy = .8
 	sun.light_energy = .27
 	sun.rotation_degrees = Vector3(-48,-18,0)
-	sun.shadow_enabled = Data.settings.quality > 0
+	sun.shadow_enabled = false
 	sun.directional_shadow_max_distance = 65
 	add_child(sun)
 	build_grid()
+	static_scenery = preload("res://scripts/static_scenery.gd").new()
+	add_child(static_scenery)
+	static_scenery.setup(scenery)
 
 func build_grid() -> void:
 	collision_buckets.clear()

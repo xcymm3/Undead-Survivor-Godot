@@ -6,6 +6,9 @@ var camera: Camera3D
 var overlay: CanvasLayer
 var image: TextureRect
 var source_environment: Environment
+var configuration: Array = []
+var configuration_updates = 0
+var camera_updates = 0
 
 func setup(owner_game) -> void:
 	game = owner_game
@@ -36,9 +39,6 @@ func setup(owner_game) -> void:
 	RenderingServer.frame_pre_draw.connect(sync_view)
 	sync_view()
 
-func _process(_dt: float) -> void:
-	sync_view()
-
 func _exit_tree() -> void:
 	if RenderingServer.frame_pre_draw.is_connected(sync_view): RenderingServer.frame_pre_draw.disconnect(sync_view)
 
@@ -47,10 +47,16 @@ func sync_view() -> void:
 	var world_camera: Camera3D = game.camera
 	# Existing tools may temporarily change camera masks; layer two remains exclusive.
 	world_camera.cull_mask &= ~2
-	viewport.world_3d = world_camera.get_world_3d()
-	viewport.size = Vector2i(game.get_viewport().get_visible_rect().size)
-	viewport.msaa_3d = game.get_viewport().msaa_3d
-	viewport.scaling_3d_scale = game.get_viewport().scaling_3d_scale
+	var root_viewport = game.get_viewport()
+	var desired = [world_camera.get_world_3d(),Vector2i(root_viewport.get_visible_rect().size),root_viewport.msaa_3d,root_viewport.scaling_3d_scale]
+	if configuration != desired:
+		configuration = desired
+		configuration_updates += 1
+		viewport.world_3d = desired[0]
+		viewport.size = desired[1]
+		viewport.msaa_3d = desired[2]
+		viewport.scaling_3d_scale = desired[3]
+	camera_updates += 1
 	camera.global_transform = world_camera.global_transform
 	camera.force_update_transform()
 	camera.fov = world_camera.fov

@@ -7,15 +7,15 @@ var parts: Array = rules.parts
 const Maps = preload("res://scripts/map_catalog.gd")
 signal settings_changed
 var window_mode = preload("res://scripts/window_mode.gd").new()
-var settings = {"coop_notice_seen":false,"sensitivity": 0.0022, "volume": 1.0, "muted": false, "screen_shake": 1, "ads_mode":"toggle", "bindings": {}, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 3, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_defense", "defense_difficulty":"normal"}
+var settings = {"coop_notice_seen":false,"sensitivity": 0.0022, "volume": 1.0, "muted": false, "screen_shake": 1, "ads_mode":"toggle", "bindings": {}, "quality": 3, "fullscreen": false, "resolution": 1.0, "aa": 1, "shadows": 0, "effects": 2, "distance": 2, "frame_limit": 60, "pixelated": false, "network_stats": true, "map_id":"graypine_defense", "defense_difficulty":"normal"}
 const Bindings = preload("res://scripts/control_bindings.gd")
 var controls = Bindings.new()
 const GRAPHICS_PRESETS = [
     {"resolution":.5,"aa":0,"shadows":0,"effects":0,"distance":0,"frame_limit":60,"pixelated":true},
-    {"resolution":.67,"aa":1,"shadows":1,"effects":0,"distance":1,"frame_limit":60,"pixelated":false},
-    {"resolution":.75,"aa":1,"shadows":2,"effects":1,"distance":1,"frame_limit":60,"pixelated":false},
-    {"resolution":1.0,"aa":1,"shadows":3,"effects":2,"distance":2,"frame_limit":60,"pixelated":false},
-    {"resolution":1.0,"aa":3,"shadows":4,"effects":2,"distance":2,"frame_limit":0,"pixelated":false}
+    {"resolution":.67,"aa":1,"shadows":0,"effects":0,"distance":1,"frame_limit":60,"pixelated":false},
+    {"resolution":.75,"aa":1,"shadows":0,"effects":1,"distance":1,"frame_limit":60,"pixelated":false},
+    {"resolution":1.0,"aa":1,"shadows":0,"effects":2,"distance":2,"frame_limit":60,"pixelated":false},
+    {"resolution":1.0,"aa":3,"shadows":0,"effects":2,"distance":2,"frame_limit":0,"pixelated":false}
 ]
 var scores: Array = []
 var persistent = true
@@ -46,6 +46,7 @@ func _ready() -> void:
 	settings.defense_difficulty = "normal"
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--map=") and Maps.valid(arg.trim_prefix("--map=")): settings.map_id = arg.trim_prefix("--map=")
+	settings.shadows = 0
 	settings.sensitivity = clampf(settings.sensitivity, .00022, .0044)
 	settings.volume = clampf(settings.volume, 0, 1)
 	settings.muted = false
@@ -87,6 +88,7 @@ func toggle_fullscreen() -> void:
 	set_fullscreen(not settings.fullscreen)
 
 func apply_settings() -> void:
+	settings.shadows = 0
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(.0001, settings.volume)))
 	AudioServer.set_bus_mute(0, automation or settings.muted or DisplayServer.get_name() == "headless" or "--silent" in OS.get_cmdline_user_args())
 	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED,Viewport.MSAA_2X,Viewport.MSAA_4X,Viewport.MSAA_8X][int(settings.aa)]

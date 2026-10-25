@@ -793,6 +793,7 @@ func run() -> void:
 	await load("res://tools/validate-first-attempt-intro.gd").validate(game,check)
 	await load("res://tools/validate-round-flow.gd").validate(game,check)
 	await load("res://tools/validate-stutter-log.gd").validate(game,check)
+	load("res://tools/validate-static-scenery.gd").validate(game,check)
 	await load("res://tools/validate-run-rewards.gd").validate(game,check)
 	await load("res://tools/validate-map-redesign.gd").validate(game,check)
 	await load("res://tools/validate-demo-refinements.gd").validate(game,check)

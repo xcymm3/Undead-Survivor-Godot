@@ -151,10 +151,11 @@ func run() -> void:
 	game.ui.show_settings()
 	await process_frame
 	check(game.ui.menu.find_children("*","OptionButton",true,false).is_empty(),"Graphics settings use arrow selectors instead of dropdown forms")
-	var old_shadow: int = root.get_node("Data").settings.shadows
+	var old_aa: int = root.get_node("Data").settings.aa
 	for control in game.ui.menu.find_children("*","Button",true,false):
-		if control.accessibility_name == "阴影：下一项": control.pressed.emit()
-	check(root.get_node("Data").settings.shadows == (old_shadow+1)%5 and root.get_node("Data").settings.quality == 5,"Graphics arrows change the intended setting and mark the preset custom")
+		if control.accessibility_name == "抗锯齿：下一项": control.pressed.emit()
+	check(root.get_node("Data").settings.aa == (old_aa+1)%4 and root.get_node("Data").settings.quality == 5,"Graphics arrows change the intended setting and mark the preset custom")
+	check(game.ui.menu.find_children("*","Button",true,false).all(func(control): return not control.accessibility_name.begins_with("阴影：")),"Removed shadows no longer expose an ineffective graphics control")
 	game.ui.show_save_slots()
 	await process_frame
 	await process_frame

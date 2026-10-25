@@ -64,6 +64,7 @@ func _ready() -> void:
 	camera.fov = 61
 	camera.cull_mask = 3
 	add_child(camera)
+	arena.static_scenery.camera = camera
 	camera.current = true
 	weapon = preload("res://scripts/weapon_view.gd").new()
 	camera.add_child(weapon)
@@ -696,9 +697,9 @@ func request_draw() -> void:
 
 func apply_graphics() -> void:
 	for light in arena.find_children("*","Light3D",true,false):
-		light.shadow_enabled = Data.settings.shadows > 0
-	arena.sun.directional_shadow_max_distance = [0,25,45,65,90][int(Data.settings.shadows)]
-	RenderingServer.directional_shadow_atlas_set_size([512,512,1024,2048,4096][int(Data.settings.shadows)],true)
+		light.shadow_enabled = false
+	arena.sun.directional_shadow_max_distance = 0.0
+	RenderingServer.directional_shadow_atlas_set_size(0,true)
 	camera.far = [90,150,250][int(Data.settings.distance)]
 	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED,Viewport.MSAA_2X,Viewport.MSAA_4X,Viewport.MSAA_8X][int(Data.settings.aa)]
 	get_viewport().scaling_3d_scale = Data.settings.resolution
@@ -819,7 +820,9 @@ func load_map(id: String) -> void:
 	arena = Arena.new()
 	arena.map_id = id
 	add_child(arena)
-	if camera: apply_graphics()
+	if camera:
+		arena.static_scenery.camera = camera
+		apply_graphics()
 
 func select_defense_difficulty(id: String) -> void:
 	if running: return

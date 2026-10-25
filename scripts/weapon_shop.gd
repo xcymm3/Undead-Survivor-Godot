@@ -64,7 +64,7 @@ func _ready() -> void:
 		light.light_color = Color("ffd397")
 		light.light_energy = 2.0
 		light.omni_range = 10
-		light.shadow_enabled = true
+		light.shadow_enabled = false
 		add_child(light)
 	build_owner()
 
@@ -75,7 +75,7 @@ func build_owner() -> void:
 	counter_light.light_color = Color("ffd49a")
 	counter_light.light_energy = 2.0
 	counter_light.omni_range = 5.0
-	counter_light.shadow_enabled = true
+	counter_light.shadow_enabled = false
 	add_child(counter_light)
 	var lantern = block("CounterLantern",counter_light.position,Vector3(.3,.42,.3),"ffe0a1",false)
 	var glow = material("ffe0a1").duplicate()
