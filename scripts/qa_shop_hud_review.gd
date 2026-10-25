@@ -111,11 +111,12 @@ func stage(scenario: String) -> void:
 	var shop = game.arena.scenery.shop
 	var doorway_posts = shop.get_node("Storefront").get_children().filter(func(node): return str(node.name).begins_with("SideTimberPost") and node.position.x > 0 and absf(node.position.z-Layout.SHOP_DOOR_Z) < Layout.SHOP_DOOR_WIDTH*.5).size()
 	var dialogue_center: Vector2 = game.camera.unproject_position(shop.owner_dialogue.global_position)
-	var text_box: AABB = shop.owner_dialogue.get_aabb()
 	var text_rect = Rect2(dialogue_center,Vector2.ZERO)
-	for x in [text_box.position.x,text_box.end.x]:
-		for y in [text_box.position.y,text_box.end.y]:
-			var corner = shop.owner_dialogue.global_position+game.camera.global_basis.x*x+game.camera.global_basis.y*y
+	# Billboard AABBs include rotation padding; project the actual text vertices.
+	var text_mesh = shop.owner_dialogue.generate_triangle_mesh()
+	if text_mesh:
+		for vertex in text_mesh.get_faces():
+			var corner = shop.owner_dialogue.global_position+game.camera.global_basis.x*vertex.x+game.camera.global_basis.y*vertex.y
 			text_rect = text_rect.expand(game.camera.unproject_position(corner))
 	JavaScriptBridge.eval("window.__shopFixReview="+JSON.stringify({"doorway_posts":doorway_posts,"dialogue":shop.owner_dialogue.text,"dialogue_visible":shop.owner_dialogue.visible,"dialogue_height":shop.owner_dialogue.position.y,"dialogue_width":shop.owner_dialogue.width,"text_rect":rectangle(text_rect),"center":rectangle(Rect2(dialogue_center,Vector2.ZERO)),"distance":p.pos.distance_to(Layout.SHOP_OWNER)}),true)
 	for card in hud.cards.values():
