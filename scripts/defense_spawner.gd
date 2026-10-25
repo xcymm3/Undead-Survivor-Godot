@@ -1,7 +1,7 @@
 extends RefCounted
 ## Authority wave bursts from twenty fixed, prevalidated woodland lanes.
 const DURATION = 30.0
-const EARLY_WAVE_DURATIONS = [10.0,15.0,20.0]
+const WAVE_DURATIONS = [10.0,10.0,15.0,15.0,20.0,20.0,25.0,25.0,30.0,30.0]
 var duration = DURATION
 const MIN_BATCH_SIZE = 5
 const MAX_BATCHES = 30
@@ -52,7 +52,7 @@ func build_reachability() -> void:
 			queue.append(next)
 
 func reset(count: int) -> void:
-	duration = EARLY_WAVE_DURATIONS[sim.wave-1] if sim.wave >= 1 and sim.wave <= EARLY_WAVE_DURATIONS.size() else DURATION
+	duration = WAVE_DURATIONS[clampi(sim.wave,1,10)-1]
 	clock = 0.0
 	retries_at = 0.0
 	# Placement randomness never changes wave composition or combat randomness.

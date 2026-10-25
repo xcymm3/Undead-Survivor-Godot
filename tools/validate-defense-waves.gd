@@ -39,7 +39,7 @@ func run() -> void:
 	var planner = sim.defense_spawner
 	for wave in range(1,11):
 		sim.wave = wave
-		var expected_duration = [10.0,15.0,20.0][wave-1] if wave <= 3 else 30.0
+		var expected_duration = [10.0,10.0,15.0,15.0,20.0,20.0,25.0,25.0,30.0,30.0][wave-1]
 		for count in [0,1,3,7,20,150,151,300,1000]:
 			planner.reset(count)
 			var previous = 0
@@ -51,11 +51,11 @@ func run() -> void:
 			check(complete and previous == count and planner.describe().duration == expected_duration and (count == 0 or planner.scheduled_count(expected_duration-.001) < count) and planner.scheduled_count(expected_duration) == count,"Wave %d schedules %d bodies over %.0f seconds without oversized bursts" % [wave,count,expected_duration])
 	sim.wave = 1
 	for wave in range(1,11):
-		check(Defense.budget(wave,1) == [20,30,60,97,104,110,115,119,123,126][wave-1],"Exact current budget for wave "+str(wave))
+		check(Defense.budget(wave,1) == [20,25,45,100,100,125,125,150,180,150][wave-1],"Exact current budget for wave "+str(wave))
 	var expected_lists = [
 		["normal"],["normal","cone"],["normal","cone","bucket"],
 		["cone","imp"],["cone","bucket","shield"],
-		["bucket","shield","imp"],["cone","bucket","giant"],
+		["bucket","shield","imp"],["bucket","giant"],
 		["bucket","shield","imp","berserker"],
 		["shield","football","berserker","giant","imp","bucket"],
 		["football","berserker","giant","imp","bucket"]

@@ -357,29 +357,15 @@ func run() -> void:
 				generation_valid = generation_valid and regular.all(func(kind): return kind in population.kinds(current_wave)) and value.count("dancer") == (1 if current_wave == 10 else 0)
 	check(generation_valid,"All difficulties and party sizes spend the full shared budget inside the authored list; only wave ten adds a boss")
 	check(shared_population.COST.imp == 3 and shared_population.COST.shield == 4 and shared_population.COST.berserker == 8 and shared_population.COST.giant == 8 and shared_population.COST.football == 12,"Unified costs include budget-generated football zombies")
-	var actual_budgets: Array = []
-	for current_wave in range(1,9): actual_budgets.append(population.budget(current_wave,1,"normal"))
-	check(actual_budgets == [20,30,60,97,104,110,115,119],"Opening budgets are authored explicitly; later waves retain the halved curve")
-	check(population.budget(8,2,"normal") == floori(roundi(population.base_budget(8)*1.2*population.budget_multiplier(8))*.5) and population.budget(8,4,"normal") == floori(roundi(population.base_budget(8)*1.6*population.budget_multiplier(8))*.5),"Party coefficients remain unchanged before the final budget halving")
-	check(population.base_budget(20)-population.base_budget(19) == 5 and population.base_budget(1000000) == population.base_budget(20)+(1000000-20)*5,"Large-wave arithmetic preserves the five-point tail")
-
-	var reduced_budgets_valid = true
-	var decreasing_growth = true
-	var previous_growth = 31
-	for current_wave in range(1,101):
-		reduced_budgets_valid = reduced_budgets_valid and is_equal_approx(population.budget_multiplier(current_wave),1.0-minf(9,current_wave-1)*(.15/9))
-		if current_wave < 2: continue
-		var growth: int = population.base_budget(current_wave)-population.base_budget(current_wave-1)
-		decreasing_growth = decreasing_growth and growth >= 5 and growth <= previous_growth
-		previous_growth = growth
-	check(reduced_budgets_valid,"Existing budget reduction reaches 85 percent at wave ten and remains capped")
-	check(decreasing_growth,"Budget increments decrease monotonically and never fall below five")
-	var difficulty_budgets_valid = true
-	for party_size in range(1,5):
-		for current_wave in [1,3,6,9,10,100]:
-			var normal_budget: int = population.normal_budget(current_wave,party_size)
-			difficulty_budgets_valid = difficulty_budgets_valid and population.budget(current_wave,party_size,"normal") == floori(normal_budget*.5) and population.budget(current_wave,party_size,"easy") == floori(roundi(normal_budget*.7)*.5) and population.budget(current_wave,party_size,"hard") == floori(roundi(normal_budget*1.3)*.5)
-	check(difficulty_budgets_valid,"All difficulty and party budgets are halved after existing rounding")
+	var expected_budgets = [20,25,45,100,100,125,125,150,180,150]
+	var authored_budgets_valid = true
+	for current_wave in range(1,11):
+		for party_size in range(1,5):
+			authored_budgets_valid = authored_budgets_valid and population.budget(current_wave,party_size,"normal") == expected_budgets[current_wave-1]
+			for difficulty in population.DIFFICULTIES:
+				authored_budgets_valid = authored_budgets_valid and population.budget(current_wave,party_size,difficulty) == roundi(expected_budgets[current_wave-1]*population.difficulty_multiplier(difficulty))
+	check(authored_budgets_valid,"All ten authored budgets remain identical for one to four players; difficulty scales once")
+	check(population.kinds(7) == ["bucket","giant"],"Seventh wave removes cone zombies")
 
 	var fixed_health = true
 	for kind in data.enemies:
