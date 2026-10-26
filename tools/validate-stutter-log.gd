@@ -76,6 +76,7 @@ static func validate(game, check: Callable) -> void:
 	check.call(Recorder.begin() == 0,"Disabled diagnostics has a zero-token fast path")
 	automatic.enabled = true
 	automatic.metrics.clear()
+	automatic.navigation.clear()
 	game.arena.path_to(Vector2(0,30),Vector2(0,31))
 	var store = preload("res://scripts/progression_store.gd").new(folder.path_join("absent/save.json"))
 	store.dirty = true
@@ -86,8 +87,22 @@ static func validate(game, check: Callable) -> void:
 	var actor: Dictionary = view.create_actor({"kind":"normal"})
 	view.retire_actor(actor)
 	check.call(automatic.metrics.pathfinding.count == 1 and automatic.metrics.save.count == 1 and automatic.metrics.mesh_build.count == 1 and automatic.metrics.enemy_create.count == 1 and automatic.metrics.enemy_retire.count == 1,"Real path, failed-save, mesh creation and retirement paths feed diagnostics")
+	check.call(automatic.navigation.counts.queries == 1 and automatic.navigation.requests[0].outcome in ["direct","path","projected_endpoint","unreachable","invalid_endpoint"],"Real path feeds bounded request details alongside legacy totals")
 	automatic.enabled = false
 	automatic.metrics.clear()
+	automatic.navigation.clear()
+	# Diagnostics retain complete counts and the slowest details with fixed bounds.
+	for i in 100:
+		recorder.record_path({"purpose":"reach","reason":"cache_expired","outcome":"projected_endpoint","total_us":2000+i,"endpoint_us":1900+i})
+		recorder.record_path_event("movement_blocked",{"enemy_id":i})
+	check.call(recorder.navigation.requests.size() == Recorder.PATH_DETAILS_PER_FRAME and recorder.navigation.events.size() == Recorder.PATH_EVENTS_PER_FRAME and recorder.navigation.counts.queries == 100,"Path detail and event limits do not truncate aggregate counts")
+	check.call(recorder.navigation.requests.any(func(row): return row.total_us == 2099) and recorder.navigation.dropped_requests == 84 and recorder.navigation.dropped_events == 92,"Overflow retains slow queries and explicitly reports omitted details")
+	now += 16667
+	recorder.record("physics",1000)
+	recorder.record("physics",2000)
+	recorder.sample(now,16667,state)
+	var row: Dictionary = recorder.ring[(recorder.cursor-1+Recorder.CAPACITY)%Recorder.CAPACITY]
+	check.call(row.physics_steps == 2 and row.navigation.counts.queries == 100 and recorder.navigation.is_empty(),"Sample aligns navigation history and catch-up counts then resets frame buffers")
 	await game.get_tree().process_frame
 	view.free()
 	recorder.free()

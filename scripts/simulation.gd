@@ -435,7 +435,13 @@ func player_reachable(z: Dictionary, p: Dictionary) -> bool:
 	var cached: Dictionary = player_route_cache.get(key,{})
 	var state = [Vector2i(z.pos/2),Vector2i(p.pos/2),arena.navigation_revision]
 	if cached.get("state",[]) == state and elapsed < cached.get("until",-1.0): return cached.reachable
-	var result: Dictionary = path_scheduler.request("reach:"+str(z.id)+":"+str(p.id),z.pos,p.pos,50+path_priority(z),elapsed,arena)
+	var details: Dictionary = {}
+	if preload("res://scripts/stutter_log.gd").tracing():
+		var reason = "first_query"
+		if cached.has("state"):
+			reason = "navigation_changed" if cached.state[2] != state[2] else "target_cell_changed" if cached.state[1] != state[1] else "enemy_cell_changed" if cached.state[0] != state[0] else "cache_expired"
+		details = {"reason":reason,"target_type":"player","enemy_kind":z.kind,"target_height":p.height}
+	var result: Dictionary = path_scheduler.request("reach:"+str(z.id)+":"+str(p.id),z.pos,p.pos,50+path_priority(z),elapsed,arena,details)
 	if result.is_empty(): return cached.get("reachable",false) if cached.get("state",[]) == state else false
 	var reachable = not result.path.is_empty()
 	player_route_cache[key] = {"state":state.duplicate(true),"until":elapsed+.25,"reachable":reachable}
@@ -1011,7 +1017,8 @@ func update_zombie(z: Dictionary, target: Dictionary, dt: float) -> void:
 		return
 	if defense_spawner and defense_spawner.forest_routes.follow(self,z,speed,dt): return
 	var goal = approach_goal(z,target)
-	move_zombie(z,goal,speed,dt,distance,contact,target.get("is_crystal",false) or target.get("is_structure",false))
+	move_zombie(z,goal,speed,dt,distance,contact,target.get("is_crystal",false) or target.get("is_structure",false),"move",
+		"crystal" if target.get("is_crystal",false) else str(target.get("structure_kind","building")) if target.get("is_structure",false) else "player")
 
 func advance_attack(z: Dictionary, target: Dictionary, speed: float, dt: float, contact: float) -> void:
 	var offset: Vector2 = target.pos-z.pos
@@ -1035,11 +1042,12 @@ func advance_attack(z: Dictionary, target: Dictionary, speed: float, dt: float, 
 	z.gait = z.get("gait",0.0)+z.pos.distance_to(old_position)*2.3
 	z.move_speed = z.pos.distance_to(old_position)/maxf(dt,.001)
 
-func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance: float, contact: float, stop_at_waypoint := false) -> void:
+func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance: float, contact: float, stop_at_waypoint := false, purpose := "move", target_type := "waypoint") -> void:
 	var waypoint: Vector2 = goal
 	var direction = (waypoint-z.pos).normalized()
 	var cached: Dictionary = paths.get(z.id,{"until":0.0,"path":PackedVector2Array(),"goal":Vector2.INF,"direct_until":0.0,"direct":false})
-	if cached.get("revision",arena.navigation_revision) != arena.navigation_revision:
+	var navigation_changed: bool = cached.get("revision",arena.navigation_revision) != arena.navigation_revision
+	if navigation_changed:
 		cached.path = PackedVector2Array()
 		cached.until = 0.0
 		cached.direct_until = 0.0
@@ -1051,12 +1059,17 @@ func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance
 		paths[z.id] = cached
 	if not cached.get("direct",false):
 		if elapsed >= cached.until or cached.goal.distance_to(goal) > 1.3:
-			var result: Dictionary = path_scheduler.request("move:"+str(z.id),z.pos,goal,path_priority(z),elapsed,arena)
+			var details: Dictionary = {}
+			if preload("res://scripts/stutter_log.gd").tracing():
+				details = {"purpose":purpose,"target_type":target_type,"enemy_kind":z.kind,
+					"reason":"navigation_changed" if navigation_changed else "movement_blocked" if cached.get("blocked",false) else "first_query" if cached.goal == Vector2.INF else "goal_moved" if cached.goal.distance_to(goal) > 1.3 else "cache_expired"}
+			var result: Dictionary = path_scheduler.request("move:"+str(z.id),z.pos,goal,path_priority(z),elapsed,arena,details)
 			if not result.is_empty():
 				cached.until = elapsed+.65+fmod(z.id*.037,.25)
 				cached.path = result.path
 				cached.goal = goal
 				cached.revision = arena.navigation_revision
+				cached.erase("blocked")
 				paths[z.id] = cached
 		var route: PackedVector2Array = cached.path
 		# Skip only reachable waypoints; a nearby corner cannot be cut through.
@@ -1106,7 +1119,10 @@ func move_zombie(z: Dictionary, goal: Vector2, speed: float, dt: float, distance
 		if z.pos.distance_squared_to(old_position) < .000001:
 			var forward: Vector2 = old_position+route_direction*travel
 			if arena.clear(old_position,forward): z.pos = forward
-			else: cached.until = 0.0
+			else:
+				cached.until = 0.0
+				cached["blocked"] = true
+				preload("res://scripts/stutter_log.gd").path_event("movement_blocked",{"enemy_id":z.id,"position":[z.pos.x,z.pos.y],"goal":[goal.x,goal.y]})
 	z.gait = z.get("gait",0.0)+z.pos.distance_to(old_position)*2.3
 	z.move_speed = z.pos.distance_to(old_position)/maxf(dt,.001)
 	if direction.length_squared() > .01: z.heading = atan2(direction.x,direction.y)

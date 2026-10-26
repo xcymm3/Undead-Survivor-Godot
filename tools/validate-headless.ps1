@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Import', 'Parse', 'NativeComponents', 'NoonFixes', 'Progression', 'Campaign', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'DefenseWaves', 'NavigationRegressions', 'SpreadBallistics', 'ExportWeb', 'NativeSmoke', 'CpuOptimizations', 'CombatUpgrades', 'UltimateEntry')]
+    [ValidateSet('Import', 'Parse', 'NativeComponents', 'NoonFixes', 'Progression', 'Campaign', 'Defense', 'DefenseSpawns', 'DefenseStructures', 'DefenseWaves', 'NavigationRegressions', 'PathStalls', 'SpreadBallistics', 'ExportWeb', 'NativeSmoke', 'CpuOptimizations', 'CombatUpgrades', 'UltimateEntry')]
     [string]$Mode = 'NativeComponents',
     [string]$Godot = '',
     [string]$Script = 'res://scripts/main.gd',
@@ -13,6 +13,7 @@ $Godot = (Resolve-Path -LiteralPath $Godot).Path
 $arguments = @('--headless', '--audio-driver', 'Dummy', '--path', ('"' + $projectRoot + '"'))
 if ($VerboseEngine) { $arguments += '--verbose' }
 switch ($Mode) {
+    'PathStalls' { $arguments += @('--script', 'res://tools/validate-path-stalls.gd', '--', '--silent', '--automation') }
     'UltimateEntry' { $arguments += @('--script', 'res://tools/validate-ultimate-entry.gd', '--', '--silent', '--automation') }
     'NativeSmoke' { $arguments += @('--', '--automation', '--silent', '--qa-native-smoke') }
     'NoonFixes' { $arguments += @('--script', 'res://tools/validate-noon-fixes.gd', '--', '--silent', '--automation') }

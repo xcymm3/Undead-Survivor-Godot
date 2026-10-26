@@ -57,7 +57,8 @@ func follow(sim, z: Dictionary, speed: float, dt: float) -> bool:
 	# Shoves, knockback and charges may leave the lane. Rejoin safely using the
 	# existing bounded planner; never teleport through scenery or abandon the lane.
 	if z.pos.distance_squared_to(projection) > .0004:
-		sim.move_zombie(z,projection,speed,dt,z.pos.distance_to(projection),0.0,true)
+		preload("res://scripts/stutter_log.gd").path_event("forest_rejoin",{"enemy_id":z.id,"route":index,"position":[z.pos.x,z.pos.y],"projection":[projection.x,projection.y]})
+		sim.move_zombie(z,projection,speed,dt,z.pos.distance_to(projection),0.0,true,"forest_rejoin")
 		return true
 	var direction: Vector2 = (waypoint-z.pos).normalized()
 	var travel = minf(speed*dt,z.pos.distance_to(waypoint))

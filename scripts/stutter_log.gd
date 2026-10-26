@@ -5,6 +5,8 @@ const BEFORE_US = 5000000
 const AFTER_US = 3000000
 const MAX_CAPTURE_US = 10000000
 const RETAIN_REPORTS = 20
+const PATH_DETAILS_PER_FRAME = 16
+const PATH_EVENTS_PER_FRAME = 8
 static var instance
 var enabled = false
 var game_ref: WeakRef
@@ -21,6 +23,7 @@ var pending: Array = []
 var writer: Thread
 var last_error = ""
 var metadata: Dictionary = {}
+var navigation: Dictionary = {}
 
 static func begin() -> int:
 	return Time.get_ticks_usec() if instance != null and instance.enabled else 0
@@ -29,15 +32,62 @@ static func end(name: String, started: int) -> void:
 	if started > 0 and instance != null and instance.enabled:
 		instance.record(name,Time.get_ticks_usec()-started)
 
+static func tracing() -> bool:
+	return instance != null and instance.enabled
+
+static func path_request(details: Dictionary) -> void:
+	if tracing(): instance.record_path(details)
+
+static func path_event(kind: String, details: Dictionary = {}) -> void:
+	if tracing(): instance.record_path_event(kind,details)
+
+func path_counter(key: String) -> void:
+	if navigation.is_empty():
+		navigation = {"counts":{},"requests":[],"events":[],"dropped_requests":0,"dropped_events":0}
+	navigation.counts[key] = int(navigation.counts.get(key,0))+1
+
+func record_path(details: Dictionary) -> void:
+	path_counter("queries")
+	for field in ["purpose","reason","outcome"]:
+		path_counter(field+":"+str(details.get(field,"unknown")))
+	details["process_frame"] = Engine.get_process_frames()
+	details["physics_frame"] = Engine.get_physics_frames()
+	# Count every query, but only sample two fast calls; retain slow calls up
+	# to the separate hard cap. Normal play must not fill the ring with traces.
+	if details.total_us < 2000 and navigation.requests.size() >= 2:
+		navigation.dropped_requests += 1
+		return
+	if navigation.requests.size() < PATH_DETAILS_PER_FRAME:
+		navigation.requests.append(details)
+	else:
+		# Preserve the slowest calls when a catch-up frame produces many queries.
+		var fastest = 0
+		for i in navigation.requests.size():
+			if navigation.requests[i].total_us < navigation.requests[fastest].total_us: fastest = i
+		if details.total_us > navigation.requests[fastest].total_us: navigation.requests[fastest] = details
+		navigation.dropped_requests += 1
+
+func record_path_event(kind: String, details: Dictionary) -> void:
+	path_counter("event:"+kind)
+	if navigation.events.size() < PATH_EVENTS_PER_FRAME:
+		var entry = details.duplicate(true)
+		entry["kind"] = kind
+		entry["process_frame"] = Engine.get_process_frames()
+		entry["physics_frame"] = Engine.get_physics_frames()
+		navigation.events.append(entry)
+	else: navigation.dropped_events += 1
+
 func _ready() -> void:
 	instance = self
 	process_priority = -1000
 	ring.resize(CAPACITY)
 	enabled = DisplayServer.get_name() != "headless" and not OS.has_feature("web") and "--automation" not in OS.get_cmdline_user_args()
-	metadata = {"schema":1,"version":ProjectSettings.get_setting("application/config/version",""),
+	metadata = {"schema":2,"version":ProjectSettings.get_setting("application/config/version",""),
 		"engine":Engine.get_version_info().string,"os":OS.get_name(),"os_version":OS.get_version(),
 		"cpu":OS.get_processor_name(),"gpu":RenderingServer.get_video_adapter_name() if enabled else "not measured",
 		"renderer":ProjectSettings.get_setting("rendering/renderer/rendering_method",""),
+		"path_details_per_frame":PATH_DETAILS_PER_FRAME,"path_events_per_frame":PATH_EVENTS_PER_FRAME,
+		"fast_path_samples_per_frame":2,"slow_path_threshold_us":2000,
 		"limitations":"CPU scopes overlap. GPU time is not measured. Node destruction measures enemy retirement requests, not deferred engine freeing. No screenshots, player names, IPs or save contents."}
 	set_process(enabled)
 
@@ -57,6 +107,7 @@ func context() -> Dictionary:
 	var sim = game.sim
 	var data = get_node_or_null("/root/Data")
 	var session = get_node_or_null("/root/Session")
+	var pawn: Dictionary = game.local_pawn() if sim else {}
 	return {"active":game.running and game.focused and not game.paused and not game.finished and game.entry_sequence == null and game.ending_sequence == null and sim != null,
 		"wave":sim.wave if sim else 0,"alive":sim.alive_count() if sim else 0,
 		"queued":sim.roster.size() if sim else 0,"map":game.arena.map_id,
@@ -66,7 +117,11 @@ func context() -> Dictionary:
 		"quality":data.settings.quality if data else -1,"resolution":data.settings.resolution if data else 1.0,
 		"nodes":int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
 		"resources":int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT)),
-		"memory_bytes":int(Performance.get_monitor(Performance.MEMORY_STATIC))}
+		"memory_bytes":int(Performance.get_monitor(Performance.MEMORY_STATIC)),
+		"navigation_revision":game.arena.navigation_revision,
+		"path_pending":sim.path_scheduler.pending.size() if sim else 0,
+		"path_ready":sim.path_scheduler.ready.size() if sim else 0,
+		"player_position":[pawn.pos.x,pawn.height,pawn.pos.y] if not pawn.is_empty() else []}
 
 func _process(_dt: float) -> void:
 	var now = Time.get_ticks_usec()
@@ -76,8 +131,11 @@ func _process(_dt: float) -> void:
 	pump_writer()
 
 func sample(now: int, frame_us: int, state: Dictionary) -> void:
-	var row = {"at_us":now,"frame_us":frame_us,"metrics":metrics,"state":state}
+	var row = {"at_us":now,"frame_us":frame_us,"metrics":metrics,"state":state,
+		"physics_steps":int(metrics.get("physics",{}).get("count",0)),
+		"process_frame":Engine.get_process_frames(),"navigation":navigation}
 	metrics = {}
+	navigation = {}
 	ring[cursor] = row
 	cursor = (cursor+1)%CAPACITY
 	size = mini(size+1,CAPACITY)
@@ -130,7 +188,16 @@ static func summary(report: Dictionary) -> Dictionary:
 	var peak = 0
 	var over_50 = 0
 	var over_100 = 0
+	var path_counts: Dictionary = {}
+	var slowest_paths: Array = []
+	var peak_physics_steps = 0
+	var dropped_details = 0
 	for frame in report.frames:
+		peak_physics_steps = maxi(peak_physics_steps,int(frame.get("physics_steps",0)))
+		var nav: Dictionary = frame.get("navigation",{})
+		for key in nav.get("counts",{}): path_counts[key] = int(path_counts.get(key,0))+int(nav.counts[key])
+		dropped_details += int(nav.get("dropped_requests",0))+int(nav.get("dropped_events",0))
+		slowest_paths.append_array(nav.get("requests",[]))
 		peak = maxi(peak,int(frame.frame_us))
 		if frame.frame_us >= 50000: over_50 += 1
 		if frame.frame_us >= 100000: over_100 += 1
@@ -141,7 +208,9 @@ static func summary(report: Dictionary) -> Dictionary:
 			entry.total_us += value.total_us
 			entry.max_us = maxi(entry.max_us,int(value.max_us))
 			totals[key] = entry
-	return {"peak_frame_ms":peak/1000.0,"frames_over_50ms":over_50,"frames_over_100ms":over_100,"scopes":totals}
+	slowest_paths.sort_custom(func(a,b): return a.total_us > b.total_us)
+	return {"peak_frame_ms":peak/1000.0,"frames_over_50ms":over_50,"frames_over_100ms":over_100,"scopes":totals,
+		"navigation":{"counts":path_counts,"peak_physics_steps":peak_physics_steps,"dropped_details":dropped_details,"slowest_requests":slowest_paths.slice(0,20)}}
 
 static func write_report(report: Dictionary, folder: String) -> String:
 	if DirAccess.make_dir_recursive_absolute(folder) != OK: return "Could not create diagnostics directory"
@@ -160,6 +229,12 @@ static func write_report(report: Dictionary, folder: String) -> String:
 	for key in report.summary.scopes:
 		var scope: Dictionary = report.summary.scopes[key]
 		text += "%s：%d次，累计%.2f ms，单次最大%.2f ms\n" % [key,scope.count,scope.total_us/1000.0,scope.max_us/1000.0]
+	var nav: Dictionary = report.summary.navigation
+	text += "\n寻路诊断：单显示帧最多%d个物理步；%d次查询。请求总数完整统计，详情有上限并优先保留慢查询。\n" % [nav.peak_physics_steps,int(nav.counts.get("queries",0))]
+	for key in nav.counts:
+		text += "%s：%d\n" % [key,int(nav.counts[key])]
+	for request in nav.slowest_requests.slice(0,5):
+		text += "慢查询：%s / %s / %s；总计%.2fms，直线%.2fms，端点%.2fms，A* %.2fms；%s → %s\n" % [request.get("purpose","unknown"),request.get("reason","unknown"),request.get("outcome","unknown"),request.total_us/1000.0,float(request.get("direct_us",0))/1000.0,float(request.get("endpoint_us",0))/1000.0,float(request.get("astar_us",0))/1000.0,str(request.get("from",[])),str(request.get("goal",[]))]
 	text += "\n详细帧序列见同名JSON。各计时范围有包含关系，不能相加。GPU耗时未测量；enemy_retire仅是敌人节点销毁请求，不代表引擎延迟释放耗时。文件写入由后台线程执行。\n"
 	var plain = FileAccess.open(base+".txt",FileAccess.WRITE)
 	if not plain: return "Could not write diagnostics summary"

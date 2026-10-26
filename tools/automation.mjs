@@ -17,7 +17,7 @@ const excluded = full
       ...(release ? [] : ['windows-export-and-package']),
     ]
   : [
-      'crystal-defense', 'defense-structures', 'navigation-regressions', 'defense-wave-batches', 'spread-ballistics', 'export-web', 'browser-technical',
+      'crystal-defense', 'defense-structures', 'navigation-regressions', 'path-stalls', 'defense-wave-batches', 'spread-ballistics', 'export-web', 'browser-technical',
       'browser-defense-playthrough',
       'windows-export-and-package',
     ];
@@ -127,6 +127,8 @@ try {
   if (!/NOON FIXES: \d+ checks; 0 failures/.test(noonFixes)) throw new Error('Missing noon regression check marker.');
 
   if (full) {
+    const pathStalls = await powershell('path-stalls', 'tools/validate-headless.ps1', ['-Mode', 'PathStalls'], 300_000);
+    if (!/PATH STALLS: \d+ checks; 0 failures/.test(pathStalls)) throw new Error('Missing targeted path stall check marker.');
     const navigation = await powershell('navigation-regressions', 'tools/validate-headless.ps1', ['-Mode', 'NavigationRegressions'], 300_000);
     if (!/NAVIGATION REGRESSIONS: \d+ checks; 0 failures/.test(navigation)) throw new Error('Missing navigation regression check marker.');
     const waveBatches = await powershell('defense-wave-batches', 'tools/validate-headless.ps1', ['-Mode', 'DefenseWaves', '-TimeoutSeconds', '600'], 600_000);
