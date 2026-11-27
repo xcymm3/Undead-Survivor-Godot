@@ -165,7 +165,7 @@ func begin_entry_sequence(continuation: Callable) -> void:
 	reset_game()
 	sim = null
 	ui.clear_menu()
-	ui.current = "ultimate_choice"
+	ui.current = "prologue"
 	entry_sequence = preload("res://scripts/ultimate_entry.gd").new()
 	entry_sequence.game = self
 	entry_sequence.continuation = continuation
@@ -761,10 +761,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			Data.toggle_fullscreen()
 			Data.save()
 	if not running or paused or finished: return
-	if entry_sequence:
-		if event is InputEventMouseMotion and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Data.automation): entry_sequence.look(event.screen_relative)
-		if event.is_action_pressed("interact"): entry_sequence.request_interaction()
-		return
+	if entry_sequence: return
 	if sim and preload("res://scripts/onboarding.gd").blocked(sim.defense): return
 	if event is InputEventMouseMotion and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or Data.automation):
 		var sensitivity: float = Data.settings.sensitivity*tan(deg_to_rad(camera.fov)/2)/tan(deg_to_rad(61)/2)

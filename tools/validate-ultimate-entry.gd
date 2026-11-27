@@ -18,14 +18,6 @@ func path_for(suffix: String) -> String:
 	files.append(path)
 	return path
 
-func face(entry, x: float, z := .3) -> void:
-	entry.room.player.position = Vector3(x,.10,z)
-	entry.room.player.velocity = Vector3.ZERO
-	entry.yaw = 0.0
-	entry.pitch = 0.0
-	entry.step(.016,{"movement":Vector2.ZERO,"interact":false})
-	entry.render()
-
 func run() -> void:
 	game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
@@ -40,102 +32,19 @@ func run() -> void:
 	await physics_frame
 	var entry = game.entry_sequence
 	check(entry != null and game.sim == null and entry.phase == "intro","Fresh menu entry begins the story before any battle simulation")
-	check(entry.room.global_position.y == 80 and not game.arena.visible and entry.room.player.global_position.y > 79,"Selection scene and collisions are independent of the hidden defense terrain")
-	check(entry.room.has_node("NeonTechnology") and entry.room.has_node("AzureMoonHall") and entry.room.has_node("CrimsonGothicChapel"),"Room builds three distinct architectural bays")
-	check(entry.room.exhibits.size() == 3 and entry.room.exhibits.rocket_launcher.weapon.get_meta("weapon_id") == "rocket_launcher" and entry.room.exhibits.crimson_scepter.weapon.get_meta("weapon_id") == "crimson_scepter","Both new native display weapon models are instantiated alongside the existing blade")
-	check(entry.prompt.text == "选择你的终极武器","Selection prompt matches the requested text")
-	game.ui.clear_menu()
-	check(not game.ui.native_hud.is_visible_in_tree() and not game.ui.native_hud.ultimate_ring.is_visible_in_tree(),"Clearing a menu during the entry story cannot reveal the gameplay HUD or an unsynchronized ultimate icon")
+	check(entry.get_child_count()==1 and entry.story.get_child_count()==3,"Prologue contains only the story overlay")
 	entry.step(4.5)
 	entry.render()
-	check(entry.phase == "intro" and entry.black.color.a == 1 and game.sim == null and not progress.store.data.intro_seen,"Incomplete story stays opaque and does not start or save the main game")
+	check(entry.phase=="intro" and entry.black.color.a==1 and game.sim==null,"Narration remains opaque and blocks spawning")
 	entry.step(4.5)
-	check(entry.phase == "reveal" and Store.new(save_path).data.intro_seen and Store.new(save_path).needs_ultimate_choice(),"Completed story persists without falsely completing weapon selection")
-	game.return_home()
-	game.begin_game()
-	entry = game.entry_sequence
-	await physics_frame
-	check(entry.phase == "reveal","Resuming after story completion skips narration and returns to selection")
-	entry.step(1.0)
 	entry.render()
-	check(entry.phase == "room" and entry.black.color.a == 0,"Room reveals fully before selection controls enable")
-	game.ui.show_pause()
-	game.ui.clear_menu()
-	game.ui.native_hud.sync()
-	check(not game.ui.native_hud.is_visible_in_tree() and not game.ui.native_hud.ultimate_ring.is_visible_in_tree(),"Returning from a menu to weapon selection keeps ultimate, health and currency HUD hidden")
-	check(not entry.detail.visible,"Weapon dossier stays hidden outside interaction range")
-	check(not entry.choose("blade"),"Blade cannot be selected from outside its interaction range")
-	for id in ["rocket_launcher","crimson_scepter"]:
-		face(entry,-8 if id == "rocket_launcher" else 8)
-		check(entry.detail.details.level == "LV0" and entry.detail.details.rows[0] == ["伤害","--","600" if id == "rocket_launcher" else "720"],"Unavailable weapon previews configured damage at level zero: "+id)
-		check(entry.focus == id,"Proximity and gaze identify exhibit: "+id)
-		entry.step(.016,{"movement":Vector2.ZERO,"interact":true})
-		check(entry.phase == "room" and progress.store.needs_ultimate_choice() and entry.notice == "Demo版不可用" and game.sim == null,"Unavailable weapon cannot persist or leave the room: "+id)
-	face(entry,0,5.8)
-	for tick in 120: entry.step(1.0/60,{"movement":Vector2(0,-1),"interact":false})
-	check(entry.room.player.position.z < .3 and entry.room.player.position.z > -2.0 and entry.room.player.position.y > -.05,"Native player movement reaches the blade and collides with its pedestal")
-	face(entry,10.5,2)
-	for tick in 120: entry.step(1.0/60,{"movement":Vector2(1,0),"interact":false})
-	check(entry.room.player.position.x < 11.6,"Room side wall contains the native player capsule")
-	face(entry,0)
-	check(entry.detail.visible and entry.detail.details.level == "LV0" and entry.detail.details.rows[0] == ["伤害","--","200"],"Blade uses the left upgrade dossier with its real base damage")
-	check(entry.station_prompt.get_script() == game.arena.scenery.preparation.station_prompt.get_script() and entry.station_prompt.focus_label.text == "长刀\n0" and entry.station_prompt.price_icon.visible,"Selection directly reuses shop keycap, price icon and free selection price")
-	for id in entry.room.exhibits:
-		var desk = entry.room.exhibits[id].root.get_child(0)
-		check(desk.get_script() == preload("res://scripts/upgrade_station_base.gd") and desk.has_node("StationDesk"),"Weapon sits on the shared solid shop desk: "+id)
-	check(not entry.choose("blade"),"Direct selection cannot bypass the required hold duration")
-	entry.step(.45,{"movement":Vector2.ZERO,"interact":true})
-	entry.render()
-	check(entry.phase == "room" and is_equal_approx(entry.interaction_ring.progress,.45),"Partial hold displays the shared upgrade interaction progress without selecting")
-	entry.step(.01,{"movement":Vector2.ZERO,"interact":false})
-	check(entry.hold_time == 0.0,"Releasing the interaction key resets partial selection")
-	entry.step(.5,{"movement":Vector2.ZERO,"interact":true})
-	entry.yaw = PI
-	entry.step(.01,{"movement":Vector2.ZERO,"interact":true})
-	check(entry.hold_time == 0.0 and entry.focus.is_empty(),"Looking away while holding cancels selection progress")
-	face(entry,0)
-	entry.step(.5,{"movement":Vector2.ZERO,"interact":true})
-	face(entry,0,5.8)
-	check(entry.hold_time == 0.0,"Leaving interaction range cancels selection progress")
-	face(entry,0)
-	var valid_path: String = progress.store.path
-	progress.store.path = OS.get_cache_dir().path_join("missing-ultimate-entry-"+str(OS.get_process_id())+"/save.json")
-	entry.step(1.01,{"movement":Vector2.ZERO,"interact":true})
-	check(entry.phase == "room" and progress.store.needs_ultimate_choice() and entry.hold_time == 0.0,"Failed disk write keeps selection open and resets its progress")
-	progress.store.path = valid_path
-	face(entry,0)
-	# A short press and release must never count as a complete hold.
-	var tap = InputEventAction.new()
-	tap.action = "interact"
-	tap.pressed = true
-	game._unhandled_input(tap)
-	tap.pressed = false
-	game._unhandled_input(tap)
-	entry.step(.016,{"movement":Vector2.ZERO,"interact":false})
-	check(entry.phase == "room" and entry.hold_time == 0.0 and progress.store.needs_ultimate_choice(),"A complete short tap between physics frames cannot select blade")
-	Input.action_press("interact")
-	for tick in 61: game._physics_process(1.0/60)
-	Input.action_release("interact")
-	check(entry.phase == "fade_out" and Store.new(save_path).data.ultimate_choice == "blade","Holding the real engine input for one second persists blade before the fade")
-	check(not progress.store.data.ultimate_unlocked,"Choosing an ultimate does not bypass the existing unlock tutorial")
-	entry.step(.45)
-	entry.render()
-	check(entry.black.color.a > .45 and entry.black.color.a < .55 and game.sim == null,"Selection fades to black before constructing the main simulation")
-	entry.step(.5)
-	entry.render()
-	check(entry.phase == "handoff" and entry.black.color.a == 1 and game.sim != null and game.arena.visible and not entry.room.visible,"Scene handoff is opaque and restores the main world")
-	check(not preload("res://scripts/first_attempt_intro.gd").active(game.sim.defense) and not game.sim.defense.started and game.local_pawn().hp == 100,"Shop starts in first-wave preparation without replaying the opening")
-	game.ui.native_hud.sync()
-	check(not game.ui.native_hud.visible,"Opaque handoff keeps gameplay HUD hidden until the shop fade-in")
+	check(entry.phase=="handoff" and game.sim!=null and entry.black.color.a==1,"Last story line leads directly into the map")
+	check(game.local_pawn().pos.is_equal_approx(game.arena.definition.spawn),"Player enters at the map spawn")
+	check(not preload("res://scripts/first_attempt_intro.gd").active(game.sim.defense),"Opening does not play twice")
+	check(Store.new(save_path).data.ultimate_choice=="blade" and not progress.store.data.ultimate_unlocked,"Default blade persists without unlocking its combat ability")
 	entry.step(.25)
-	entry.step(.5)
-	entry.render()
-	check(entry.phase == "return" and entry.black.color.a > .45 and entry.black.color.a < .55,"Main shop fades in after the handoff")
-	game.ui.native_hud.sync()
-	check(game.ui.native_hud.visible and game.ui.native_hud.ultimate_ring.locked,"Shop fade-in restores the HUD with the actual locked ultimate state")
-	entry.step(.6)
-	await process_frame
-	check(game.entry_sequence == null and game.sim != null and Store.new(save_path).data.ultimate_choice == "blade","Completed entry releases the room and retains its choice across disk reload")
+	entry.step(1.1)
+	check(game.entry_sequence==null,"Entry releases control to the player")
 	var second = Store.new(path_for("second-slot"))
 	check(second.needs_ultimate_choice() and progress.store.data.ultimate_choice == "blade","A separate save still has its own unchosen ultimate")
 	game.return_home()
@@ -156,7 +65,7 @@ func run() -> void:
 	legacy.coins = 0
 	file = FileAccess.open(legacy_path,FileAccess.WRITE)
 	file.store_string(JSON.stringify(legacy)); file.close()
-	check(Store.new(legacy_path).needs_ultimate_choice(),"Untouched version-nine saves still enter the new selection")
+	check(Store.new(legacy_path).needs_ultimate_choice(),"Untouched version-nine saves remain eligible for the first prologue")
 	var invalid = Store.defaults()
 	invalid.ultimate_choice = "rocket_launcher"
 	check(not Store.valid(invalid) and not second.select_ultimate("crimson_scepter"),"Save validation and selection API both reject unavailable ultimate types")

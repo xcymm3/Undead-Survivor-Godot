@@ -156,23 +156,12 @@ func host_test() -> void:
 	game.begin_coop()
 	await physics_frame
 	var entry = game.entry_sequence
-	check(entry != null and entry.phase == "intro" and game.sim == null and not net.loading and not net.playing,"New host starts personal ultimate selection while keeping ENet guests in the lobby")
+	check(entry != null and entry.phase == "intro" and game.sim == null and not net.loading and not net.playing,"New host starts personal prologue while keeping ENet guests in the lobby")
 	# Real network processing continues while the host watches the prologue.
 	await create_timer(1.0).timeout
+	check(net.members.size() == 2 and not net.loading and game.sim == null,"The map handshake waits for the host prologue")
 	entry.step(9.0)
-	entry.step(1.0)
-	check(net.members.size() == 2 and not net.loading and game.sim == null,"Host selection does not prematurely start the map-loading timeout or drop the guest")
-	Input.action_press("forward")
-	for tick in 90: game._physics_process(1.0/60)
-	Input.action_release("forward")
-	check(entry.focus == "blade","Host reaches the blade using the production movement input")
-	Input.action_press("interact")
-	for tick in 30: game._physics_process(1.0/60)
-	check(entry.phase == "room" and not net.loading and game.sim == null,"Partial host hold does not start the cooperative scene handshake")
-	for tick in 31: game._physics_process(1.0/60)
-	Input.action_release("interact")
-	check(entry.phase == "fade_out" and Store.new(host_save_path).data.ultimate_choice == "blade" and not net.loading,"Host persists its held selection before the cooperative scene transition")
-	entry.step(1.0)
+	check(entry.phase == "handoff" and Store.new(host_save_path).data.ultimate_choice == "blade","Host prologue assigns blade without a selection room")
 	entry.render()
 	check(entry.black.color.a == 1 and net.loading,"Cooperative map handshake begins only under the opaque fade")
 	if not await until(func(): return game.running and net.playing and game.sim != null,"map handshake after host ultimate selection"): return
@@ -397,8 +386,8 @@ func client_test() -> void:
 	net.join_lan(address,"客机")
 	if not await until(func(): return net.members.size() == 2,"lobby admission before host selection"): return
 	check(not net.playing and not net.loading and game.sim == null and game.entry_sequence == null,"Guest waits in the lobby without entering the host's personal selection scene")
-	if not await until(func(): return phase("preparation"),"preparation snapshot after host blade selection"): return
-	check(net.playing and not net.loading and game.sim.pawns.size() == 2 and game.sim.progression.data.ultimate_choice == "blade","Guest enters the same two-player shop after the host confirms blade")
+	if not await until(func(): return phase("preparation"),"preparation snapshot after host prologue"): return
+	check(net.playing and not net.loading and game.sim.pawns.size() == 2 and game.sim.progression.data.ultimate_choice == "blade","Guest enters the same two-player shop after the host prologue")
 	var early = load("res://scripts/session.gd").new()
 	root.add_child(early)
 	early.map_preparing.connect(early.confirm_map_ready)

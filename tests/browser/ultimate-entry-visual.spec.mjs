@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 test.use({ trace: 'off' });
-test('新存档序章、三色终极武器展厅与选择后进入商店GIF', async ({ page }) => {
+test('新存档播放序章后直接进入出生点', async ({ page }) => {
   test.setTimeout(600_000);
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
@@ -15,60 +15,18 @@ test('新存档序章、三色终极武器展厅与选择后进入商店GIF', as
   const ready = await page.evaluate(() => window.__campaignReviewReady);
   const stills = process.env.QA_ENTRY_STILLS === '1';
   const states = [];
-  // Actual browser input, never teleporting the player or setting the camera.
-  const held = new Set();
-  let mouseX = 480;
-  await page.mouse.move(mouseX, 300);
-  const inputs = [];
-
+  const captures = new Map([[8,'intro-first'],[32,'intro-second'],[56,'intro-third'],[76,'spawn-fade'],[87,'spawn']]);
   for (let frame = 0; frame < ready.frames; frame++) {
-    const key = frame >= 80 && frame < 98 ? 'a'
-      : frame >= 98 && frame < 110 ? 'w'
-      : frame >= 126 && frame < 138 ? 's'
-      : frame >= 138 && frame < 174 ? 'd'
-      : frame >= 174 && frame < 186 ? 'w'
-      : frame >= 202 && frame < 214 ? 's'
-      : frame >= 214 && frame < 232 ? 'a'
-      : frame >= 232 && frame < 244 ? 'w'
-      : ([122, 198].includes(frame) || (frame >= 252 && frame <= 260)) ? 'e' : '';
-    for (const old of held) if (old !== key) { await page.keyboard.up(old); held.delete(old); }
-    if (key && !held.has(key)) { await page.keyboard.down(key); held.add(key); }
-    const turn = [112, 188, 246].some(start => frame >= start && frame < start + 4) ? 6
-      : [116, 192, 250].some(start => frame >= start && frame < start + 4) ? -6 : 0;
-    if (turn) { mouseX += turn; await page.mouse.move(mouseX, 300); }
-    // Let the Web input loop receive DOM events before advancing physics.
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    inputs.push({ frame, key, mouseDeltaX: turn });
-    await page.evaluate(({ index, paint }) => window.__drawUltimateEntry(index, paint), { index: frame, paint: !stills || [110, 198, 255].includes(frame) });
-    await page.waitForFunction(index => window.__entryFrame === index, frame);
+    await page.evaluate(([i,paint]) => window.__drawUltimateEntry(i,paint),[frame,!stills || captures.has(frame)]);
+    await page.waitForFunction(index => window.__entryFrame === index,frame);
     states.push(await page.evaluate(() => window.__entryState));
-    if (!stills) await page.screenshot({ path: path.join(directory, `frame-${String(frame).padStart(3, '0')}.png`) });
-    const weapon = { 110: 'rocket-launcher', 198: 'crimson-scepter', 255: 'long-blade' }[frame];
-    if (weapon) await page.screenshot({ path: path.join(directory, `${weapon}.png`) });
+    if (!stills) await page.screenshot({path:path.join(directory,`frame-${String(frame).padStart(3,'0')}.png`)});
+    if (captures.has(frame)) await page.screenshot({path:path.join(directory,captures.get(frame)+'.png')});
   }
-  await writeFile(path.join(directory, 'timing.json'), JSON.stringify({ ...ready, commit: process.env.GITHUB_SHA, inputs, states }, null, 2));
-  expect(states.slice(0, 70).every(state => state.phase === 'intro' && !state.sim_started)).toBe(true);
-  expect(states[124].rocket_blocked).toBe(true);
-  expect(states[200].scepter_blocked).toBe(true);
-  expect(states[110].focus).toBe('rocket_launcher');
-  expect(states[186].focus).toBe('crimson_scepter');
-  expect(states[244].focus).toBe('blade');
-  expect(states[255].hold_progress).toBeGreaterThan(.4);
-  expect(states[255].phase).toBe('room');
-  expect(states[260].choice).toBe('blade');
-  for (const frame of [110, 198, 244]) {
-    expect(states[frame].detail.level).toBe('LV0');
-    expect(states[frame].detail.rows.every(row => row[1] === '--')).toBe(true);
-  }
-  expect(states[244].detail.rows[0]).toEqual(['伤害', '--', '200']);
-  expect(Math.abs(states[115].yaw - states[111].yaw)).toBeGreaterThan(.02);
-  // Each capture frame contains 8 capsule sweeps, each allowing safe_margin recovery.
-  for (let index = 81; index < 260; index++) {
-    expect(Math.hypot(states[index].x - states[index - 1].x, states[index].z - states[index - 1].z)).toBeLessThanOrEqual(ready.movement_limit + 1e-5);
-  }
-  expect(states.some(state => state.phase === 'fade_out'  && state.choice === 'blade' && !state.sim_started)).toBe(true);
-  expect(states.some(state => state.phase === 'handoff' && state.black === 1 && state.sim_started)).toBe(true);
-  expect(states.at(-1)).toMatchObject({ phase: 'shop', choice: 'blade', intro_seen: true, ultimate_unlocked: false, main_visible: true });
+  await writeFile(path.join(directory,'timing.json'),JSON.stringify({...ready,states},null,2));
+  expect(states.slice(0,71).every(s=>s.phase==='intro' && !s.sim_started && s.black===1)).toBe(true);
+  expect(states.some(s=>s.phase==='handoff' && s.at_spawn && s.black===1)).toBe(true);
+  expect(states.at(-1)).toMatchObject({phase:'spawn',choice:'blade',at_spawn:true,intro_seen:true,ultimate_unlocked:false});
   expect(await page.evaluate(() => window.__qaSafety)).toEqual({ pointerLockRequests: 0, fullscreenRequests: 0 });
   expect(errors).toEqual([]);
 });

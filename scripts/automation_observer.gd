@@ -87,7 +87,7 @@ func snapshot() -> Dictionary:
 		"yaw": game.yaw, "pitch": game.pitch, "fov": game.camera.fov, "buttons": []}
 	if game.entry_sequence:
 		var entry = game.entry_sequence
-		result.entry = {"phase":entry.phase,"focus":entry.focus,"x":entry.room.player.position.x,"z":entry.room.player.position.z,"black":entry.black.color.a,"choice":Progress.store.data.ultimate_choice}
+		result.entry = {"phase":entry.phase,"black":entry.black.color.a,"choice":Progress.store.data.ultimate_choice}
 	for node in game.ui.root.find_children("*", "Button", true, false):
 		if node.is_visible_in_tree():
 			var rect: Rect2 = node.get_global_rect()
